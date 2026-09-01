@@ -1,7 +1,10 @@
 # In-game engine
 
-Godot games call `GamestrumentsPlayer.generate(game_id, seed, style)` at
-level load. The same user seed is a different piece per `gameId`.
+Godot games set a **project secret** and an **instrument palette** on
+`GamestrumentsPlayer`, then call `generate(seed)` at level load.
+
+Uniqueness is `secret` + `seed` + palette. Buyers of a future itch kit fill
+those in the inspector so two games never share a default sound.
 
 TypeScript Studio is not used at runtime.
 

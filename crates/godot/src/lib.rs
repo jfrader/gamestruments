@@ -1,6 +1,6 @@
 use gamestruments_engine::{
-    generate_pocket_circuit, AdaptiveTransport, GameState, GenerateInput, PortableScore, Style,
-    Synth,
+    generate_pocket_circuit, AdaptiveTransport, GameState, GenerateInput, InstrumentPalette,
+    PortableScore, Style, Synth,
 };
 use godot::classes::{AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer};
 use godot::prelude::*;
@@ -13,6 +13,27 @@ unsafe impl ExtensionLibrary for GamestrumentsExtension {}
 #[derive(GodotClass)]
 #[class(base=Node)]
 struct GamestrumentsPlayer {
+    /// Per-title secret. Do not use a public name like "pocket-circuit".
+    #[export]
+    project_secret: GString,
+    #[export]
+    style: GString,
+    #[export]
+    melody_voice: GString,
+    #[export]
+    harmony_voice: GString,
+    #[export]
+    drive_voice: GString,
+    #[export]
+    bass_voice: GString,
+    #[export]
+    energy: f64,
+    #[export]
+    complexity: f64,
+    #[export]
+    brightness: f64,
+    #[export]
+    syncopation: f64,
     score: Option<PortableScore>,
     transport: Option<AdaptiveTransport>,
     synth: Synth,
@@ -28,6 +49,16 @@ struct GamestrumentsPlayer {
 impl INode for GamestrumentsPlayer {
     fn init(base: Base<Node>) -> Self {
         Self {
+            project_secret: GString::new(),
+            style: "funk".into(),
+            melody_voice: GString::new(),
+            harmony_voice: GString::new(),
+            drive_voice: GString::new(),
+            bass_voice: GString::new(),
+            energy: 0.62,
+            complexity: 0.6,
+            brightness: 0.52,
+            syncopation: 0.7,
             score: None,
             transport: None,
             synth: Synth::new(22050.0),
@@ -95,22 +126,33 @@ impl INode for GamestrumentsPlayer {
 #[godot_api]
 impl GamestrumentsPlayer {
     #[func]
-    fn generate(&mut self, game_id: GString, seed: GString, style: GString) {
-        let Ok(style) = Style::parse(&style.to_string()) else {
+    fn generate(&mut self, seed: GString) {
+        let Ok(style) = Style::parse(&self.style.to_string()) else {
             godot_error!("Unknown Gamestruments style");
             return;
         };
+        if self.project_secret.is_empty() {
+            godot_error!("GamestrumentsPlayer.project_secret is empty");
+            return;
+        }
         let score = generate_pocket_circuit(&GenerateInput {
-            game_id: game_id.to_string(),
+            secret: self.project_secret.to_string(),
             seed: seed.to_string(),
             style,
-            energy: 0.62,
-            complexity: 0.6,
-            brightness: 0.52,
-            syncopation: 0.7,
+            palette: InstrumentPalette {
+                melody: self.melody_voice.to_string(),
+                harmony: self.harmony_voice.to_string(),
+                drive: self.drive_voice.to_string(),
+                bass: self.bass_voice.to_string(),
+            },
+            energy: self.energy,
+            complexity: self.complexity,
+            brightness: self.brightness,
+            syncopation: self.syncopation,
         });
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
+        self.synth = Synth::new(self.sample_rate);
         match AdaptiveTransport::new(score.clone(), Some("garage")) {
             Ok(transport) => {
                 self.transport = Some(transport);

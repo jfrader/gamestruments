@@ -33,11 +33,29 @@ impl Style {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InstrumentPalette {
+    pub melody: String,
+    pub harmony: String,
+    pub drive: String,
+    pub bass: String,
+}
+
+impl InstrumentPalette {
+    pub fn fingerprint(&self) -> String {
+        format!(
+            "{}|{}|{}|{}",
+            self.melody, self.harmony, self.drive, self.bass
+        )
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GenerateInput {
-    pub game_id: String,
+    pub secret: String,
     pub seed: String,
     pub style: Style,
+    pub palette: InstrumentPalette,
     pub energy: f64,
     pub complexity: f64,
     pub brightness: f64,
@@ -45,38 +63,32 @@ pub struct GenerateInput {
 }
 
 struct Kit {
-    melody: &'static str,
-    harmony: &'static str,
-    drive: &'static str,
-    bass: &'static str,
+    melody: String,
+    harmony: String,
+    drive: String,
+    bass: String,
 }
 
-fn kit(style: Style) -> Kit {
-    match style {
-        Style::Fusion => Kit {
-            melody: "epiano",
-            harmony: "warm",
-            drive: "organ",
-            bass: "bass",
-        },
-        Style::Neon => Kit {
-            melody: "supersaw",
-            harmony: "pulse",
-            drive: "pulse",
-            bass: "bass",
-        },
-        Style::Funk => Kit {
-            melody: "pluck",
-            harmony: "warm",
-            drive: "pluck",
-            bass: "bass",
-        },
-        Style::Chip => Kit {
-            melody: "chip",
-            harmony: "chip",
-            drive: "chip",
-            bass: "triangle",
-        },
+fn kit(style: Style, palette: &InstrumentPalette) -> Kit {
+    let defaults = match style {
+        Style::Fusion => ("epiano", "warm", "organ", "bass"),
+        Style::Neon => ("supersaw", "pulse", "pulse", "bass"),
+        Style::Funk => ("pluck", "warm", "pluck", "bass"),
+        Style::Chip => ("chip", "chip", "chip", "triangle"),
+    };
+    Kit {
+        melody: choose_voice(&palette.melody, defaults.0),
+        harmony: choose_voice(&palette.harmony, defaults.1),
+        drive: choose_voice(&palette.drive, defaults.2),
+        bass: choose_voice(&palette.bass, defaults.3),
+    }
+}
+
+fn choose_voice(value: &str, fallback: &str) -> String {
+    if value.is_empty() {
+        fallback.to_string()
+    } else {
+        value.to_string()
     }
 }
 
@@ -145,7 +157,8 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
     let complexity = input.complexity.clamp(0.0, 1.0);
     let brightness = input.brightness.clamp(0.0, 1.0);
     let syncopation = input.syncopation.clamp(0.0, 1.0);
-    let kit = kit(input.style);
+    let kit = kit(input.style, &input.palette);
+    let palette_key = input.palette.fingerprint();
     let bpm = (112.0
         + (energy * 36.0).round()
         + if input.style == Style::Fusion {
@@ -155,13 +168,15 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
         })
     .clamp(112.0, 160.0);
     let identity = hash_text(&format!(
-        "{}\0{}\0{}\0{}",
-        input.game_id,
+        "{}\0{}\0{}\0{}\0{}",
+        input.secret,
         input.seed,
         input.style.as_str(),
+        palette_key,
         GENERATOR_VERSION
     ));
-    let mut harmony_rng = DeterministicRandom::new(subseed(&input.game_id, &input.seed, "harmony"));
+    let mut harmony_rng =
+        DeterministicRandom::new(subseed(&input.secret, &input.seed, "harmony", &palette_key));
     let roots = [0, 2, 3, 5, 7, 9, 10];
     let root = roots[harmony_rng.integer(7) as usize];
     let scale: [i32; 7] = if brightness > 0.66 {
@@ -171,7 +186,8 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
     } else {
         [0, 2, 3, 5, 7, 9, 10]
     };
-    let mut motif_rng = DeterministicRandom::new(subseed(&input.game_id, &input.seed, "motif"));
+    let mut motif_rng =
+        DeterministicRandom::new(subseed(&input.secret, &input.seed, "motif", &palette_key));
     let motif = [
         0,
         motif_rng.integer(6) as i32,
@@ -182,7 +198,8 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
         motif_rng.integer(6) as i32,
         0,
     ];
-    let mut rhythm_rng = DeterministicRandom::new(subseed(&input.game_id, &input.seed, "rhythm"));
+    let mut rhythm_rng =
+        DeterministicRandom::new(subseed(&input.secret, &input.seed, "rhythm", &palette_key));
     let melody_count = 3 + (complexity * 4.0).round() as usize;
     let mut melody_steps = rhythm_rng.shuffle(&[0_u32, 1, 2, 3, 4, 5, 6, 7]);
     melody_steps.truncate(melody_count.max(2));
@@ -235,9 +252,9 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
     }
 }
 
-fn subseed(game_id: &str, seed: &str, domain: &str) -> u32 {
+fn subseed(secret: &str, seed: &str, domain: &str, palette: &str) -> u32 {
     hash_text(&format!(
-        "{DNA_SEED_VERSION}\0{game_id}\0string:{seed}\0{domain}"
+        "{DNA_SEED_VERSION}\0{secret}\0string:{seed}\0{domain}\0{palette}"
     ))
 }
 
@@ -265,7 +282,11 @@ fn build_section(
         plan.id
     };
     let drive = matches!(groove_id, "grid" | "attack" | "final-lap");
-    let harmony_voice = if drive { kit.drive } else { kit.harmony };
+    let harmony_voice = if drive {
+        kit.drive.as_str()
+    } else {
+        kit.harmony.as_str()
+    };
     let melody_onsets: Vec<u32> = match groove_id {
         "garage" | "victory" => melody_steps.iter().copied().take(2).collect(),
         "grid" => vec![0, 2, 4, 6],
@@ -323,7 +344,7 @@ fn build_section(
             pulse * 3,
             0.35 + energy * 0.25,
             midi(root, degree, scale, 36),
-            kit.bass,
+            kit.bass.as_str(),
             None,
         ));
         events.push(note_event(
@@ -334,7 +355,7 @@ fn build_section(
             pulse * 3,
             0.32 + energy * 0.2,
             midi(root, degree + 4, scale, 36),
-            kit.bass,
+            kit.bass.as_str(),
             None,
         ));
         for (note_index, step) in melody_onsets.iter().enumerate() {
@@ -347,7 +368,7 @@ fn build_section(
                 pulse,
                 0.3 + plan.intensity * 0.25,
                 midi(root, motif_degree + plan.register / 2, scale, 60 + octave),
-                kit.melody,
+                kit.melody.as_str(),
                 Some("melody"),
             ));
         }
@@ -506,42 +527,69 @@ fn default_rules() -> Vec<AdaptiveRule> {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_pocket_circuit, GenerateInput, Style};
+    use super::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
 
-    #[test]
-    fn game_id_changes_the_piece() {
-        let seed = "level-004";
-        let traits = |game_id: &str| GenerateInput {
-            game_id: game_id.into(),
-            seed: seed.into(),
+    fn sample(secret: &str, palette: InstrumentPalette) -> GenerateInput {
+        GenerateInput {
+            secret: secret.into(),
+            seed: "level-004".into(),
             style: Style::Funk,
+            palette,
             energy: 0.58,
             complexity: 0.75,
             brightness: 0.55,
             syncopation: 0.9,
-        };
-        let pocket = generate_pocket_circuit(&traits("pocket-circuit"));
-        let other = generate_pocket_circuit(&traits("other-game"));
+        }
+    }
+
+    fn pitches(score: &super::PortableScore) -> Vec<u8> {
+        score.sections[1]
+            .events
+            .iter()
+            .filter_map(|event| event.pitch())
+            .collect()
+    }
+
+    #[test]
+    fn secret_changes_the_piece() {
+        let pocket =
+            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()));
+        let other = generate_pocket_circuit(&sample("other-secret", InstrumentPalette::default()));
         assert_ne!(pocket.id, other.id);
-        let pocket_pitches: Vec<_> = pocket.sections[1]
+        assert_ne!(pitches(&pocket), pitches(&other));
+    }
+
+    #[test]
+    fn palette_changes_the_piece() {
+        let default_palette =
+            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()));
+        let custom = generate_pocket_circuit(&sample(
+            "pocket-secret",
+            InstrumentPalette {
+                melody: "chip".into(),
+                harmony: "organ".into(),
+                drive: "pulse".into(),
+                bass: "triangle".into(),
+            },
+        ));
+        assert_ne!(default_palette.id, custom.id);
+        assert_ne!(pitches(&default_palette), pitches(&custom));
+        let custom_voices: Vec<_> = custom.sections[2]
             .events
             .iter()
-            .filter_map(|e| e.pitch())
+            .filter(|event| event.is_melody())
+            .map(|event| event.voice().to_string())
             .collect();
-        let other_pitches: Vec<_> = other.sections[1]
-            .events
-            .iter()
-            .filter_map(|e| e.pitch())
-            .collect();
-        assert_ne!(pocket_pitches, other_pitches);
+        assert!(custom_voices.iter().all(|voice| voice == "chip"));
     }
 
     #[test]
     fn generates_six_sections() {
         let score = generate_pocket_circuit(&GenerateInput {
-            game_id: "pocket-circuit".into(),
+            secret: "pocket-secret".into(),
             seed: "race-12".into(),
             style: Style::Funk,
+            palette: InstrumentPalette::default(),
             energy: 0.7,
             complexity: 0.6,
             brightness: 0.5,
