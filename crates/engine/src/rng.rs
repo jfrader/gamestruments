@@ -1,14 +1,14 @@
 pub fn hash_text(value: &str) -> u32 {
-    let mut hash: i32 = 0x811c9dc5_u32 as i32;
+    let mut hash: u32 = 0x811c9dc5;
     for character in value.chars() {
-        hash ^= character as i32;
+        hash ^= character as u32;
         hash = hash.wrapping_mul(0x0100_0193);
     }
     hash ^= hash >> 16;
     hash = hash.wrapping_mul(0x7feb_352d);
     hash ^= hash >> 15;
-    hash = hash.wrapping_mul(0x846c_a68b_u32 as i32);
-    (hash ^ (hash >> 16)) as u32
+    hash = hash.wrapping_mul(0x846c_a68b);
+    hash ^ (hash >> 16)
 }
 
 pub struct DeterministicRandom {
@@ -25,10 +25,10 @@ impl DeterministicRandom {
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> f64 {
         self.state = self.state.wrapping_add(0x6d2b_79f5);
-        let mut value = self.state as i32;
+        let mut value = self.state;
         value = imul(value ^ (value >> 15), value | 1);
         value ^= value.wrapping_add(imul(value ^ (value >> 7), value | 61));
-        f64::from((value ^ (value >> 14)) as u32) / 4_294_967_296.0
+        (f64::from(value ^ (value >> 14))) / 4_294_967_296.0
     }
 
     pub fn integer(&mut self, max_exclusive: u32) -> u32 {
@@ -51,8 +51,9 @@ impl DeterministicRandom {
     }
 }
 
-fn imul(left: i32, right: i32) -> i32 {
-    left.wrapping_mul(right)
+fn imul(left: u32, right: u32) -> u32 {
+    // Math.imul semantics: signed 32-bit multiply, result as bits
+    ((left as i32).wrapping_mul(right as i32)) as u32
 }
 
 #[cfg(test)]
