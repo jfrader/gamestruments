@@ -143,6 +143,13 @@ fn lerpf(from: f32, to: f32, t: f32) -> f32 {
     from + (to - from) * t.clamp(0.0, 1.0)
 }
 
+fn noise(state: &mut u32) -> f32 {
+    *state ^= *state << 13;
+    *state ^= *state >> 17;
+    *state ^= *state << 5;
+    (*state as f32 / u32::MAX as f32) * 2.0 - 1.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::Synth;
@@ -172,11 +179,4 @@ mod tests {
         let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
         assert!(energy > 1.0, "expected audible energy, got {energy}");
     }
-}
-
-fn noise(state: &mut u32) -> f32 {
-    *state ^= *state << 13;
-    *state ^= *state >> 17;
-    *state ^= *state << 5;
-    (*state as f32 / u32::MAX as f32) * 2.0 - 1.0
 }

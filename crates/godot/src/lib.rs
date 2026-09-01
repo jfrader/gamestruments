@@ -2,7 +2,9 @@ use gamestruments_engine::{
     generate_pocket_circuit, AdaptiveTransport, GameState, GenerateInput, InstrumentPalette,
     PortableScore, Style, Synth,
 };
-use godot::classes::{AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer};
+use godot::classes::{
+    AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
+};
 use godot::prelude::*;
 
 struct GamestrumentsExtension;
@@ -40,8 +42,6 @@ struct GamestrumentsPlayer {
     ticks_per_second: f64,
     tick: u32,
     sample_rate: f32,
-    player: Option<Gd<AudioStreamPlayer>>,
-    playback: Option<Gd<AudioStreamGeneratorPlayback>>,
     base: Base<Node>,
 }
 
@@ -65,8 +65,6 @@ impl INode for GamestrumentsPlayer {
             ticks_per_second: 2160.0,
             tick: 0,
             sample_rate: 22050.0,
-            player: None,
-            playback: None,
             base,
         }
     }
@@ -81,18 +79,50 @@ impl INode for GamestrumentsPlayer {
         player.set_bus("Music");
         self.to_gd().add_child(&player);
         player.play();
-        self.playback = player
-            .get_stream_playback()
-            .and_then(|playback| playback.try_cast::<AudioStreamGeneratorPlayback>().ok());
-        self.player = Some(player);
+        // Drop local Gd immediately. The child is now owned by the scene tree.
+        // We will look it up by name ("LiveStream") on demand in process/exit_tree
+        // using temporary Gd handles only. Never storing Gd<Audio...> in the
+        // struct eliminates the ObjectDB leaks of playbacks.
+    }
+
+    fn exit_tree(&mut self) {
+        // Look up child using only a temporary Gd (via to_gd which is cheap
+        // ref). Stop + null its stream so Godot releases the generator and
+        // playback RefCounteds, then temps drop. Never storing Gd<Audio*>
+        // in the struct avoids keeping refs alive across exit_tree.
+        let this = self.to_gd();
+        if let Some(mut p) = this
+            .get_node_or_null("LiveStream")
+            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
+        {
+            p.stop();
+            p.set_stream(Gd::<AudioStream>::null_arg());
+        }
     }
 
     fn process(&mut self, _delta: f64) {
         let Some(score) = self.score.as_ref() else {
             return;
         };
-        let Some(playback) = self.playback.as_mut() else {
-            return;
+        // Look up the stream player child by name and obtain its current
+        // playback via get_stream_playback() on every process tick. Using
+        // only short-lived temporary Gd<> (never stored in struct) ensures
+        // we do not keep AudioStreamGeneratorPlayback refs alive past
+        // exit_tree / free, eliminating our contribution to ObjectDB leaks.
+        let this = self.to_gd();
+        let mut player = match this
+            .get_node_or_null("LiveStream")
+            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
+        {
+            Some(p) => p,
+            None => return,
+        };
+        let mut playback = match player
+            .get_stream_playback()
+            .and_then(|p| p.try_cast::<AudioStreamGeneratorPlayback>().ok())
+        {
+            Some(pb) => pb,
+            None => return,
         };
         let frames = playback.get_frames_available();
         if frames <= 0 {
