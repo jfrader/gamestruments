@@ -141,3 +141,43 @@ pub fn select_section(score: &PortableScore, state: &GameState) -> String {
         _ => score.default_section.clone(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AdaptiveTransport;
+    use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use crate::score::GameState;
+
+    fn score() -> crate::score::PortableScore {
+        generate_pocket_circuit(&GenerateInput {
+            secret: "qa-secret".into(),
+            seed: "qa-race".into(),
+            style: Style::Funk,
+            palette: InstrumentPalette::default(),
+            energy: 0.6,
+            complexity: 0.5,
+            brightness: 0.5,
+            syncopation: 0.6,
+        })
+    }
+
+    #[test]
+    fn race_state_crosses_into_cruise() {
+        let generated = score();
+        let bar = generated.bar_ticks();
+        let mut transport = AdaptiveTransport::new(generated, None).unwrap();
+        assert_eq!(transport.current_section(), "garage");
+        transport.request_state(
+            &GameState {
+                intensity: 0.4,
+                position_pressure: 0.2,
+                final_lap: false,
+                race_phase: "race".into(),
+                finish_result: "none".into(),
+            },
+            0,
+        );
+        transport.advance(bar * 4);
+        assert_eq!(transport.current_section(), "cruise");
+    }
+}

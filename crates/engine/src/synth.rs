@@ -143,6 +143,37 @@ fn lerpf(from: f32, to: f32, t: f32) -> f32 {
     from + (to - from) * t.clamp(0.0, 1.0)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::Synth;
+    use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+
+    #[test]
+    fn cruise_events_render_audible_samples() {
+        let score = generate_pocket_circuit(&GenerateInput {
+            secret: "qa-secret".into(),
+            seed: "qa-race".into(),
+            style: Style::Funk,
+            palette: InstrumentPalette::default(),
+            energy: 0.7,
+            complexity: 0.6,
+            brightness: 0.5,
+            syncopation: 0.7,
+        });
+        let ticks_per_second = score.ticks_per_second();
+        let mut synth = Synth::new(22050.0);
+        for event in &score.section("cruise").unwrap().events {
+            if event.start_tick() < 960 {
+                synth.trigger(event, ticks_per_second);
+            }
+        }
+        let mut buffer = vec![0.0_f32; 2205];
+        synth.fill(&mut buffer);
+        let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
+        assert!(energy > 1.0, "expected audible energy, got {energy}");
+    }
+}
+
 fn noise(state: &mut u32) -> f32 {
     *state ^= *state << 13;
     *state ^= *state >> 17;

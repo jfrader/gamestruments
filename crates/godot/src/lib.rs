@@ -76,6 +76,7 @@ impl INode for GamestrumentsPlayer {
         generator.set_mix_rate(self.sample_rate);
         generator.set_buffer_length(0.1);
         let mut player = AudioStreamPlayer::new_alloc();
+        player.set_name("LiveStream");
         player.set_stream(&generator);
         player.set_bus("Music");
         self.to_gd().add_child(&player);
