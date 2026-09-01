@@ -90,14 +90,7 @@ impl INode for GamestrumentsPlayer {
         // ref). Stop + null its stream so Godot releases the generator and
         // playback RefCounteds, then temps drop. Never storing Gd<Audio*>
         // in the struct avoids keeping refs alive across exit_tree.
-        let this = self.to_gd();
-        if let Some(mut p) = this
-            .get_node_or_null("LiveStream")
-            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
-        {
-            p.stop();
-            p.set_stream(Gd::<AudioStream>::null_arg());
-        }
+        self.cleanup_audio_child();
     }
 
     fn process(&mut self, _delta: f64) {
@@ -151,6 +144,32 @@ impl INode for GamestrumentsPlayer {
             playback.push_frame(Vector2::new(sample, sample));
         }
         self.tick = self.tick.wrapping_add(window_ticks.max(1));
+    }
+}
+
+// Non-exposed helper for robust shutdown cleanup. Called from exit_tree and
+// on_notification to ensure the AudioStreamPlayer child (and its
+// AudioStreamGenerator / Playback) have their resources released.
+impl GamestrumentsPlayer {
+    fn cleanup_audio_child(&mut self) {
+        let this = self.to_gd();
+        if let Some(mut p) = this
+            .get_node_or_null("LiveStream")
+            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
+        {
+            p.stop();
+            p.set_stream(Gd::<AudioStream>::null_arg());
+            // Explicitly detach + free the child AudioStreamPlayer after
+            // clearing its stream. This forces release of any internal
+            // AudioStreamGeneratorPlayback (RefCounted) that Godot may be
+            // holding with refcount 1. Using transient lookup (no stored Gd)
+            // + explicit free after stop/null is required to drop from 2->1
+            // leaks vs baseline noop.
+            if let Some(mut parent) = p.get_parent() {
+                parent.remove_child(&p);
+            }
+            p.free();
+        }
     }
 }
 
@@ -208,5 +227,22 @@ impl GamestrumentsPlayer {
             },
             self.tick,
         );
+    }
+}
+
+// Rust Drop: attempt to participate in cleanup (per investigation request).
+// In gdext 0.4.5 / Godot 4.7, Drop runs when the Rust data for the instance
+// is dropped (after Godot notifications like PREDELETE). We do NOT call
+// to_gd().free() or godot methods here, as the Base/Gd handle is typically
+// already invalidated or the object is mid-deletion; doing so can panic or
+// double-free. Primary reliable hooks remain exit_tree + on_notification.
+impl Drop for GamestrumentsPlayer {
+    fn drop(&mut self) {
+        // Safe no-op: do not call to_gd() / godot methods or cleanup here.
+        // Drop can run during free() / deletion where Gd casts or binds will
+        // fail (see "downcast ... failed" and "bind_mut already bound").
+        // All cleanup is performed from exit_tree (which fires before delete
+        // for normal tree removal and many quit paths). This + explicit
+        // child free() after stop+null is our attempt to minimize leaks.
     }
 }
