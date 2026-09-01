@@ -746,18 +746,6 @@ fn build_section_faithful(
             let deg = degrees[ni];
             let pit = scale_pitch(root_mel, deg + reg, &resolved.scale_intervals) as u8;
             let s = bar as u32 * bar_ticks + st * pulse;
-            if pid == "garage" {
-                eprintln!(
-                    "garage mel bar{} ni{} st{} deg{} reg{} pit{} root_mel{}",
-                    bar, ni, st, deg, reg, pit, root_mel
-                );
-            }
-            if pid == "grid" && bar < 1 {
-                eprintln!(
-                    "grid mel bar{} ni{} st{} deg{} reg{} pit{} root_mel{}",
-                    bar, ni, st, deg, reg, pit, root_mel
-                );
-            }
             melody_raw.push((s, s + pulse, midi_to_note(pit as i32), pit));
         }
 
@@ -1640,9 +1628,6 @@ mod tests {
                     }
                 }
             }
-        }
-        if mismatches > 0 {
-            eprintln!("first diff: {:?}", first_diff);
         }
         assert_eq!(mismatches, 0, "event mismatches: {}", mismatches);
     }
