@@ -4,6 +4,9 @@
 
 ### Added
 
+- Started a MIT Rust engine (`crates/engine`) and Godot 4 GDExtension
+  (`crates/godot`) so games generate and play music at level load from
+  `gameId` + seed, without Strudel or a WAV library.
 - Frozen Tiny Torque `level-004` (Grid) as a catalog take for Pocket Circuit
   main-menu music.
 

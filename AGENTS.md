@@ -13,18 +13,19 @@
 ## Product
 
 - This repo is a **game music library**, not a Pocket Circuit checkout.
-- `@gamestruments/runtime` is MIT and Strudel-free. `@gamestruments/studio`
-  and `apps/demo` are AGPL because they use Strudel.
-- Frozen takes under `catalog/` are shipped music. Do not regenerate them when
-  the generator version changes. Pocket Circuit main menu uses
-  `catalog/pocket-circuit/tiny-torque-level-004/` (Grid).
-- Do not keep iterating Pocket Circuit music unless Fran asks for a new catalog
-  take. The next consumer work is Pocket Circuit GURI-321.
+- TypeScript Studio (`packages/studio`, AGPL) is the Audio Lab only. Do not
+  ship Strudel into games.
+- In-game engine is Rust: `crates/engine` (MIT generator + transport + synth)
+  and `crates/godot` (GDExtension). Games generate at level load from
+  `gameId` + seed. Do not pre-bake every procedural race to WAV.
+- `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
 
 ## Verify
 
 ```bash
 npm run check
+cargo test -p gamestruments-engine
+cargo clippy -p gamestruments-engine --all-targets -- -D warnings
 ```
 
 Requires Node.js 24. Final checks run in CI after push.
