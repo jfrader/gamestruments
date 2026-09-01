@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "declarationMap": false,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@gamestruments/runtime": [
+        "packages/runtime/dist/index.d.ts"
+      ],
+      "@strudel/core": [
+        "packages/studio/strudel-core-shim.mjs"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "../../types/**/*.d.ts"
+  ]
+}

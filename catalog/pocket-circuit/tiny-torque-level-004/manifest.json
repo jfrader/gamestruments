@@ -1,0 +1,31 @@
+{
+  "manifestVersion": 1,
+  "recipe": "pocket-circuit",
+  "generatorVersion": "1.9.0",
+  "seed": "string:level-004",
+  "style": "funk",
+  "traits": {
+    "energy": 0.58,
+    "complexity": 0.75,
+    "brightness": 0.55,
+    "syncopation": 0.9
+  },
+  "domainSeeds": {
+    "harmony": 2239278273,
+    "motif": 3453540373,
+    "rhythm": 2385244012,
+    "timbre": 250453082,
+    "arrangement": 1210667548,
+    "ornaments": 2728415651
+  },
+  "score": {
+    "schemaVersion": 1,
+    "id": "pocket-circuit-generated-v1-9-0-7864ec71"
+  },
+  "checksum": {
+    "algorithm": "sha256",
+    "encoding": "hex",
+    "source": "compact-json",
+    "value": "48f065b5a14726cf03615659f2fc6ad52fa552a0e5df2ed3b7dd8833e74f3737"
+  }
+}

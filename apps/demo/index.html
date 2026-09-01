@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Gamestruments adaptive racing music prototype for Pocket Circuit."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2311120f'/%3E%3Cpath d='M7 8h18v4H11v8h10v-3h-5v-4h9v11H7z' fill='%23d7ff3f'/%3E%3C/svg%3E" />
+    <title>Gamestruments — Countertop Velocity</title>
+  </head>
+  <body>
+    <main class="console-shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Procedural music systems / prototype 001</p>
+          <h1>GAME<span>STRUMENTS</span></h1>
+        </div>
+        <nav class="view-nav" aria-label="Audio Lab views">
+          <a href="#lab" data-view-link="lab" aria-current="page">Lab</a>
+          <a href="#games" data-view-link="games">Game types</a>
+          <a href="#genres" data-view-link="genres">Genres</a>
+        </nav>
+        <button class="start-button" id="start-audio" type="button">
+          <span class="start-light" aria-hidden="true"></span>
+          Start engine
+        </button>
+      </header>
+
+      <section class="workspace view" data-view="lab" aria-label="Adaptive music controls">
+        <aside class="race-state">
+          <div class="section-heading">
+            <span>01</span>
+            <h2>Race state</h2>
+          </div>
+
+          <fieldset class="sound-world-control">
+            <legend>Sound world</legend>
+            <div class="score-buttons" id="score-buttons"></div>
+          </fieldset>
+
+          <fieldset class="generator-control">
+            <legend>Procedural level</legend>
+            <label class="seed-control" for="level-seed">
+              <span>Level seed</span>
+              <span class="seed-editor">
+                <input id="level-seed" type="text" value="level-001" autocomplete="off" spellcheck="false" />
+                <button id="apply-seed" type="button">Generate</button>
+              </span>
+            </label>
+            <button class="new-take" id="new-take" type="button">
+              Next seed
+              <output id="variation-value">level-001</output>
+            </button>
+            <div class="generation-traits">
+              <label for="generation-energy">
+                <span>Energy</span>
+                <output id="generation-energy-value">62%</output>
+                <input id="generation-energy" type="range" min="0" max="1" step="0.01" value="0.62" />
+              </label>
+              <label for="generation-complexity">
+                <span>Complexity</span>
+                <output id="generation-complexity-value">68%</output>
+                <input id="generation-complexity" type="range" min="0" max="1" step="0.01" value="0.68" />
+              </label>
+              <label for="generation-brightness">
+                <span>Brightness</span>
+                <output id="generation-brightness-value">52%</output>
+                <input id="generation-brightness" type="range" min="0" max="1" step="0.01" value="0.52" />
+              </label>
+              <label for="generation-syncopation">
+                <span>Syncopation</span>
+                <output id="generation-syncopation-value">72%</output>
+                <input id="generation-syncopation" type="range" min="0" max="1" step="0.01" value="0.72" />
+              </label>
+            </div>
+            <output class="generator-summary" id="generator-summary">Seeded musical DNA ready</output>
+          </fieldset>
+
+          <fieldset class="audition-control">
+            <legend>Audition</legend>
+            <div class="audition-buttons" id="solo-buttons">
+              <button type="button" data-solo="full" aria-pressed="true">Full mix</button>
+              <button type="button" data-solo="melody" aria-pressed="false">Melody</button>
+              <button type="button" data-solo="rhythm" aria-pressed="false">Rhythm</button>
+            </div>
+            <button class="compare-take" id="compare-take" type="button" aria-pressed="false">
+              Compare seed
+              <output id="compare-value">Play B</output>
+            </button>
+            <output class="sr-only" id="audition-status" aria-live="polite"></output>
+          </fieldset>
+
+          <fieldset class="phase-control">
+            <legend>Phase</legend>
+            <div class="phase-buttons" id="phase-buttons">
+              <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
+              <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
+              <button type="button" data-phase="race" aria-pressed="false">Race</button>
+              <button type="button" data-phase="finish" aria-pressed="false">Finish</button>
+            </div>
+          </fieldset>
+
+          <label class="meter-control" for="intensity">
+            <span>Speed intensity</span>
+            <output id="intensity-value">35%</output>
+            <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
+          </label>
+
+          <label class="meter-control" for="pressure">
+            <span>Position pressure</span>
+            <output id="pressure-value">20%</output>
+            <input id="pressure" type="range" min="0" max="1" step="0.01" value="0.2" />
+          </label>
+
+          <label class="toggle-control" for="final-lap">
+            <span>
+              <strong>Final lap</strong>
+              Add the maximum-commitment layer
+            </span>
+            <input id="final-lap" type="checkbox" />
+            <i aria-hidden="true"></i>
+          </label>
+        </aside>
+
+        <section class="music-stage" aria-live="polite">
+          <div class="stage-grid" aria-hidden="true"></div>
+          <div class="orbit" id="orbit">
+            <div class="orbit-ring orbit-ring--outer"></div>
+            <div class="orbit-ring orbit-ring--inner"></div>
+            <div class="playhead"></div>
+            <div class="mood-readout">
+              <em id="score-title">Countertop Velocity</em>
+              <p id="transition-label">Engine offline</p>
+              <strong id="mood-name">Garage</strong>
+              <span id="mood-feeling">polished / unhurried</span>
+            </div>
+          </div>
+          <div class="transport-readout">
+            <span>BAR <strong id="bar-value">01</strong></span>
+            <span>BEAT <strong id="beat-value">01</strong></span>
+            <span>TEMPO <strong id="tempo-value">126</strong></span>
+          </div>
+        </section>
+
+        <aside class="mix-state">
+          <div class="section-heading">
+            <span>02</span>
+            <h2>Musical crossover</h2>
+          </div>
+          <p class="mix-explainer">
+            Changes wait for the next bar, then share two bars. Every section
+            keeps the same pulse and harmonic center.
+          </p>
+          <ol class="section-list" id="section-list"></ol>
+          <div class="signal-note">
+            <span>Runtime signal</span>
+            <code id="runtime-signal">racePhase: garage</code>
+          </div>
+        </aside>
+      </section>
+
+      <section class="catalog-view view" data-view="games" hidden>
+        <header class="catalog-intro">
+          <p class="eyebrow">Browse by interaction</p>
+          <h2>Game types</h2>
+          <p>
+            Each game family gets its own adaptive vocabulary: parameters,
+            transition rules, pacing, and musical stakes.
+          </p>
+        </header>
+        <ol class="catalog-index game-index">
+          <li class="is-live">
+            <span>01</span>
+            <div><strong>Racing</strong><small>Speed, pressure, final lap, finish</small></div>
+            <button type="button" data-open-lab>4 live experiments</button>
+          </li>
+          <li><span>02</span><div><strong>Adventure</strong><small>Biome, discovery, danger, shelter</small></div><i>Open slot</i></li>
+          <li><span>03</span><div><strong>Horror</strong><small>Awareness, pursuit, isolation, release</small></div><i>Open slot</i></li>
+          <li><span>04</span><div><strong>Strategy</strong><small>Economy, conflict, momentum, victory</small></div><i>Open slot</i></li>
+          <li><span>05</span><div><strong>Cozy</strong><small>Time, weather, activity, companionship</small></div><i>Open slot</i></li>
+        </ol>
+      </section>
+
+      <section class="catalog-view view" data-view="genres" hidden>
+        <header class="catalog-intro">
+          <p class="eyebrow">Browse by musical language</p>
+          <h2>Genres</h2>
+          <p>
+            The same racing signals interpreted through different rhythm,
+            harmony, density, and timbre.
+          </p>
+        </header>
+        <ol class="catalog-index genre-index" id="genre-index"></ol>
+      </section>
+
+      <footer>
+        <p>Original synthesized lab. No samples, cloud generation, vocals, or telemetry.</p>
+        <p>Open authoring / portable game runtime</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

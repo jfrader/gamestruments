@@ -1,0 +1,39 @@
+{
+  "name": "@gamestruments/studio",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "bin": {
+    "gamestruments-generate": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./manifest": {
+      "types": "./dist/generation-manifest.d.ts",
+      "import": "./dist/manifest.js",
+      "default": "./dist/manifest.js"
+    }
+  },
+  "scripts": {
+    "build:types": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@gamestruments/runtime": "0.0.0",
+    "@strudel/core": "1.2.6",
+    "@strudel/mini": "1.2.6"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
