@@ -34,6 +34,10 @@ share one generated identity without reusing Pocket Circuit's traits or rules.
 
 ## API
 
+The Audio Lab (`apps/demo`) now uses the shared WASM engine for generation
+(`generateScore` wrapper around `gamestruments_score_json`); the Web Audio
+render stage remains local. Authoring still uses the TS studio for catalog work.
+
 ```ts
 import {
   generatePocketCircuitLevel,

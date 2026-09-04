@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "smoke": "node tests/runtime-import-smoke.mjs && node tests/studio-import-smoke.mjs && node tests/generation-cli-smoke.mjs",
     "parity:wasm": "node tests/wasm-parity.mjs",
+    "wasm:build": "cargo build -p gamestruments-engine --target wasm32-unknown-unknown --release && mkdir -p apps/demo/public/engine && cp target/wasm32-unknown-unknown/release/gamestruments_engine.wasm apps/demo/public/engine/gamestruments_engine.wasm",
     "fixtures:update": "npm run build:packages && node tests/update-golden-fixtures.mjs",
     "check": "npm run test && npm run build"
   },

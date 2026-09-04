@@ -9,13 +9,11 @@ import {
   type TransitionPlan,
 } from "../../../packages/runtime/src/index.ts";
 import {
-  generatePocketCircuitLevel,
   pocketCircuitExperiments,
-  POCKET_CIRCUIT_GENERATOR_VERSION,
-  type GeneratedPocketCircuitLevel,
   type NormalizedMusicTraits,
   type PocketCircuitStyle,
 } from "../../../packages/studio/src/index.ts";
+import { generateScore } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 
 type ViewName = "lab" | "games" | "genres";
@@ -95,11 +93,11 @@ const elements = {
 let activeExperimentIndex = 0;
 let levelSeed = "level-001";
 let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
+let activeStyle: PocketCircuitStyle = GENERATION_PRESETS[0].style;
 let phase = "garage";
-let generatedLevel = createGeneratedLevel();
-let score: PortableScore = generatedLevel.portableScore;
-let transport = new AdaptiveTransport(score);
-let audio = new DemoAudioEngine(score);
+let score!: PortableScore;
+let transport!: AdaptiveTransport;
+let audio!: DemoAudioEngine;
 let switchingScore = false;
 let switchingAudio = false;
 let generationQueue: Promise<void> = Promise.resolve();
@@ -107,6 +105,12 @@ let latestGenerationRequest = 0;
 let soloMode: SoloMode = "full";
 let comparisonBaseSeed = levelSeed;
 let auditionOverride: SectionId | null = null;
+
+// Load initial score from the shared WASM engine (top-level await is supported for this Vite ESM entry).
+score = await generateCurrentScore();
+transport = new AdaptiveTransport(score);
+audio = new DemoAudioEngine(score);
+
 
 const sectionRows = new Map<
   string,
@@ -121,11 +125,16 @@ function generationPreset(index = activeExperimentIndex): GenerationPreset {
   return preset;
 }
 
-function createGeneratedLevel(): GeneratedPocketCircuitLevel {
-  return generatePocketCircuitLevel({
+async function generateCurrentScore(): Promise<PortableScore> {
+  const preset = generationPreset();
+  activeStyle = preset.style;
+  return generateScore({
     seed: levelSeed,
-    style: generationPreset().style,
-    traits: generationTraits,
+    style: preset.style,
+    energy: generationTraits.energy,
+    complexity: generationTraits.complexity,
+    brightness: generationTraits.brightness,
+    syncopation: generationTraits.syncopation,
   });
 }
 
@@ -160,7 +169,7 @@ function renderRuntimeSignal(state: GameState, target: SectionId): void {
   elements.runtimeSignal.textContent = [
     `score: ${score.id}`,
     `seed: ${levelSeed}`,
-    `style: ${generatedLevel.style}`,
+    `style: ${activeStyle}`,
     `generation: E${generationTraits.energy.toFixed(2)} C${generationTraits.complexity.toFixed(2)} B${generationTraits.brightness.toFixed(2)} S${generationTraits.syncopation.toFixed(2)}`,
     `racePhase: ${phase}`,
     `intensity: ${state.numeric.intensity?.toFixed(2)}`,
@@ -310,13 +319,12 @@ function renderGenerationControls(): void {
     input.value = String(value);
     output.value = `${Math.round(value * 100)}%`;
   }
-  const { harmony, motif, rhythm, timbre } = generatedLevel.dna;
+  // DNA summary replaced: WASM PortableScore provides no dna.* fields (studio-only).
+  // Use stable score fields from the shared engine instead.
   elements.generatorSummary.value = [
-    `${harmony.key.toUpperCase()} ${harmony.mode}`,
-    `${motif.degrees.length}-step motif`,
-    `${rhythm.melodyOnsets.length} notes/bar`,
-    `${timbre.melodyVoice} lead · ${timbre.harmonyVoice}/${timbre.driveHarmonyVoice} pads`,
-    `generator v${POCKET_CIRCUIT_GENERATOR_VERSION}`,
+    score.id,
+    `${score.sections.length} sections @ ${score.bpm} bpm`,
+    `engine: wasm`,
   ].join(" / ");
 }
 
@@ -376,8 +384,7 @@ async function activateExperiment(
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
-    generatedLevel = createGeneratedLevel();
-    score = generatedLevel.portableScore;
+    score = await generateCurrentScore();
     transport = new AdaptiveTransport(score, initialSection);
     audio = new DemoAudioEngine(score);
     audio.soloMode = soloMode;
