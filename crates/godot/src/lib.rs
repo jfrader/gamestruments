@@ -3,8 +3,7 @@ use gamestruments_engine::{
     PortableScore, Style, Synth,
 };
 use godot::classes::{
-    notify::NodeNotification, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback,
-    AudioStreamPlayer,
+    AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
 };
 use godot::prelude::*;
 
@@ -92,12 +91,6 @@ impl INode for GamestrumentsPlayer {
         // playback RefCounteds, then temps drop. Never storing Gd<Audio*>
         // in the struct avoids keeping refs alive across exit_tree.
         self.cleanup_audio_child();
-    }
-
-    fn on_notification(&mut self, what: NodeNotification) {
-        if what == NodeNotification::PREDELETE {
-            self.cleanup_audio_child();
-        }
     }
 
     fn process(&mut self, _delta: f64) {
