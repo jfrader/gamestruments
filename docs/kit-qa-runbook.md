@@ -2,8 +2,8 @@
 
 **Artifact under test (RC):**
 - `gamestruments-0.1.0-rc1-godot4.zip`
-- Bytes: 1195402
-- SHA-256: `3881c2a7b10bab98fc4bfcae87fd0a4e6a3272fedd00738857102cb8fc82cc4d`
+- Bytes: 2337255
+- SHA-256: `8f705ead0886b9517cafefe722203b531f8b98c4dbd80f0426d3f6726c08a69f`
 
 **Verify after download (always):**
 ```sh
@@ -36,17 +36,24 @@ ls -1
 
 ## (b) Open kit/demo in Godot 4.7 with the addon (copy-paste)
 
-1. Copy the extracted `addons/gamestruments/` into a **brand new** Godot 4 project (or your test project) so you have:
-   ```
-   res://addons/gamestruments/gamestruments.gdextension
-   res://addons/gamestruments/bin/libgamestruments_godot.so
-   ```
-2. Copy `kit/demo/` into the project as `res://kit/demo/`.
-3. Restart Godot (required after placing a new .gdextension).
-4. Open `res://kit/demo/kit_demo.tscn`.
-5. Run the scene (F5 or Play).
+The demo is now self-contained: the archive includes an identical `addons/gamestruments/`
+copy inside `kit/demo/addons/`. 
 
-You should see the UI appear with no red ClassDB / extension errors in Output. Press **Generate** to hear the first score.
+1. Extract the archive (see (a)).
+2. Open the extracted `kit/demo/` folder **directly** as a Godot 4 project:
+   ```
+   godot --path /path/to/extracted/kit/demo
+   ```
+   (or File → Open Project in the editor and point at the `kit/demo/` folder that
+   contains `project.godot`). The addon is already present at the correct relative
+   location `res://addons/gamestruments/...` and `run/main_scene` is `res://kit_demo.tscn`.
+3. (Optional but recommended for clean logs) Run the import step headless first:
+   `godot --path /path/to/extracted/kit/demo --headless --import`
+4. Run the scene (F5 or Play) or boot headless.
+
+You should see the UI appear (or "Initialize godot-rust") with no missing-dependency
+or ClassDB / extension errors. Press **Generate** to hear the first score. (The
+`kit_demo.tscn` now correctly references `res://kit_demo.gd` for the demo-as-project case.)
 
 ---
 
