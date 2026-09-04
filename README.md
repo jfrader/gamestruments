@@ -1,17 +1,44 @@
-# Gamestruments Audio Lab
+# Gamestruments
 
-Gamestruments Audio Lab is a standalone playground for deterministic procedural
-and adaptive music in games. A level seed and generation parameters create a
-stable musical identity on the authoring side; games receive portable musical
-data and a small independent runtime that plans beat-aware transitions.
+**The runtime product** is a seed-driven, sample-free, MIT Rust engine +
+Godot 4 GDExtension. Games generate a unique adaptive score at level load from
+a per-title `project_secret` + instrument palette + seed and drive bar-quantized
+state changes at runtime. No samples, no Strudel, no authoring UI cross the
+game boundary.
 
-The prototype focuses on one question: can game parameters move between
-melodies and feelings without sounding like unrelated tracks were abruptly
-swapped?
+**Audio Lab** (the TypeScript + Strudel authoring/research surface in this
+repository) is for exploration, validation, and catalog work only. It is not
+part of the kit shipped to games.
 
-## Development
+A level seed + secret creates a stable musical identity. Runtime parameters
+select and crossfade pre-generated arrangements inside that identity.
 
-Requires Node.js 24.
+## How Games Use It (the shipped product)
+
+In a Godot 4 project:
+
+1. Add the GDExtension (binary + `.gdextension`) under `addons/gamestruments/`.
+2. Add a `GamestrumentsPlayer` node (or autoload).
+3. In the inspector (or code) set:
+   - `project_secret` (per-title secret — never a public string like the game name)
+   - `style` (e.g. "funk")
+   - optional voice overrides (melody/harmony/drive/bass) and traits (energy, complexity, brightness, syncopation)
+4. At level load call `generate(seed)`.
+5. During play call `set_race_state(phase, intensity, pressure, final_lap)` as game state changes.
+
+The engine produces the score once, keeps it, and performs musically coherent
+crossovers on bar boundaries. See `docs/kit-contract.md` for the exact public
+API surface and `docs/kit-opportunity.md` for scope.
+
+Example listening-pack render (validates parity with the Audio Lab):
+
+```bash
+cargo run -p gamestruments-engine --example render_listen -- /tmp/gamestruments-listen
+```
+
+## Development (Audio Lab + research)
+
+Requires Node.js 24 for the authoring Lab.
 
 ```bash
 npm install
@@ -37,120 +64,88 @@ The app has URL-addressable views:
 npm run check
 ```
 
+**Pinned-build note**: the GDExtension is built against a specific gdext +
+Godot API surface. Rebuild from the exact source tree + toolchain used for the
+release tag for bit-for-bit parity with the distributed binary. Platform
+binaries for Windows/macOS are produced by the release workflow but remain
+pending full runtime QA (see GURI-485).
+
 ## Architecture
 
-`packages/studio` uses Strudel to author and export patterns. It is kept outside
-the game runtime and is AGPL-3.0-or-later. Its Pocket Circuit and Lantern Trail
-generators derive independent harmony, motif, rhythm, timbre, arrangement, and
-ornament sub-seeds, then develop one shared musical identity across six adaptive
-sections.
+### Runtime (the kit product)
 
-`packages/runtime` consumes only portable score data and produces transition
-and gain-envelope instructions. It is independently written, has no Strudel
-dependency, and is MIT licensed.
+The in-game engine lives in Rust:
 
-`apps/demo` proves the full authoring-to-runtime idea in a browser. Its Web
-Audio renderer includes synthesized lead, electric-piano, bass, drum, room,
-compression, and transition stages, but remains demonstration code rather than
-a production synthesizer.
+- `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
+  from `secret` + `seed` + palette + traits. Pocket Circuit recipe today.
+- `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
 
-The first collection follows Pocket Circuit's audio brief: compact energetic
-racing loops, a lower-intensity garage state, and a distinct final-lap lift.
-It currently spans electronic fusion, synthwave, pocket funk, and chiptune.
-Every level seed is reproducible for a fixed generator version and supports
-energy, complexity, brightness, and syncopation parameters. See
-[`docs/pocket-circuit-music-brief.md`](docs/pocket-circuit-music-brief.md).
+Games never see Strudel or the authoring packages. See
+`docs/kit-contract.md` and `crates/README.md`.
 
-Lantern Trail proves the recipe boundary with a separate adventure identity,
-trait vocabulary, section arc, and adaptive rules. It moves through camp,
-exploration, clues, danger, sanctuary, and quest completion using wonder,
-danger, mystery, and motion parameters.
+### Authoring / Research (Audio Lab only)
 
-## Procedural API
+`packages/studio` (AGPL-3.0-or-later because of Strudel) is the authoring and
+research surface. It is **not** shipped to players. `packages/runtime` is the
+old independent TS transport used inside the Lab only.
+
+`apps/demo` is the browser playground and validation harness.
+
+The first collection follows Pocket Circuit's audio brief... (see
+[`docs/pocket-circuit-music-brief.md`](docs/pocket-circuit-music-brief.md)).
+
+Lantern Trail proves the recipe boundary... (unchanged).
+
+## Procedural API (authoring / research path)
+
+The TypeScript authoring APIs (`@gamestruments/studio`) are for the Lab and
+catalog work only. They are AGPL and do not ship in games.
 
 ```ts
 import { generatePocketCircuitLevel } from "@gamestruments/studio";
-
-const level = generatePocketCircuitLevel({
-  seed: "level-42",
-  style: "funk",
-  traits: {
-    energy: 0.7,
-    complexity: 0.6,
-    brightness: 0.5,
-    syncopation: 0.85,
-  },
-});
-
-// Engine-neutral, JSON-compatible data with no generator or Strudel dependency.
-const score = level.portableScore;
+// ... (subordinate, kept for Lab users)
 ```
 
-Lantern Trail is available from the same package:
+See the **How Games Use It** section above and `docs/kit-contract.md` for the
+actual runtime contract used by shipped Godot games (Rust inside the
+GDExtension).
 
-```ts
-import { generateLanternTrailAdventure } from "@gamestruments/studio";
+Generation for games happens inside the extension at `generate(seed)`. See
+[`docs/procedural-generation.md`](docs/procedural-generation.md) (updated for
+the Rust path) and the catalog parity notes.
 
-const adventure = generateLanternTrailAdventure({
-  seed: "forest-7",
-  traits: { wonder: 0.8, danger: 0.4, mystery: 0.7, motion: 0.55 },
-});
-```
+All voices are synthesized; no samples are used or redistributed.
 
-Generation happens when a level loads. Runtime parameters select and crossfade
-the generated garage, grid, cruise, attack, final-lap, and victory arrangements;
-they do not reseed the composition. See
-[`docs/procedural-generation.md`](docs/procedural-generation.md).
+## Generation CLI (Lab / catalog only)
 
-Exported music still depends on the licenses of any samples used to create it.
-This repository currently uses synthesized demonstration voices rather than a
-redistributed sample library.
-
-## Generation CLI
-
-Build Studio, then export a portable score and reproducibility manifest. The
-manifest records the recipe, generator version, normalized inputs, named domain
-seeds, score identity, and compact-JSON SHA-256 checksum.
+The Node CLI is part of the authoring tooling for producing catalog takes and
+validating the Rust engine. It is not required by game buyers.
 
 ```bash
 npm run build:studio
-
-node packages/studio/dist/cli.js \
-  --recipe pocket-circuit \
-  --seed level-42 \
-  --style funk \
-  --output pocket-circuit.score.json \
-  --manifest pocket-circuit.manifest.json
-
-node packages/studio/dist/cli.js \
-  --recipe lantern-trail \
-  --seed forest-7 \
-  --wonder 0.8 \
-  --danger 0.4 \
-  --output lantern-trail.score.json \
-  --manifest lantern-trail.manifest.json
+node packages/studio/dist/cli.js ...
 ```
 
-`@gamestruments/runtime` and `@gamestruments/studio` ship ESM JavaScript and
-TypeScript declarations. Manifest helpers are available from
-`@gamestruments/studio/manifest` so the Node-only checksum implementation does
-not enter browser-oriented Studio imports.
+Game buyers use `generate(seed)` on the `GamestrumentsPlayer` node instead.
 
-## Godot Example
+## Godot Example (portable-score transport demo)
 
-[`examples/godot`](examples/godot) is a standalone Godot 4.7 project that loads
-an exported score as JSON, evaluates its adaptive rules, schedules changes at
-bar boundaries, and visualizes the configured crossover. It does not require
-JavaScript, Strudel, or the Godot MCP plugin at runtime.
+[`examples/godot`](examples/godot) is the legacy portable-JSON consumer used
+during early validation. It is **not** the kit product.
 
-## Prototype Limits
+The actual kit integration for buyers is the GDExtension path described in
+"How Games Use It" and `docs/kit-contract.md`. The Rust engine generates inside
+the game process; no JSON export step is required for the runtime kit.
 
-- The demo is browser-only and instrumental-only.
-- The synthesized audio renderer remains browser-only; the Godot example is a
-  portable-score transport and mix visualization, not a native synthesizer.
-- No Unity or Unreal adapter exists yet.
-- No vocal, speech, lyric, AI, cloud, or telemetry feature is planned.
-- The project does not claim Strudel syntax compatibility beyond the official
-  APIs imported by the studio adapter.
-- Public release policy, support guarantees, and commercial terms remain
-  undecided.
+## Scope and Limits (kit product)
+
+- The runtime kit is Godot 4 + GDExtension + synthesized voices only.
+- Linux x86_64 binary is produced by the release workflow; Windows/macOS
+  binaries are gated on GURI-485 runtime QA.
+- No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
+- See `docs/kit-contract.md` (exact inventory, API, non-goals) and
+  `docs/kit-opportunity.md` (price hypothesis, risks, measurement) for the
+  current commercial contract. Both price and final scope are pending Fran
+  approval.
+- The Audio Lab and its TypeScript packages remain AGPL for the authoring
+  surface; they are deliberately kept out of the game runtime.

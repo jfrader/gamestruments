@@ -97,9 +97,22 @@ tooling. The portable runtime does not depend on the manifest or Node crypto.
 
 ## Versioning
 
-Deterministic output is stable for the tuple of recipe, generator version, seed,
-recipe-specific style where present, and normalized traits. Save the generated
-manifest when a level must be replayed or shared. Shipped takes that a game
-should keep forever live under `catalog/` as portable score JSON plus that
-manifest, so later generator versions cannot rewrite them. A future behavior
-change must increment that recipe's generator version.
+Deterministic output for the **Rust runtime path** (the kit) is stable for the
+tuple `(secret, seed, style, palette, traits, generator version)`. The secret
+acts as a per-title namespace so different games never collide on the same
+default sound even with identical seeds.
+
+The old TS/JSON portable path (Lab + legacy examples) used `gameId` + seed
+terminology; that has become `secret` + `palette` + `seed` in the shipping
+GDExtension contract.
+
+## Catalog level-004 (parity test)
+
+The frozen Tiny Torque take `level-004` (Grid section) under
+`catalog/pocket-circuit/tiny-torque-level-004/` is the reference for engine
+parity. Empty secret + seed "level-004" + funk style + the recorded traits
+reproduces exactly `pocket-circuit-generated-v1-9-0-7864ec71` (see the golden
+render test and `render_listen` example in `crates/engine`).
+
+Shipped catalog takes remain as validation fixtures. Games using the kit call
+`generate(seed)` at runtime rather than loading the JSON.

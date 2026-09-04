@@ -4,6 +4,25 @@
 
 ### Added
 
+- Added `docs/kit-opportunity.md` (buyer, evidence, differentiator, scope,
+  comparables dated 2026-09-04, risks, kill/pivot, measurement skeleton with
+  owner Fran) and `docs/kit-contract.md` (supported versions, exact inventory,
+  public GamestrumentsPlayer API, non-goals, archive name, MIT + gdext MPL note,
+  price hypothesis pending Fran approval).
+- Restructured README.md to lead with the Rust engine + GDExtension as the
+  shipped kit product for games; Audio Lab is now documented as the authoring /
+  research tool only. Added "How games use it", listening-pack example, and
+  pinned-build note. TS sections retained but subordinated.
+- Added `.github/workflows/release.yml` (workflow_dispatch + v* tags, matrix
+  ubuntu / windows-mingw / macos, cargo build of gamestruments-godot --release,
+  per-OS lib + sha256 artifacts). This implements the build half of the
+  platform-shipping mechanism.
+- Updated `docs/procedural-generation.md`: catalog level-004 paragraph now
+  points at the engine parity test; gameId references updated to secret +
+  palette + seed; added reserved-take reproducibility note (empty secret +
+  level-004 + funk reproduces the v1-9-0 catalog id).
+- (changelog entry for the kit docs + workflow work)
+
 - Started a MIT Rust engine (`crates/engine`) and Godot 4 GDExtension
   (`crates/godot`) so games generate and play music at level load from a
   project secret, instrument palette, and seed, without Strudel or a WAV

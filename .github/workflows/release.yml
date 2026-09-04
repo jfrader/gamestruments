@@ -1,0 +1,47 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            lib: libgamestruments_godot.so
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+            lib: libgamestruments_godot.dll
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            lib: libgamestruments_godot.dylib
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: build
+        run: cargo build -p gamestruments-godot --release --target ${{ matrix.target }}
+      - name: stage
+        shell: bash
+        run: |
+          mkdir -p dist
+          src="target/${{ matrix.target }}/release/${{ matrix.lib }}"
+          if [ ! -f "$src" ]; then
+            # mingw may emit without lib prefix on some setups; try both
+            src="target/${{ matrix.target }}/release/gamestruments_godot.dll"
+          fi
+          cp "$src" "dist/${{ matrix.lib }}" || cp "target/${{ matrix.target }}/release/"*".${{ matrix.lib##*. }}" "dist/${{ matrix.lib }}"
+          (cd dist && sha256sum ${{ matrix.lib }} > ${{ matrix.lib }}.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gamestruments-godot-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.lib }}
+            dist/${{ matrix.lib }}.sha256
