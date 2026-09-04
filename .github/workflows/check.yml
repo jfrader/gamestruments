@@ -20,5 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - run: cargo test -p gamestruments-engine
       - run: cargo clippy -p gamestruments-engine --all-targets -- -D warnings
+      - run: rustup target add wasm32-unknown-unknown
+      - run: cargo build -p gamestruments-engine --target wasm32-unknown-unknown --release
+      - run: node tests/wasm-parity.mjs
