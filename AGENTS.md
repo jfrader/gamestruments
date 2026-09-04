@@ -30,6 +30,8 @@ cargo clippy -p gamestruments-engine --all-targets -- -D warnings
 
 Requires Node.js 24. Final checks run in CI after push.
 
+Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.5.5 in the godot crate only; engine crate introduces no 1.94-only features and continues to build cleanly).
+
 ## Changelog
 
 - User-visible changes go in root `CHANGELOG.md`.

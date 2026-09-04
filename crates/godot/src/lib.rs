@@ -3,7 +3,8 @@ use gamestruments_engine::{
     PortableScore, Style, Synth,
 };
 use godot::classes::{
-    AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
+    notify::NodeNotification, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback,
+    AudioStreamPlayer,
 };
 use godot::prelude::*;
 
@@ -93,6 +94,12 @@ impl INode for GamestrumentsPlayer {
         self.cleanup_audio_child();
     }
 
+    fn on_notification(&mut self, what: NodeNotification) {
+        if what == NodeNotification::PREDELETE {
+            self.cleanup_audio_child();
+        }
+    }
+
     fn process(&mut self, _delta: f64) {
         let Some(score) = self.score.as_ref() else {
             return;
@@ -103,7 +110,7 @@ impl INode for GamestrumentsPlayer {
         // we do not keep AudioStreamGeneratorPlayback refs alive past
         // exit_tree / free, eliminating our contribution to ObjectDB leaks.
         let this = self.to_gd();
-        let mut player = match this
+        let player = match this
             .get_node_or_null("LiveStream")
             .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
         {
@@ -163,8 +170,8 @@ impl GamestrumentsPlayer {
             // clearing its stream. This forces release of any internal
             // AudioStreamGeneratorPlayback (RefCounted) that Godot may be
             // holding with refcount 1. Using transient lookup (no stored Gd)
-            // + explicit free after stop/null is required to drop from 2->1
-            // leaks vs baseline noop.
+            // + explicit free after stop/null + on_notification (0.5 NodeNotification)
+            // is the 0.5 port to match noop baseline.
             if let Some(mut parent) = p.get_parent() {
                 parent.remove_child(&p);
             }
