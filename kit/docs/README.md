@@ -52,6 +52,7 @@ This kit was built for reproducibility:
 - Buyer docs live in `kit/docs/` inside the archive.
 - All claims map to shipped code behavior (see `crates/godot/src/lib.rs` and `crates/engine/src/pocket_circuit.rs`).
 - Clean-room buyer test is required before release.
+- Author QA runbook (Fran's manual checklist + results) lives in the repo at `docs/kit-qa-runbook.md` (not part of the buyer archive).
 
 ## Support
 
