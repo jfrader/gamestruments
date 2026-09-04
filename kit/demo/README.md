@@ -10,28 +10,28 @@ It proves load-time deterministic generation and the bar-quantized adaptive arc 
 
 ## How to use in any Godot 4 project
 
-1. Build (or obtain) the GDExtension:
+The archive ships *two* copies of the addon:
+
+- `addons/gamestruments/` (at archive root) — for dropping into your game's `res://addons/`.
+- `kit/demo/addons/gamestruments/` — identical copy so `kit/demo/` itself is a self-contained Godot project you can open directly to evaluate the player.
+
+1. Build (or obtain) the GDExtension (or use the prebuilt from the archive):
    - From repo root: `cargo build -p gamestruments-godot` (release for shipping: `--release`)
    - Result: `target/debug/libgamestruments_godot.so` (or release)
 
-2. Add the addon to your project (standard GDExtension layout):
-   ```
-   addons/
-     gamestruments/
-       gamestruments.gdextension
-       bin/
-         libgamestruments_godot.so
-   ```
-   - Copy `crates/godot/gamestruments.gdextension` → `addons/gamestruments/gamestruments.gdextension`
-   - Copy the `.so` → `addons/gamestruments/bin/libgamestruments_godot.so`
-   - The `.gdextension` file already references `res://addons/gamestruments/bin/...` — do not edit the library copy.
+2. For a quick demo evaluation (recommended for first try):
+   - Extract the archive.
+   - Open the `kit/demo/` folder directly as a Godot 4 project.
+   - The addon is already at the correct `res://addons/gamestruments/` relative to that project root; `project.godot` launches `res://kit_demo.tscn`.
+   - Press Play. (The `kit_demo.gd` is referenced as `res://kit_demo.gd` inside the scene.)
 
-3. Add the demo (or your own scene):
-   - Copy the `kit/demo/` folder into your project (it becomes `res://kit/demo/`).
-   - Open `res://kit/demo/kit_demo.tscn` (or instance the scene / attach `kit_demo.gd`).
-   - The scene root is a `Control` that builds its entire UI in `_ready()`.
+3. For integration into your own game project:
+   - Copy the root `addons/gamestruments/` (or the one from `kit/demo/addons/`) into your project's `res://addons/`.
+   - Restart Godot.
+   - Add a `GamestrumentsPlayer` node (or autoload), configure it, call `generate(...)` / `set_race_state(...)`.
+   - If you want the demo UI as an example, copy `kit/demo/kit_demo.gd` (and optionally the .tscn) and attach the script directly (the .tscn records `res://kit_demo.gd` for the self-contained case; when placed under a subfolder you can instance the .gd or adjust paths).
 
-4. Run. The demo:
+4. Run / use. The demo scene:
    - Auto-generates with a demo secret + seed on ready (so you hear music immediately).
    - Lets you change style / seed / voices / traits then hit **Generate**.
    - Six buttons drive `set_race_state` with the exact signature from the binding:
@@ -45,45 +45,40 @@ If the class does not appear, restart the editor after placing the native librar
 
 ## Repo-local headless smoke test (this checkout)
 
-The kit itself is a library, not a standalone game, so there is no root `project.godot`. For quick verification:
+With the self-contained addon copy inside `kit/demo/addons/`, the simplest smoke is to
+stage a copy of the demo folder (which carries its own addon + project.godot) and
+open *it* directly:
 
 ```sh
-# 1. Build the native lib
-cargo build -p gamestruments-godot
+# 1. Build the native lib (release recommended for parity with the kit)
+cargo build -p gamestruments-godot --release
 
-# 2. Prepare a throwaway project that includes the demo subtree + extension
+# 2. Stage a throwaway copy of the *self-contained* demo (includes its addon/)
 mkdir -p /tmp/kit-smoke
-cp -a kit/demo /tmp/kit-smoke/kit
-cp crates/godot/gamestruments.gdextension /tmp/kit-smoke/gamestruments.gdextension
-mkdir -p /tmp/kit-smoke/bin
-cp target/debug/libgamestruments_godot.so /tmp/kit-smoke/bin/
+cp -a kit/demo /tmp/kit-smoke/demo
 
-# 3. Fix the .gdextension paths for this flat layout (do this only in the temp copy)
-sed -i 's|res://addons/gamestruments/bin/|res://bin/|g' /tmp/kit-smoke/gamestruments.gdextension
+# 3. (Optional) use the release binary inside the staged demo's addon dir
+#    (the cp -a above already copied the source .gdextension; overwrite .so if you built)
+cp target/release/libgamestruments_godot.so /tmp/kit-smoke/demo/addons/gamestruments/bin/
 
-# 4. Create a project.godot at the temp root (or use the one from kit/demo and adjust)
-cat > /tmp/kit-smoke/project.godot << 'EOF'
-config_version=5
-
-[application]
-config/name="Gamestruments Kit Demo (smoke)"
-run/main_scene="res://kit/demo/kit_demo.tscn"
-config/features=PackedStringArray("4.7")
-EOF
-
-# 5. Boot / smoke (no editor UI)
-godot --path /tmp/kit-smoke --headless --quit
-# or to run a specific generator test:
-# godot --path /tmp/kit-smoke --headless --script res://kit/demo/tools/generate_demo_scene.gd
+# 4. Boot the demo project directly (no path hacks)
+godot --path /tmp/kit-smoke/demo --headless --quit
+# or with import first for clean logs:
+# godot --path /tmp/kit-smoke/demo --headless --import
+# godot --path /tmp/kit-smoke/demo --headless --quit
 ```
 
-You should see no `ERROR` or `SCRIPT ERROR`, and "GamestrumentsPlayer" class must be loadable (the demo auto-generates and starts the garage section).
+You should see no `ERROR` or `SCRIPT ERROR`, "Initialize godot-rust" (or equivalent), and
+"GamestrumentsPlayer" class loadable (the demo auto-generates and starts the garage section).
+The generator script can still be run from the repo root:
+`godot --path . --headless --script res://kit/demo/tools/generate_demo_scene.gd`
 
 ## Notes on paths
 
 - The committed `gamestruments.gdextension` (in `crates/godot/`) always uses the canonical `res://addons/gamestruments/bin/...` layout. Never change it.
-- Only the temporary smoke copies get path adjustments.
-- When a buyer drops `kit/demo/` into a real project that also has `addons/gamestruments/`, the demo's `res://kit/demo/...` paths are correct and the extension registers under the standard addon path.
+- The `kit/demo/kit_demo.tscn` (generated by the tool) records `res://kit_demo.gd` so it works when `kit/demo/` is opened as its own project root.
+- When integrating the demo code as a subfolder (`res://kit/demo/kit_demo.tscn` inside a larger project), attach `kit_demo.gd` directly (or copy the .gd to the location your .tscn expects); the self-contained .tscn is primarily for opening the demo folder standalone.
+- The archive always ships *both* addon locations so evaluation (direct open of demo) and integration (drop root addon) are covered without edits.
 
 ## API gap observed while implementing
 

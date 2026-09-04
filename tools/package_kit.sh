@@ -79,6 +79,14 @@ mkdir -p "$STAGING/kit"
 cp -a kit/demo "$STAGING/kit/demo"
 cp -a kit/docs "$STAGING/kit/docs"
 
+# Self-contained demo: copy the built addon *into* the demo subtree so that
+# opening the extracted `kit/demo/` folder directly as a Godot project works
+# (its project.godot + res://kit_demo.tscn + res://addons/gamestruments/...).
+# Buyers still get the root addons/ for dropping into their own project.
+mkdir -p "$STAGING/kit/demo/addons/gamestruments/bin"
+cp crates/godot/gamestruments.gdextension "$STAGING/kit/demo/addons/gamestruments/gamestruments.gdextension"
+cp "$BIN_SRC" "$STAGING/kit/demo/addons/gamestruments/bin/libgamestruments_godot.so"
+
 # kit/README.md (one-page buyer overview)
 cat > "$STAGING/kit/README.md" << 'KITREADME'
 # Gamestruments — Godot 4 Kit
@@ -93,12 +101,18 @@ deterministic adaptive score at level load. Drive bar-quantized state changes
 
 ## What ships (archive root)
 
-- `addons/gamestruments/` — ready-to-use layout:
+- `addons/gamestruments/` — ready-to-use layout for your project:
   - `gamestruments.gdextension`
   - `bin/libgamestruments_godot.so` (linux.x86_64)
+- `kit/demo/addons/gamestruments/` — **identical copy** inside the demo so that
+  `kit/demo/` can be opened directly as a standalone Godot project (its
+  `project.godot` points at `res://kit_demo.tscn`; the addon is at
+  `res://addons/gamestruments/...` relative to the demo root). Use this copy
+  only for evaluating the demo; for your own game use the root `addons/`.
 - `crates/` — full MIT source (`engine/` + `godot/`) + README; rebuild with
   `cargo build -p gamestruments-godot --release`
 - `kit/demo/` — minimal exerciser scene + script for the public API
+  (self-contained: open the folder in Godot 4 to run it)
 - `kit/docs/` — buyer documentation (README, quickstart, api, limitations, troubleshooting)
 - `kit/README.md` (this file)
 - `LICENSE.md`, `crates/*/LICENSE.md`, `THIRD_PARTY_NOTICES.md`
@@ -109,7 +123,10 @@ See `kit/docs/README.md` for requirements, quickstart, scope, and claims.
 ## Quickstart pointer
 
 1. Extract archive.
-2. Copy `addons/gamestruments/` into your Godot project's `res://addons/`.
+2. For your game: copy the root `addons/gamestruments/` into your Godot project's `res://addons/`.
+   For quick evaluation of the demo: just open the extracted `kit/demo/` folder
+   directly as a Godot project (the addon is already inside it at the correct
+   relative location).
 3. Add `GamestrumentsPlayer` node, set `project_secret` + `style`, call
    `generate("level-seed")` then `set_race_state(...)` as needed.
 4. Route its AudioStreamPlayer child (or the node) to a "Music" bus.
