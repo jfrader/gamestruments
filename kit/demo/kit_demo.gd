@@ -296,10 +296,10 @@ func _on_generate_pressed() -> void:
 	player.set("brightness", brightness_slider.value if brightness_slider else 0.52)
 	player.set("syncopation", syncopation_slider.value if syncopation_slider else 0.70)
 
-	var seed := seed_edit.text if seed_edit and seed_edit.text != "" else "kit-demo-001"
-	player.call("generate", seed)
+	var level_seed := seed_edit.text if seed_edit and seed_edit.text != "" else "kit-demo-001"
+	player.call("generate", level_seed)
 
-	status_label.text = "Generated seed: %s  style: %s" % [seed, style_option.get_item_text(style_option.selected)]
+	status_label.text = "Generated seed: %s  style: %s" % [level_seed, style_option.get_item_text(style_option.selected)]
 
 	# Kick off the arc at garage so audio starts immediately
 	_on_section_pressed("garage", false, 0.0, false, "none")
