@@ -231,14 +231,16 @@ func _build_actions(panel: PanelContainer) -> void:
 		{"text": "Cruise", "phase": "race", "use_int": true, "press": 0.15, "fin": false},
 		{"text": "Attack", "phase": "race", "use_int": true, "press": 0.8, "fin": false},
 		{"text": "Final Lap", "phase": "race", "use_int": true, "press": 0.9, "fin": true},
-		{"text": "Victory", "phase": "finish", "use_int": true, "press": 0.0, "fin": false},
+		{"text": "Victory", "phase": "finish", "use_int": true, "press": 0.0, "fin": false, "result": "win"},
 	]
 
 	for sec in sections:
 		var b := Button.new()
 		b.text = sec.text
 		b.custom_minimum_size = Vector2(108, 32)
-		b.pressed.connect(_on_section_pressed.bind(sec.phase, sec.use_int, sec.press, sec.fin))
+		b.pressed.connect(_on_section_pressed.bind(
+			sec.phase, sec.use_int, sec.press, sec.fin, String(sec.get("result", "none"))
+		))
 		btn_grid.add_child(b)
 
 	stack.add_child(HSeparator.new())
@@ -300,10 +302,16 @@ func _on_generate_pressed() -> void:
 	status_label.text = "Generated seed: %s  style: %s" % [seed, style_option.get_item_text(style_option.selected)]
 
 	# Kick off the arc at garage so audio starts immediately
-	_on_section_pressed("garage", false, 0.0, false)
+	_on_section_pressed("garage", false, 0.0, false, "none")
 
 
-func _on_section_pressed(phase: String, use_intensity_slider: bool, pressure: float, final_lap: bool) -> void:
+func _on_section_pressed(
+	phase: String,
+	use_intensity_slider: bool,
+	pressure: float,
+	final_lap: bool,
+	finish_result: String = "none",
+) -> void:
 	if player == null:
 		return
 
@@ -311,9 +319,11 @@ func _on_section_pressed(phase: String, use_intensity_slider: bool, pressure: fl
 	if use_intensity_slider and energy_slider:
 		intensity = energy_slider.value
 
-	player.call("set_race_state", phase, intensity, pressure, final_lap)
+	player.call("set_race_state", phase, intensity, pressure, final_lap, finish_result)
 
-	status_label.text = "set_race_state(\"%s\", %.2f, %.2f, %s)" % [phase, intensity, pressure, str(final_lap)]
+	status_label.text = "set_race_state(\"%s\", %.2f, %.2f, %s, \"%s\")" % [
+		phase, intensity, pressure, str(final_lap), finish_result
+	]
 
 
 func _make_panel() -> PanelContainer:

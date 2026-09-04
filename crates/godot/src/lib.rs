@@ -220,7 +220,15 @@ impl GamestrumentsPlayer {
     }
 
     #[func]
-    fn set_race_state(&mut self, phase: GString, intensity: f64, pressure: f64, final_lap: bool) {
+    fn set_race_state(
+        &mut self,
+        phase: GString,
+        intensity: f64,
+        pressure: f64,
+        final_lap: bool,
+        #[opt(default = "none")]
+        finish_result: GString,
+    ) {
         let Some(transport) = self.transport.as_mut() else {
             return;
         };
@@ -230,7 +238,11 @@ impl GamestrumentsPlayer {
                 position_pressure: pressure,
                 final_lap,
                 race_phase: phase.to_string(),
-                finish_result: "none".into(),
+                finish_result: if finish_result.is_empty() {
+                    "none".into()
+                } else {
+                    finish_result.to_string()
+                },
             },
             self.tick,
         );
