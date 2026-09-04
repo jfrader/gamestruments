@@ -23,6 +23,10 @@
   level-004 + funk reproduces the v1-9-0 catalog id).
 - (changelog entry for the kit docs + workflow work)
 
+- Added `docs/kit-plan.md` (milestones in gate order, acceptance criteria, claim-to-evidence matrix, verification profiles with N/A reasons, clean-room buyer task list, risk register, post-launch measurement contract skeleton) and buyer documentation under `kit/docs/` (`README.md`, `quickstart.md`, `api.md`, `limitations.md`, `troubleshooting.md`).
+- Pinned pricing decision in `docs/kit-contract.md`: Standard price $24.99 (approved by Fran 2026-09-04). Updated inventory section to list buyer doc paths. No launch discounts.
+- All buyer-facing claims kept strictly literal to behavior in the shipped `GamestrumentsPlayer` (exports, generate, set_race_state) and engine generator (styles, sections, determinism, mono synth, zero samples).
+
 - Started a MIT Rust engine (`crates/engine`) and Godot 4 GDExtension
   (`crates/godot`) so games generate and play music at level load from a
   project secret, instrument palette, and seed, without Strudel or a WAV
