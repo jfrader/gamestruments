@@ -78,7 +78,7 @@ impl INode for GamestrumentsPlayer {
         player.set_name("LiveStream");
         player.set_stream(&generator);
         player.set_bus("Music");
-        self.to_gd().add_child(&player);
+        self.base_mut().add_child(&player);
         player.play();
         // Drop local Gd immediately. The child is now owned by the scene tree.
         // We will look it up by name ("LiveStream") on demand in process/exit_tree
@@ -109,7 +109,7 @@ impl INode for GamestrumentsPlayer {
         // only short-lived temporary Gd<> (never stored in struct) ensures
         // we do not keep AudioStreamGeneratorPlayback refs alive past
         // exit_tree / free, eliminating our contribution to ObjectDB leaks.
-        let this = self.to_gd();
+        let this = self.base();
         let player = match this
             .get_node_or_null("LiveStream")
             .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
@@ -159,7 +159,7 @@ impl INode for GamestrumentsPlayer {
 // AudioStreamGenerator / Playback) have their resources released.
 impl GamestrumentsPlayer {
     fn cleanup_audio_child(&mut self) {
-        let this = self.to_gd();
+        let this = self.base();
         if let Some(mut p) = this
             .get_node_or_null("LiveStream")
             .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
