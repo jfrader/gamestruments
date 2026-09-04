@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added `kit/demo/kit_demo.tscn` (and supporting `kit_demo.gd`, generator script, `project.godot` for smoke, README) that a buyer can open to prove load-time `generate(seed)` and `set_race_state` adaptive arc (garage/grid/cruise/attack/final-lap/victory). The scene is produced by a checked-in `tools/generate_demo_scene.gd` (never hand-edited .tscn). Documents integration and headless verification steps.
 - Added `docs/kit-opportunity.md` (buyer, evidence, differentiator, scope,
   comparables dated 2026-09-04, risks, kill/pivot, measurement skeleton with
   owner Fran) and `docs/kit-contract.md` (supported versions, exact inventory,
