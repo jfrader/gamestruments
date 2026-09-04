@@ -16,6 +16,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke": "node tests/runtime-import-smoke.mjs && node tests/studio-import-smoke.mjs && node tests/generation-cli-smoke.mjs",
+    "parity:wasm": "node tests/wasm-parity.mjs",
     "fixtures:update": "npm run build:packages && node tests/update-golden-fixtures.mjs",
     "check": "npm run test && npm run build"
   },

@@ -6,3 +6,8 @@ dist/
 coverage/
 examples/godot/.godot/
 target/
+
+# parity harness artifacts (generated on `cargo run --example parity_ref` + `npm run parity:wasm`)
+parity-*.json
+parity-*.wav
+

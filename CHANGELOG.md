@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added WASM facade (`crates/engine/src/wasm.rs` + Cargo cdylib), native parity reference (`crates/engine/examples/parity_ref.rs`), and Node harness (`tests/wasm-parity.mjs`) that proves byte-identical PortableScore JSON + 22050 Hz WAV output for fixed inputs between native and `wasm32-unknown-unknown` (plus cross-run determinism). Wired to CI rust job + `npm run parity:wasm`. (GURI-579)
 - Added `tools/package_kit.sh` (deterministic buyer archive builder), produced `gamestruments-0.1.0-rc1-godot4.zip` (1 195 402 bytes, SHA-256 3881c2a7... for GURI-567; later 2 337 255 bytes, 8f705ead... after GURI-568 path+self-contained fixes), clean-copy verification + headless smoke from the extracted archive only, `docs/kit-qa-runbook.md` (Fran's author QA checklist with copy-paste steps, 4/5-arg `set_race_state` coverage, claims tick matrix), and updated `kit/docs/README.md` + this changelog. This completes the "Freeze and land the release candidate" + "Package the buyer artifact" + "Verification profiles" + "Buyer documentation" gates for GURI-567.
 - Added `kit/demo/kit_demo.tscn` (and supporting `kit_demo.gd`, generator script, `project.godot` for smoke, README) that a buyer can open to prove load-time `generate(seed)` and `set_race_state` adaptive arc (garage/grid/cruise/attack/final-lap/victory). The scene is produced by a checked-in `tools/generate_demo_scene.gd` (never hand-edited .tscn). Documents integration and headless verification steps.
 - Added `docs/kit-opportunity.md` (buyer, evidence, differentiator, scope,
