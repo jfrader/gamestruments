@@ -23,6 +23,13 @@ enum VoiceType {
     Tom,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum FilterMode {
+    Lowpass,
+    Highpass,
+    Bandpass,
+}
+
 struct Biquad {
     x1: f32,
     x2: f32,
@@ -40,17 +47,33 @@ impl Biquad {
         }
     }
 
-    fn process(&mut self, x: f32, fc: f32, q: f32, sr: f32) -> f32 {
+    fn process(&mut self, x: f32, fc: f32, q: f32, sr: f32, mode: FilterMode) -> f32 {
         let fc = fc.max(20.0).min(sr * 0.49);
         let q = q.max(0.1);
         let omega = std::f32::consts::TAU * (fc / sr);
         let sin_om = omega.sin();
         let cos_om = omega.cos();
         let alpha = sin_om / (2.0 * q);
-        // lowpass
-        let b0 = (1.0 - cos_om) * 0.5;
-        let b1 = 1.0 - cos_om;
-        let b2 = b0;
+        let (b0, b1, b2) = match mode {
+            FilterMode::Lowpass => {
+                let b0 = (1.0 - cos_om) * 0.5;
+                let b1 = 1.0 - cos_om;
+                let b2 = b0;
+                (b0, b1, b2)
+            }
+            FilterMode::Highpass => {
+                let b0 = (1.0 + cos_om) * 0.5;
+                let b1 = -(1.0 + cos_om);
+                let b2 = b0;
+                (b0, b1, b2)
+            }
+            FilterMode::Bandpass => {
+                let b0 = alpha;
+                let b1 = 0.0;
+                let b2 = -alpha;
+                (b0, b1, b2)
+            }
+        };
         let a0 = 1.0 + alpha;
         let a1 = -2.0 * cos_om;
         let a2 = 1.0 - alpha;
@@ -71,6 +94,8 @@ struct Voice {
     start_phase: f32,
     duration: f32,
     life: f32,
+    pitch: u8,
+    noise_state: u32,
     // osc phases (radians)
     phase1: f32,
     phase2: f32,
@@ -84,7 +109,6 @@ pub struct Synth {
     sample_rate: f32,
     phase: f32,
     voices: Vec<Voice>,
-    noise_state: u32,
 }
 
 impl Synth {
@@ -93,7 +117,6 @@ impl Synth {
             sample_rate,
             phase: 0.0,
             voices: Vec::new(),
-            noise_state: 0x1234_5678,
         }
     }
 
@@ -126,6 +149,8 @@ impl Synth {
                 start_phase: self.phase,
                 duration: duration as f32,
                 life,
+                pitch,
+                noise_state: 0x1234_5678,
                 phase1: 0.0,
                 phase2: 0.0,
                 phase3: 0.0,
@@ -151,11 +176,42 @@ impl Synth {
             VoiceType::Tom => 0.20,
             _ => 0.12,
         };
+        let mut perc_id: Option<String> = None;
         if voice == "tom" {
             if let MusicEvent::Percussion { id, .. } = event {
                 let u = deterministic_unit(id);
                 base_freq = 155.0 + u * 58.0;
+                perc_id = Some(id.clone());
             }
+        } else if matches!(
+            vtype,
+            VoiceType::Kick | VoiceType::Snare | VoiceType::Hat | VoiceType::Tom
+        ) {
+            if let MusicEvent::Percussion { id, .. } = event {
+                perc_id = Some(id.clone());
+            }
+        }
+        let mut noise_state = 0x1234_5678u32;
+        if let Some(ref id) = perc_id {
+            let noise_dur = match vtype {
+                VoiceType::Kick => 0.018,
+                VoiceType::Snare => 0.16,
+                VoiceType::Hat => 0.08,
+                VoiceType::Tom => 0.026,
+                _ => 0.1,
+            };
+            let buf_dur_s = 0.75f32;
+            let available = (buf_dur_s - noise_dur - 0.005).max(0.0);
+            let u = deterministic_unit(id);
+            let offset_s = u * available;
+            let offset_n = (offset_s * self.sample_rate).floor() as u32;
+            let mut s = 0x1234_5678u32;
+            for _ in 0..offset_n {
+                s ^= s << 13;
+                s ^= s >> 17;
+                s ^= s << 5;
+            }
+            noise_state = s;
         }
         self.voices.push(Voice {
             voice_type: vtype,
@@ -165,6 +221,8 @@ impl Synth {
             start_phase: self.phase,
             duration: life,
             life: life + 0.01,
+            pitch: 0,
+            noise_state,
             phase1: 0.0,
             phase2: 0.0,
             phase3: 0.0,
@@ -188,13 +246,7 @@ impl Synth {
                     self.voices.swap_remove(j);
                     continue;
                 }
-                let contrib = Synth::generate_voice_sample(
-                    &mut self.noise_state,
-                    &mut self.voices[j],
-                    age,
-                    sr,
-                    dt,
-                );
+                let contrib = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt);
                 mix += contrib;
                 j += 1;
             }
@@ -204,13 +256,7 @@ impl Synth {
         }
     }
 
-    fn generate_voice_sample(
-        noise_state: &mut u32,
-        v: &mut Voice,
-        age: f32,
-        sr: f32,
-        dt: f32,
-    ) -> f32 {
+    fn generate_voice_sample(v: &mut Voice, age: f32, sr: f32, dt: f32) -> f32 {
         let vel = v.velocity;
         let is_mel = v.is_melody;
         let base = v.base_freq;
@@ -317,7 +363,7 @@ impl Synth {
                     fc = end_fc;
                 }
                 let q = res + if is_mel { 0.25 } else { 0.0 };
-                sig = v.filt.process(sig, fc, q, sr);
+                sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
                 let peak = g * velocity_curve(vel, 0.82) * if is_mel { 1.18 } else { 1.0 };
                 let env = compute_envelope(age, v.duration, peak, sus, att, dec, rel);
                 sig * env
@@ -334,7 +380,7 @@ impl Synth {
                 let mut sig = s_body * bg + s_sub * sg;
                 let mut fc = 520.0 + vel * 680.0;
                 let end_fc = (base * 2.4).clamp(180.0, 420.0);
-                let ramp_d = 0.16f32;
+                let ramp_d = v.duration.min(0.16f32);
                 if age < ramp_d {
                     let frac = age / ramp_d;
                     fc *= (end_fc / fc).powf(frac);
@@ -342,7 +388,7 @@ impl Synth {
                     fc = end_fc;
                 }
                 let q = 0.7 + vel * 0.35;
-                sig = v.filt.process(sig, fc, q, sr);
+                sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
                 let peak = 0.12 * velocity_curve(vel, 0.78);
                 let env = compute_envelope(age, v.duration, peak, 0.62, 0.008, 0.12, 0.11);
                 sig * env
@@ -386,7 +432,7 @@ impl Synth {
                     fc = end_fc;
                 }
                 let q = 0.45 + vel * 0.35;
-                sig = v.filt.process(sig, fc, q, sr);
+                sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
                 let peak = 0.12 * velocity_curve(vel, 0.78);
                 let sus = 0.48 + (1.0 - vel) * 0.12;
                 let att = 0.012;
@@ -395,12 +441,7 @@ impl Synth {
                 let env = compute_envelope(age, v.duration, peak, sus, att, dec, rel);
                 // trem
                 let tr = 0.975 + v.trem_phase.sin() * (0.018 + vel * 0.008);
-                v.trem_phase += TAU
-                    * (4.65
-                        + ((/* pitch approx from f */(base.log2() * 12.0 + 69.0) as i32 % 5)
-                            as f32)
-                            * 0.07)
-                    * dt;
+                v.trem_phase += TAU * (4.65 + ((v.pitch as i32 % 5) as f32) * 0.07) * dt;
                 sig * env * tr
             }
             VoiceType::Organ => {
@@ -438,7 +479,7 @@ impl Synth {
                     fc = end_fc;
                 }
                 let q = 0.4;
-                let sig = v.filt.process(mix, fc, q, sr);
+                let sig = v.filt.process(mix, fc, q, sr, FilterMode::Lowpass);
                 let peak = (if is_mel { 0.034 } else { 0.016 }) * velocity_curve(vel, 0.8);
                 let env = compute_envelope(age, v.duration, peak, 0.62, 0.02, 0.14, 0.16);
                 sig * env
@@ -493,8 +534,8 @@ impl Synth {
                 } else {
                     0.0
                 };
-                let n = noise(noise_state);
-                let nf = v.filt.process(n, 4800.0, 0.65, sr);
+                let n = noise(&mut v.noise_state);
+                let nf = v.filt.process(n, 4800.0, 0.65, sr, FilterMode::Highpass);
                 tone + nf * ng
             }
             VoiceType::Snare => {
@@ -520,8 +561,8 @@ impl Synth {
                 } else {
                     0.0
                 };
-                let n = noise(noise_state);
-                let nf = v.filt.process(n, 2350.0, 0.72, sr);
+                let n = noise(&mut v.noise_state);
+                let nf = v.filt.process(n, 2350.0, 0.72, sr, FilterMode::Bandpass);
                 tone + nf * ng
             }
             VoiceType::Hat => {
@@ -531,8 +572,8 @@ impl Synth {
                 } else {
                     0.0
                 };
-                let n = noise(noise_state);
-                let nf = v.filt.process(n, 6200.0, 0.35, sr);
+                let n = noise(&mut v.noise_state);
+                let nf = v.filt.process(n, 6200.0, 0.35, sr, FilterMode::Highpass);
                 nf * ng
             }
             VoiceType::Tom => {
@@ -566,8 +607,8 @@ impl Synth {
                 } else {
                     0.0
                 };
-                let n = noise(noise_state);
-                let nf = v.filt.process(n, 1750.0, 0.8, sr);
+                let n = noise(&mut v.noise_state);
+                let nf = v.filt.process(n, 1750.0, 0.8, sr, FilterMode::Bandpass);
                 tone + nf * ng
             }
         }

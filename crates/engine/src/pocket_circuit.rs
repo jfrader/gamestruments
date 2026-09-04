@@ -1320,7 +1320,7 @@ fn percussion_onsets(
     };
     if plan.id == "garage" || plan.id == "grid" || plan.id == "victory" {
         if style == Style::Neon {
-            hat = hat.into_iter().map(|s| s + 2).collect();
+            hat = hat.into_iter().map(|s| (s + 2) % 8).collect();
         } else if style == Style::Funk {
             kick = kick
                 .into_iter()
@@ -1341,7 +1341,7 @@ fn percussion_onsets(
             }
             hat = nh;
         } else if style == Style::Chip {
-            let ech: Vec<u32> = kick.iter().map(|s| s + 1).collect();
+            let ech: Vec<u32> = kick.iter().map(|s| (s + 1) % 8).collect();
             hat.extend(ech);
         }
     }
