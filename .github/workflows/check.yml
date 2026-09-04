@@ -27,5 +27,7 @@ jobs:
       - run: cargo clippy -p gamestruments-engine --all-targets -- -D warnings
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo build -p gamestruments-engine --target wasm32-unknown-unknown --release
+      - run: cp target/wasm32-unknown-unknown/release/gamestruments_engine.wasm apps/demo/public/engine/gamestruments_engine.wasm
+      - run: git diff --exit-code -- apps/demo/public/engine/gamestruments_engine.wasm
       - run: cargo run -p gamestruments-engine --example parity_ref --release
       - run: node tests/wasm-parity.mjs

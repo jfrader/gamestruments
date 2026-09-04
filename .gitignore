@@ -11,6 +11,3 @@ target/
 parity-*.json
 parity-*.wav
 
-# WASM engine for Audio Lab (built on demand via `npm run wasm:build`; binary never committed)
-apps/demo/public/engine/*.wasm
-
