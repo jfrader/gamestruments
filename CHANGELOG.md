@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Audio Lab (`apps/demo`) now generates music via the shared Rust engine exposed through WASM (`npm run wasm:build` + `apps/demo/src/wasm-engine.ts` calling `gamestruments_score_json`). The signed-off Web Audio voices (audio-engine.ts) and `@gamestruments/runtime` transport remain for the lab frontend. DNA summary now shows score id/sections/bpm + engine note. Added `docs/engine-boundary.md`. (GURI-580)
+
 ### Added
 
 - Added WASM facade (`crates/engine/src/wasm.rs` + Cargo cdylib), native parity reference (`crates/engine/examples/parity_ref.rs`), and Node harness (`tests/wasm-parity.mjs`) that proves byte-identical PortableScore JSON + 22050 Hz WAV output for fixed inputs between native and `wasm32-unknown-unknown` (plus cross-run determinism). Wired to CI rust job + `npm run parity:wasm`. (GURI-579)

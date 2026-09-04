@@ -47,9 +47,11 @@ npm run dev
 
 Open the local URL printed by Vite, choose a level seed, sound world, and
 generation traits, then start audio and change race phase, speed intensity,
-position pressure, and final-lap state. Generation creates the level identity;
-runtime changes are committed on bar boundaries and overlap through a musical
-crossover.
+position pressure, and final-lap state. (Run `npm run wasm:build` once to make
+the shared engine available to the lab.) Generation now uses the shared WASM
+engine (`crates/engine`); the Web Audio stage and runtime transport stay in
+the lab to preserve the signed-off sound. Runtime changes are committed on bar
+boundaries and overlap through a musical crossover.
 
 The Audition controls isolate melody or backing, jump directly to any section,
 and compare two level seeds while preserving the section being reviewed.
@@ -99,11 +101,12 @@ Lantern Trail proves the recipe boundary... (unchanged).
 ## Procedural API (authoring / research path)
 
 The TypeScript authoring APIs (`@gamestruments/studio`) are for the Lab and
-catalog work only. They are AGPL and do not ship in games.
+catalog work only. They are AGPL and do not ship in games. The Audio Lab itself
+now drives generation through the shared WASM engine (see `docs/engine-boundary.md`).
 
 ```ts
 import { generatePocketCircuitLevel } from "@gamestruments/studio";
-// ... (subordinate, kept for Lab users)
+// ... (subordinate, kept for Lab users and tests)
 ```
 
 See the **How Games Use It** section above and `docs/kit-contract.md` for the
