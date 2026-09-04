@@ -4,6 +4,10 @@
 
 ### Added
 
+- Started a MIT Rust engine (`crates/engine`) and Godot 4 GDExtension
+  (`crates/godot`) so games generate and play music at level load from a
+  project secret, instrument palette, and seed, without Strudel or a WAV
+  library.
 - Frozen Tiny Torque `level-004` (Grid) as a catalog take for Pocket Circuit
   main-menu music.
 
@@ -32,6 +36,21 @@
   adaptive rules, and visualizes bar-quantized crossfades without Strudel.
 - Added live seed generation, next-seed navigation, generated musical-DNA
   summaries, and seed A/B comparison to the Audio Lab.
+- Added offline WAV renderer (`gamestruments_engine::render::render_wav`) to
+  `crates/engine` (no Godot dep): renders a PortableScore section looped N
+  phrases through the Synth with lab-matching outer seam fade, emitting valid
+  16-bit mono PCM RIFF WAV.
+- Added golden test for the signed-off Pocket Circuit catalog take (tiny-torque
+  level-004 "grid" section, 3 phrases @ 22050 Hz).
+
+### Fixed
+
+- Fixed ObjectDB leak ("2 instances") at Godot quit for GamestrumentsPlayer.
+  The `AudioStreamPlayer` and `AudioStreamGeneratorPlayback` Gd handles are no
+  longer stored long-term; children are looked up transiently by name and only
+  temporary handles are used. `exit_tree` stops the player and clears its
+  stream. Leak count for the player now drops (background unrelated leaks may
+  remain).
 
 ### Improved
 
