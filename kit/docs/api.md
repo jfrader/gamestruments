@@ -39,12 +39,13 @@ Set these before or between calls to `generate`. Changes to traits/palette after
   - Errors (via `godot_error`): unknown style, empty `project_secret`.
   - Determinism: identical inputs (secret, seed, style, palette fingerprint, traits, generator version) always produce the same score identity and event data.
 
-- `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool) -> void`
+- `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> void`
   - Requests a state change. The transport quantizes to the next bar boundary and performs a musical crossover.
-  - `phase`: string such as `"garage"`, `"grid"`, `"race"`, `"attack"`, `"final-lap"`, `"victory"` (or any value the adaptive rules understand). The six core sections generated are: garage, grid, cruise (Race Flow), attack (Position Fight), final-lap, victory (Finish).
+  - `phase`: string such as `"garage"`, `"grid"`, `"race"`, `"finish"`. The six core sections generated are: garage, grid, cruise (Race Flow), attack (Position Fight), final-lap, victory (Finish).
   - `intensity`: 0..1 (affects density/velocity targets in the transport).
   - `pressure`: 0..1 (maps to `position_pressure` in the game state).
   - `final_lap`: boolean.
+  - `finish_result`: optional, defaults to `"none"`. Pass `"win"` with `phase = "finish"` to reach the victory section.
   - No-op if no score has been generated yet.
   - State changes are committed on bar boundaries; new sections begin at phrase bar zero.
 
