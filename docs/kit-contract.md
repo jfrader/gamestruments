@@ -1,6 +1,6 @@
 # Gamestruments Godot 4 Kit — Product Contract
 
-**Status**: price and final scope pending explicit Fran approval. This document is the authoritative buyer contract once approved.
+**Status**: approved. Standard price $24.99 (approved by Fran 2026-09-04). This document is the authoritative buyer contract.
 
 ## Supported Versions
 
@@ -19,7 +19,7 @@ The buyer archive (`gamestruments-<version>-godot4.zip`) contains:
 - `gamestruments.gdextension` file (configuration + library paths).
 - Full MIT-licensed Rust core source: the `crates/engine` (generator, transport, synth) and `crates/godot` (GDExtension glue) directories, including `Cargo.toml`, `src/`, and any required build files to rebuild the cdylib.
 - A minimal demo scene (and supporting files) exercising the public API in a fresh Godot project.
-- Documentation: this contract, the opportunity brief, quick-start integration guide, API reference, troubleshooting, and changelog.
+- Documentation under `kit/docs/` (and root for contract/opportunity): `README.md` (scope, requirements, quickstart), `quickstart.md`, `api.md`, `limitations.md`, `troubleshooting.md`; plus `docs/kit-contract.md`, `docs/kit-opportunity.md`, `CHANGELOG.md` excerpt.
 - Licenses: `LICENSE.md` (or equivalent) declaring MIT for the Gamestruments Rust crates; third-party notices for all dependencies that require them (including the MPL-2.0 gdext runtime used to produce the binary).
 - `CHANGELOG.md` excerpt for the kit.
 
@@ -88,13 +88,11 @@ No other public symbols or extension points are part of the supported contract. 
 - Verification against crates: workspace and both `gamestruments-*` crates declare `license = "MIT"`. The `godot` (gdext) runtime dependency is MPL-2.0. Buyers must receive appropriate license notices for all components. Inclusion of full MPL-2.0 text + any required notices for the binary distribution path must be confirmed before the first binary-bearing release.
 - No AGPL or Strudel code enters the runtime path or the buyer archive.
 
-## Price Hypothesis
+## Price
 
-Standard price: $19–25 (pending Fran approval).
+Standard price: $24.99 (approved by Fran 2026-09-04). No launch discounts for v1.
 
 See `docs/kit-opportunity.md` for the dated comparables table and rationale.
-
-**Price and exact scope are pending explicit approval by Fran before any storefront draft or binary packaging.**
 
 ## Claim-to-Evidence Notes (internal)
 
