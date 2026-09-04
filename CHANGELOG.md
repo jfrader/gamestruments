@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Committed the prebuilt engine WASM under `apps/demo/public/engine/` so the
+  Lab builds on Node-only static hosts; CI verifies the artifact is current.
+
 - Audio Lab (`apps/demo`) now generates music via the shared Rust engine exposed through WASM (`npm run wasm:build` + `apps/demo/src/wasm-engine.ts` calling `gamestruments_score_json`). The signed-off Web Audio voices (audio-engine.ts) and `@gamestruments/runtime` transport remain for the lab frontend. DNA summary now shows score id/sections/bpm + engine note. Added `docs/engine-boundary.md`. (GURI-580)
 
 ### Added
