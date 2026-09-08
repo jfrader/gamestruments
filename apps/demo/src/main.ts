@@ -61,6 +61,19 @@ async function togglePlayback(): Promise<void> {
   }
 }
 
+function applyGenerationRequest(request: Promise<boolean>, onApplied: () => void): void {
+  void request
+    .then((applied) => {
+      if (applied) {
+        onApplied();
+      }
+    })
+    .catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : "Unknown generation error";
+      announceAudition(`Generation failed: ${detail}`);
+    });
+}
+
 function animate(): void {
   renderFrame(audio, score, transport, auditionOverride, applyPlan, sectionById);
   window.requestAnimationFrame(animate);
@@ -105,12 +118,9 @@ elements.scoreButtons.addEventListener("click", (event) => {
     return;
   }
   const index = Number(button.dataset.experimentIndex);
-  void requestExperiment(index, levelSeed, {
+  applyGenerationRequest(requestExperiment(index, levelSeed, {
     ...generationPreset(index).traits,
-  }).then((applied) => {
-    if (!applied) {
-      return;
-    }
+  }), () => {
     setComparisonBaseSeed(levelSeed);
     renderCurrentScore();
     announceAudition(`Generated ${score.title}`);
@@ -119,10 +129,7 @@ elements.scoreButtons.addEventListener("click", (event) => {
 
 elements.newTake.addEventListener("click", () => {
   const nextSeed = nextLevelSeed(comparisonBaseSeed);
-  void requestExperiment(activeExperimentIndex, nextSeed).then((applied) => {
-    if (!applied) {
-      return;
-    }
+  applyGenerationRequest(requestExperiment(activeExperimentIndex, nextSeed), () => {
     setComparisonBaseSeed(levelSeed);
     renderCurrentScore();
     announceAudition(`Generated level ${levelSeed}`);
@@ -136,10 +143,7 @@ elements.applySeed.addEventListener("click", () => {
     announceAudition("Level seed cannot be empty");
     return;
   }
-  void requestExperiment(activeExperimentIndex, requestedSeed).then((applied) => {
-    if (!applied) {
-      return;
-    }
+  applyGenerationRequest(requestExperiment(activeExperimentIndex, requestedSeed), () => {
     setComparisonBaseSeed(levelSeed);
     renderCurrentScore();
     announceAudition(`Generated level ${levelSeed}`);
@@ -162,10 +166,7 @@ for (const [input, output] of [
     output.value = `${Math.round(Number(input.value) * 100)}%`;
   });
   input.addEventListener("change", () => {
-    void requestExperiment(activeExperimentIndex, levelSeed, traitsFromControls()).then((applied) => {
-      if (!applied) {
-        return;
-      }
+    applyGenerationRequest(requestExperiment(activeExperimentIndex, levelSeed, traitsFromControls()), () => {
       setComparisonBaseSeed(levelSeed);
       renderCurrentScore();
       announceAudition(`Regenerated ${score.title}`);
@@ -189,10 +190,7 @@ elements.soloButtons.addEventListener("click", (event) => {
 elements.compareTake.addEventListener("click", () => {
   const nextSeed =
     levelSeed === comparisonBaseSeed ? `${comparisonBaseSeed}:B` : comparisonBaseSeed;
-  void requestExperiment(activeExperimentIndex, nextSeed).then((applied) => {
-    if (!applied) {
-      return;
-    }
+  applyGenerationRequest(requestExperiment(activeExperimentIndex, nextSeed), () => {
     renderCurrentScore();
     const side = levelSeed === comparisonBaseSeed ? "A" : "B";
     announceAudition(`Playing seed ${side}: ${levelSeed}`);
@@ -216,12 +214,9 @@ elements.genreIndex.addEventListener("click", (event) => {
     return;
   }
   const index = Number(button.dataset.experimentIndex);
-  void requestExperiment(index, levelSeed, {
+  applyGenerationRequest(requestExperiment(index, levelSeed, {
     ...generationPreset(index).traits,
-  }).then((applied) => {
-    if (!applied) {
-      return;
-    }
+  }), () => {
     setComparisonBaseSeed(levelSeed);
     renderCurrentScore();
     window.location.hash = "lab";

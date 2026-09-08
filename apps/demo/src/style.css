@@ -598,6 +598,10 @@ input[type="range"]::-webkit-slider-thumb {
   will-change: transform;
 }
 
+.orbit:not(.is-running) .orbit-ring--outer {
+  animation: rotate 18s linear infinite;
+}
+
 .orbit-ring--inner {
   inset: 18%;
   border-width: 8px 1px 1px;
@@ -616,6 +620,10 @@ input[type="range"]::-webkit-slider-thumb {
   transform: rotate(calc(var(--bar-progress) * 1turn));
   transition: opacity 45ms linear, transform 50ms linear;
   will-change: transform;
+}
+
+.orbit:not(.is-running) .playhead {
+  animation: rotate 3.8s linear infinite;
 }
 
 .playhead::before {
