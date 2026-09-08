@@ -1,6 +1,7 @@
 name: release
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -12,7 +13,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   GODOT_VERSION: 4.7.2-stable
@@ -133,6 +134,8 @@ jobs:
   package:
     needs: [linux, windows, macos]
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -148,9 +151,13 @@ jobs:
           merge-multiple: true
       - name: Resolve version
         id: version
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             version="${GITHUB_REF_NAME#v}"
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            version="0.1.0-pr${PR_NUMBER}"
           else
             version="${{ inputs.version }}"
           fi
@@ -166,10 +173,22 @@ jobs:
           path: |
             dist/gamestruments-${{ steps.version.outputs.value }}-godot4.zip
             dist/gamestruments-${{ steps.version.outputs.value }}-godot4.zip.sha256.txt
+
+  draft-release:
+    if: github.event_name == 'push'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gamestruments-${{ needs.package.outputs.version }}-godot4
+          path: dist
       - name: Create draft GitHub release
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.package.outputs.version }}
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --draft --generate-notes --title "Gamestruments $VERSION"

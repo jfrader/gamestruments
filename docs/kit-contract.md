@@ -81,7 +81,8 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 ## Versioning and Release
 
 - Archive name: `gamestruments-<version>-godot4.zip`.
-- A `v*` tag starts the three-platform release workflow and creates a draft GitHub release only after every native smoke test and archive verification passes.
+- Pull requests run the three-platform release workflow with a synthetic candidate version so native regressions cannot merge unnoticed.
+- A `v*` tag runs the same matrix and creates a draft GitHub release only after every native smoke test and archive verification passes.
 - The exact archive SHA-256, source commit, workflow run, tested Godot version, and human acceptance evidence form the release packet.
 - itch.io publication is manual and requires explicit approval of that immutable packet. CI never publishes the storefront.
 

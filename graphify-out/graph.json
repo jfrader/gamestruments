@@ -8781,7 +8781,7 @@
       "node_kind": "heading",
       "norm_label": "license and support",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L88"
+      "source_location": "L89"
     },
     {
       "id": "docs_kit_contract_product_scope",
@@ -27052,7 +27052,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L88",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -34108,5 +34108,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "128129b6f5004e37ce134bd8ac5b93d81c29932c"
+  "built_at_commit": "af345b7352e68ab63615d62311906fbf235f1937"
 }

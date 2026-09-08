@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/release.yml": {
-    "mtime": 1788906096.908423,
-    "seen": 1788906506.9216135,
-    "ast_hash": "4f7f9687fbdca87123a7767068e96870",
+    "mtime": 1788906707.3854704,
+    "seen": 1788906750.1608946,
+    "ast_hash": "94fe3cea5ebfe00dc7c596d8da293a68",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "docs/kit-contract.md": {
-    "mtime": 1788905072.9723434,
-    "seen": 1788905431.0222297,
-    "ast_hash": "89b38f595ee89f3e2528d1883a99da70",
+    "mtime": 1788906732.7624724,
+    "seen": 1788906750.1610854,
+    "ast_hash": "6daa6893500a95469023dbf98031e6fb",
     "semantic_hash": ""
   },
   "docs/kit-opportunity.md": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "licenses/MPL-2.0.txt": {
-    "mtime": 1788904943.6753333,
-    "seen": 1788905431.0225048,
-    "ast_hash": "48a3fe23ed1353e0995dadfda05ffdb6",
+    "mtime": 1788906629.6164644,
+    "seen": 1788906750.1613874,
+    "ast_hash": "f75d2927d3c1ed2414ef72048f5ad640",
     "semantic_hash": ""
   },
   "licenses/Unicode-3.0.txt": {
