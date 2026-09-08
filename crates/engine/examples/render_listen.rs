@@ -37,7 +37,8 @@ fn main() {
             complexity: 0.6,
             brightness: 0.52,
             syncopation: 0.7,
-        });
+        })
+        .expect("race listening score must validate");
         let wav = render_wav(&score, "cruise", 4, 22050);
         entries.push(("race-cruise.wav".into(), wav));
     }
@@ -59,7 +60,8 @@ fn main() {
             complexity: 0.6,
             brightness: 0.52,
             syncopation: 0.7,
-        });
+        })
+        .expect("style listening score must validate");
         let wav = render_wav(&score, "cruise", 2, 22050);
         entries.push((format!("style-{}-cruise-x2.wav", name), wav));
     }
@@ -76,7 +78,8 @@ fn main() {
             complexity: 0.6,
             brightness: 0.52,
             syncopation: 0.7,
-        });
+        })
+        .expect("section listening score must validate");
         let wav = render_wav(&score, sec, 2, 22050);
         entries.push((format!("section-{}-funk-x2.wav", sec), wav));
     }

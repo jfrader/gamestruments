@@ -30,11 +30,24 @@ function allocAndWrite(exports, data) {
   return { ptr, len: bytes.length };
 }
 
-function readOutput(exports, ptr) {
+function readResponse(exports, ptr) {
   const len = exports.gamestruments_output_len();
   const mem = new Uint8Array(exports.memory.buffer);
+  return {
+    bytes: mem.slice(ptr, ptr + len),
+    status: exports.gamestruments_status(),
+  };
+}
+
+function readOutput(exports, ptr) {
   // Always copy to avoid aliasing on next call
-  return mem.slice(ptr, ptr + len);
+  const { bytes, status } = readResponse(exports, ptr);
+  assert.equal(
+    status,
+    0,
+    `WASM engine failed: ${new TextDecoder().decode(bytes)}`,
+  );
+  return bytes;
 }
 
 async function wasmScoreJson(exports, inputJson) {
@@ -55,6 +68,14 @@ async function wasmRenderWav(exports, scoreBytes, section, phrases) {
 async function main() {
   console.log("wasm-parity: loading", wasmPath);
   const exports = await loadWasm();
+
+  exports.gamestruments_reset();
+  const invalid = allocAndWrite(exports, "{");
+  const invalidPtr = exports.gamestruments_score_json(invalid.ptr, invalid.len);
+  const invalidResponse = readResponse(exports, invalidPtr);
+  assert.equal(invalidResponse.status, 1);
+  assert.match(new TextDecoder().decode(invalidResponse.bytes), /invalid generation input JSON/);
+  console.log("wasm-parity: invalid input returns a UTF-8 error: PASS");
 
   // Funk case (default palette)
   const wasmFunkScore = await wasmScoreJson(exports, FUNK_INPUT);

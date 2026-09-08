@@ -11,9 +11,10 @@
     "dev": "vite --host 127.0.0.1",
     "build": "npm run typecheck && npm run build:packages && vite build && npm run smoke",
     "build:runtime": "npm run build --workspace @gamestruments/runtime",
-    "build:studio": "vite build --config vite.studio.config.ts && npm run build:types --workspace @gamestruments/studio",
-    "build:packages": "npm run build:runtime && npm run build:studio",
+    "build:studio": "npm run build:runtime && vite build --config vite.studio.config.ts && npm run build:types --workspace @gamestruments/studio",
+    "build:packages": "npm run build:studio",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "smoke": "node tests/runtime-import-smoke.mjs && node tests/studio-import-smoke.mjs && node tests/generation-cli-smoke.mjs",
     "parity:wasm": "node tests/wasm-parity.mjs",
@@ -26,6 +27,7 @@
     "@strudel/mini": "1.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "24.3.0",
     "typescript": "5.9.2",
     "vite": "8.2.2",

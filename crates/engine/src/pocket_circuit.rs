@@ -1,7 +1,7 @@
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection};
 
-pub const GENERATOR_VERSION: &str = "1.10.0";
+pub const GENERATOR_VERSION: &str = "1.10.1";
 pub const DNA_SEED_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -505,7 +505,7 @@ fn subseed(secret: &str, seed: &str, domain: &str, palette: &str) -> u32 {
     hash_text(&s)
 }
 
-pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
+pub fn generate_pocket_circuit(input: &GenerateInput) -> Result<PortableScore, String> {
     let traits = normalize_traits(
         input.energy,
         input.complexity,
@@ -591,7 +591,7 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
     let key_upper = harmony.key.to_uppercase();
     let title = format!("{} {} Run", style_display(style), key_upper);
 
-    PortableScore {
+    let score = PortableScore {
         schema_version: 1,
         id,
         title,
@@ -602,7 +602,9 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> PortableScore {
         default_section: "garage".into(),
         sections,
         rules: default_rules(),
-    }
+    };
+    score.validate()?;
+    Ok(score)
 }
 
 fn style_display(style: Style) -> &'static str {
@@ -1459,7 +1461,11 @@ fn default_rules() -> Vec<AdaptiveRule> {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use std::collections::HashSet;
+
+    use super::{
+        generate_pocket_circuit, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION,
+    };
 
     fn sample(secret: &str, palette: InstrumentPalette) -> GenerateInput {
         GenerateInput {
@@ -1485,8 +1491,10 @@ mod tests {
     #[test]
     fn secret_changes_the_piece() {
         let pocket =
-            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()));
-        let other = generate_pocket_circuit(&sample("other-secret", InstrumentPalette::default()));
+            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()))
+                .expect("pocket score must validate");
+        let other = generate_pocket_circuit(&sample("other-secret", InstrumentPalette::default()))
+            .expect("other score must validate");
         assert_ne!(pocket.id, other.id);
         assert_ne!(pitches(&pocket), pitches(&other));
     }
@@ -1494,7 +1502,8 @@ mod tests {
     #[test]
     fn palette_changes_the_piece() {
         let default_palette =
-            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()));
+            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()))
+                .expect("default palette score must validate");
         let custom = generate_pocket_circuit(&sample(
             "pocket-secret",
             InstrumentPalette {
@@ -1503,7 +1512,8 @@ mod tests {
                 drive: "pulse".into(),
                 bass: "triangle".into(),
             },
-        ));
+        ))
+        .expect("custom palette score must validate");
         assert_ne!(default_palette.id, custom.id);
         assert_ne!(pitches(&default_palette), pitches(&custom));
         let custom_voices: Vec<_> = custom.sections[2]
@@ -1526,38 +1536,45 @@ mod tests {
             complexity: 0.6,
             brightness: 0.5,
             syncopation: 0.7,
-        });
+        })
+        .expect("six-section score must validate");
         assert_eq!(score.sections.len(), 6);
         assert!(score.section("cruise").unwrap().events.len() > 8);
     }
 
     #[test]
-    fn generated_events_stay_inside_their_sections() {
-        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
-            for seed in ["level-001", "level-002", "final-lap-99"] {
-                let score = generate_pocket_circuit(&GenerateInput {
-                    secret: String::new(),
-                    seed: seed.into(),
-                    style,
-                    palette: InstrumentPalette::default(),
-                    energy: 0.9,
-                    complexity: 0.9,
-                    brightness: 0.9,
-                    syncopation: 0.1,
-                });
-                for section in &score.sections {
-                    for event in &section.events {
-                        assert!(
-                            event.start_tick() + event.duration_ticks() <= section.length_ticks,
-                            "{} exceeds section {} for {} {seed}",
-                            super::a_id(event),
-                            section.id,
-                            style.as_str(),
-                        );
-                    }
-                }
+    fn many_seed_generation_is_valid_unique_and_deterministic() {
+        assert_eq!(GENERATOR_VERSION, "1.10.1");
+        let styles = [Style::Fusion, Style::Neon, Style::Funk, Style::Chip];
+        let mut ids = HashSet::new();
+        for index in 0..256 {
+            let style = styles[index % styles.len()];
+            let input = GenerateInput {
+                secret: "stress-secret".into(),
+                seed: format!("stress-{index}"),
+                style,
+                palette: InstrumentPalette::default(),
+                energy: f64::from((index % 17) as u32) / 16.0,
+                complexity: f64::from((index % 11) as u32) / 10.0,
+                brightness: f64::from((index % 13) as u32) / 12.0,
+                syncopation: f64::from((index % 19) as u32) / 18.0,
+            };
+            let score = generate_pocket_circuit(&input).expect("stress score must validate");
+            assert!(
+                ids.insert(score.id.clone()),
+                "duplicate score id {}",
+                score.id
+            );
+            if index % 31 == 0 {
+                let repeated =
+                    generate_pocket_circuit(&input).expect("repeated stress score must validate");
+                assert_eq!(
+                    serde_json::to_vec(&score).expect("stress score serializes"),
+                    serde_json::to_vec(&repeated).expect("repeated stress score serializes")
+                );
             }
         }
+        assert_eq!(ids.len(), 256);
     }
 
     #[test]
@@ -1572,7 +1589,7 @@ mod tests {
             brightness: 0.55,
             syncopation: 0.9,
         };
-        let generated = generate_pocket_circuit(&input);
+        let generated = generate_pocket_circuit(&input).expect("reserved score must validate");
         let catalog_str =
             include_str!("../../../catalog/pocket-circuit/tiny-torque-level-004/score.json");
         let catalog: super::PortableScore =

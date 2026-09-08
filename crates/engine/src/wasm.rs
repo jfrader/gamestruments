@@ -11,6 +11,7 @@
 //! uint8_t* gamestruments_alloc(size_t size);
 //! uint8_t* gamestruments_score_json(const uint8_t* ptr, size_t len);  // returns out_ptr
 //! size_t   gamestruments_output_len(void);
+//! uint32_t gamestruments_status(void); // 0 = success, 1 = UTF-8 error response
 //! uint8_t* gamestruments_render_wav(const uint8_t* score_ptr, size_t score_len,
 //!                                   const uint8_t* section_ptr, size_t section_len,
 //!                                   size_t phrases);
@@ -51,7 +52,8 @@
 //!   you already copied).
 //! - Memory may grow; always re-acquire `memory` and re-compute views after any call that
 //!   might have grown (rare for <1MB payloads).
-//! - All numbers little-endian. Panics on bad utf8/json become wasm traps (visible as JS errors).
+//! - All numbers little-endian. Invalid input and generated-score failures return status 1 with
+//!   a UTF-8 error response instead of trapping.
 //! - Determinism: identical inputs on same build produce bit-identical outputs on WASM and native.
 //!
 //! This is the standard "caller allocates + global output ring" pattern used by many
@@ -71,15 +73,19 @@ static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
 static mut BUMP: usize = 0;
 static mut OUT_PTR: *const u8 = core::ptr::null();
 static mut OUT_LEN: usize = 0;
+static mut STATUS: u32 = 0;
 
 #[no_mangle]
 pub extern "C" fn gamestruments_alloc(size: usize) -> *mut u8 {
     unsafe {
         let start = BUMP;
-        if start + size > BUF_SIZE {
+        let Some(end) = start.checked_add(size) else {
+            return core::ptr::null_mut();
+        };
+        if end > BUF_SIZE {
             return core::ptr::null_mut();
         }
-        BUMP += size;
+        BUMP = end;
         // return pointer into our static; caller writes via memory view
         let base = &raw mut BUFFER as *mut u8;
         base.add(start)
@@ -92,18 +98,33 @@ pub extern "C" fn gamestruments_reset() {
         BUMP = 0;
         OUT_PTR = core::ptr::null();
         OUT_LEN = 0;
+        STATUS = 0;
+    }
+}
+
+fn write_response(data: &[u8], status: u32) {
+    unsafe {
+        let (response, response_status): (&[u8], u32) = if data.len() > BUF_SIZE {
+            (b"WASM response exceeds the engine buffer", 1)
+        } else {
+            (data, status)
+        };
+        let len = response.len();
+        // copy via raw to avoid creating & to mut static
+        let base = &raw mut BUFFER as *mut u8;
+        core::ptr::copy_nonoverlapping(response.as_ptr(), base, len);
+        OUT_PTR = base;
+        OUT_LEN = len;
+        STATUS = response_status;
     }
 }
 
 fn write_output(data: &[u8]) {
-    unsafe {
-        let len = data.len().min(BUF_SIZE);
-        // copy via raw to avoid creating & to mut static
-        let base = &raw mut BUFFER as *mut u8;
-        core::ptr::copy_nonoverlapping(data.as_ptr(), base, len);
-        OUT_PTR = base;
-        OUT_LEN = len;
-    }
+    write_response(data, 0);
+}
+
+fn write_error(error: impl AsRef<str>) {
+    write_response(error.as_ref().as_bytes(), 1);
 }
 
 #[no_mangle]
@@ -112,9 +133,23 @@ pub extern "C" fn gamestruments_output_len() -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn gamestruments_score_json(input_ptr: *const u8, input_len: usize) -> *const u8 {
+pub extern "C" fn gamestruments_status() -> u32 {
+    unsafe { STATUS }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_score_json(
+    input_ptr: *const u8,
+    input_len: usize,
+) -> *const u8 {
     let input_slice = slice::from_raw_parts(input_ptr, input_len);
-    let json_str = core::str::from_utf8(input_slice).expect("input must be valid utf-8");
+    let json_str = match core::str::from_utf8(input_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("input must be valid UTF-8: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
 
     #[derive(serde::Deserialize)]
     struct Pal {
@@ -135,8 +170,20 @@ pub unsafe extern "C" fn gamestruments_score_json(input_ptr: *const u8, input_le
         syncopation: f64,
     }
 
-    let inp: Inp = serde_json::from_str(json_str).expect("invalid parity input JSON");
-    let style = Style::parse(&inp.style).expect("unknown style");
+    let inp: Inp = match serde_json::from_str(json_str) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("invalid generation input JSON: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    let style = match Style::parse(&inp.style) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(error);
+            return unsafe { OUT_PTR };
+        }
+    };
     let palette = InstrumentPalette {
         melody: inp.palette.melody,
         harmony: inp.palette.harmony,
@@ -154,9 +201,12 @@ pub unsafe extern "C" fn gamestruments_score_json(input_ptr: *const u8, input_le
         syncopation: inp.syncopation,
     };
 
-    let score = generate_pocket_circuit(&gen);
-    let out = serde_json::to_vec(&score).expect("score serialize failed");
-    write_output(&out);
+    match generate_pocket_circuit(&gen).and_then(|score| {
+        serde_json::to_vec(&score).map_err(|error| format!("score serialization failed: {error}"))
+    }) {
+        Ok(out) => write_output(&out),
+        Err(error) => write_error(error),
+    }
     unsafe { OUT_PTR }
 }
 
@@ -169,10 +219,30 @@ pub unsafe extern "C" fn gamestruments_render_wav(
     phrases: usize,
 ) -> *const u8 {
     let score_slice = slice::from_raw_parts(score_ptr, score_len);
-    let score: PortableScore = serde_json::from_slice(score_slice).expect("score JSON must parse");
+    let score: PortableScore = match serde_json::from_slice(score_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("score JSON must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if let Err(error) = score.validate() {
+        write_error(format!("invalid score: {error}"));
+        return unsafe { OUT_PTR };
+    }
 
     let section_slice = slice::from_raw_parts(section_ptr, section_len);
-    let section = core::str::from_utf8(section_slice).expect("section must be valid utf-8");
+    let section = match core::str::from_utf8(section_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("section must be valid UTF-8: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if score.section(section).is_none() {
+        write_error(format!("unknown score section: {section}"));
+        return unsafe { OUT_PTR };
+    }
 
     // Hardcode 22050 to match all golden/render tests and native parity_ref
     let wav = render_wav(&score, section, phrases, 22050);

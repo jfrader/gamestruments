@@ -25,6 +25,7 @@ export default defineConfig({
   },
   test: {
     root: fileURLToPath(new URL(".", import.meta.url)),
+    include: ["tests/**/*.test.ts"],
     server: {
       deps: {
         inline: [/@strudel\/mini/],

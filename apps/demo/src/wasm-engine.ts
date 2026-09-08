@@ -1,4 +1,7 @@
-import type { PortableScore } from "../../../packages/runtime/src/index.ts";
+import {
+  type PortableScore,
+  validatePortableScore,
+} from "../../../packages/runtime/src/index.ts";
 
 let exportsRef: WebAssembly.Exports | null = null;
 let memoryRef: WebAssembly.Memory | null = null;
@@ -48,7 +51,12 @@ function readOutput(ptr: number): Uint8Array {
   const len = (exp.gamestruments_output_len as () => number)();
   const mem = getMemory();
   // copy to detach from possible future growth/overwrite
-  return mem.slice(ptr, ptr + len);
+  const bytes = mem.slice(ptr, ptr + len);
+  const status = (exp.gamestruments_status as () => number)();
+  if (status !== 0) {
+    throw new Error(new TextDecoder().decode(bytes));
+  }
+  return bytes;
 }
 
 export interface GenerateScoreParams {
@@ -79,7 +87,9 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
   const outPtr = (exp.gamestruments_score_json as (p: number, l: number) => number)(ptr, len);
   const bytes = readOutput(outPtr);
   const text = new TextDecoder().decode(bytes);
-  return JSON.parse(text) as PortableScore;
+  const score = JSON.parse(text) as PortableScore;
+  validatePortableScore(score);
+  return score;
 }
 
 export async function renderWav(

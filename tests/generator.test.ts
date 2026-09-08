@@ -154,7 +154,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     assert.deepEqual(first, second);
     assert.equal(first.generatorVersion, POCKET_CIRCUIT_GENERATOR_VERSION);
-    assert.match(first.authoringScore.id, /generated-v1-10-0-[0-9a-f]{8}$/);
+    assert.match(first.authoringScore.id, /generated-v1-10-1-[0-9a-f]{8}$/);
     assert.equal(first.portableScore.id, first.authoringScore.id);
     assert.deepEqual(
       first.portableScore,
@@ -201,9 +201,9 @@ describe("Pocket Circuit deterministic generator", () => {
     const dna = createPocketCircuitMusicalDNA(input("dna-version-contract"));
     const { generatorVersion, ...versionIndependentDNA } = dna;
 
-    assert.equal(POCKET_CIRCUIT_GENERATOR_VERSION, "1.10.0");
+    assert.equal(POCKET_CIRCUIT_GENERATOR_VERSION, "1.10.1");
     assert.equal(POCKET_CIRCUIT_DNA_SEED_VERSION, "1.1.0");
-    assert.equal(generatorVersion, "1.10.0");
+    assert.equal(generatorVersion, "1.10.1");
     assert.deepEqual(versionIndependentDNA, {
       levelSeed: "string:dna-version-contract",
       style: "fusion",
@@ -623,7 +623,7 @@ describe("Pocket Circuit deterministic generator", () => {
       });
       const legacyAuthoringScore = {
         ...generated.authoringScore,
-        id: generated.authoringScore.id.replace("v1-10-0", "v1-9-0"),
+        id: generated.authoringScore.id.replace("v1-10-1", "v1-9-0"),
       };
       const legacyScore = exportScore(
         legacyAuthoringScore,
@@ -631,7 +631,7 @@ describe("Pocket Circuit deterministic generator", () => {
       );
 
       assert.equal(
-        generated.portableScore.id.replace("v1-10-0", "v1-9-0"),
+        generated.portableScore.id.replace("v1-10-1", "v1-9-0"),
         legacyScore.id,
       );
       assert.deepEqual(

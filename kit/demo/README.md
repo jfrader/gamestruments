@@ -1,90 +1,38 @@
 # Gamestruments Kit Demo
 
-Minimal Godot 4 scene + script that exercises the public `GamestrumentsPlayer` API:
+This self-contained Godot 4.7 project exercises the exact `GamestrumentsPlayer` API and native synth shipped to buyers.
 
-- `project_secret`, `style`, `*_voice`, trait sliders
-- `generate(seed)`
-- `set_race_state(phase, intensity, pressure, final_lap)`
+## Run the Packaged Demo
 
-It proves load-time deterministic generation and the bar-quantized adaptive arc (garage → grid → race cruise/attack/final-lap → finish).
+1. Extract the buyer archive.
+2. Open `kit/demo/` as a Godot project.
+3. Press Play.
 
-## How to use in any Godot 4 project
+The demo addon already contains Linux, Windows, and universal macOS libraries at `res://addons/gamestruments/`. It generates a score on startup and provides controls for style, seed, built-in voices, traits, and all six racing sections.
 
-The archive ships *two* copies of the addon:
+Use the root `addons/gamestruments/` copy for your own project. Do not copy both locations into one project.
 
-- `addons/gamestruments/` (at archive root) — for dropping into your game's `res://addons/`.
-- `kit/demo/addons/gamestruments/` — identical copy so `kit/demo/` itself is a self-contained Godot project you can open directly to evaluate the player.
+## Demonstrated API
 
-1. Build (or obtain) the GDExtension (or use the prebuilt from the archive):
-   - From repo root: `cargo build -p gamestruments-godot` (release for shipping: `--release`)
-   - Result: `target/debug/libgamestruments_godot.so` (or release)
+- `project_secret`, `style`, voice overrides, and generation traits.
+- `generate(seed) -> bool`.
+- `set_race_state(phase, intensity, pressure, final_lap, finish_result) -> bool`.
+- Garage, grid, cruise, attack, final-lap, and victory selection.
+- Bar-quantized crossover and in-process sample-free synthesis.
 
-2. For a quick demo evaluation (recommended for first try):
-   - Extract the archive.
-   - Open the `kit/demo/` folder directly as a Godot 4 project.
-   - The addon is already at the correct `res://addons/gamestruments/` relative to that project root; `project.godot` launches `res://kit_demo.tscn`.
-   - Press Play. (The `kit_demo.gd` is referenced as `res://kit_demo.gd` inside the scene.)
+The demo checks generation failure before continuing. Its victory control uses `phase = "finish"` and `finish_result = "win"`.
 
-3. For integration into your own game project:
-   - Copy the root `addons/gamestruments/` (or the one from `kit/demo/addons/`) into your project's `res://addons/`.
-   - Restart Godot.
-   - Add a `GamestrumentsPlayer` node (or autoload), configure it, call `generate(...)` / `set_race_state(...)`.
-   - If you want the demo UI as an example, copy `kit/demo/kit_demo.gd` (and optionally the .tscn) and attach the script directly (the .tscn records `res://kit_demo.gd` for the self-contained case; when placed under a subfolder you can instance the .gd or adjust paths).
+## Repository Smoke Test
 
-4. Run / use. The demo scene:
-   - Auto-generates with a demo secret + seed on ready (so you hear music immediately).
-   - Lets you change style / seed / voices / traits then hit **Generate**.
-   - Six buttons drive `set_race_state` with the exact signature from the binding:
-     - Garage / Grid
-     - Cruise (uses current Energy slider value as intensity)
-     - Attack (race + pressure 0.8)
-     - Final Lap (race + final_lap=true)
-     - Victory (phase="finish")
-
-If the class does not appear, restart the editor after placing the native library.
-
-## Repo-local headless smoke test (this checkout)
-
-With the self-contained addon copy inside `kit/demo/addons/`, the simplest smoke is to
-stage a copy of the demo folder (which carries its own addon + project.godot) and
-open *it* directly:
+After building the host library, run the isolated package smoke harness:
 
 ```sh
-# 1. Build the native lib (release recommended for parity with the kit)
 cargo build -p gamestruments-godot --release
-
-# 2. Stage a throwaway copy of the *self-contained* demo (includes its addon/)
-mkdir -p /tmp/kit-smoke
-cp -a kit/demo /tmp/kit-smoke/demo
-
-# 3. (Optional) use the release binary inside the staged demo's addon dir
-#    (the cp -a above already copied the source .gdextension; overwrite .so if you built)
-cp target/release/libgamestruments_godot.so /tmp/kit-smoke/demo/addons/gamestruments/bin/
-
-# 4. Boot the demo project directly (no path hacks)
-godot --path /tmp/kit-smoke/demo --headless --quit
-# or with import first for clean logs:
-# godot --path /tmp/kit-smoke/demo --headless --import
-# godot --path /tmp/kit-smoke/demo --headless --quit
+node tests/godot-package-smoke.mjs \
+  --godot "$(command -v godot)" \
+  --library target/release/libgamestruments_godot.so
 ```
 
-You should see no `ERROR` or `SCRIPT ERROR`, "Initialize godot-rust" (or equivalent), and
-"GamestrumentsPlayer" class loadable (the demo auto-generates and starts the garage section).
-The generator script can still be run from the repo root:
-`godot --path . --headless --script res://kit/demo/tools/generate_demo_scene.gd`
+The harness stages a fresh project, loads the extension, performs two generate/play/transition/free cycles, rejects runtime errors and leaked-object messages, and requires an explicit pass marker.
 
-## Notes on paths
-
-- The committed `gamestruments.gdextension` (in `crates/godot/`) always uses the canonical `res://addons/gamestruments/bin/...` layout. Never change it.
-- The `kit/demo/kit_demo.tscn` (generated by the tool) records `res://kit_demo.gd` so it works when `kit/demo/` is opened as its own project root.
-- When integrating the demo code as a subfolder (`res://kit/demo/kit_demo.tscn` inside a larger project), attach `kit_demo.gd` directly (or copy the .gd to the location your .tscn expects); the self-contained .tscn is primarily for opening the demo folder standalone.
-- The archive always ships *both* addon locations so evaluation (direct open of demo) and integration (drop root addon) are covered without edits.
-
-## API gap observed while implementing
-
-`set_race_state` signature is exactly `(phase: String, intensity: float, pressure: float, final_lap: bool)`.
-`finish_result` is not exposed on the GDScript side (the binding always passes "none" internally). For "victory" we use `phase = "finish"` (the transport still performs the musical release). This matches the public contract in `docs/kit-contract.md`.
-
-## Verification
-
-See the PR body for the exact smoke run that was performed on this machine.
+See `../docs/quickstart.md` for buyer integration and `../docs/api.md` for the supported contract.

@@ -15,7 +15,7 @@ unsafe impl ExtensionLibrary for GamestrumentsExtension {}
 #[derive(GodotClass)]
 #[class(base=Node)]
 struct GamestrumentsPlayer {
-    /// Per-title secret. Do not use a public name like "pocket-circuit".
+    /// Deterministic per-title namespace, not a security credential.
     #[export]
     project_secret: GString,
     #[export]
@@ -42,6 +42,7 @@ struct GamestrumentsPlayer {
     ticks_per_second: f64,
     tick: u32,
     sample_rate: f32,
+    live_player: Option<Gd<AudioStreamPlayer>>,
     base: Base<Node>,
 }
 
@@ -65,6 +66,7 @@ impl INode for GamestrumentsPlayer {
             ticks_per_second: 2160.0,
             tick: 0,
             sample_rate: 22050.0,
+            live_player: None,
             base,
         }
     }
@@ -79,17 +81,10 @@ impl INode for GamestrumentsPlayer {
         player.set_bus("Music");
         self.base_mut().add_child(&player);
         player.play();
-        // Drop local Gd immediately. The child is now owned by the scene tree.
-        // We will look it up by name ("LiveStream") on demand in process/exit_tree
-        // using temporary Gd handles only. Never storing Gd<Audio...> in the
-        // struct eliminates the ObjectDB leaks of playbacks.
+        self.live_player = Some(player);
     }
 
     fn exit_tree(&mut self) {
-        // Look up child using only a temporary Gd (via to_gd which is cheap
-        // ref). Stop + null its stream so Godot releases the generator and
-        // playback RefCounteds, then temps drop. Never storing Gd<Audio*>
-        // in the struct avoids keeping refs alive across exit_tree.
         self.cleanup_audio_child();
     }
 
@@ -97,18 +92,9 @@ impl INode for GamestrumentsPlayer {
         let Some(score) = self.score.as_ref() else {
             return;
         };
-        // Look up the stream player child by name and obtain its current
-        // playback via get_stream_playback() on every process tick. Using
-        // only short-lived temporary Gd<> (never stored in struct) ensures
-        // we do not keep AudioStreamGeneratorPlayback refs alive past
-        // exit_tree / free, eliminating our contribution to ObjectDB leaks.
-        let this = self.base();
-        let player = match this
-            .get_node_or_null("LiveStream")
-            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
-        {
-            Some(p) => p,
-            None => return,
+        let player = match self.live_player.as_ref() {
+            Some(player) if player.is_instance_valid() => player.clone(),
+            _ => return,
         };
         let mut playback = match player
             .get_stream_playback()
@@ -147,24 +133,14 @@ impl INode for GamestrumentsPlayer {
     }
 }
 
-// Non-exposed helper for robust shutdown cleanup. Called from exit_tree and
-// on_notification to ensure the AudioStreamPlayer child (and its
-// AudioStreamGenerator / Playback) have their resources released.
 impl GamestrumentsPlayer {
     fn cleanup_audio_child(&mut self) {
-        let this = self.base();
-        if let Some(mut p) = this
-            .get_node_or_null("LiveStream")
-            .and_then(|n| n.try_cast::<AudioStreamPlayer>().ok())
-        {
+        if let Some(mut p) = self.live_player.take() {
+            if !p.is_instance_valid() {
+                return;
+            }
             p.stop();
             p.set_stream(Gd::<AudioStream>::null_arg());
-            // Explicitly detach + free the child AudioStreamPlayer after
-            // clearing its stream. This forces release of any internal
-            // AudioStreamGeneratorPlayback (RefCounted) that Godot may be
-            // holding with refcount 1. Using transient lookup (no stored Gd)
-            // + explicit free after stop/null + on_notification (0.5 NodeNotification)
-            // is the 0.5 port to match noop baseline.
             if let Some(mut parent) = p.get_parent() {
                 parent.remove_child(&p);
             }
@@ -176,16 +152,16 @@ impl GamestrumentsPlayer {
 #[godot_api]
 impl GamestrumentsPlayer {
     #[func]
-    fn generate(&mut self, seed: GString) {
+    fn generate(&mut self, seed: GString) -> bool {
         let Ok(style) = Style::parse(&self.style.to_string()) else {
             godot_error!("Unknown Gamestruments style");
-            return;
+            return false;
         };
         if self.project_secret.is_empty() {
             godot_error!("GamestrumentsPlayer.project_secret is empty");
-            return;
+            return false;
         }
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = match generate_pocket_circuit(&GenerateInput {
             secret: self.project_secret.to_string(),
             seed: seed.to_string(),
             style,
@@ -199,7 +175,13 @@ impl GamestrumentsPlayer {
             complexity: self.complexity,
             brightness: self.brightness,
             syncopation: self.syncopation,
-        });
+        }) {
+            Ok(score) => score,
+            Err(error) => {
+                godot_error!("Gamestruments generation failed: {error}");
+                return false;
+            }
+        };
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
         self.synth = Synth::new(self.sample_rate);
@@ -207,8 +189,12 @@ impl GamestrumentsPlayer {
             Ok(transport) => {
                 self.transport = Some(transport);
                 self.score = Some(score);
+                true
             }
-            Err(error) => godot_error!("{error}"),
+            Err(error) => {
+                godot_error!("Gamestruments transport failed: {error}");
+                false
+            }
         }
     }
 
@@ -219,12 +205,20 @@ impl GamestrumentsPlayer {
         intensity: f64,
         pressure: f64,
         final_lap: bool,
-        #[opt(default = "none")]
-        finish_result: GString,
-    ) {
+        #[opt(default = "none")] finish_result: GString,
+    ) -> bool {
         let Some(transport) = self.transport.as_mut() else {
-            return;
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
+            return false;
         };
+        if !intensity.is_finite()
+            || !pressure.is_finite()
+            || !(0.0..=1.0).contains(&intensity)
+            || !(0.0..=1.0).contains(&pressure)
+        {
+            godot_error!("Gamestruments race intensity and pressure must be within 0.0..1.0");
+            return false;
+        }
         transport.request_state(
             &GameState {
                 intensity,
@@ -239,22 +233,6 @@ impl GamestrumentsPlayer {
             },
             self.tick,
         );
-    }
-}
-
-// Rust Drop: attempt to participate in cleanup (per investigation request).
-// In gdext 0.4.5 / Godot 4.7, Drop runs when the Rust data for the instance
-// is dropped (after Godot notifications like PREDELETE). We do NOT call
-// to_gd().free() or godot methods here, as the Base/Gd handle is typically
-// already invalidated or the object is mid-deletion; doing so can panic or
-// double-free. Primary reliable hooks remain exit_tree + on_notification.
-impl Drop for GamestrumentsPlayer {
-    fn drop(&mut self) {
-        // Safe no-op: do not call to_gd() / godot methods or cleanup here.
-        // Drop can run during free() / deletion where Gd casts or binds will
-        // fail (see "downcast ... failed" and "bind_mut already bound").
-        // All cleanup is performed from exit_tree (which fires before delete
-        // for normal tree removal and many quit paths). This + explicit
-        // child free() after stop+null is our attempt to minimize leaks.
+        true
     }
 }
