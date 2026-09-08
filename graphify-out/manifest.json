@@ -42,9 +42,9 @@
     "semantic_hash": "35435bd03b1aeeca506e5c21f8a7126a"
   },
   "package.json": {
-    "mtime": 1788902857.5101712,
-    "seen": 1788904100.0727196,
-    "ast_hash": "62e9937b0c845f683b6febd8497f9ba7",
+    "mtime": 1788907556.8925364,
+    "seen": 1788908832.2446222,
+    "ast_hash": "68edeece12192b9259d2f6dfb1d473f8",
     "semantic_hash": ""
   },
   "packages/runtime/package.json": {
@@ -396,15 +396,15 @@
     "semantic_hash": ""
   },
   "tools/package_kit.sh": {
-    "mtime": 1788906096.907423,
-    "seen": 1788906506.9215202,
-    "ast_hash": "c82c83183656067f1082d0912e00b8a6",
+    "mtime": 1788907476.9535303,
+    "seen": 1788908832.2454762,
+    "ast_hash": "19c7b6449abad080210765f5b6cae3b2",
     "semantic_hash": ""
   },
   ".github/workflows/check.yml": {
-    "mtime": 1788906096.908423,
-    "seen": 1788906506.9216123,
-    "ast_hash": "138070704b655a203a27b860c3750c81",
+    "mtime": 1788907556.8935363,
+    "seen": 1788908832.245569,
+    "ast_hash": "c0a74d02a3bfd7917ef41d1089428236",
     "semantic_hash": ""
   },
   ".github/workflows/release.yml": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "tests/godot-package-smoke.mjs": {
-    "mtime": 1788906298.0924385,
-    "seen": 1788906506.9213686,
-    "ast_hash": "5af2f54d27dd35bf7f529b93d444dc80",
+    "mtime": 1788907476.9525301,
+    "seen": 1788908832.2453048,
+    "ast_hash": "5d08e392accdf65e4623c76002173547",
     "semantic_hash": ""
   },
   "tools/verify_kit_archive.sh": {
@@ -633,6 +633,12 @@
     "mtime": 1788904944.695251,
     "seen": 1788905431.0225067,
     "ast_hash": "e8e91b27aa96b3fd1efdf8af3b146284",
+    "semantic_hash": ""
+  },
+  "tools/build-wasm.mjs": {
+    "mtime": 1788907556.8915365,
+    "seen": 1788908832.2454743,
+    "ast_hash": "3278862e38948d9b2181f9ad0c6d9a57",
     "semantic_hash": ""
   }
 }

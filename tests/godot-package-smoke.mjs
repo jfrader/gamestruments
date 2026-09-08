@@ -9,11 +9,13 @@ for (let index = 2; index < process.argv.length; index += 2) {
   args.set(process.argv[index], process.argv[index + 1]);
 }
 
-const godot = args.get("--godot");
-const library = args.get("--library");
-if (!godot || !library) {
+const godotArgument = args.get("--godot");
+const libraryArgument = args.get("--library");
+if (!godotArgument || !libraryArgument) {
   throw new Error("Usage: node tests/godot-package-smoke.mjs --godot <binary> --library <extension>");
 }
+const godot = path.resolve(godotArgument);
+const library = path.resolve(libraryArgument);
 
 const projectRoot = path.resolve(args.get("--project-root") ?? path.resolve(import.meta.dirname, ".."));
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "gamestruments-godot-smoke-"));

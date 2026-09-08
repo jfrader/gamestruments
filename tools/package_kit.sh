@@ -74,6 +74,7 @@ echo "==> Output dir: $OUT_DIR"
 echo "==> Native assets: $ASSETS_DIR"
 
 mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
 # 1. Assemble staging with explicit allowlist
 STAGING="$(mktemp -d -t gamestruments-kit-XXXXXX)"

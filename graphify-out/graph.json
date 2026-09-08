@@ -303,19 +303,6 @@
       "source_location": "L21"
     },
     {
-      "id": "packages_runtime_src_types_musicevent",
-      "label": "MusicEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "musicevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L63"
-    },
-    {
       "id": "packages_studio_src_pocket_circuit_generator_deterministicrandom",
       "label": "DeterministicRandom",
       "_callable": true,
@@ -420,19 +407,6 @@
       "source_location": "L10"
     },
     {
-      "id": "packages_runtime_src_types_eventbase",
-      "label": "EventBase",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "eventbase",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L26"
-    },
-    {
       "id": "packages_runtime_src_types_gamestate",
       "label": "GameState",
       "_callable": true,
@@ -446,17 +420,17 @@
       "source_location": "L21"
     },
     {
-      "id": "packages_runtime_src_types_noteevent",
-      "label": "NoteEvent",
+      "id": "packages_runtime_src_types_musicevent",
+      "label": "MusicEvent",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "runtime/src/index.ts",
       "file_type": "code",
-      "norm_label": "noteevent",
+      "norm_label": "musicevent",
       "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L35"
+      "source_location": "L63"
     },
     {
       "id": "packages_runtime_src_types_numericrange",
@@ -470,19 +444,6 @@
       "norm_label": "numericrange",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L5"
-    },
-    {
-      "id": "packages_runtime_src_types_percussionevent",
-      "label": "PercussionEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "percussionevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L52"
     },
     {
       "id": "packages_runtime_src_types_portablescore",
@@ -522,19 +483,6 @@
       "norm_label": "sectionid",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L3"
-    },
-    {
-      "id": "packages_runtime_src_types_stemevent",
-      "label": "StemEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "stemevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L57"
     },
     {
       "id": "packages_runtime_src_types_transitionplan",
@@ -1068,6 +1016,58 @@
       "norm_label": "adaptiverule",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L15"
+    },
+    {
+      "id": "packages_runtime_src_types_eventbase",
+      "label": "EventBase",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "eventbase",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L26"
+    },
+    {
+      "id": "packages_runtime_src_types_noteevent",
+      "label": "NoteEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "noteevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "packages_runtime_src_types_percussionevent",
+      "label": "PercussionEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "percussionevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L52"
+    },
+    {
+      "id": "packages_runtime_src_types_stemevent",
+      "label": "StemEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "stemevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L57"
     },
     {
       "id": "packages_studio_src_export_score_authoringlane",
@@ -2145,18 +2145,6 @@
       "source_location": "L216"
     },
     {
-      "id": "apps_demo_src_audio_engine_eventmatchessolo",
-      "label": "eventMatchesSolo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "eventmatchessolo()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L92"
-    },
-    {
       "id": "apps_demo_src_audio_engine_miditofrequency",
       "label": "midiToFrequency()",
       "_callable": true,
@@ -2694,7 +2682,7 @@
       "file_type": "code",
       "norm_label": "rungodot()",
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L23"
+      "source_location": "L25"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_breakconsecutiveruns",
@@ -2851,6 +2839,18 @@
       "norm_label": ".constructor()",
       "source_file": "apps/demo/src/audio-engine.ts",
       "source_location": "L240"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_eventmatchessolo",
+      "label": "eventMatchesSolo()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "eventmatchessolo()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L92"
     },
     {
       "id": "apps_demo_src_wasm_engine_allocandwrite",
@@ -3235,18 +3235,6 @@
       "norm_label": "runcli()",
       "source_file": "tests/generation-cli-smoke.mjs",
       "source_location": "L11"
-    },
-    {
-      "id": "packages_studio_src_export_score_exportscore",
-      "label": "exportScore()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "exportscore()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L224"
     },
     {
       "id": "packages_studio_src_generate_cli_emit",
@@ -3885,6 +3873,30 @@
       "source_location": "L175"
     },
     {
+      "id": "tools_build_wasm_sourcedigest",
+      "label": "sourceDigest()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "sourcedigest()",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L26"
+    },
+    {
+      "id": "tools_build_wasm_sourcefiles",
+      "label": "sourceFiles()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "sourcefiles()",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L14"
+    },
+    {
       "id": "tests_wasm_parity_allocandwrite",
       "label": "allocAndWrite()",
       "_callable": true,
@@ -4063,6 +4075,18 @@
       "norm_label": "exportlane()",
       "source_file": "packages/studio/src/export-score.ts",
       "source_location": "L117"
+    },
+    {
+      "id": "packages_studio_src_export_score_exportscore",
+      "label": "exportScore()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "exportscore()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L224"
     },
     {
       "id": "packages_studio_src_export_score_exportsection",
@@ -4364,50 +4388,6 @@
       "norm_label": "percussion",
       "source_file": "tests/audio-engine.test.ts",
       "source_location": "L39"
-    },
-    {
-      "id": "tests_audition_test",
-      "label": "audition.test.ts",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "audition.test.ts",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_audition_test_harmony",
-      "label": "harmony",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "harmony",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "tests_audition_test_melody",
-      "label": "melody",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "melody",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "tests_audition_test_percussion",
-      "label": "percussion",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "percussion",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L31"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_default_pocket_circuit_traits",
@@ -5287,7 +5267,7 @@
       "file_type": "code",
       "norm_label": "addonroot",
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L21"
+      "source_location": "L23"
     },
     {
       "id": "tests_godot_package_smoke_args",
@@ -5309,7 +5289,7 @@
       "file_type": "code",
       "norm_label": "demoroot",
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L20"
+      "source_location": "L22"
     },
     {
       "id": "tests_godot_package_smoke_godot",
@@ -5319,6 +5299,17 @@
       "community_name": "godot-package-smoke.mjs",
       "file_type": "code",
       "norm_label": "godot",
+      "source_file": "tests/godot-package-smoke.mjs",
+      "source_location": "L17"
+    },
+    {
+      "id": "tests_godot_package_smoke_godotargument",
+      "label": "godotArgument",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "godot-package-smoke.mjs",
+      "file_type": "code",
+      "norm_label": "godotargument",
       "source_file": "tests/godot-package-smoke.mjs",
       "source_location": "L12"
     },
@@ -5331,6 +5322,17 @@
       "file_type": "code",
       "norm_label": "library",
       "source_file": "tests/godot-package-smoke.mjs",
+      "source_location": "L18"
+    },
+    {
+      "id": "tests_godot_package_smoke_libraryargument",
+      "label": "libraryArgument",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "godot-package-smoke.mjs",
+      "file_type": "code",
+      "norm_label": "libraryargument",
+      "source_file": "tests/godot-package-smoke.mjs",
       "source_location": "L13"
     },
     {
@@ -5342,7 +5344,7 @@
       "file_type": "code",
       "norm_label": "projectroot",
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L18"
+      "source_location": "L20"
     },
     {
       "id": "tools_verify_kit_archive",
@@ -5505,6 +5507,50 @@
       "norm_label": "percussion_voices",
       "source_file": "packages/runtime/src/validate-score.ts",
       "source_location": "L15"
+    },
+    {
+      "id": "tests_audition_test",
+      "label": "audition.test.ts",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "audition.test.ts",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_audition_test_harmony",
+      "label": "harmony",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "harmony",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "tests_audition_test_melody",
+      "label": "melody",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "melody",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "tests_audition_test_percussion",
+      "label": "percussion",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "percussion",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L31"
     },
     {
       "id": "tests_runtime_import_smoke",
@@ -8536,6 +8582,94 @@
       "source_location": "L144"
     },
     {
+      "id": "tools_build_wasm",
+      "label": "build-wasm.mjs",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "build-wasm.mjs",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L1"
+    },
+    {
+      "id": "tools_build_wasm_destination",
+      "label": "destination",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "destination",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L11"
+    },
+    {
+      "id": "tools_build_wasm_destinationdir",
+      "label": "destinationDir",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "destinationdir",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L10"
+    },
+    {
+      "id": "tools_build_wasm_projectroot",
+      "label": "projectRoot",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "projectroot",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L8"
+    },
+    {
+      "id": "tools_build_wasm_result",
+      "label": "result",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "result",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L63"
+    },
+    {
+      "id": "tools_build_wasm_rustflags",
+      "label": "rustflags",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "rustflags",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L55"
+    },
+    {
+      "id": "tools_build_wasm_source",
+      "label": "source",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "source",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L91"
+    },
+    {
+      "id": "tools_build_wasm_sourcestamp",
+      "label": "sourceStamp",
+      "_origin": "ast",
+      "community": 35,
+      "community_name": "build-wasm.mjs",
+      "file_type": "code",
+      "norm_label": "sourcestamp",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L12"
+    },
+    {
       "id": "packages_runtime_package",
       "label": "runtime/package.json",
       "_origin": "ast",
@@ -8995,7 +9129,7 @@
       "file_type": "code",
       "norm_label": "dependencies",
       "source_file": "package.json",
-      "source_location": "L25"
+      "source_location": "L26"
     },
     {
       "id": "package_dependencies_strudel_core",
@@ -9006,7 +9140,7 @@
       "file_type": "code",
       "norm_label": "@strudel/core",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L27"
     },
     {
       "id": "package_dependencies_strudel_mini",
@@ -9017,7 +9151,7 @@
       "file_type": "code",
       "norm_label": "@strudel/mini",
       "source_file": "package.json",
-      "source_location": "L27"
+      "source_location": "L28"
     },
     {
       "id": "package_devdependencies",
@@ -9028,7 +9162,7 @@
       "file_type": "code",
       "norm_label": "devdependencies",
       "source_file": "package.json",
-      "source_location": "L29"
+      "source_location": "L30"
     },
     {
       "id": "package_devdependencies_playwright_test",
@@ -9039,7 +9173,7 @@
       "file_type": "code",
       "norm_label": "@playwright/test",
       "source_file": "package.json",
-      "source_location": "L30"
+      "source_location": "L31"
     },
     {
       "id": "package_devdependencies_types_node",
@@ -9050,7 +9184,7 @@
       "file_type": "code",
       "norm_label": "@types/node",
       "source_file": "package.json",
-      "source_location": "L31"
+      "source_location": "L32"
     },
     {
       "id": "package_devdependencies_typescript",
@@ -9061,7 +9195,7 @@
       "file_type": "code",
       "norm_label": "typescript",
       "source_file": "package.json",
-      "source_location": "L32"
+      "source_location": "L33"
     },
     {
       "id": "package_devdependencies_vite",
@@ -9072,7 +9206,7 @@
       "file_type": "code",
       "norm_label": "vite",
       "source_file": "package.json",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "package_devdependencies_vitest",
@@ -9083,7 +9217,7 @@
       "file_type": "code",
       "norm_label": "vitest",
       "source_file": "package.json",
-      "source_location": "L34"
+      "source_location": "L35"
     },
     {
       "id": "package_name",
@@ -9171,7 +9305,7 @@
       "file_type": "code",
       "norm_label": "check",
       "source_file": "package.json",
-      "source_location": "L23"
+      "source_location": "L24"
     },
     {
       "id": "package_scripts_dev",
@@ -9193,7 +9327,7 @@
       "file_type": "code",
       "norm_label": "fixtures:update",
       "source_file": "package.json",
-      "source_location": "L22"
+      "source_location": "L23"
     },
     {
       "id": "package_scripts_parity_wasm",
@@ -9262,6 +9396,17 @@
       "source_location": "L21"
     },
     {
+      "id": "package_scripts_wasm_verify",
+      "label": "wasm:verify",
+      "_origin": "ast",
+      "community": 4,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "wasm:verify",
+      "source_file": "package.json",
+      "source_location": "L22"
+    },
+    {
       "id": "package_type",
       "label": "type",
       "_origin": "ast",
@@ -9303,7 +9448,7 @@
       "file_type": "concept",
       "norm_label": "@strudel/core",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L27"
     },
     {
       "id": "package_json_strudel_mini",
@@ -9314,7 +9459,7 @@
       "file_type": "concept",
       "norm_label": "@strudel/mini",
       "source_file": "package.json",
-      "source_location": "L27"
+      "source_location": "L28"
     },
     {
       "id": "playwright_test",
@@ -9325,7 +9470,7 @@
       "file_type": "concept",
       "norm_label": "@playwright/test",
       "source_file": "package.json",
-      "source_location": "L30"
+      "source_location": "L31"
     },
     {
       "id": "ref_apps",
@@ -9358,7 +9503,7 @@
       "file_type": "concept",
       "norm_label": "@types/node",
       "source_file": "package.json",
-      "source_location": "L31"
+      "source_location": "L32"
     },
     {
       "id": "typescript",
@@ -9369,7 +9514,7 @@
       "file_type": "concept",
       "norm_label": "typescript",
       "source_file": "package.json",
-      "source_location": "L32"
+      "source_location": "L33"
     },
     {
       "id": "vite",
@@ -9380,7 +9525,7 @@
       "file_type": "concept",
       "norm_label": "vite",
       "source_file": "package.json",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "vitest",
@@ -9391,7 +9536,7 @@
       "file_type": "concept",
       "norm_label": "vitest",
       "source_file": "package.json",
-      "source_location": "L34"
+      "source_location": "L35"
     },
     {
       "id": "crates_engine_src_rng_deterministicrandom",
@@ -19873,7 +20018,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -19885,7 +20030,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -19897,7 +20042,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -19909,7 +20054,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L31",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -19921,7 +20066,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L32",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -19933,7 +20078,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -19945,7 +20090,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L34",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -28042,18 +28187,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "package",
-      "target": "package_devdependencies",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "package.json",
-      "source_location": "L29",
+      "source_location": "L26",
       "weight": 1.0
     },
     {
@@ -28065,6 +28199,17 @@
       "confidence_score": 1.0,
       "source_file": "package.json",
       "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "package",
+      "target": "package_devdependencies",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "package.json",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
@@ -28108,7 +28253,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -28119,7 +28264,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -28130,7 +28275,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -28141,7 +28286,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L31",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -28152,7 +28297,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L32",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -28163,7 +28308,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -28174,7 +28319,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L34",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -28300,7 +28445,7 @@
     },
     {
       "source": "package_scripts",
-      "target": "package_scripts_fixtures_update",
+      "target": "package_scripts_wasm_verify",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -28311,13 +28456,24 @@
     },
     {
       "source": "package_scripts",
-      "target": "package_scripts_check",
+      "target": "package_scripts_fixtures_update",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
       "source_location": "L23",
+      "weight": 1.0
+    },
+    {
+      "source": "package_scripts",
+      "target": "package_scripts_check",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "package.json",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -31930,7 +32086,7 @@
     },
     {
       "source": "tests_godot_package_smoke",
-      "target": "tests_godot_package_smoke_godot",
+      "target": "tests_godot_package_smoke_godotargument",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -31941,7 +32097,7 @@
     },
     {
       "source": "tests_godot_package_smoke",
-      "target": "tests_godot_package_smoke_library",
+      "target": "tests_godot_package_smoke_libraryargument",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -31952,7 +32108,18 @@
     },
     {
       "source": "tests_godot_package_smoke",
-      "target": "tests_godot_package_smoke_projectroot",
+      "target": "tests_godot_package_smoke_godot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/godot-package-smoke.mjs",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_godot_package_smoke",
+      "target": "tests_godot_package_smoke_library",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -31963,7 +32130,7 @@
     },
     {
       "source": "tests_godot_package_smoke",
-      "target": "tests_godot_package_smoke_demoroot",
+      "target": "tests_godot_package_smoke_projectroot",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -31974,13 +32141,24 @@
     },
     {
       "source": "tests_godot_package_smoke",
+      "target": "tests_godot_package_smoke_demoroot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/godot-package-smoke.mjs",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_godot_package_smoke",
       "target": "tests_godot_package_smoke_addonroot",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L21",
+      "source_location": "L23",
       "weight": 1.0
     },
     {
@@ -31991,7 +32169,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/godot-package-smoke.mjs",
-      "source_location": "L23",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -32366,6 +32544,105 @@
       "confidence_score": 1.0,
       "source_file": "THIRD_PARTY_NOTICES.md",
       "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_destinationdir",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_destination",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_sourcestamp",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_sourcefiles",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_sourcedigest",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_rustflags",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L55",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_result",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L63",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_projectroot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_build_wasm",
+      "target": "tools_build_wasm_source",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -33939,6 +34216,18 @@
       "weight": 1.0
     },
     {
+      "source": "tools_build_wasm_sourcedigest",
+      "target": "tools_build_wasm_sourcefiles",
+      "relation": "indirect_call",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "context": "argument",
+      "source_file": "tools/build-wasm.mjs",
+      "source_location": "L33",
+      "weight": 1.0
+    },
+    {
       "source": "crates_engine_examples_parity_ref_main",
       "target": "crates_engine_src_pocket_circuit_generate_pocket_circuit",
       "relation": "calls",
@@ -34108,5 +34397,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "af345b7352e68ab63615d62311906fbf235f1937"
+  "built_at_commit": "2710a1d6d13eb38d52f26fd3180f16c285cede61"
 }

@@ -34,6 +34,7 @@
   "32": "synth.rs",
   "33": "render.rs",
   "34": "Gamestruments",
+  "35": "build-wasm.mjs",
   "37": "runtime/package.json",
   "38": "Gamestruments Adaptive Racing Music for Godot 4 — Product Contract",
   "39": "Gamestruments Kit Opportunity Brief (updated 2026-09-08)",
