@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- Audio Lab: added a prominent play/pause control to the unobstructed center of the orbit, with synchronized header controls and a Space shortcut outside form fields.
+- Audio Lab: added a prominent play/pause control to the unobstructed center of the orbit, with clear spacing between its icon and label, synchronized header controls, and a Space shortcut outside form fields.
 
 ### Changed
 - Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
