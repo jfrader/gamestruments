@@ -9,6 +9,7 @@ import type {
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
 import { requireElement, elements } from "./dom";
+import { orbitMotionAt } from "./orbit-visualizer.ts";
 
 export type ViewName = "lab" | "games" | "genres";
 export { requireElement, elements };
@@ -44,7 +45,8 @@ export function renderSections(
   transport: AdaptiveTransport,
   audio: DemoAudioEngine,
 ): void {
-  const tick = audio.currentTick();
+  const visualTick = audio.currentVisualTick();
+  const tick = Math.floor(visualTick);
   const mix = new Map(
     transport.mixAt(tick).map((item) => [item.section, item.gain]),
   );
@@ -222,7 +224,8 @@ export function renderFrame(
   applyPlan: (plan: TransitionPlan) => void,
   sectionById: (id: string) => PortableSection,
 ): void {
-  const tick = audio.currentTick();
+  const visualTick = audio.currentVisualTick();
+  const tick = Math.floor(visualTick);
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
   const nextPlan = transport.advance(tick);
   if (nextPlan !== null) {
@@ -252,9 +255,32 @@ export function renderFrame(
           ? "Waiting for next bar"
           : `Crossing from ${sectionById(activeTransition.from).label}`;
   elements.orbit.style.setProperty("--mood-color", section.color);
-  elements.orbit.style.setProperty(
-    "--beat-progress",
-    String((tick % score.ticksPerBeat) / score.ticksPerBeat),
-  );
+  elements.orbit.classList.toggle("is-running", audio.running);
+  const motion = audio.running
+    ? orbitMotionAt(
+        section,
+        visualTick,
+        audio.sectionVisualTick(section.id, visualTick),
+        score.ticksPerBeat,
+        score.beatsPerBar,
+      )
+    : {
+        barProgress: 0,
+        beatPulse: 0,
+        melodyAngle: 0,
+        melodyPulse: 0,
+        phraseProgress: 0,
+        rhythmPulse: 0,
+      };
+  for (const [property, value] of Object.entries({
+    "--bar-progress": motion.barProgress,
+    "--beat-pulse": motion.beatPulse,
+    "--melody-angle": motion.melodyAngle,
+    "--melody-pulse": motion.melodyPulse,
+    "--phrase-progress": motion.phraseProgress,
+    "--rhythm-pulse": motion.rhythmPulse,
+  })) {
+    elements.orbit.style.setProperty(property, String(value));
+  }
   renderSections(score, transport, audio);
 }

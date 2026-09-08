@@ -384,13 +384,26 @@ export class DemoAudioEngine {
   }
 
   currentTick(): number {
+    return Math.floor(this.currentVisualTick());
+  }
+
+  currentVisualTick(): number {
     if (this.#context === null) {
       return 0;
     }
     return Math.max(
       0,
-      Math.floor((this.#context.currentTime - this.#originTime) / this.#secondsPerTick),
+      (this.#context.currentTime - this.#originTime) / this.#secondsPerTick,
     );
+  }
+
+  sectionVisualTick(sectionId: SectionId, visualTick = this.currentVisualTick()): number {
+    const section = this.#score.sections.find((candidate) => candidate.id === sectionId);
+    if (section === undefined) {
+      throw new Error(`Unknown section: ${sectionId}`);
+    }
+    const elapsed = visualTick - (this.#loopOriginBySection.get(sectionId) ?? 0);
+    return ((elapsed % section.lengthTicks) + section.lengthTicks) % section.lengthTicks;
   }
 
   applyTransition(plan: TransitionPlan): void {
