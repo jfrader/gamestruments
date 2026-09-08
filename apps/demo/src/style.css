@@ -548,6 +548,12 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .orbit {
+  --bar-progress: 0;
+  --beat-pulse: 0;
+  --melody-angle: 0;
+  --melody-pulse: 0;
+  --phrase-progress: 0;
+  --rhythm-pulse: 0;
   position: relative;
   grid-row: 2;
   width: min(62vw, 410px);
@@ -555,6 +561,25 @@ input[type="range"]::-webkit-slider-thumb {
   display: grid;
   place-items: center;
   filter: drop-shadow(0 0 38px color-mix(in srgb, var(--mood-color), transparent 84%));
+  transform: scale(calc(1 + var(--beat-pulse) * 0.012 + var(--rhythm-pulse) * 0.018));
+  transition: filter 100ms linear, transform 50ms linear;
+  will-change: transform;
+}
+
+.orbit::before {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--mood-color), transparent 86%) 0,
+    transparent 68%
+  );
+  opacity: calc(0.3 + var(--beat-pulse) * 0.36 + var(--melody-pulse) * 0.24);
+  transform: scale(calc(0.9 + var(--melody-pulse) * 0.12));
+  transition: opacity 70ms linear, transform 90ms ease-out;
+  pointer-events: none;
 }
 
 .orbit-ring {
@@ -567,14 +592,19 @@ input[type="range"]::-webkit-slider-thumb {
 .orbit-ring--outer {
   inset: 0;
   border-style: dashed;
-  animation: rotate 18s linear infinite;
+  opacity: calc(0.66 + var(--rhythm-pulse) * 0.34);
+  transform: rotate(calc(var(--phrase-progress) * 1turn)) scale(calc(1 + var(--rhythm-pulse) * 0.035));
+  transition: border-color 900ms ease, opacity 45ms linear, transform 50ms linear;
+  will-change: transform;
 }
 
 .orbit-ring--inner {
   inset: 18%;
   border-width: 8px 1px 1px;
-  transform: rotate(calc(var(--beat-progress, 0) * 90deg));
-  transition: border-color 900ms ease;
+  opacity: calc(0.72 + var(--melody-pulse) * 0.28);
+  transform: rotate(calc(var(--melody-angle) * 1deg)) scale(calc(1 + var(--melody-pulse) * 0.075));
+  transition: border-color 900ms ease, opacity 80ms linear, transform 100ms ease-out;
+  will-change: transform;
 }
 
 .playhead {
@@ -582,7 +612,10 @@ input[type="range"]::-webkit-slider-thumb {
   inset: 6%;
   border-radius: 50%;
   border-top: 2px solid var(--signal);
-  animation: rotate 3.8s linear infinite;
+  opacity: calc(0.74 + var(--beat-pulse) * 0.26);
+  transform: rotate(calc(var(--bar-progress) * 1turn));
+  transition: opacity 45ms linear, transform 50ms linear;
+  will-change: transform;
 }
 
 .playhead::before {
@@ -1096,6 +1129,30 @@ footer p {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
+  }
+
+  .orbit,
+  .orbit::before,
+  .orbit-ring,
+  .playhead {
+    transform: none !important;
+    transition: border-color 900ms ease !important;
+  }
+
+  .orbit::before {
+    opacity: 0.3 !important;
+  }
+
+  .orbit-ring--outer {
+    opacity: 0.66 !important;
+  }
+
+  .orbit-ring--inner {
+    opacity: 0.72 !important;
+  }
+
+  .playhead {
+    opacity: 0.74 !important;
   }
 }
 
