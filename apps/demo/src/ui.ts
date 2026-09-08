@@ -1,6 +1,13 @@
-import "./style.css";
 import { pocketCircuitExperiments } from "../../../packages/studio/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
+import type { NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
+import type {
+  AdaptiveTransport,
+  PortableScore,
+  PortableSection,
+  SectionId,
+  TransitionPlan,
+} from "../../../packages/runtime/src/index.ts";
+import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
 import { requireElement, elements } from "./dom";
 
 export type ViewName = "lab" | "games" | "genres";
@@ -11,9 +18,9 @@ const sectionRows = new Map<
   { item: HTMLLIElement; output: HTMLOutputElement }
 >();
 
-export function createSectionRows(score: any): void {
+export function createSectionRows(score: PortableScore): void {
   sectionRows.clear();
-  const rows = score.sections.map((section: any) => {
+  const rows = score.sections.map((section) => {
     const item = document.createElement("li");
     const label = document.createElement("span");
     const meter = document.createElement("i");
@@ -32,20 +39,24 @@ export function createSectionRows(score: any): void {
   elements.sectionList.replaceChildren(...rows);
 }
 
-export function renderSections(score: any, transport: any, audio: any): void {
+export function renderSections(
+  score: PortableScore,
+  transport: AdaptiveTransport,
+  audio: DemoAudioEngine,
+): void {
   const tick = audio.currentTick();
   const mix = new Map(
-    transport.mixAt(tick).map((item: any) => [item.section, item.gain]),
+    transport.mixAt(tick).map((item) => [item.section, item.gain]),
   );
   for (const section of score.sections) {
     const row = sectionRows.get(section.id);
     if (row === undefined) {
       continue;
     }
-    const gain: number = (mix.get(section.id) ?? 0) as number;
+    const gain = mix.get(section.id) ?? 0;
     row.item.style.setProperty("--gain", String(gain));
-    row.item.classList.toggle("is-audible", (gain as number) > 0.001);
-    row.output.value = `${Math.round((gain as number) * 100)}%`;
+    row.item.classList.toggle("is-audible", gain > 0.001);
+    row.output.value = `${Math.round(gain * 100)}%`;
   }
 }
 
@@ -88,12 +99,11 @@ export function renderGenreIndex(): void {
 
 export function renderScoreIdentity(
   activeExperimentIndex: number,
-  score: any,
+  score: PortableScore,
   levelSeed: string,
-  generationTraits: any,
-  renderGenerationControlsFn: Function,
-  renderAuditionControlsFn: Function,
-  requestMusicStateFn: Function
+  generationTraits: NormalizedMusicTraits,
+  comparisonBaseSeed: string,
+  soloMode: SoloMode,
 ): void {
   const experiment = pocketCircuitExperiments[activeExperimentIndex];
   if (experiment === undefined) {
@@ -101,15 +111,18 @@ export function renderScoreIdentity(
   }
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
-  renderGenerationControlsFn(levelSeed, generationTraits);
+  renderGenerationControls(score, levelSeed, generationTraits);
   document.title = `Gamestruments Audio Lab — ${score.title}`;
   renderScoreButtons(activeExperimentIndex);
   createSectionRows(score);
-  renderAuditionControlsFn(levelSeed, generationTraits);
-  requestMusicStateFn();
+  renderAuditionControls(levelSeed, comparisonBaseSeed, soloMode);
 }
 
-export function renderGenerationControls(levelSeed: string, generationTraits: any): void {
+export function renderGenerationControls(
+  score: PortableScore,
+  levelSeed: string,
+  generationTraits: NormalizedMusicTraits,
+): void {
   const traitControls = [
     [elements.generationEnergy, elements.generationEnergyValue, generationTraits.energy],
     [
@@ -135,9 +148,9 @@ export function renderGenerationControls(levelSeed: string, generationTraits: an
     output.value = `${Math.round(value * 100)}%`;
   }
   elements.generatorSummary.value = [
-    (window as any).__labScoreId || 'score',
-    `sections @ bpm`,
-    `engine: wasm`,
+    score.id,
+    `${score.sections.length} sections @ ${score.bpm} bpm`,
+    "engine: wasm",
   ].join(" / ");
 }
 
@@ -167,15 +180,21 @@ export function setStartButton(running: boolean): void {
     light,
     document.createTextNode(running ? "Stop engine" : "Start engine"),
   );
-  const c = elements.centerPlay;
-  if (c) {
-    c.classList.toggle("is-running", running);
-    c.setAttribute("aria-pressed", String(running));
-    const glyph = c.querySelector<HTMLElement>(".center-glyph");
-    const label = c.querySelector<HTMLElement>(".center-label");
-    if (glyph) glyph.textContent = running ? "❚❚" : "▶";
-    if (label) label.textContent = running ? "PAUSE" : "PLAY";
+  elements.centerPlay.classList.toggle("is-running", running);
+  elements.centerPlay.setAttribute("aria-pressed", String(running));
+  const glyph = elements.centerPlay.querySelector<HTMLElement>(".center-glyph");
+  const label = elements.centerPlay.querySelector<HTMLElement>(".center-label");
+  if (glyph !== null) {
+    glyph.textContent = running ? "❚❚" : "▶";
   }
+  if (label !== null) {
+    label.textContent = running ? "PAUSE" : "PLAY";
+  }
+}
+
+export function setPlaybackPending(pending: boolean): void {
+  elements.start.disabled = pending;
+  elements.centerPlay.disabled = pending;
 }
 
 export function renderView(): void {
@@ -196,19 +215,18 @@ export function renderView(): void {
 }
 
 export function renderFrame(
-  audio: any,
-  score: any,
-  transport: any,
-  auditionOverride: any,
-  applyPlanFn: Function,
-  sectionByIdFn: Function,
-  renderSectionsFn: Function
+  audio: DemoAudioEngine,
+  score: PortableScore,
+  transport: AdaptiveTransport,
+  auditionOverride: SectionId | null,
+  applyPlan: (plan: TransitionPlan) => void,
+  sectionById: (id: string) => PortableSection,
 ): void {
   const tick = audio.currentTick();
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
   const nextPlan = transport.advance(tick);
   if (nextPlan !== null) {
-    applyPlanFn(nextPlan);
+    applyPlan(nextPlan);
   }
   const snapshot = transport.snapshot();
   const activeTransition = snapshot.transition;
@@ -216,7 +234,7 @@ export function renderFrame(
     activeTransition !== null && tick >= activeTransition.startTick
       ? activeTransition.to
       : snapshot.currentSection;
-  const section = sectionByIdFn(primarySection);
+  const section = sectionById(primarySection);
 
   elements.bar.textContent = String(Math.floor(tick / barTicks) + 1).padStart(2, "0");
   elements.beat.textContent = String(
@@ -232,12 +250,11 @@ export function renderFrame(
         ? "Pattern locked"
         : tick < activeTransition.startTick
           ? "Waiting for next bar"
-          : `Crossing from ${sectionByIdFn(activeTransition.from).label}`;
+          : `Crossing from ${sectionById(activeTransition.from).label}`;
   elements.orbit.style.setProperty("--mood-color", section.color);
   elements.orbit.style.setProperty(
     "--beat-progress",
     String((tick % score.ticksPerBeat) / score.ticksPerBeat),
   );
-  renderSectionsFn(score, transport, audio);
-  window.requestAnimationFrame(() => renderFrame(audio, score, transport, auditionOverride, applyPlanFn, sectionByIdFn, renderSectionsFn));
+  renderSections(score, transport, audio);
 }

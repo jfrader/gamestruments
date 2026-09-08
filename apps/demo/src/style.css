@@ -396,6 +396,8 @@ legend {
   letter-spacing: 0.1em;
   font-size: 9px;
   cursor: pointer;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .new-take:hover,
@@ -405,6 +407,10 @@ legend {
 
 .new-take output,
 .compare-take output {
+  min-width: 0;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
 
@@ -425,6 +431,10 @@ legend {
   letter-spacing: 0.1em;
   font-size: 10px;
   cursor: pointer;
+}
+
+.audition-buttons button {
+  white-space: nowrap;
 }
 
 .phase-buttons button[aria-pressed="true"],
@@ -516,8 +526,11 @@ input[type="range"]::-webkit-slider-thumb {
 .music-stage {
   position: relative;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   place-items: center;
+  gap: 18px;
   min-height: 600px;
+  padding: 34px 0 24px;
   overflow: hidden;
   --mood-color: #dbc89a;
   max-width: 100%;
@@ -536,6 +549,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .orbit {
   position: relative;
+  grid-row: 2;
   width: min(62vw, 410px);
   aspect-ratio: 1;
   display: grid;
@@ -586,7 +600,7 @@ input[type="range"]::-webkit-slider-thumb {
 .center-play {
   position: absolute;
   left: 50%;
-  top: 58%;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 3;
   width: 86px;
@@ -603,6 +617,16 @@ input[type="range"]::-webkit-slider-thumb {
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms;
   box-shadow: 0 0 0 6px rgba(215, 255, 63, 0.12);
   font-family: inherit;
+}
+
+.center-play:focus-visible {
+  outline: 2px solid #f1eee5;
+  outline-offset: 7px;
+}
+
+.center-play:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 .center-play .center-glyph {
   font-size: 28px;
@@ -625,7 +649,6 @@ input[type="range"]::-webkit-slider-thumb {
 .center-play.is-running {
   border-color: #d7ff3f;
 }
-/* idle pulsing affordance (subtle, per design) */
 .center-play:not(.is-running)::before {
   content: "";
   position: absolute;
@@ -643,12 +666,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .mood-readout {
-  position: absolute;
-  top: 14%;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  grid-row: 1;
   z-index: 2;
-  max-width: 220px;
+  width: min(100%, 340px);
   text-align: center;
   pointer-events: none;
 }
@@ -663,9 +684,14 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 10px;
 }
 
+.mood-readout p {
+  margin-top: 9px;
+  color: color-mix(in srgb, var(--mood-color), var(--muted) 40%);
+}
+
 .mood-readout em {
   display: block;
-  margin-bottom: 9px;
+  margin-bottom: 7px;
   color: var(--mood-color);
   font-style: normal;
   text-transform: uppercase;
@@ -676,8 +702,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .mood-readout strong {
   display: block;
-  margin: 10px 0 8px;
-  font-size: clamp(30px, 4vw, 56px);
+  margin: 0 0 6px;
+  font-size: clamp(26px, 3vw, 42px);
   line-height: 0.95;
   letter-spacing: -0.03em;
   text-transform: uppercase;
@@ -685,8 +711,9 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .transport-readout {
-  position: absolute;
-  bottom: 26px;
+  position: relative;
+  grid-row: 3;
+  z-index: 2;
   display: flex;
   gap: 30px;
   color: var(--muted);
@@ -1000,7 +1027,8 @@ footer p {
 
   .phase-buttons button,
   .audition-buttons button {
-    padding: 8px 10px;
+    padding: 8px 6px;
+    font-size: 9px;
   }
 
   .new-take,
@@ -1024,10 +1052,12 @@ footer p {
   .music-stage {
     min-height: 0;
     height: 100%;
+    padding: 18px 0 10px;
+    gap: 10px;
   }
 
   .orbit {
-    width: min(32vh, 280px);
+    width: min(36vh, 360px);
   }
 
   .mood-readout strong {
@@ -1036,7 +1066,6 @@ footer p {
   }
 
   .transport-readout {
-    bottom: 12px;
     gap: 20px;
   }
 
@@ -1092,9 +1121,15 @@ footer p {
   .music-stage {
     grid-column: 1 / -1;
     grid-row: 1;
-    min-height: 470px;
+    min-height: 520px;
     border-bottom: 1px solid var(--line);
     margin: 0;
+    padding: 24px 0 18px;
+    gap: 14px;
+  }
+
+  .orbit {
+    width: min(300px, 50vw);
   }
 
   .race-state,
@@ -1132,16 +1167,19 @@ footer p {
   }
 
   .workspace {
-    display: block;
+    display: flex;
+    flex-direction: column;
   }
 
   .music-stage {
-    min-height: 400px;
+    order: -1;
+    min-height: 440px;
     margin: 0;
+    padding: 22px 0 18px;
   }
 
   .orbit {
-    width: min(260px, 72vw);
+    width: min(230px, 68vw);
     margin-left: auto;
     margin-right: auto;
   }
@@ -1208,14 +1246,15 @@ footer p {
   }
 }
 
-/* narrow viewport fixes (>=360px must keep orbit+center visible, no h-scroll) */
 @media (max-width: 420px) {
   .console-shell {
     padding: 4px 2px;
   }
   .music-stage {
-    min-height: 320px;
-    margin: 0 -10px;
+    min-height: 400px;
+    margin: 0;
+    padding: 18px 0 14px;
+    gap: 10px;
   }
   .orbit {
     width: min(210px, 64vw);
@@ -1223,14 +1262,15 @@ footer p {
   .center-play {
     width: 62px;
     height: 62px;
-    top: 55%;
   }
   .center-play .center-glyph {
     font-size: 20px;
   }
   .mood-readout {
-    top: 8%;
-    max-width: 170px;
+    width: min(100%, 220px);
+  }
+  .mood-readout strong {
+    font-size: 26px;
   }
   .race-state,
   .mix-state {
