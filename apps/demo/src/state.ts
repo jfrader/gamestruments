@@ -64,14 +64,22 @@ export function generationPreset(index = activeExperimentIndex): GenerationPrese
 }
 
 export async function generateCurrentScore(): Promise<PortableScore> {
-  const preset = generationPreset();
+  return generateRequestedScore(activeExperimentIndex, levelSeed, generationTraits);
+}
+
+async function generateRequestedScore(
+  index: number,
+  requestedSeed: string,
+  requestedTraits: NormalizedMusicTraits,
+): Promise<PortableScore> {
+  const preset = generationPreset(index);
   return generateScore({
-    seed: levelSeed,
+    seed: requestedSeed,
     style: preset.style,
-    energy: generationTraits.energy,
-    complexity: generationTraits.complexity,
-    brightness: generationTraits.brightness,
-    syncopation: generationTraits.syncopation,
+    energy: requestedTraits.energy,
+    complexity: requestedTraits.complexity,
+    brightness: requestedTraits.brightness,
+    syncopation: requestedTraits.syncopation,
   });
 }
 
@@ -162,17 +170,20 @@ export async function activateExperiment(
       ? previousSnapshot.transition.to
       : previousSnapshot.currentSection);
   try {
+    const nextScore = await generateRequestedScore(index, nextSeed, nextTraits);
+    const nextTransport = new AdaptiveTransport(nextScore, initialSection);
+    const nextAudio = new DemoAudioEngine(nextScore);
+    nextAudio.soloMode = soloMode;
+    const startNext = wasRunning
+      ? nextAudio.start(initialSection)
+      : Promise.resolve();
+    await Promise.all([startNext, previousAudio.stop()]);
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
-    score = await generateCurrentScore();
-    transport = new AdaptiveTransport(score, initialSection);
-    audio = new DemoAudioEngine(score);
-    audio.soloMode = soloMode;
-    const startNext = wasRunning
-      ? audio.start(initialSection)
-      : Promise.resolve();
-    await Promise.all([startNext, previousAudio.stop()]);
+    score = nextScore;
+    transport = nextTransport;
+    audio = nextAudio;
     return true;
   } finally {
     switchingScore = false;

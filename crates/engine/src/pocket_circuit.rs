@@ -1136,7 +1136,7 @@ fn distributed_steps(steps: &[u32], count: usize) -> Vec<u32> {
 }
 
 fn unique_vec(v: &[u32]) -> Vec<u32> {
-    let mut r = v.to_vec();
+    let mut r: Vec<u32> = v.iter().map(|step| step % 8).collect();
     r.sort_unstable();
     r.dedup();
     r
@@ -1529,6 +1529,35 @@ mod tests {
         });
         assert_eq!(score.sections.len(), 6);
         assert!(score.section("cruise").unwrap().events.len() > 8);
+    }
+
+    #[test]
+    fn generated_events_stay_inside_their_sections() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "final-lap-99"] {
+                let score = generate_pocket_circuit(&GenerateInput {
+                    secret: String::new(),
+                    seed: seed.into(),
+                    style,
+                    palette: InstrumentPalette::default(),
+                    energy: 0.9,
+                    complexity: 0.9,
+                    brightness: 0.9,
+                    syncopation: 0.1,
+                });
+                for section in &score.sections {
+                    for event in &section.events {
+                        assert!(
+                            event.start_tick() + event.duration_ticks() <= section.length_ticks,
+                            "{} exceeds section {} for {} {seed}",
+                            super::a_id(event),
+                            section.id,
+                            style.as_str(),
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

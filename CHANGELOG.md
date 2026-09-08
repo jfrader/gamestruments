@@ -7,6 +7,7 @@
 
 ### Changed
 - Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
+- Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
 - Audio Lab: removed duplicate application state introduced during the UI split so playback, regeneration, phase changes, and both play controls stay synchronized.

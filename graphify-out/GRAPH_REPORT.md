@@ -1,28 +1,28 @@
 # Graph Report - gamestruments-GURI-639  (2026-09-08)
 
 ## Corpus Check
-- 92 files · ~93,837 words
+- 92 files · ~93,978 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1010 nodes · 1845 edges · 55 communities (45 shown, 7 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 21 edges (avg confidence: 0.84)
+- 1013 nodes · 1852 edges · 56 communities (46 shown, 7 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 22 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `637d6c35`
+- Built from commit: `c78e7877`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - lantern-trail-generator.ts
 - DemoAudioEngine
-- runtime/src/index.ts
+- audio-engine.ts
 - generate-cli.ts
 - scripts
 - studio/package.json
 - pocket-circuit-generator.ts
-- GamestrumentsPlayer
+- AdaptiveTransport
 - export-score.ts
 - manifest.json
 - generator.test.ts
@@ -31,6 +31,7 @@
 - createSection
 - compilerOptions
 - compilerOptions
+- wasm-engine.ts
 - phaseMelodyOnsets
 - strudel.d.ts
 - createAuthoringScore
@@ -38,7 +39,7 @@
 - studio-import-smoke.mjs
 - update-golden-fixtures.mjs
 - pocket_circuit.rs
-- AdaptiveTransport
+- GamestrumentsPlayer
 - state.ts
 - synth.rs
 - render.rs
@@ -70,7 +71,7 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `DemoAudioEngine` - 48 edges
-2. `generate_pocket_circuit()` - 28 edges
+2. `generate_pocket_circuit()` - 29 edges
 3. `build_section_faithful()` - 28 edges
 4. `AdaptiveTransport` - 22 edges
 5. `PortableScore` - 21 edges
@@ -95,23 +96,23 @@
 ## Import Cycles
 - 1-file cycle: `crates/engine/src/synth.rs -> crates/engine/src/synth.rs`
 
-## Communities (55 total, 7 thin omitted)
+## Communities (56 total, 7 thin omitted)
 
 ### Community 0 - "lantern-trail-generator.ts"
 Cohesion: 0.05
 Nodes (62): canonicalizeSeed(), clamp(), clampUnit(), createArrangementDNA(), createAuthoringScore(), createBassPattern(), createChordPattern(), createDNA() (+54 more)
 
 ### Community 1 - "DemoAudioEngine"
-Cohesion: 0.09
-Nodes (25): clamp(), createBitcrushCurve(), createTransitionCurve(), DemoAudioEngine, deterministicUnit(), eventMatchesSolo(), midiToFrequency(), NoteEvent (+17 more)
+Cohesion: 0.15
+Nodes (4): clamp(), DemoAudioEngine, deterministicUnit(), midiToFrequency()
 
-### Community 2 - "runtime/src/index.ts"
-Cohesion: 0.09
-Nodes (32): loopDistance(), melodyMotion(), onsetPulse(), OrbitMotion, orbitMotionAt(), matchesCondition(), selectSection(), eventsInRange() (+24 more)
+### Community 2 - "audio-engine.ts"
+Cohesion: 0.07
+Nodes (46): createBitcrushCurve(), createTransitionCurve(), eventMatchesSolo(), NoteEvent, schedulingStartTick(), SectionBus, sectionSchedulingState(), SYNTH_VOICES (+38 more)
 
 ### Community 3 - "generate-cli.ts"
 Cohesion: 0.09
-Nodes (37): exportScore(), CommonGenerateCliOptions, emit(), FLAG_OPTIONS, GenerateCliOptions, GenerationRecipe, LANTERN_ONLY_OPTIONS, LanternTrailCliOptions (+29 more)
+Nodes (41): generationPreset, exportScore(), CommonGenerateCliOptions, emit(), FLAG_OPTIONS, GenerateCliOptions, GenerationRecipe, LANTERN_ONLY_OPTIONS (+33 more)
 
 ### Community 4 - "scripts"
 Cohesion: 0.06
@@ -125,9 +126,9 @@ Nodes (28): @gamestruments/runtime, bin, gamestruments-generate, dependencies, @
 Cohesion: 0.06
 Nodes (36): BarMask, BASS_ONSET_MASKS, BassVoice, CHORD_ONSET_MASKS, clampUnit(), DRIVE_PHASES, HarmonyVoice, KEY_PITCH_CLASSES (+28 more)
 
-### Community 7 - "GamestrumentsPlayer"
-Cohesion: 0.13
-Nodes (11): Base, GamestrumentsExtension, GamestrumentsPlayer, Option, PortableScore, Self, Drop, ExtensionLibrary (+3 more)
+### Community 7 - "AdaptiveTransport"
+Cohesion: 0.25
+Nodes (11): AdaptiveTransport, race_state_crosses_into_cruise(), Option, PortableScore, Result, Self, String, score() (+3 more)
 
 ### Community 8 - "export-score.ts"
 Cohesion: 0.10
@@ -161,6 +162,10 @@ Nodes (16): compilerOptions, allowImportingTsExtensions, declaration, declaratio
 Cohesion: 0.10
 Nodes (20): compilerOptions, allowImportingTsExtensions, declaration, declarationMap, emitDeclarationOnly, module, moduleResolution, noEmit (+12 more)
 
+### Community 16 - "wasm-engine.ts"
+Cohesion: 0.58
+Nodes (8): allocAndWrite(), ensureLoaded(), generateScore(), GenerateScoreParams, getExports(), getMemory(), readOutput(), renderWav()
+
 ### Community 17 - "phaseMelodyOnsets"
 Cohesion: 0.28
 Nodes (9): breakConsecutiveRuns(), createMelodyPattern(), createPercussionPattern(), distributedSteps(), fillSteps(), melodyDegreesForBar(), percussionOnsets(), phaseMelodyOnsets() (+1 more)
@@ -175,15 +180,15 @@ Nodes (7): canonicalizeSeed(), createAuthoringScore(), derivePocketCircuitDomain
 
 ### Community 29 - "pocket_circuit.rs"
 Cohesion: 0.07
-Nodes (70): a_id(), arrangement_groove(), ArrangementDna, b_id(), bass_mask(), break_consecutive_runs(), build_section_faithful(), chord_mask() (+62 more)
+Nodes (71): a_id(), arrangement_groove(), ArrangementDna, b_id(), bass_mask(), break_consecutive_runs(), build_section_faithful(), chord_mask() (+63 more)
 
-### Community 30 - "AdaptiveTransport"
-Cohesion: 0.08
-Nodes (26): AdaptiveCondition, AdaptiveTransport, AdaptiveCondition, AdaptiveRule, GameState, MusicEvent, PortableScore, PortableSection (+18 more)
+### Community 30 - "GamestrumentsPlayer"
+Cohesion: 0.06
+Nodes (26): AdaptiveCondition, AdaptiveTransport, Base, AdaptiveCondition, AdaptiveRule, GameState, MusicEvent, PortableScore (+18 more)
 
 ### Community 31 - "state.ts"
 Cohesion: 0.07
-Nodes (56): SoloMode, elements, requireElement(), animate(), renderCurrentScore(), togglePlayback(), activateExperiment(), activeExperimentIndex (+48 more)
+Nodes (53): SoloMode, elements, requireElement(), animate(), applyGenerationRequest(), renderCurrentScore(), togglePlayback(), loopDistance() (+45 more)
 
 ### Community 32 - "synth.rs"
 Cohesion: 0.14
@@ -285,17 +290,17 @@ Nodes (3): In-game engine, Known issues, Toolchain
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PortableScore` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `generate-cli.ts`, `pocket-circuit-generator.ts`, `export-score.ts`, `generator.test.ts`, `state.ts`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
-- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `runtime/src/index.ts`, `state.ts`?**
-  _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Why does `AdaptiveTransport` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `generator.test.ts`, `state.ts`?**
-  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `PortableScore` connect `audio-engine.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `generate-cli.ts`, `pocket-circuit-generator.ts`, `export-score.ts`, `generator.test.ts`, `wasm-engine.ts`, `state.ts`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
+- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `audio-engine.ts`, `state.ts`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Why does `AdaptiveTransport` connect `audio-engine.ts` to `lantern-trail-generator.ts`, `generator.test.ts`, `state.ts`?**
+  _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `generate_pocket_circuit()` (e.g. with `main()` and `produce()`) actually correct?**
   _`generate_pocket_circuit()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `NoteEvent`, `SynthVoice`, `TransitionCurve` to the rest of the system?**
   _361 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `lantern-trail-generator.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.0539906103286385 - nodes in this community are weakly interconnected._
-- **Should `DemoAudioEngine` be split into smaller, more focused modules?**
-  _Cohesion score 0.08593396653098145 - nodes in this community are weakly interconnected._
+- **Should `audio-engine.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.0662004662004662 - nodes in this community are weakly interconnected._

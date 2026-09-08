@@ -238,84 +238,6 @@
       "source_location": "L225"
     },
     {
-      "id": "apps_demo_src_audio_engine_noteevent",
-      "label": "NoteEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "noteevent",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_sectionbus",
-      "label": "SectionBus",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "sectionbus",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L100"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_synthvoice",
-      "label": "SynthVoice",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "synthvoice",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_synthvoicesettings",
-      "label": "SynthVoiceSettings",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "synthvoicesettings",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L109"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_transitioncurve",
-      "label": "TransitionCurve",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "transitioncurve",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "packages_runtime_src_types_musicevent",
-      "label": "MusicEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "musicevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L63"
-    },
-    {
       "id": "packages_studio_src_pocket_circuit_generator_deterministicrandom",
       "label": "DeterministicRandom",
       "_callable": true,
@@ -327,6 +249,19 @@
       "norm_label": "deterministicrandom",
       "source_file": "packages/studio/src/pocket-circuit-generator.ts",
       "source_location": "L277"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_generatescoreparams",
+      "label": "GenerateScoreParams",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "generatescoreparams",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L54"
     },
     {
       "id": "types_strudel_d_strudelfraction",
@@ -381,17 +316,69 @@
       "source_location": "L6"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer_orbitmotion",
-      "label": "OrbitMotion",
+      "id": "apps_demo_src_audio_engine_noteevent",
+      "label": "NoteEvent",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "orbitmotion",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
-      "source_location": "L3"
+      "norm_label": "noteevent",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_sectionbus",
+      "label": "SectionBus",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "sectionbus",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L100"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_synthvoice",
+      "label": "SynthVoice",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "synthvoice",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_synthvoicesettings",
+      "label": "SynthVoiceSettings",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "synthvoicesettings",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L109"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_transitioncurve",
+      "label": "TransitionCurve",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "transitioncurve",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L21"
     },
     {
       "id": "packages_runtime_src_transport_adaptivetransport",
@@ -400,7 +387,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "adaptivetransport",
       "source_file": "packages/runtime/src/transport.ts",
@@ -413,7 +400,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "adaptivecondition",
       "source_file": "packages/runtime/src/types.ts",
@@ -426,11 +413,24 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "gamestate",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L21"
+    },
+    {
+      "id": "packages_runtime_src_types_musicevent",
+      "label": "MusicEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "musicevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L63"
     },
     {
       "id": "packages_runtime_src_types_numericrange",
@@ -439,7 +439,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "numericrange",
       "source_file": "packages/runtime/src/types.ts",
@@ -452,24 +452,11 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "portablescore",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L74"
-    },
-    {
-      "id": "packages_runtime_src_types_portablesection",
-      "label": "PortableSection",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "portablesection",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L65"
     },
     {
       "id": "packages_runtime_src_types_sectiongain",
@@ -478,7 +465,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "sectiongain",
       "source_file": "packages/runtime/src/types.ts",
@@ -491,7 +478,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "sectionid",
       "source_file": "packages/runtime/src/types.ts",
@@ -504,7 +491,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "transitionplan",
       "source_file": "packages/runtime/src/types.ts",
@@ -517,7 +504,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "transitionrequest",
       "source_file": "packages/runtime/src/types.ts",
@@ -530,11 +517,24 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "transportsnapshot",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L100"
+    },
+    {
+      "id": "apps_demo_src_state_generationpreset",
+      "label": "generationPreset",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "generate-cli.ts",
+      "file_type": "code",
+      "norm_label": "generationpreset",
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L58"
     },
     {
       "id": "packages_studio_src_generate_cli_commongenerateclioptions",
@@ -587,6 +587,19 @@
       "norm_label": "lanterntrailclioptions",
       "source_file": "packages/studio/src/generate-cli.ts",
       "source_location": "L104"
+    },
+    {
+      "id": "packages_studio_src_generate_cli_pocketcircuitclioptions",
+      "label": "PocketCircuitCliOptions",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "generate-cli.ts",
+      "file_type": "code",
+      "norm_label": "pocketcircuitclioptions",
+      "source_file": "packages/studio/src/generate-cli.ts",
+      "source_location": "L98"
     },
     {
       "id": "packages_studio_src_generation_manifest_lanterntrailgenerationmanifest",
@@ -667,6 +680,19 @@
       "source_location": "L126"
     },
     {
+      "id": "packages_studio_src_pocket_circuit_generator_normalizedmusictraits",
+      "label": "NormalizedMusicTraits",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "generate-cli.ts",
+      "file_type": "code",
+      "norm_label": "normalizedmusictraits",
+      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
+      "source_location": "L27"
+    },
+    {
       "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitdomainseeds",
       "label": "PocketCircuitDomainSeeds",
       "_callable": true,
@@ -693,6 +719,19 @@
       "source_location": "L41"
     },
     {
+      "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitstyle",
+      "label": "PocketCircuitStyle",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "generate-cli.ts",
+      "file_type": "code",
+      "norm_label": "pocketcircuitstyle",
+      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
+      "source_location": "L25"
+    },
+    {
       "id": "apps_demo_src_audio_engine_solomode",
       "label": "SoloMode",
       "_callable": true,
@@ -706,17 +745,17 @@
       "source_location": "L20"
     },
     {
-      "id": "apps_demo_src_state_generationpreset",
-      "label": "generationPreset",
+      "id": "apps_demo_src_orbit_visualizer_orbitmotion",
+      "label": "OrbitMotion",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 31,
       "community_name": "state.ts",
       "file_type": "code",
-      "norm_label": "generationpreset",
-      "source_file": "apps/demo/src/state.ts",
-      "source_location": "L58"
+      "norm_label": "orbitmotion",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "source_location": "L3"
     },
     {
       "id": "apps_demo_src_ui_viewname",
@@ -732,56 +771,17 @@
       "source_location": "L14"
     },
     {
-      "id": "apps_demo_src_wasm_engine_generatescoreparams",
-      "label": "GenerateScoreParams",
+      "id": "packages_runtime_src_types_portablesection",
+      "label": "PortableSection",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 31,
       "community_name": "state.ts",
       "file_type": "code",
-      "norm_label": "generatescoreparams",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L54"
-    },
-    {
-      "id": "packages_studio_src_generate_cli_pocketcircuitclioptions",
-      "label": "PocketCircuitCliOptions",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitclioptions",
-      "source_file": "packages/studio/src/generate-cli.ts",
-      "source_location": "L98"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_generator_normalizedmusictraits",
-      "label": "NormalizedMusicTraits",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "normalizedmusictraits",
-      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
-      "source_location": "L27"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitstyle",
-      "label": "PocketCircuitStyle",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitstyle",
-      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
-      "source_location": "L25"
+      "norm_label": "portablesection",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L65"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_barmask",
@@ -1641,30 +1641,6 @@
       "source_location": "L212"
     },
     {
-      "id": "apps_demo_src_audio_engine_createbitcrushcurve",
-      "label": "createBitcrushCurve()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "createbitcrushcurve()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L202"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_createtransitioncurve",
-      "label": "createTransitionCurve()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "createtransitioncurve()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L53"
-    },
-    {
       "id": "apps_demo_src_audio_engine_demoaudioengine_activatesection",
       "label": ".#activateSection()",
       "_callable": true,
@@ -1735,6 +1711,18 @@
       "norm_label": ".#cleanupafter()",
       "source_file": "apps/demo/src/audio-engine.ts",
       "source_location": "L1377"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_demoaudioengine_constructor",
+      "label": ".constructor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "DemoAudioEngine",
+      "file_type": "code",
+      "norm_label": ".constructor()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L240"
     },
     {
       "id": "apps_demo_src_audio_engine_demoaudioengine_createnoisebuffer",
@@ -2145,18 +2133,6 @@
       "source_location": "L216"
     },
     {
-      "id": "apps_demo_src_audio_engine_eventmatchessolo",
-      "label": "eventMatchesSolo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "eventmatchessolo()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L92"
-    },
-    {
       "id": "apps_demo_src_audio_engine_miditofrequency",
       "label": "midiToFrequency()",
       "_callable": true,
@@ -2167,54 +2143,6 @@
       "norm_label": "miditofrequency()",
       "source_file": "apps/demo/src/audio-engine.ts",
       "source_location": "L198"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_schedulingstarttick",
-      "label": "schedulingStartTick()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "schedulingstarttick()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L74"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_sectionschedulingstate",
-      "label": "sectionSchedulingState()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "sectionschedulingstate()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L81"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_transitioncurveforevent",
-      "label": "transitionCurveForEvent()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "transitioncurveforevent()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L23"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_transitiongainat",
-      "label": "transitionGainAt()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "transitiongainat()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L29"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_createpocketcircuitmusicaldna",
@@ -2685,6 +2613,90 @@
       "source_location": "L1209"
     },
     {
+      "id": "apps_demo_src_wasm_engine_allocandwrite",
+      "label": "allocAndWrite()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "allocandwrite()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L34"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_ensureloaded",
+      "label": "ensureLoaded()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "ensureloaded()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_generatescore",
+      "label": "generateScore()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "generatescore()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L63"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_getexports",
+      "label": "getExports()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "getexports()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L22"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_getmemory",
+      "label": "getMemory()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "getmemory()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L29"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_readoutput",
+      "label": "readOutput()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "readoutput()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L46"
+    },
+    {
+      "id": "apps_demo_src_wasm_engine_renderwav",
+      "label": "renderWav()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "renderwav()",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L85"
+    },
+    {
       "id": "packages_studio_src_pocket_circuit_generator_breakconsecutiveruns",
       "label": "breakConsecutiveRuns()",
       "_callable": true,
@@ -2829,64 +2841,88 @@
       "source_location": "L19"
     },
     {
-      "id": "apps_demo_src_audio_engine_demoaudioengine_constructor",
-      "label": ".constructor()",
+      "id": "apps_demo_src_audio_engine_createbitcrushcurve",
+      "label": "createBitcrushCurve()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": ".constructor()",
+      "norm_label": "createbitcrushcurve()",
       "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L240"
+      "source_location": "L202"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer_loopdistance",
-      "label": "loopDistance()",
+      "id": "apps_demo_src_audio_engine_createtransitioncurve",
+      "label": "createTransitionCurve()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "loopdistance()",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
-      "source_location": "L12"
+      "norm_label": "createtransitioncurve()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L53"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer_melodymotion",
-      "label": "melodyMotion()",
+      "id": "apps_demo_src_audio_engine_eventmatchessolo",
+      "label": "eventMatchesSolo()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "melodymotion()",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
-      "source_location": "L36"
+      "norm_label": "eventmatchessolo()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L92"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer_onsetpulse",
-      "label": "onsetPulse()",
+      "id": "apps_demo_src_audio_engine_schedulingstarttick",
+      "label": "schedulingStartTick()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "onsetpulse()",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
-      "source_location": "L16"
+      "norm_label": "schedulingstarttick()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L74"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer_orbitmotionat",
-      "label": "orbitMotionAt()",
+      "id": "apps_demo_src_audio_engine_sectionschedulingstate",
+      "label": "sectionSchedulingState()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "orbitmotionat()",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
-      "source_location": "L72"
+      "norm_label": "sectionschedulingstate()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L81"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_transitioncurveforevent",
+      "label": "transitionCurveForEvent()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "transitioncurveforevent()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L23"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_transitiongainat",
+      "label": "transitionGainAt()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "transitiongainat()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L29"
     },
     {
       "id": "packages_runtime_src_conditions_matchescondition",
@@ -2894,7 +2930,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "matchescondition()",
       "source_file": "packages/runtime/src/conditions.ts",
@@ -2906,7 +2942,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "selectsection()",
       "source_file": "packages/runtime/src/conditions.ts",
@@ -2918,7 +2954,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "eventsinrange()",
       "source_file": "packages/runtime/src/events.ts",
@@ -2930,7 +2966,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".advance()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -2942,7 +2978,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".#asserttick()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -2954,7 +2990,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".constructor()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -2966,7 +3002,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".#createplan()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -2978,7 +3014,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".jumpsection()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -2990,7 +3026,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".mixat()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -3002,7 +3038,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".requestsection()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -3014,7 +3050,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".requeststate()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -3026,7 +3062,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": ".snapshot()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -3038,7 +3074,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "quantizeup()",
       "source_file": "packages/runtime/src/transport.ts",
@@ -3050,7 +3086,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "ispositivesafeinteger()",
       "source_file": "packages/runtime/src/validate-score.ts",
@@ -3062,7 +3098,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "requirevalid()",
       "source_file": "packages/runtime/src/validate-score.ts",
@@ -3074,7 +3110,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "validateportablescore()",
       "source_file": "packages/runtime/src/validate-score.ts",
@@ -3402,6 +3438,18 @@
       "file_type": "code",
       "norm_label": "animate()",
       "source_file": "apps/demo/src/main.ts",
+      "source_location": "L77"
+    },
+    {
+      "id": "apps_demo_src_main_applygenerationrequest",
+      "label": "applyGenerationRequest()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "applygenerationrequest()",
+      "source_file": "apps/demo/src/main.ts",
       "source_location": "L64"
     },
     {
@@ -3426,7 +3474,7 @@
       "file_type": "code",
       "norm_label": "renderruntimesignal()",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L69"
+      "source_location": "L82"
     },
     {
       "id": "apps_demo_src_main_toggleplayback",
@@ -3441,6 +3489,54 @@
       "source_location": "L55"
     },
     {
+      "id": "apps_demo_src_orbit_visualizer_loopdistance",
+      "label": "loopDistance()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "loopdistance()",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "apps_demo_src_orbit_visualizer_melodymotion",
+      "label": "melodyMotion()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "melodymotion()",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "source_location": "L36"
+    },
+    {
+      "id": "apps_demo_src_orbit_visualizer_onsetpulse",
+      "label": "onsetPulse()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "onsetpulse()",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "apps_demo_src_orbit_visualizer_orbitmotionat",
+      "label": "orbitMotionAt()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "orbitmotionat()",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "source_location": "L72"
+    },
+    {
       "id": "apps_demo_src_state_activateexperiment",
       "label": "activateExperiment()",
       "_callable": true,
@@ -3450,7 +3546,7 @@
       "file_type": "code",
       "norm_label": "activateexperiment()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L140"
+      "source_location": "L148"
     },
     {
       "id": "apps_demo_src_state_applyplan",
@@ -3462,7 +3558,7 @@
       "file_type": "code",
       "norm_label": "applyplan()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L106"
+      "source_location": "L114"
     },
     {
       "id": "apps_demo_src_state_currentstate",
@@ -3474,7 +3570,7 @@
       "file_type": "code",
       "norm_label": "currentstate()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L84"
+      "source_location": "L92"
     },
     {
       "id": "apps_demo_src_state_generatecurrentscore",
@@ -3489,6 +3585,18 @@
       "source_location": "L66"
     },
     {
+      "id": "apps_demo_src_state_generaterequestedscore",
+      "label": "generateRequestedScore()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "generaterequestedscore()",
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L70"
+    },
+    {
       "id": "apps_demo_src_state_initializelab",
       "label": "initializeLab()",
       "_callable": true,
@@ -3498,7 +3606,7 @@
       "file_type": "code",
       "norm_label": "initializelab()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L78"
+      "source_location": "L86"
     },
     {
       "id": "apps_demo_src_state_jumptosection",
@@ -3510,7 +3618,7 @@
       "file_type": "code",
       "norm_label": "jumptosection()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L133"
+      "source_location": "L141"
     },
     {
       "id": "apps_demo_src_state_nextlevelseed",
@@ -3522,7 +3630,7 @@
       "file_type": "code",
       "norm_label": "nextlevelseed()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L200"
+      "source_location": "L211"
     },
     {
       "id": "apps_demo_src_state_requestexperiment",
@@ -3534,7 +3642,7 @@
       "file_type": "code",
       "norm_label": "requestexperiment()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L182"
+      "source_location": "L193"
     },
     {
       "id": "apps_demo_src_state_requestmusicstate",
@@ -3546,7 +3654,7 @@
       "file_type": "code",
       "norm_label": "requestmusicstate()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L111"
+      "source_location": "L119"
     },
     {
       "id": "apps_demo_src_state_sectionbyid",
@@ -3558,7 +3666,7 @@
       "file_type": "code",
       "norm_label": "sectionbyid()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L98"
+      "source_location": "L106"
     },
     {
       "id": "apps_demo_src_state_setcomparisonbaseseed",
@@ -3570,7 +3678,7 @@
       "file_type": "code",
       "norm_label": "setcomparisonbaseseed()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L242"
+      "source_location": "L253"
     },
     {
       "id": "apps_demo_src_state_setphase",
@@ -3582,7 +3690,7 @@
       "file_type": "code",
       "norm_label": "setphase()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L246"
+      "source_location": "L257"
     },
     {
       "id": "apps_demo_src_state_setsolomode",
@@ -3594,7 +3702,7 @@
       "file_type": "code",
       "norm_label": "setsolomode()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L250"
+      "source_location": "L261"
     },
     {
       "id": "apps_demo_src_state_toggleengine",
@@ -3606,7 +3714,7 @@
       "file_type": "code",
       "norm_label": "toggleengine()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L218"
+      "source_location": "L229"
     },
     {
       "id": "apps_demo_src_state_traitsfromcontrols",
@@ -3618,7 +3726,7 @@
       "file_type": "code",
       "norm_label": "traitsfromcontrols()",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L209"
+      "source_location": "L220"
     },
     {
       "id": "apps_demo_src_ui_announceaudition",
@@ -3763,90 +3871,6 @@
       "norm_label": "setstartbutton()",
       "source_file": "apps/demo/src/ui.ts",
       "source_location": "L175"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_allocandwrite",
-      "label": "allocAndWrite()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "allocandwrite()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L34"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_ensureloaded",
-      "label": "ensureLoaded()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "ensureloaded()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_generatescore",
-      "label": "generateScore()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "generatescore()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L63"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_getexports",
-      "label": "getExports()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "getexports()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L22"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_getmemory",
-      "label": "getMemory()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "getmemory()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L29"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_readoutput",
-      "label": "readOutput()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "readoutput()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L46"
-    },
-    {
-      "id": "apps_demo_src_wasm_engine_renderwav",
-      "label": "renderWav()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "state.ts",
-      "file_type": "code",
-      "norm_label": "renderwav()",
-      "source_file": "apps/demo/src/wasm-engine.ts",
-      "source_location": "L85"
     },
     {
       "id": "tests_wasm_parity_allocandwrite",
@@ -4239,127 +4263,6 @@
       "norm_label": "balanced_traits",
       "source_file": "tests/lantern-trail.test.ts",
       "source_location": "L25"
-    },
-    {
-      "id": "apps_demo_src_audio_engine",
-      "label": "audio-engine.ts",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "audio-engine.ts",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "apps_demo_src_audio_engine_synth_voices",
-      "label": "SYNTH_VOICES",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "synth_voices",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L127"
-    },
-    {
-      "id": "tests_audio_engine_test",
-      "label": "audio-engine.test.ts",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "audio-engine.test.ts",
-      "source_file": "tests/audio-engine.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_audio_engine_test_bass",
-      "label": "bass",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "bass",
-      "source_file": "tests/audio-engine.test.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "tests_audio_engine_test_harmony",
-      "label": "harmony",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "harmony",
-      "source_file": "tests/audio-engine.test.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "tests_audio_engine_test_melody",
-      "label": "melody",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "melody",
-      "source_file": "tests/audio-engine.test.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "tests_audio_engine_test_percussion",
-      "label": "percussion",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "percussion",
-      "source_file": "tests/audio-engine.test.ts",
-      "source_location": "L39"
-    },
-    {
-      "id": "tests_audition_test",
-      "label": "audition.test.ts",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "audition.test.ts",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_audition_test_harmony",
-      "label": "harmony",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "harmony",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "tests_audition_test_melody",
-      "label": "melody",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "melody",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "tests_audition_test_percussion",
-      "label": "percussion",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "percussion",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L31"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_default_pocket_circuit_traits",
@@ -5220,6 +5123,17 @@
       "source_location": "L14"
     },
     {
+      "id": "apps_demo_src_wasm_engine",
+      "label": "wasm-engine.ts",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "wasm-engine.ts",
+      "file_type": "code",
+      "norm_label": "wasm-engine.ts",
+      "source_file": "apps/demo/src/wasm-engine.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "types_strudel_d",
       "label": "strudel.d.ts",
       "_origin": "ast",
@@ -5242,22 +5156,33 @@
       "source_location": "L1"
     },
     {
-      "id": "apps_demo_src_orbit_visualizer",
-      "label": "orbit-visualizer.ts",
+      "id": "apps_demo_src_audio_engine",
+      "label": "audio-engine.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "orbit-visualizer.ts",
-      "source_file": "apps/demo/src/orbit-visualizer.ts",
+      "norm_label": "audio-engine.ts",
+      "source_file": "apps/demo/src/audio-engine.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "apps_demo_src_audio_engine_synth_voices",
+      "label": "SYNTH_VOICES",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "synth_voices",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L127"
     },
     {
       "id": "packages_runtime_src_conditions",
       "label": "conditions.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "conditions.ts",
       "source_file": "packages/runtime/src/conditions.ts",
@@ -5268,7 +5193,7 @@
       "label": "events.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "events.ts",
       "source_file": "packages/runtime/src/events.ts",
@@ -5279,7 +5204,7 @@
       "label": "runtime/src/index.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "runtime/src/index.ts",
       "source_file": "packages/runtime/src/index.ts",
@@ -5290,7 +5215,7 @@
       "label": "transport.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "transport.ts",
       "source_file": "packages/runtime/src/transport.ts",
@@ -5301,7 +5226,7 @@
       "label": "types.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "types.ts",
       "source_file": "packages/runtime/src/types.ts",
@@ -5312,7 +5237,7 @@
       "label": "SCORE_SCHEMA_VERSION",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "score_schema_version",
       "source_file": "packages/runtime/src/types.ts",
@@ -5323,7 +5248,7 @@
       "label": "validate-score.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "validate-score.ts",
       "source_file": "packages/runtime/src/validate-score.ts",
@@ -5334,7 +5259,7 @@
       "label": "NOTE_VOICES",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "note_voices",
       "source_file": "packages/runtime/src/validate-score.ts",
@@ -5345,40 +5270,117 @@
       "label": "PERCUSSION_VOICES",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "percussion_voices",
       "source_file": "packages/runtime/src/validate-score.ts",
       "source_location": "L15"
     },
     {
-      "id": "tests_orbit_visualizer_test",
-      "label": "orbit-visualizer.test.ts",
+      "id": "tests_audio_engine_test",
+      "label": "audio-engine.test.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "orbit-visualizer.test.ts",
-      "source_file": "tests/orbit-visualizer.test.ts",
+      "norm_label": "audio-engine.test.ts",
+      "source_file": "tests/audio-engine.test.ts",
       "source_location": "L1"
     },
     {
-      "id": "tests_orbit_visualizer_test_section",
-      "label": "section",
+      "id": "tests_audio_engine_test_bass",
+      "label": "bass",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
-      "norm_label": "section",
-      "source_file": "tests/orbit-visualizer.test.ts",
-      "source_location": "L5"
+      "norm_label": "bass",
+      "source_file": "tests/audio-engine.test.ts",
+      "source_location": "L31"
+    },
+    {
+      "id": "tests_audio_engine_test_harmony",
+      "label": "harmony",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "harmony",
+      "source_file": "tests/audio-engine.test.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "tests_audio_engine_test_melody",
+      "label": "melody",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "melody",
+      "source_file": "tests/audio-engine.test.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "tests_audio_engine_test_percussion",
+      "label": "percussion",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "percussion",
+      "source_file": "tests/audio-engine.test.ts",
+      "source_location": "L39"
+    },
+    {
+      "id": "tests_audition_test",
+      "label": "audition.test.ts",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "audition.test.ts",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_audition_test_harmony",
+      "label": "harmony",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "harmony",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "tests_audition_test_melody",
+      "label": "melody",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "melody",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "tests_audition_test_percussion",
+      "label": "percussion",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "audio-engine.ts",
+      "file_type": "code",
+      "norm_label": "percussion",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L31"
     },
     {
       "id": "tests_runtime_import_smoke",
       "label": "runtime-import-smoke.mjs",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "runtime-import-smoke.mjs",
       "source_file": "tests/runtime-import-smoke.mjs",
@@ -5389,7 +5391,7 @@
       "label": "emittedSource",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "emittedsource",
       "source_file": "tests/runtime-import-smoke.mjs",
@@ -5400,7 +5402,7 @@
       "label": "javascriptFiles",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "javascriptfiles",
       "source_file": "tests/runtime-import-smoke.mjs",
@@ -5411,7 +5413,7 @@
       "label": "runtimeDist",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "runtimedist",
       "source_file": "tests/runtime-import-smoke.mjs",
@@ -5422,7 +5424,7 @@
       "label": "score",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "score",
       "source_file": "tests/runtime-import-smoke.mjs",
@@ -5433,7 +5435,7 @@
       "label": "runtime.test.ts",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "runtime.test.ts",
       "source_file": "tests/runtime.test.ts",
@@ -5444,7 +5446,7 @@
       "label": "score",
       "_origin": "ast",
       "community": 2,
-      "community_name": "runtime/src/index.ts",
+      "community_name": "audio-engine.ts",
       "file_type": "code",
       "norm_label": "score",
       "source_file": "tests/runtime.test.ts",
@@ -5814,6 +5816,17 @@
       "source_location": "L508"
     },
     {
+      "id": "crates_engine_src_pocket_circuit_generated_events_stay_inside_their_sections",
+      "label": "generated_events_stay_inside_their_sections()",
+      "_origin": "ast",
+      "community": 29,
+      "community_name": "pocket_circuit.rs",
+      "file_type": "code",
+      "norm_label": "generated_events_stay_inside_their_sections()",
+      "source_file": "crates/engine/src/pocket_circuit.rs",
+      "source_location": "L1535"
+    },
+    {
       "id": "crates_engine_src_pocket_circuit_generateinput",
       "label": "GenerateInput",
       "_origin": "ast",
@@ -6053,7 +6066,7 @@
       "file_type": "code",
       "norm_label": "reserved_take_reproduces_catalog()",
       "source_file": "crates/engine/src/pocket_circuit.rs",
-      "source_location": "L1535"
+      "source_location": "L1564"
     },
     {
       "id": "crates_engine_src_pocket_circuit_resolve_section_harmony",
@@ -6588,7 +6601,7 @@
       "label": "AdaptiveCondition",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "adaptivecondition",
       "source_file": "",
@@ -6599,9 +6612,20 @@
       "label": "AdaptiveTransport",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "adaptivetransport",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "base",
+      "label": "Base",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "GamestrumentsPlayer",
+      "file_type": "code",
+      "norm_label": "base",
       "source_file": "",
       "source_location": ""
     },
@@ -6610,7 +6634,7 @@
       "label": "engine/src/lib.rs",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "engine/src/lib.rs",
       "source_file": "crates/engine/src/lib.rs",
@@ -6621,7 +6645,7 @@
       "label": "score.rs",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "score.rs",
       "source_file": "crates/engine/src/score.rs",
@@ -6632,7 +6656,7 @@
       "label": "AdaptiveCondition",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "adaptivecondition",
       "source_file": "crates/engine/src/score.rs",
@@ -6643,7 +6667,7 @@
       "label": "AdaptiveRule",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "adaptiverule",
       "source_file": "crates/engine/src/score.rs",
@@ -6654,7 +6678,7 @@
       "label": "GameState",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "gamestate",
       "source_file": "crates/engine/src/score.rs",
@@ -6665,7 +6689,7 @@
       "label": "MusicEvent",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "musicevent",
       "source_file": "crates/engine/src/score.rs",
@@ -6676,7 +6700,7 @@
       "label": ".duration_ticks()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".duration_ticks()",
       "source_file": "crates/engine/src/score.rs",
@@ -6687,7 +6711,7 @@
       "label": ".is_melody()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".is_melody()",
       "source_file": "crates/engine/src/score.rs",
@@ -6698,7 +6722,7 @@
       "label": ".pitch()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".pitch()",
       "source_file": "crates/engine/src/score.rs",
@@ -6709,7 +6733,7 @@
       "label": ".start_tick()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".start_tick()",
       "source_file": "crates/engine/src/score.rs",
@@ -6720,7 +6744,7 @@
       "label": ".velocity()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".velocity()",
       "source_file": "crates/engine/src/score.rs",
@@ -6731,7 +6755,7 @@
       "label": ".voice()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".voice()",
       "source_file": "crates/engine/src/score.rs",
@@ -6742,7 +6766,7 @@
       "label": "PortableScore",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "portablescore",
       "source_file": "crates/engine/src/score.rs",
@@ -6753,7 +6777,7 @@
       "label": ".bar_ticks()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".bar_ticks()",
       "source_file": "crates/engine/src/score.rs",
@@ -6764,7 +6788,7 @@
       "label": ".section()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".section()",
       "source_file": "crates/engine/src/score.rs",
@@ -6775,7 +6799,7 @@
       "label": ".ticks_per_second()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": ".ticks_per_second()",
       "source_file": "crates/engine/src/score.rs",
@@ -6786,7 +6810,7 @@
       "label": "PortableSection",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "portablesection",
       "source_file": "crates/engine/src/score.rs",
@@ -6797,7 +6821,7 @@
       "label": "AdaptiveRule",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "adaptiverule",
       "source_file": "",
@@ -6808,7 +6832,7 @@
       "label": "MusicEvent",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "musicevent",
       "source_file": "",
@@ -6819,7 +6843,7 @@
       "label": "Option",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "option",
       "source_file": "",
@@ -6830,7 +6854,7 @@
       "label": "PortableSection",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "portablesection",
       "source_file": "",
@@ -6841,7 +6865,7 @@
       "label": "String",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "string",
       "source_file": "",
@@ -6852,218 +6876,218 @@
       "label": "Vec",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "vec",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport",
-      "label": "transport.rs",
+      "id": "crates_godot_src_lib",
+      "label": "godot/src/lib.rs",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "transport.rs",
-      "source_file": "crates/engine/src/transport.rs",
+      "norm_label": "godot/src/lib.rs",
+      "source_file": "crates/godot/src/lib.rs",
       "source_location": "L1"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport",
-      "label": "AdaptiveTransport",
+      "id": "crates_godot_src_lib_gamestrumentsextension",
+      "label": "GamestrumentsExtension",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "adaptivetransport",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L11"
+      "norm_label": "gamestrumentsextension",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L10"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_advance",
-      "label": ".advance()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer",
+      "label": "GamestrumentsPlayer",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".advance()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L77"
+      "norm_label": "gamestrumentsplayer",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L17"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_create_plan",
-      "label": ".create_plan()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_cleanup_audio_child",
+      "label": ".cleanup_audio_child()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".create_plan()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L113"
+      "norm_label": ".cleanup_audio_child()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L154"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_current_section",
-      "label": ".current_section()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_drop",
+      "label": ".drop()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".current_section()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L37"
+      "norm_label": ".drop()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L252"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_new",
-      "label": ".new()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_exit_tree",
+      "label": ".exit_tree()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".new()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L20"
+      "norm_label": ".exit_tree()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L88"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_request_section",
-      "label": ".request_section()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_generate",
+      "label": ".generate()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".request_section()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L46"
+      "norm_label": ".generate()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L179"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_request_state",
-      "label": ".request_state()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_init",
+      "label": ".init()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".request_state()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L41"
+      "norm_label": ".init()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L50"
     },
     {
-      "id": "crates_engine_src_transport_adaptivetransport_section_gain",
-      "label": ".section_gain()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_process",
+      "label": ".process()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": ".section_gain()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L92"
+      "norm_label": ".process()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L96"
     },
     {
-      "id": "crates_engine_src_transport_race_state_crosses_into_cruise",
-      "label": "race_state_crosses_into_cruise()",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_ready",
+      "label": ".ready()",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "race_state_crosses_into_cruise()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L165"
+      "norm_label": ".ready()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L72"
     },
     {
-      "id": "crates_engine_src_transport_rs_option",
+      "id": "crates_godot_src_lib_gamestrumentsplayer_set_race_state",
+      "label": ".set_race_state()",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "GamestrumentsPlayer",
+      "file_type": "code",
+      "norm_label": ".set_race_state()",
+      "source_file": "crates/godot/src/lib.rs",
+      "source_location": "L216"
+    },
+    {
+      "id": "crates_godot_src_lib_rs_option",
       "label": "Option",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "option",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_rs_portablescore",
+      "id": "crates_godot_src_lib_rs_portablescore",
       "label": "PortableScore",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "portablescore",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_rs_result",
-      "label": "Result",
-      "_origin": "ast",
-      "community": 30,
-      "community_name": "AdaptiveTransport",
-      "file_type": "code",
-      "norm_label": "result",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "crates_engine_src_transport_rs_self",
+      "id": "crates_godot_src_lib_rs_self",
       "label": "Self",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "self",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_rs_string",
-      "label": "String",
+      "id": "drop",
+      "label": "Drop",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "string",
+      "norm_label": "drop",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_score",
-      "label": "score()",
+      "id": "extensionlibrary",
+      "label": "ExtensionLibrary",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "score()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L151"
+      "norm_label": "extensionlibrary",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_select_section",
-      "label": "select_section()",
+      "id": "gstring",
+      "label": "GString",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "select_section()",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L126"
+      "norm_label": "gstring",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "crates_engine_src_transport_transitionplan",
-      "label": "TransitionPlan",
+      "id": "inode",
+      "label": "INode",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "transitionplan",
-      "source_file": "crates/engine/src/transport.rs",
-      "source_location": "L4"
+      "norm_label": "inode",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "gamestate",
-      "label": "GameState",
+      "id": "node",
+      "label": "Node",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
-      "norm_label": "gamestate",
+      "norm_label": "node",
       "source_file": "",
       "source_location": ""
     },
@@ -7072,7 +7096,7 @@
       "label": "Value",
       "_origin": "ast",
       "community": 30,
-      "community_name": "AdaptiveTransport",
+      "community_name": "GamestrumentsPlayer",
       "file_type": "code",
       "norm_label": "value",
       "source_file": "",
@@ -7109,6 +7133,17 @@
       "file_type": "code",
       "norm_label": "main.ts",
       "source_file": "apps/demo/src/main.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "apps_demo_src_orbit_visualizer",
+      "label": "orbit-visualizer.ts",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "orbit-visualizer.ts",
+      "source_file": "apps/demo/src/orbit-visualizer.ts",
       "source_location": "L1"
     },
     {
@@ -7244,15 +7279,26 @@
       "source_location": "L17"
     },
     {
-      "id": "apps_demo_src_wasm_engine",
-      "label": "wasm-engine.ts",
+      "id": "tests_orbit_visualizer_test",
+      "label": "orbit-visualizer.test.ts",
       "_origin": "ast",
       "community": 31,
       "community_name": "state.ts",
       "file_type": "code",
-      "norm_label": "wasm-engine.ts",
-      "source_file": "apps/demo/src/wasm-engine.ts",
+      "norm_label": "orbit-visualizer.test.ts",
+      "source_file": "tests/orbit-visualizer.test.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "tests_orbit_visualizer_test_section",
+      "label": "section",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "state.ts",
+      "file_type": "code",
+      "norm_label": "section",
+      "source_file": "tests/orbit-visualizer.test.ts",
+      "source_location": "L5"
     },
     {
       "id": "crates_engine_src_synth",
@@ -9232,7 +9278,7 @@
       "source_location": "L5"
     },
     {
-      "id": "changelog_added_19",
+      "id": "changelog_added_20",
       "label": "Added",
       "_origin": "ast",
       "community": 45,
@@ -9241,7 +9287,7 @@
       "node_kind": "heading",
       "norm_label": "added",
       "source_file": "CHANGELOG.md",
-      "source_location": "L19"
+      "source_location": "L20"
     },
     {
       "id": "changelog_changed",
@@ -9277,10 +9323,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L11"
+      "source_location": "L12"
     },
     {
-      "id": "changelog_fixed_117",
+      "id": "changelog_fixed_118",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -9289,10 +9335,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L117"
+      "source_location": "L118"
     },
     {
-      "id": "changelog_fixed_86",
+      "id": "changelog_fixed_87",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -9301,7 +9347,7 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L86"
+      "source_location": "L87"
     },
     {
       "id": "changelog_improved",
@@ -9313,7 +9359,7 @@
       "node_kind": "heading",
       "norm_label": "improved",
       "source_file": "CHANGELOG.md",
-      "source_location": "L96"
+      "source_location": "L97"
     },
     {
       "id": "changelog_unreleased",
@@ -11032,222 +11078,211 @@
       "source_location": "L1"
     },
     {
-      "id": "base",
-      "label": "Base",
+      "id": "crates_engine_src_transport",
+      "label": "transport.rs",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "base",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "crates_godot_src_lib",
-      "label": "godot/src/lib.rs",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "GamestrumentsPlayer",
-      "file_type": "code",
-      "norm_label": "godot/src/lib.rs",
-      "source_file": "crates/godot/src/lib.rs",
+      "norm_label": "transport.rs",
+      "source_file": "crates/engine/src/transport.rs",
       "source_location": "L1"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsextension",
-      "label": "GamestrumentsExtension",
+      "id": "crates_engine_src_transport_adaptivetransport",
+      "label": "AdaptiveTransport",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "gamestrumentsextension",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L10"
+      "norm_label": "adaptivetransport",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L11"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer",
-      "label": "GamestrumentsPlayer",
+      "id": "crates_engine_src_transport_adaptivetransport_advance",
+      "label": ".advance()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "gamestrumentsplayer",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L17"
+      "norm_label": ".advance()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L77"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_cleanup_audio_child",
-      "label": ".cleanup_audio_child()",
+      "id": "crates_engine_src_transport_adaptivetransport_create_plan",
+      "label": ".create_plan()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".cleanup_audio_child()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L154"
+      "norm_label": ".create_plan()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L113"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_drop",
-      "label": ".drop()",
+      "id": "crates_engine_src_transport_adaptivetransport_current_section",
+      "label": ".current_section()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".drop()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L252"
+      "norm_label": ".current_section()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L37"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_exit_tree",
-      "label": ".exit_tree()",
+      "id": "crates_engine_src_transport_adaptivetransport_new",
+      "label": ".new()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".exit_tree()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L88"
+      "norm_label": ".new()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L20"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_generate",
-      "label": ".generate()",
+      "id": "crates_engine_src_transport_adaptivetransport_request_section",
+      "label": ".request_section()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".generate()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L179"
+      "norm_label": ".request_section()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L46"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_init",
-      "label": ".init()",
+      "id": "crates_engine_src_transport_adaptivetransport_request_state",
+      "label": ".request_state()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".init()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L50"
+      "norm_label": ".request_state()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L41"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_process",
-      "label": ".process()",
+      "id": "crates_engine_src_transport_adaptivetransport_section_gain",
+      "label": ".section_gain()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".process()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L96"
+      "norm_label": ".section_gain()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L92"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_ready",
-      "label": ".ready()",
+      "id": "crates_engine_src_transport_race_state_crosses_into_cruise",
+      "label": "race_state_crosses_into_cruise()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": ".ready()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L72"
+      "norm_label": "race_state_crosses_into_cruise()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L165"
     },
     {
-      "id": "crates_godot_src_lib_gamestrumentsplayer_set_race_state",
-      "label": ".set_race_state()",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "GamestrumentsPlayer",
-      "file_type": "code",
-      "norm_label": ".set_race_state()",
-      "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L216"
-    },
-    {
-      "id": "crates_godot_src_lib_rs_option",
+      "id": "crates_engine_src_transport_rs_option",
       "label": "Option",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
       "norm_label": "option",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_godot_src_lib_rs_portablescore",
+      "id": "crates_engine_src_transport_rs_portablescore",
       "label": "PortableScore",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
       "norm_label": "portablescore",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crates_godot_src_lib_rs_self",
+      "id": "crates_engine_src_transport_rs_result",
+      "label": "Result",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "AdaptiveTransport",
+      "file_type": "code",
+      "norm_label": "result",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "crates_engine_src_transport_rs_self",
       "label": "Self",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
       "norm_label": "self",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "drop",
-      "label": "Drop",
+      "id": "crates_engine_src_transport_rs_string",
+      "label": "String",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "drop",
+      "norm_label": "string",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "extensionlibrary",
-      "label": "ExtensionLibrary",
+      "id": "crates_engine_src_transport_score",
+      "label": "score()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "extensionlibrary",
-      "source_file": "",
-      "source_location": ""
+      "norm_label": "score()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L151"
     },
     {
-      "id": "gstring",
-      "label": "GString",
+      "id": "crates_engine_src_transport_select_section",
+      "label": "select_section()",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "gstring",
-      "source_file": "",
-      "source_location": ""
+      "norm_label": "select_section()",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L126"
     },
     {
-      "id": "inode",
-      "label": "INode",
+      "id": "crates_engine_src_transport_transitionplan",
+      "label": "TransitionPlan",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "inode",
-      "source_file": "",
-      "source_location": ""
+      "norm_label": "transitionplan",
+      "source_file": "crates/engine/src/transport.rs",
+      "source_location": "L4"
     },
     {
-      "id": "node",
-      "label": "Node",
+      "id": "gamestate",
+      "label": "GameState",
       "_origin": "ast",
       "community": 7,
-      "community_name": "GamestrumentsPlayer",
+      "community_name": "AdaptiveTransport",
       "file_type": "code",
-      "norm_label": "node",
+      "norm_label": "gamestate",
       "source_file": "",
       "source_location": ""
     },
@@ -13105,7 +13140,19 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L65",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_demo_src_main_applygenerationrequest",
+      "target": "apps_demo_src_ui_announceaudition",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/demo/src/main.ts",
+      "source_location": "L73",
       "weight": 1.0
     },
     {
@@ -13218,14 +13265,14 @@
     },
     {
       "source": "apps_demo_src_state_activateexperiment",
-      "target": "apps_demo_src_state_generatecurrentscore",
+      "target": "apps_demo_src_state_generaterequestedscore",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L168",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -13237,7 +13284,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L169",
+      "source_location": "L174",
       "weight": 1.0
     },
     {
@@ -13249,7 +13296,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L170",
+      "source_location": "L175",
       "weight": 1.0
     },
     {
@@ -13261,11 +13308,23 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L108",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
       "source": "apps_demo_src_state_generatecurrentscore",
+      "target": "apps_demo_src_state_generaterequestedscore",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L67",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_demo_src_state_generaterequestedscore",
       "target": "apps_demo_src_wasm_engine_generatescore",
       "relation": "calls",
       "_origin": "ast",
@@ -13273,7 +13332,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L68",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -13285,7 +13344,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L79",
+      "source_location": "L87",
       "weight": 1.0
     },
     {
@@ -13297,7 +13356,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L80",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -13309,7 +13368,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L81",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -13321,7 +13380,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L190",
+      "source_location": "L201",
       "weight": 1.0
     },
     {
@@ -13333,7 +13392,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L112",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -13345,7 +13404,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L126",
+      "source_location": "L134",
       "weight": 1.0
     },
     {
@@ -13357,7 +13416,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L231",
+      "source_location": "L242",
       "weight": 1.0
     },
     {
@@ -14021,6 +14080,18 @@
       "weight": 1.0
     },
     {
+      "source": "crates_engine_src_pocket_circuit_generated_events_stay_inside_their_sections",
+      "target": "crates_engine_src_pocket_circuit_generate_pocket_circuit",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "crates/engine/src/pocket_circuit.rs",
+      "source_location": "L1538",
+      "weight": 1.0
+    },
+    {
       "source": "crates_engine_src_pocket_circuit_generates_six_sections",
       "target": "crates_engine_src_pocket_circuit_generate_pocket_circuit",
       "relation": "calls",
@@ -14137,7 +14208,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "crates/engine/src/pocket_circuit.rs",
-      "source_location": "L1546",
+      "source_location": "L1575",
       "weight": 1.0
     },
     {
@@ -14149,7 +14220,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "crates/engine/src/pocket_circuit.rs",
-      "source_location": "L1573",
+      "source_location": "L1602",
       "weight": 1.0
     },
     {
@@ -23688,13 +23759,24 @@
     },
     {
       "source": "apps_demo_src_main",
+      "target": "apps_demo_src_main_applygenerationrequest",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/demo/src/main.ts",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_demo_src_main",
       "target": "apps_demo_src_main_renderruntimesignal",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L69",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -23754,7 +23836,7 @@
     },
     {
       "source": "apps_demo_src_state",
-      "target": "apps_demo_src_state_applyplan",
+      "target": "apps_demo_src_state_sectionbyid",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -23765,13 +23847,24 @@
     },
     {
       "source": "apps_demo_src_state",
+      "target": "apps_demo_src_state_applyplan",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L114",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_demo_src_state",
       "target": "apps_demo_src_state_requestmusicstate",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L111",
+      "source_location": "L119",
       "weight": 1.0
     },
     {
@@ -23782,7 +23875,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L133",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -23793,7 +23886,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L140",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -23804,7 +23897,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L182",
+      "source_location": "L193",
       "weight": 1.0
     },
     {
@@ -23815,7 +23908,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L200",
+      "source_location": "L211",
       "weight": 1.0
     },
     {
@@ -23826,7 +23919,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L209",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -23837,7 +23930,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L218",
+      "source_location": "L229",
       "weight": 1.0
     },
     {
@@ -23859,7 +23952,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L242",
+      "source_location": "L253",
       "weight": 1.0
     },
     {
@@ -23870,7 +23963,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L246",
+      "source_location": "L257",
       "weight": 1.0
     },
     {
@@ -23881,7 +23974,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L250",
+      "source_location": "L261",
       "weight": 1.0
     },
     {
@@ -23996,13 +24089,24 @@
     },
     {
       "source": "apps_demo_src_state",
+      "target": "apps_demo_src_state_generaterequestedscore",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L70",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_demo_src_state",
       "target": "apps_demo_src_state_initializelab",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L78",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -24013,18 +24117,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/demo/src/state.ts",
-      "source_location": "L84",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_demo_src_state",
-      "target": "apps_demo_src_state_sectionbyid",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/demo/src/state.ts",
-      "source_location": "L98",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -24568,35 +24661,35 @@
     },
     {
       "source": "changelog_unreleased",
+      "target": "changelog_fixed_118",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CHANGELOG.md",
+      "source_location": "L118",
+      "weight": 1.0
+    },
+    {
+      "source": "changelog_unreleased",
       "target": "changelog_fixed",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L11",
+      "source_location": "L12",
       "weight": 1.0
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_117",
+      "target": "changelog_added_20",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L117",
-      "weight": 1.0
-    },
-    {
-      "source": "changelog_unreleased",
-      "target": "changelog_added_19",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CHANGELOG.md",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -24623,13 +24716,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_86",
+      "target": "changelog_fixed_87",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L86",
+      "source_location": "L87",
       "weight": 1.0
     },
     {
@@ -24640,7 +24733,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L96",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -24997,13 +25090,24 @@
     },
     {
       "source": "crates_engine_src_pocket_circuit",
-      "target": "crates_engine_src_pocket_circuit_reserved_take_reproduces_catalog",
+      "target": "crates_engine_src_pocket_circuit_generated_events_stay_inside_their_sections",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/engine/src/pocket_circuit.rs",
       "source_location": "L1535",
+      "weight": 1.0
+    },
+    {
+      "source": "crates_engine_src_pocket_circuit",
+      "target": "crates_engine_src_pocket_circuit_reserved_take_reproduces_catalog",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "crates/engine/src/pocket_circuit.rs",
+      "source_location": "L1564",
       "weight": 1.0
     },
     {
@@ -32762,6 +32866,18 @@
       "weight": 1.0
     },
     {
+      "source": "apps_demo_src_state_activateexperiment",
+      "target": "apps_demo_src_audio_engine_demoaudioengine_start",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "context": "call",
+      "source_file": "apps/demo/src/state.ts",
+      "source_location": "L178",
+      "weight": 1.0
+    },
+    {
       "source": "apps_demo_src_ui_renderframe",
       "target": "apps_demo_src_audio_engine_demoaudioengine_currentvisualtick",
       "relation": "calls",
@@ -32806,7 +32922,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L263",
+      "source_location": "L258",
       "weight": 1.0
     },
     {
@@ -32818,7 +32934,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L77",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -32830,7 +32946,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L65",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -32842,7 +32958,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "apps/demo/src/main.ts",
-      "source_location": "L65",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -33015,5 +33131,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "637d6c3520687a5456352190996dbd5b8097e2e6"
+  "built_at_commit": "c78e7877e2b5343d8cc5f5674de0b9582a911b06"
 }
