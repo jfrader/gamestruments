@@ -1,6 +1,5 @@
 import {
   AdaptiveTransport,
-  selectSection,
   type GameState,
   type PortableScore,
   type PortableSection,
@@ -15,8 +14,6 @@ import {
 import { generateScore } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
-
-export type ViewName = "lab" | "games" | "genres";
 
 export interface GenerationPreset {
   style: PocketCircuitStyle;
@@ -45,18 +42,18 @@ export const GENERATION_PRESETS = [
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
-export let activeStyle: PocketCircuitStyle = GENERATION_PRESETS[0].style;
 export let phase = "garage";
 export let score!: PortableScore;
 export let transport!: AdaptiveTransport;
 export let audio!: DemoAudioEngine;
-export let switchingScore = false;
-export let switchingAudio = false;
-export let generationQueue: Promise<void> = Promise.resolve();
-export let latestGenerationRequest = 0;
 export let soloMode: SoloMode = "full";
 export let comparisonBaseSeed = levelSeed;
 export let auditionOverride: SectionId | null = null;
+
+let switchingScore = false;
+let switchingAudio = false;
+let generationQueue: Promise<void> = Promise.resolve();
+let latestGenerationRequest = 0;
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
   const preset = GENERATION_PRESETS[index];
@@ -68,7 +65,6 @@ export function generationPreset(index = activeExperimentIndex): GenerationPrese
 
 export async function generateCurrentScore(): Promise<PortableScore> {
   const preset = generationPreset();
-  activeStyle = preset.style;
   return generateScore({
     seed: levelSeed,
     style: preset.style,
@@ -77,6 +73,12 @@ export async function generateCurrentScore(): Promise<PortableScore> {
     brightness: generationTraits.brightness,
     syncopation: generationTraits.syncopation,
   });
+}
+
+export async function initializeLab(): Promise<void> {
+  score = await generateCurrentScore();
+  transport = new AdaptiveTransport(score);
+  audio = new DemoAudioEngine(score);
 }
 
 export function currentState(): GameState {
@@ -103,24 +105,20 @@ export function sectionById(id: string): PortableSection {
 
 export function applyPlan(plan: TransitionPlan): void {
   audio.applyTransition(plan);
-  try {
-    elements.orbit.style.setProperty("--mood-color", sectionById(plan.to).color);
-  } catch {}
+  elements.orbit.style.setProperty("--mood-color", sectionById(plan.to).color);
 }
 
 export function requestMusicState(clearAuditionOverride = false): void {
   const state = currentState();
-  const _target = selectSection(score as any, state);
-  void _target;
   if (clearAuditionOverride) {
-    (auditionOverride as any) = null;
+    auditionOverride = null;
   }
   if (auditionOverride !== null) {
     // render via ui
     return;
   }
   if (audio.running) {
-    const request = (transport as any).requestState(state, audio.currentTick());
+    const request = transport.requestState(state, audio.currentTick());
     if (request.status === "scheduled") {
       if (request.replacedPlan !== undefined) {
         audio.cancelTransition(request.replacedPlan);
@@ -130,13 +128,11 @@ export function requestMusicState(clearAuditionOverride = false): void {
       audio.cancelTransition(request.plan);
     }
   }
-  // runtime signal via ui caller
 }
 
-export function jumpToSection(_s: SectionId): void {
-  const target = _s;
+export function jumpToSection(target: SectionId): void {
   const tick = audio.currentTick();
-  (auditionOverride as any) = target;
+  auditionOverride = target;
   transport.jumpSection(target, tick);
   audio.jumpSection(target, tick);
 }
@@ -211,39 +207,19 @@ export function nextLevelSeed(seed: string): string {
 }
 
 export function traitsFromControls(): NormalizedMusicTraits {
-  try {
-    return {
-      energy: Number((elements as any).generationEnergy.value),
-      complexity: Number((elements as any).generationComplexity.value),
-      brightness: Number((elements as any).generationBrightness.value),
-      syncopation: Number((elements as any).generationSyncopation.value),
-    };
-  } catch {
-    return { ...generationTraits };
-  }
+  return {
+    energy: Number(elements.generationEnergy.value),
+    complexity: Number(elements.generationComplexity.value),
+    brightness: Number(elements.generationBrightness.value),
+    syncopation: Number(elements.generationSyncopation.value),
+  };
 }
 
-export function applyLevelSeed(requested: string): void {
-  // logic moved; wiring in main calls with value from ui
-  if (requested.length === 0) {
-    return;
-  }
-  void requestExperiment(activeExperimentIndex, requested).then((applied) => {
-    if (!applied) return;
-    comparisonBaseSeed = levelSeed;
-  });
-}
-
-export async function toggleEngine(): Promise<void> {
+export async function toggleEngine(): Promise<boolean> {
   if (switchingAudio || switchingScore) {
-    return;
+    return audio.running;
   }
   switchingAudio = true;
-  // direct elements for sync
-  const startEl = (elements as any).start;
-  const centerEl = (elements as any).centerPlay;
-  if (startEl) startEl.disabled = true;
-  if (centerEl) centerEl.disabled = true;
   try {
     if (audio.running) {
       const tick = audio.currentTick();
@@ -254,22 +230,24 @@ export async function toggleEngine(): Promise<void> {
           : snapshot.currentSection);
       transport = new AdaptiveTransport(score, currentSection);
       await audio.stop();
-      // sync buttons via ui/set if avail
-      return;
+      return false;
     }
     await audio.start(transport.snapshot().currentSection);
+    return true;
   } finally {
-    if (startEl) startEl.disabled = false;
-    if (centerEl) centerEl.disabled = false;
     switchingAudio = false;
   }
 }
 
-// setters for ESM import binding mutation from main
-export function setComparisonBaseSeed(v: string) { comparisonBaseSeed = v; }
-export function setLevelSeed(v: string) { levelSeed = v; }
-export function setGenerationTraits(v: any) { generationTraits = v; }
-export function setPhase(v: string) { phase = v; }
-export function setSoloMode(v: SoloMode) { soloMode = v; }
-export function setAuditionOverride(v: any) { auditionOverride = v; }
-export function setActiveExperimentIndex(v: number) { activeExperimentIndex = v; }
+export function setComparisonBaseSeed(value: string): void {
+  comparisonBaseSeed = value;
+}
+
+export function setPhase(value: string): void {
+  phase = value;
+}
+
+export function setSoloMode(value: SoloMode): void {
+  soloMode = value;
+  audio.soloMode = value;
+}

@@ -3,11 +3,13 @@
 ## Unreleased
 
 ### Added
-- Audio Lab (apps/demo): large centered lime play/pause control on the orbit visualization (▶/❚❚ glyphs + "PLAY"/"PAUSE" label, hover/press states, subtle idle pulse ring). Wired to existing engine toggle path; Space key support (skips inputs). Existing header Start/Stop stays in sync.
+- Audio Lab: added a prominent play/pause control to the unobstructed center of the orbit, with synchronized header controls and a Space shortcut outside form fields.
 
 ### Changed
-- Audio Lab responsiveness: measured at 360/768/1024/1280/1920 viewports with dedicated chromium; fixed width overflow/clipping, orbit+center visible >=360px (stacking/collapsible panels on narrow, 100dvh no-scroll preserved on desktop). 
-- Bounded module split of main.ts (ui.ts for wiring/renders, state.ts for playback/generation logic + helpers); dead code (stale DNA comment) removed. No behavior change.
+- Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
+
+### Fixed
+- Audio Lab: removed duplicate application state introduced during the UI split so playback, regeneration, phase changes, and both play controls stay synchronized.
 
 - Committed the prebuilt engine WASM under `apps/demo/public/engine/` so the
   Lab builds on Node-only static hosts; CI verifies the artifact is current.
