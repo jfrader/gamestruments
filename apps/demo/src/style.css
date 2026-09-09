@@ -1135,36 +1135,6 @@ footer p {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-
-  .orbit {
-    transform: none !important;
-    transition: filter 100ms linear !important;
-  }
-
-  .orbit::before {
-    transform: none !important;
-    transition: opacity 90ms linear !important;
-  }
-
-  .orbit-ring {
-    transform: none !important;
-    transition: border-color 900ms ease, opacity 80ms linear !important;
-  }
-
-  .playhead {
-    transform: none !important;
-    transition: opacity 80ms linear !important;
-  }
-}
-
 @media (max-width: 980px) {
   .console-shell {
     padding: 10px 8px;

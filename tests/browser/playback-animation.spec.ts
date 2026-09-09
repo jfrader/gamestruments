@@ -35,27 +35,35 @@ test("the orbit advances while music is playing", async ({ page }) => {
   expect(runtimeErrors).toEqual([]);
 });
 
-test("reduced motion preserves playback feedback without rotation", async ({ page }) => {
+test("desktop reduced motion does not disable playback animation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#lab");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
 
   const orbit = page.locator("#orbit");
+  const outerRing = orbit.locator(".orbit-ring--outer");
   const playhead = orbit.locator(".playhead");
   await page.locator("#center-play").click();
   await expect(orbit).toHaveClass(/is-running/);
 
-  const opacityRange = await playhead.evaluate(async (element) => {
-    const samples: number[] = [];
-    for (let frame = 0; frame < 90; frame += 1) {
-      await new Promise(requestAnimationFrame);
-      samples.push(Number(getComputedStyle(element).opacity));
-    }
-    return Math.max(...samples) - Math.min(...samples);
-  });
+  const firstPlayheadTransform = await playhead.evaluate((element) =>
+    getComputedStyle(element).transform,
+  );
+  const firstRingTransform = await outerRing.evaluate((element) =>
+    getComputedStyle(element).transform,
+  );
+  await page.waitForTimeout(250);
+  const secondPlayheadTransform = await playhead.evaluate((element) =>
+    getComputedStyle(element).transform,
+  );
+  const secondRingTransform = await outerRing.evaluate((element) =>
+    getComputedStyle(element).transform,
+  );
 
-  expect(opacityRange).toBeGreaterThan(0.08);
-  await expect(playhead).toHaveCSS("transform", "none");
+  expect(firstPlayheadTransform).not.toBe("none");
+  expect(secondPlayheadTransform).not.toBe(firstPlayheadTransform);
+  expect(firstRingTransform).not.toBe("none");
+  expect(secondRingTransform).not.toBe(firstRingTransform);
   await page.locator("#start-audio").click();
   await expect(orbit).not.toHaveClass(/is-running/);
 });
