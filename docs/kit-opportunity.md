@@ -4,7 +4,7 @@
 
 Solo and small-team Godot 4 racing-game developers who want adaptive instrumental music without composing, licensing samples, or adopting external middleware.
 
-The job: obtain a musically coherent adaptive score from a single seed + per-title secret + instrument palette, generate the score once at level load inside the game binary, and drive bar-quantized state changes (e.g. race phase, intensity, pressure, final-lap) without shipping samples, Strudel, or a full middleware authoring tool.
+The job: obtain a musically coherent adaptive score from a single seed + per-title namespace + instrument palette, generate the score once at level load inside the game binary, and drive bar-quantized state changes (e.g. race phase, intensity, pressure, final-lap) without shipping samples, Strudel, or a full middleware authoring tool.
 
 ## Evidence-Backed Pain and Existing Alternatives
 
@@ -39,7 +39,7 @@ Explicit exclusions (non-goals for v1 kit):
 
 ## Compatibility and Distribution Assumptions
 
-- Engine: Godot 4.7 or newer.
+- Engine: Godot 4.7.x, tested against 4.7.2.
 - Binding: GDExtension via gdext 0.5.5.
 - Platforms shipped in v1: Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
 - Source: buyers receive the Rust crates under MIT; they rebuild or use the provided binary.
@@ -76,12 +76,12 @@ Positioning: priced like a solid Unity procedural kit, above basic stem packs, b
 - Legal: gdext dependency is MPL-2.0 (our crates declare MIT); must ship correct combined notices and confirm binary redistribution obligations. Strudel remains strictly outside the runtime (AGPL authoring lab only).
 - Technical: Godot playback lifetime and target ABIs require native repeated-free smoke on every advertised OS; compilation alone is insufficient.
 - Production: one candidate archive must be assembled only after all target-native jobs pass and must be rebuilt from the exact tagged source.
-- Support: buyers will expect Godot 4.7+ on all three desktop OS families; unsigned libraries and version skew can create support load. No sample library means buyers cannot fall back to swapping audio files.
+- Support: buyers will expect the documented Godot 4.7.x environment on all three desktop OS families; ad-hoc/not-notarized macOS signing, unsigned Linux/Windows binaries, and version skew can create support load. No sample library means buyers cannot fall back to swapping audio files.
 
 ## Kill or Pivot Criteria
 
 Kill or pivot if:
-- After first 30–60 days on itch, < X paid downloads or conversion below Y% with no evidence of discovery problem (see measurement).
+- After 60 days on itch, fewer than 20 purchases together with support volume above one ticket per five buyers triggers a positioning or usability investigation.
 - Clean-room integration fails repeatedly even after doc fixes (i.e. the "generate at load + drive state" story is not self-service).
 - A critical blocker (e.g. persistent audio leaks affecting shipped games, non-reproducible output across minor Godot patch, or license incompatibility) cannot be resolved without changing the core promise.
 - A better open alternative appears that removes the differentiation.

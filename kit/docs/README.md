@@ -6,7 +6,7 @@ The Rust core is MIT licensed and its complete rebuildable source is included.
 
 ## Requirements
 
-- Godot 4.7 or newer.
+- Godot 4.7.x.
 - Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
 - No external audio assets, services, middleware, or telemetry.
 
@@ -17,7 +17,8 @@ The Rust core is MIT licensed and its complete rebuildable source is included.
 3. Set a non-empty `project_secret`, choose `fusion`, `neon`, `funk`, or `chip`, and optionally adjust voices and traits.
 4. Call `generate("your-level-seed")` and check its boolean result.
 5. Call `set_race_state(phase, intensity, pressure, final_lap, finish_result)` as gameplay changes.
-6. Ensure the `Music` audio bus exists and is audible.
+6. Add an audible `Music` audio bus when you want separate music mixing. Until
+   it exists, the player safely routes audio to `Master`.
 
 See `quickstart.md` for a complete integration and `api.md` for the supported surface.
 
@@ -42,6 +43,6 @@ The public browser Audio Lab uses a different Web Audio presentation layer with 
 
 ## Support
 
-Best-effort support is available through the repository's GitHub issues for reproducible problems within the advertised scope. Include your OS, Godot version, kit version, minimal reproduction, and complete Output-panel error.
+Best-effort support is available through the public comments section on the itch.io product page for reproducible problems within the advertised scope. Include your OS, Godot version, kit version, minimal reproduction, and complete Output-panel error. Use itch.io's purchase-support flow for purchase-specific or private matters.
 
 Standard price: $24.99.

@@ -8,6 +8,13 @@ playwright-report/
 test-results/
 examples/godot/.godot/
 target/
+release-assets/
+godot-bin/
+
+# Transient Godot release downloads used by the CI workflows.
+Godot_v*.zip
+SHA512-SUMS.txt
+
 
 # parity harness artifacts (generated on `cargo run --example parity_ref` + `npm run parity:wasm`)
 parity-*.json

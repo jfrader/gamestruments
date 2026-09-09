@@ -7,10 +7,10 @@ This is the authoritative buyer contract for the first Gamestruments runtime kit
 
 ## Supported Environment
 
-- Godot 4.7 or newer via GDExtension.
-- Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
+- Godot 4.7.x via GDExtension. Future Godot minor releases are not implied. Tested exactly against CI version 4.7.2.
+- Linux x86_64 (built on Ubuntu 24.04; older distributions are not claimed), Windows x86_64, and macOS arm64/x86_64.
 - Rust 1.94.0 and gdext 0.5.5 for source rebuilds.
-- Godot `AudioStreamGenerator` playback with a 22050 Hz mono internal synth routed to the `Music` bus.
+- Godot `AudioStreamGenerator` playback with a 22050 Hz mono internal synth routed to `Music` when that bus exists and otherwise to `Master`.
 - Fully offline runtime generation; no network requests, accounts, telemetry, samples, or external services.
 
 Compatibility claims apply only after each native library passes the release workflow on its target operating system. The final candidate cannot ship if any platform job is missing or failing.
@@ -22,9 +22,10 @@ Compatibility claims apply only after each native library passes the release wor
 - `addons/gamestruments/gamestruments.gdextension`.
 - Linux `.so`, Windows `.dll`, and universal macOS `.dylib` under `addons/gamestruments/bin/`.
 - The same complete addon under `kit/demo/addons/gamestruments/` for a self-contained demo.
-- `crates/engine` and `crates/godot`, root `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml`.
+- `crates/engine` and `crates/godot`, the catalog fixture required by shipped tests and examples, root `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml`.
 - `kit/demo/` and buyer documentation under `kit/docs/`.
-- `CHANGELOG.md`, `LICENSE.md`, per-crate MIT license copies, `THIRD_PARTY_NOTICES.md`, and full dependency license texts under `licenses/`.
+- Root `README.md`, `RELEASE-MANIFEST.json`, and `CHANGELOG.md`.
+- `LICENSE.md`, per-crate MIT license copies, `THIRD_PARTY_NOTICES.md`, exact dependency inventory, required attribution, and dependency license texts under `licenses/`.
 
 The archive contains no Strudel code, TypeScript authoring packages, browser Audio Lab, audio samples, pre-rendered tracks, or private build paths.
 
@@ -74,7 +75,7 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 - No general-purpose adaptive music graph or arbitrary game-state authoring.
 - No game genres beyond the shipped racing state model in this release.
 - No editor plugin, pattern editor, sample import, MIDI/WAV export, FMOD, or Wwise integration.
-- No web, mobile, console, or Godot versions older than 4.7.
+- No web, mobile, console, or Godot versions other than 4.7.x.
 - No claim that the browser Audio Lab sounds identical to the Godot runtime.
 - No guarantee that a rebuilt native library works on an untested target merely because its source compiles.
 
@@ -91,7 +92,7 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 - Gamestruments Rust crates are MIT licensed and may be used in closed-source games subject to the MIT terms.
 - gdext 0.5.5 and related binding crates are MPL-2.0; attribution and source-retrieval information ship in `THIRD_PARTY_NOTICES.md`.
 - No AGPL or Strudel code enters the buyer archive.
-- Support is best-effort through GitHub issues for reproducible defects within the advertised environment and API.
+- Support is best-effort through the public comments section on the itch.io product page for reproducible defects within the advertised environment and API. Purchase-specific or private matters use itch.io's purchase-support flow.
 - Refunds follow the terms presented by itch.io at purchase time.
 
 If a claim cannot be demonstrated from the immutable archive, target-platform workflow, included demo, and buyer docs, it must not appear on the storefront.

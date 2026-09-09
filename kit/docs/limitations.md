@@ -14,10 +14,10 @@
 
 ## Runtime and Platforms
 
-- Supported: Godot 4.7+, Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
-- Unsupported: Godot 3, Godot versions older than 4.7, web export, mobile, and consoles.
-- Native libraries are unsigned. Operating-system quarantine or application-signing rules may apply when you redistribute them as part of your own game.
-- The node requires an audible `Music` bus and successful `generate(seed)` before state requests.
+- Supported: Godot 4.7.x (tested on 4.7.2), Linux x86_64 (built on Ubuntu 24.04), Windows x86_64, and macOS arm64/x86_64.
+- Unsupported: Godot versions other than 4.7.x, web export, mobile, and consoles.
+- The macOS universal library is ad-hoc signed for loading but is not Developer ID-signed or notarized. The Linux and Windows libraries are not publisher-signed. Operating-system quarantine or application-signing rules may apply when you redistribute the libraries as part of your own game.
+- The node prefers an audible `Music` bus and otherwise uses `Master`. State requests require a successful `generate(seed)` first.
 - State transitions wait for bar boundaries; instant cuts are not supported by the public API.
 
 ## Determinism and Persistence
@@ -31,4 +31,4 @@
 
 - Only `GamestrumentsPlayer` and the documented exported properties and methods are supported. Internal Rust modules and generated child nodes may change.
 - Source is included under MIT, but custom builds, modified APIs, and unadvertised targets are outside standard support.
-- Support is best-effort through reproducible GitHub issues; no response-time or long-term update SLA is promised.
+- Support is best-effort through reproducible reports in the itch.io product page's public comments; no response-time or long-term update SLA is promised. Purchase-specific or private matters use itch.io's purchase-support flow.

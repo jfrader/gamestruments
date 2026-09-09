@@ -3,7 +3,7 @@ use gamestruments_engine::{
     PortableScore, Style, Synth,
 };
 use godot::classes::{
-    AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
+    AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
 };
 use godot::prelude::*;
 
@@ -78,7 +78,12 @@ impl INode for GamestrumentsPlayer {
         let mut player = AudioStreamPlayer::new_alloc();
         player.set_name("LiveStream");
         player.set_stream(&generator);
-        player.set_bus("Music");
+        let bus = if AudioServer::singleton().get_bus_index("Music") >= 0 {
+            "Music"
+        } else {
+            "Master"
+        };
+        player.set_bus(bus);
         self.base_mut().add_child(&player);
         player.play();
         self.live_player = Some(player);

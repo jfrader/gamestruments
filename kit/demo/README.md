@@ -1,6 +1,6 @@
 # Gamestruments Kit Demo
 
-This self-contained Godot 4.7 project exercises the exact `GamestrumentsPlayer` API and native synth shipped to buyers.
+This self-contained Godot 4.7.x project exercises the exact `GamestrumentsPlayer` API and native synth shipped to buyers.
 
 ## Run the Packaged Demo
 

@@ -19,6 +19,9 @@ cargo build -p gamestruments-godot
 or `.dylib` files for the platform-specific paths in
 `gamestruments.gdextension`.
 
+`GamestrumentsPlayer` routes to a `Music` audio bus when one exists and falls
+back to `Master` in a fresh project.
+
 ### Toolchain
 
 The workspace root pins Rust 1.94.0 with rustfmt and clippy. Cargo commands

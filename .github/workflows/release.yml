@@ -21,17 +21,21 @@ env:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
           targets: x86_64-unknown-linux-gnu
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
+      - name: Remap Rust build paths
+        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=/workspace --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rust" >> "$GITHUB_ENV"
       - run: cargo build -p gamestruments-godot --release --locked --target x86_64-unknown-linux-gnu
+      - name: Verify Linux GDExtension export
+        run: nm -D --defined-only target/x86_64-unknown-linux-gnu/release/libgamestruments_godot.so | awk '$NF == "gdext_rust_init" { found = 1 } END { exit !found }'
       - name: Stage Linux library
         run: |
           mkdir -p release-assets
@@ -42,28 +46,56 @@ jobs:
           archive="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
           curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
-          grep "  $archive$" SHA512-SUMS.txt | sha512sum -c -
+          expected="$(tr -d '\r' < SHA512-SUMS.txt | awk -v f="$archive" '$2 == f { print $1 }')"
+          if [[ ! "$expected" =~ ^[0-9a-fA-F]{128}$ ]]; then
+            echo "ERROR: missing SHA-512 entry for $archive" >&2
+            exit 1
+          fi
+          actual="$(sha512sum "$archive" | awk '{ print $1 }')"
+          if [[ "${actual,,}" != "${expected,,}" ]]; then
+            echo "ERROR: SHA-512 mismatch for $archive" >&2
+            exit 1
+          fi
           unzip -q "$archive" -d godot-bin
           chmod +x "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
       - name: Smoke Linux runtime
         run: node tests/godot-package-smoke.mjs --godot "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" --library release-assets/libgamestruments_godot.so
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-linux-x86_64
           path: release-assets/
 
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
           targets: x86_64-pc-windows-msvc
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
+      - name: Remap Rust build paths
+        shell: pwsh
+        run: |
+          $flags = "--remap-path-prefix=$env:GITHUB_WORKSPACE=/workspace --remap-path-prefix=$env:USERPROFILE\.cargo=/cargo --remap-path-prefix=$env:USERPROFILE\.rustup=/rust"
+          "RUSTFLAGS=$flags" | Out-File -FilePath $env:GITHUB_ENV -Append
       - run: cargo build -p gamestruments-godot --release --locked --target x86_64-pc-windows-msvc
+      - name: Verify Windows GDExtension export
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found" }
+          $installation = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $dumpbin = Get-ChildItem "$installation\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found in the Visual Studio installation" }
+          $exports = & $dumpbin.FullName /nologo /exports target/x86_64-pc-windows-msvc/release/gamestruments_godot.dll
+          if ($LASTEXITCODE -ne 0 -or -not ($exports -match '\bgdext_rust_init\b')) {
+            throw "gamestruments_godot.dll does not export gdext_rust_init"
+          }
       - name: Stage Windows library
         shell: pwsh
         run: |
@@ -77,11 +109,14 @@ jobs:
           $archive = "Godot_v${env:GODOT_VERSION}_win64.exe.zip"
           curl.exe -fsSLO "${env:GODOT_RELEASE_BASE}/$archive"
           curl.exe -fsSLO "${env:GODOT_RELEASE_BASE}/SHA512-SUMS.txt"
-          $line = Select-String -Path SHA512-SUMS.txt -Pattern "  $([regex]::Escape($archive))$"
-          if (-not $line) { throw "Missing checksum for $archive" }
-          $expected = ($line.Line -split '\s+')[0].ToLower()
+          $expected = $null
+          foreach ($line in Get-Content SHA512-SUMS.txt) {
+            $fields = $line.Trim() -split '\s+'
+            if ($fields.Count -ge 2 -and $fields[1] -eq $archive) { $expected = $fields[0]; break }
+          }
+          if ($expected -notmatch '^[0-9a-fA-F]{128}$') { throw "Missing SHA-512 entry for $archive" }
           $actual = (Get-FileHash $archive -Algorithm SHA512).Hash.ToLower()
-          if ($actual -ne $expected) { throw "Godot checksum mismatch" }
+          if ($actual -ne $expected.ToLower()) { throw "Godot SHA-512 mismatch for $archive" }
           Expand-Archive $archive -DestinationPath godot-bin
           $console = Get-ChildItem godot-bin -Filter "*_console.exe" | Select-Object -First 1
           if (-not $console) { throw "Godot console executable not found" }
@@ -89,7 +124,7 @@ jobs:
       - name: Smoke Windows runtime
         shell: pwsh
         run: node tests/godot-package-smoke.mjs --godot "$env:GODOT_BIN" --library release-assets/gamestruments_godot.dll
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-windows-x86_64
           path: release-assets/
@@ -97,14 +132,16 @@ jobs:
   macos:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
           targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
+      - name: Remap Rust build paths
+        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=/workspace --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rust" >> "$GITHUB_ENV"
       - run: |
           cargo build -p gamestruments-godot --release --locked --target aarch64-apple-darwin
           cargo build -p gamestruments-godot --release --locked --target x86_64-apple-darwin
@@ -115,59 +152,143 @@ jobs:
             -output release-assets/libgamestruments_godot.dylib
           archs="$(lipo -archs release-assets/libgamestruments_godot.dylib)"
           [[ "$archs" == *x86_64* && "$archs" == *arm64* ]]
+          # lipo does not preserve the per-slice ad-hoc signatures; Apple Silicon
+          # requires a valid (at least ad-hoc) signature before dlopen will load it.
+          codesign --force --sign - release-assets/libgamestruments_godot.dylib
+          codesign --verify --verbose=2 release-assets/libgamestruments_godot.dylib
+          nm -gU release-assets/libgamestruments_godot.dylib | awk '$NF == "_gdext_rust_init" { found = 1 } END { exit !found }'
+          # The install name must be relative (e.g. @rpath/...) and never leak a
+          # private build path (/Users/..., /home/..., /__w/...).
+          install_names="$(otool -D release-assets/libgamestruments_godot.dylib | sed 's/[[:space:]]*$//' | grep -v ':$' | grep 'libgamestruments_godot' | sort -u || true)"
+          if [[ -z "$install_names" ]]; then
+            echo "ERROR: could not read LC_ID_DYLIB install name" >&2
+            exit 1
+          fi
+          while IFS= read -r name; do
+            if [[ "$name" == /* ]]; then
+              echo "ERROR: dylib install name must not be absolute: $name" >&2
+              exit 1
+            fi
+            if [[ "$name" == *"/home/"* || "$name" == *"/Users/"* || "$name" == *"/__w/"* ]]; then
+              echo "ERROR: dylib install name leaks a private path: $name" >&2
+              exit 1
+            fi
+          done <<< "$install_names"
           (cd release-assets && shasum -a 256 libgamestruments_godot.dylib > libgamestruments_godot.dylib.sha256)
       - name: Download verified Godot
         run: |
           archive="Godot_v${GODOT_VERSION}_macos.universal.zip"
           curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
           curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
-          grep "  $archive$" SHA512-SUMS.txt | shasum -a 512 -c -
+          expected="$(tr -d '\r' < SHA512-SUMS.txt | awk -v f="$archive" '$2 == f { print $1 }')"
+          if [[ ! "$expected" =~ ^[0-9a-fA-F]{128}$ ]]; then
+            echo "ERROR: missing SHA-512 entry for $archive" >&2
+            exit 1
+          fi
+          actual="$(shasum -a 512 "$archive" | awk '{ print $1 }')"
+          if [[ "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')" ]]; then
+            echo "ERROR: SHA-512 mismatch for $archive" >&2
+            exit 1
+          fi
           unzip -q "$archive" -d godot-bin
           chmod +x godot-bin/Godot.app/Contents/MacOS/Godot
       - name: Smoke macOS runtime
         run: node tests/godot-package-smoke.mjs --godot godot-bin/Godot.app/Contents/MacOS/Godot --library release-assets/libgamestruments_godot.dylib
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-macos-universal
           path: release-assets/
 
+  macos-intel-smoke:
+    needs: macos
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: native-macos-universal
+          path: release-assets
+      - name: Confirm Intel runner
+        run: test "$(uname -m)" = "x86_64"
+      - name: Download verified Godot
+        run: |
+          archive="Godot_v${GODOT_VERSION}_macos.universal.zip"
+          curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
+          curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
+          expected="$(tr -d '\r' < SHA512-SUMS.txt | awk -v f="$archive" '$2 == f { print $1 }')"
+          if [[ ! "$expected" =~ ^[0-9a-fA-F]{128}$ ]]; then
+            echo "ERROR: missing SHA-512 entry for $archive" >&2
+            exit 1
+          fi
+          actual="$(shasum -a 512 "$archive" | awk '{ print $1 }')"
+          if [[ "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')" ]]; then
+            echo "ERROR: SHA-512 mismatch for $archive" >&2
+            exit 1
+          fi
+          unzip -q "$archive" -d godot-bin
+          chmod +x godot-bin/Godot.app/Contents/MacOS/Godot
+      - name: Smoke macOS Intel runtime
+        run: node tests/godot-package-smoke.mjs --godot godot-bin/Godot.app/Contents/MacOS/Godot --library release-assets/libgamestruments_godot.dylib
+
   package:
-    needs: [linux, windows, macos]
-    runs-on: ubuntu-latest
+    needs: [linux, windows, macos, macos-intel-smoke]
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: native-*
           path: release-assets
           merge-multiple: true
+      - name: Download verified Godot
+        run: |
+          archive="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
+          curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
+          expected="$(tr -d '\r' < SHA512-SUMS.txt | awk -v f="$archive" '$2 == f { print $1 }')"
+          if [[ ! "$expected" =~ ^[0-9a-fA-F]{128}$ ]]; then
+            echo "ERROR: missing SHA-512 entry for $archive" >&2
+            exit 1
+          fi
+          actual="$(sha512sum "$archive" | awk '{ print $1 }')"
+          if [[ "${actual,,}" != "${expected,,}" ]]; then
+            echo "ERROR: SHA-512 mismatch for $archive" >&2
+            exit 1
+          fi
+          unzip -q "$archive" -d godot-bin
+          chmod +x "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+          echo "GODOT_BIN=$PWD/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
       - name: Resolve version
         id: version
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             version="${GITHUB_REF_NAME#v}"
           elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             version="0.1.0-pr${PR_NUMBER}"
           else
-            version="${{ inputs.version }}"
+            version="$INPUT_VERSION"
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "value=$version" >> "$GITHUB_OUTPUT"
       - name: Package cross-platform kit
         run: tools/package_kit.sh --version "$VERSION" --assets-dir release-assets --out-dir dist
       - name: Verify rebuildable archive
-        run: tools/verify_kit_archive.sh "dist/gamestruments-$VERSION-godot4.zip"
-      - uses: actions/upload-artifact@v4
+        run: tools/verify_kit_archive.sh "dist/gamestruments-$VERSION-godot4.zip" "$GODOT_BIN"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gamestruments-${{ steps.version.outputs.value }}-godot4
           path: |
@@ -177,11 +298,11 @@ jobs:
   draft-release:
     if: github.event_name == 'push'
     needs: package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: gamestruments-${{ needs.package.outputs.version }}-godot4
           path: dist
@@ -190,9 +311,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.package.outputs.version }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --draft --generate-notes --title "Gamestruments $VERSION"
-          gh release upload "$GITHUB_REF_NAME" \
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "ERROR: release $GITHUB_REF_NAME already exists; refusing to replace its assets" >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --generate-notes --title "Gamestruments $VERSION" \
             "dist/gamestruments-$VERSION-godot4.zip" \
-            "dist/gamestruments-$VERSION-godot4.zip.sha256.txt" \
-            --clobber
+            "dist/gamestruments-$VERSION-godot4.zip.sha256.txt"

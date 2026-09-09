@@ -18,6 +18,8 @@ test -f "$CHECKSUM" || { echo "ERROR: archive checksum sidecar is missing" >&2; 
 unzip -q "$ARCHIVE" -d "$EXTRACTED"
 
 required=(
+  "README.md"
+  "RELEASE-MANIFEST.json"
   "Cargo.toml"
   "Cargo.lock"
   "rust-toolchain.toml"
@@ -29,6 +31,10 @@ required=(
   "licenses/MIT.txt"
   "licenses/Unicode-3.0.txt"
   "licenses/Unlicense.txt"
+  "licenses/cargo-dependencies.json"
+  "licenses/glam-0.32.1-ATTRIBUTION.md"
+  "licenses/rust-1.94.0-COPYRIGHT-library.html"
+  "catalog/pocket-circuit/tiny-torque-level-004/score.json"
   "addons/gamestruments/gamestruments.gdextension"
   "addons/gamestruments/bin/libgamestruments_godot.so"
   "addons/gamestruments/bin/gamestruments_godot.dll"
@@ -39,6 +45,11 @@ required=(
 for file in "${required[@]}"; do
   test -f "$EXTRACTED/$file" || { echo "ERROR: archive is missing $file" >&2; exit 1; }
 done
+
+node "$REPO_ROOT/tools/verify-native-libraries.mjs" --root "$EXTRACTED"
+node "$REPO_ROOT/tests/verify-release-manifest.mjs" \
+  "$EXTRACTED" \
+  "$(basename "$ARCHIVE")"
 
 if find "$EXTRACTED" -type f \( -iname '*.wav' -o -iname '*.ogg' -o -iname '*.mp3' \) -print -quit | grep -q .; then
   echo "ERROR: buyer archive contains an audio asset" >&2
@@ -60,8 +71,11 @@ fi
 cargo metadata --manifest-path "$EXTRACTED/Cargo.toml" --locked --format-version 1 > "$EXTRACTED/cargo-metadata.json"
 node "$REPO_ROOT/tests/verify-third-party-notices.mjs" \
   "$EXTRACTED/cargo-metadata.json" \
-  "$EXTRACTED/THIRD_PARTY_NOTICES.md"
-cargo build --manifest-path "$EXTRACTED/Cargo.toml" -p gamestruments-godot --release --locked
+  "$EXTRACTED/THIRD_PARTY_NOTICES.md" \
+  "$EXTRACTED/licenses/cargo-dependencies.json" \
+  "$EXTRACTED/licenses"
+cargo test --manifest-path "$EXTRACTED/Cargo.toml" --workspace --locked
+cargo build --manifest-path "$EXTRACTED/Cargo.toml" --workspace --all-targets --release --locked
 
 if [[ -n "$GODOT_BIN" ]]; then
   node "$REPO_ROOT/tests/godot-package-smoke.mjs" \
