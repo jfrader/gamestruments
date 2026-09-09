@@ -26,9 +26,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: cargo test -p gamestruments-engine
-      - run: cargo clippy -p gamestruments-engine --all-targets -- -D warnings
+      - run: cargo test -p gamestruments-engine --locked
+      - run: cargo clippy -p gamestruments-engine --all-targets --locked -- -D warnings
+      - run: cargo check -p gamestruments-godot --locked
       - run: rustup target add wasm32-unknown-unknown
-      - run: cargo build -p gamestruments-engine --target wasm32-unknown-unknown --release
-      - run: cargo run -p gamestruments-engine --example parity_ref --release
+      - run: cargo build -p gamestruments-engine --target wasm32-unknown-unknown --release --locked
+      - run: npm run wasm:verify
+      - run: cargo run -p gamestruments-engine --example parity_ref --release --locked
       - run: node tests/wasm-parity.mjs
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+  godot:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.7.2-stable
+      GODOT_RELEASE_BASE: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: cargo build -p gamestruments-godot --release --locked
+      - name: Download verified Godot
+        run: |
+          archive="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
+          curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
+          grep "  $archive$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "$archive" -d godot-bin
+          chmod +x "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+          echo "GODOT_BIN=$PWD/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+      - run: node tests/godot-package-smoke.mjs --godot "$GODOT_BIN" --library target/release/libgamestruments_godot.so
+      - name: Verify package structure and source rebuild
+        run: |
+          mkdir -p release-assets dist
+          cp target/release/libgamestruments_godot.so release-assets/
+          cp target/release/libgamestruments_godot.so release-assets/gamestruments_godot.dll
+          cp target/release/libgamestruments_godot.so release-assets/libgamestruments_godot.dylib
+          tools/package_kit.sh --version 0.1.0-ci --assets-dir release-assets --out-dir dist
+          tools/verify_kit_archive.sh dist/gamestruments-0.1.0-ci-godot4.zip "$GODOT_BIN"

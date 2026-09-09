@@ -1,7 +1,7 @@
 # Gamestruments
 
-**The runtime product** is a seed-driven, sample-free, MIT Rust engine +
-Godot 4 GDExtension. Games generate a unique adaptive score at level load from
+**The first runtime product** is a seed-driven, sample-free adaptive racing
+music engine for Godot 4. Games generate a deterministic score at level load from
 a per-title `project_secret` + instrument palette + seed and drive bar-quantized
 state changes at runtime. No samples, no Strudel, no authoring UI cross the
 game boundary.
@@ -23,14 +23,14 @@ In a Godot 4 project:
    - `project_secret` (per-title secret — never a public string like the game name)
    - `style` (e.g. "funk")
    - optional voice overrides (melody/harmony/drive/bass) and traits (energy, complexity, brightness, syncopation)
-4. At level load call `generate(seed)`.
-5. During play call `set_race_state(phase, intensity, pressure, final_lap)` as game state changes.
+4. At level load call `generate(seed)` and check its boolean result.
+5. During play call `set_race_state(phase, intensity, pressure, final_lap, finish_result)` as game state changes.
 
 The engine produces the score once, keeps it, and performs musically coherent
 crossovers on bar boundaries. See `docs/kit-contract.md` for the exact public
 API surface and `docs/kit-opportunity.md` for scope.
 
-Example listening-pack render (validates parity with the Audio Lab):
+Example native-engine listening-pack render:
 
 ```bash
 cargo run -p gamestruments-engine --example render_listen -- /tmp/gamestruments-listen
@@ -41,7 +41,7 @@ cargo run -p gamestruments-engine --example render_listen -- /tmp/gamestruments-
 Requires Node.js 24 for the authoring Lab.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -64,13 +64,13 @@ The app has URL-addressable views:
 
 ```bash
 npm run check
+npm run test:e2e
 ```
 
 **Pinned-build note**: the GDExtension is built against a specific gdext +
 Godot API surface. Rebuild from the exact source tree + toolchain used for the
-release tag for bit-for-bit parity with the distributed binary. Platform
-binaries for Windows/macOS are produced by the release workflow but remain
-pending full runtime QA (see GURI-485).
+release tag. The release workflow builds and runs the extension under Godot on
+Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
 
 ## Architecture
 
@@ -88,8 +88,9 @@ Games never see Strudel or the authoring packages. See
 ### Authoring / Research (Audio Lab only)
 
 `packages/studio` (AGPL-3.0-or-later because of Strudel) is the authoring and
-research surface. It is **not** shipped to players. `packages/runtime` is the
-old independent TS transport used inside the Lab only.
+research surface. Its TypeScript generator remains only for legacy fixtures
+and catalog research; Rust is the sole runtime generation authority.
+`packages/runtime` is the independent TS transport used inside the Lab only.
 
 `apps/demo` is the browser playground and validation harness.
 
@@ -143,8 +144,7 @@ the game process; no JSON export step is required for the runtime kit.
 ## Scope and Limits (kit product)
 
 - The runtime kit is Godot 4 + GDExtension + synthesized voices only.
-- Linux x86_64 binary is produced by the release workflow; Windows/macOS
-  binaries are gated on GURI-485 runtime QA.
+- Release binaries target Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
 - No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
 - See `docs/kit-contract.md` (exact inventory, API, non-goals) and
   `docs/kit-opportunity.md` (price hypothesis, risks, measurement) for the

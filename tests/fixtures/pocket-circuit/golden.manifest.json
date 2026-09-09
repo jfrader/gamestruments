@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "recipe": "pocket-circuit",
-  "generatorVersion": "1.10.0",
+  "generatorVersion": "1.10.1",
   "seed": "string:golden-v1",
   "style": "neon",
   "traits": {
@@ -20,12 +20,12 @@
   },
   "score": {
     "schemaVersion": 1,
-    "id": "pocket-circuit-generated-v1-10-0-c7e78cd1"
+    "id": "pocket-circuit-generated-v1-10-1-c7e78cd1"
   },
   "checksum": {
     "algorithm": "sha256",
     "encoding": "hex",
     "source": "compact-json",
-    "value": "91d8315fa193bf31dd7665ddf6a7135a94b47bf7c8b24f7a3b0d0ab92d6668bb"
+    "value": "46b4a7dbc86c04dcd075c88c315babddf11b57268c0e9fae0d9ef5d37263fbcd"
   }
 }

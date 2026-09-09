@@ -1,13 +1,31 @@
 # Licensing
 
-Gamestruments is split at a deliberate licensing boundary.
+The Gamestruments runtime components are licensed under the MIT License:
 
-- `packages/studio` and `apps/demo` use Strudel and are licensed under
-  AGPL-3.0-or-later. See the [GNU AGPL](https://www.gnu.org/licenses/agpl-3.0.html).
-- `packages/runtime` is an independent event and transition runtime licensed
-  under MIT. It does not import or bundle Strudel.
-- Exported scores, MIDI, and rendered audio are user content. Their use remains
-  subject to the licenses of any samples or other source material they contain.
+- `crates/engine`
+- `crates/godot`
+- `packages/runtime`
 
-This prototype is not legal advice. The licensing layout must be reviewed
-before a public release.
+The browser authoring and research surface under `packages/studio` and `apps/demo` uses Strudel and is licensed under AGPL-3.0-or-later. It is not included in the buyer runtime kit. Each package also carries its applicable license metadata or file.
+
+## MIT License
+
+Copyright (c) 2026 J Francisco Rader
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -28,17 +28,21 @@ var intensity_value: Label  # reuse energy as intensity proxy for state calls
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_interface()
+	_ensure_music_bus()
 
 	if not ClassDB.class_exists("GamestrumentsPlayer"):
 		_show_extension_warning()
 		return
 
-	# Do not auto-instantiate here. The player is created on first Generate press
-	# (lazy) so that headless smoke boots without triggering internal Rust bind
-	# issues on the current gdext 0.5 path during exit. In a real editor session
-	# the user presses Generate to start audio.
 	_apply_defaults_to_ui()
-	status_label.text = "Extension loaded — press Generate"
+	_on_generate_pressed()
+
+
+func _ensure_music_bus() -> void:
+	if AudioServer.get_bus_index("Music") >= 0:
+		return
+	AudioServer.add_bus()
+	AudioServer.set_bus_name(AudioServer.bus_count - 1, "Music")
 
 
 func _build_interface() -> void:
@@ -252,8 +256,7 @@ func _build_actions(panel: PanelContainer) -> void:
 func _show_extension_warning() -> void:
 	warning_label.text = (
 		"GamestrumentsPlayer not found in ClassDB.\n\n" +
-		"Build: cargo build -p gamestruments-godot\n" +
-		"Copy libgamestruments_godot.so + gamestruments.gdextension into place (see kit/demo/README.md).\n" +
+		"Confirm Godot 4.7+ and copy the complete addons/gamestruments folder into place.\n" +
 		"Restart Godot after placing the native extension."
 	)
 	warning_label.visible = true
@@ -297,7 +300,10 @@ func _on_generate_pressed() -> void:
 	player.set("syncopation", syncopation_slider.value if syncopation_slider else 0.70)
 
 	var level_seed := seed_edit.text if seed_edit and seed_edit.text != "" else "kit-demo-001"
-	player.call("generate", level_seed)
+	var generated := bool(player.call("generate", level_seed))
+	if not generated:
+		status_label.text = "Generation failed — check the Godot Output panel"
+		return
 
 	status_label.text = "Generated seed: %s  style: %s" % [level_seed, style_option.get_item_text(style_option.selected)]
 
@@ -319,7 +325,10 @@ func _on_section_pressed(
 	if use_intensity_slider and energy_slider:
 		intensity = energy_slider.value
 
-	player.call("set_race_state", phase, intensity, pressure, final_lap, finish_result)
+	var accepted := bool(player.call("set_race_state", phase, intensity, pressure, final_lap, finish_result))
+	if not accepted:
+		status_label.text = "State change rejected — generate a score first"
+		return
 
 	status_label.text = "set_race_state(\"%s\", %.2f, %.2f, %s, \"%s\")" % [
 		phase, intensity, pressure, str(final_lap), finish_result

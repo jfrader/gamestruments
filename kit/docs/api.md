@@ -1,65 +1,74 @@
 # API Reference — GamestrumentsPlayer
 
-`GamestrumentsPlayer` is the only public class buyers instantiate and script against. It extends `Node`.
+`GamestrumentsPlayer` is the kit's only supported public class. It extends `Node` and owns the generated score, adaptive transport, synthesizer, and internal Godot audio player.
 
-All generation and synthesis happens inside the GDExtension. The node owns an internal mono synth (22050 Hz) that feeds a Godot `AudioStreamGeneratorPlayback` on the "Music" bus.
+## Exported Properties
 
-## Exported Properties (Inspector + Code)
+Set these before calling `generate`. Later changes apply to the next generation call.
 
-Set these before or between calls to `generate`. Changes to traits/palette after generate affect the next `generate` call.
+- `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
+- `style: String` — `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
+- `melody_voice: String`
+- `harmony_voice: String`
+- `drive_voice: String`
+- `bass_voice: String`
+  - Empty uses the selected style's default.
+  - Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`.
+- `energy: float` — defaults to `0.62`.
+- `complexity: float` — defaults to `0.60`.
+- `brightness: float` — defaults to `0.52`.
+- `syncopation: float` — defaults to `0.70`.
+  - Finite trait values are clamped to `0.0..1.0` during generation.
 
-- `project_secret: String`
-  - Per-title secret. Must be non-empty for `generate` to succeed.
-  - Example: `"my-title-secret-42"`.
-  - Do not use a public string such as the game name.
+## `generate`
 
-- `style: String`
-  - One of: `"fusion"`, `"neon"`, `"funk"`, `"chip"`.
-  - Default (in code): `"funk"`.
-  - Selects the base instrument kit and timbre rules.
+```gdscript
+var generated: bool = player.generate("level-001")
+```
 
-- Voice overrides (strings; empty string means "use style default"):
-  - `melody_voice: String`
-  - `harmony_voice: String`
-  - `drive_voice: String`
-  - `bass_voice: String`
+Generates and validates the deterministic racing score for the current property values, resets transport and synthesis, and starts at `garage`.
 
-- Trait values (floats, clamped to `[0.0, 1.0]` at generation time):
-  - `energy: float` — default 0.62
-  - `complexity: float` — default 0.6
-  - `brightness: float` — default 0.52
-  - `syncopation: float` — default 0.7
+Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style or voice, non-finite data, or invalid generated score. Do not request state changes after a failed generation.
 
-## Methods
+## `set_race_state`
 
-- `generate(seed: String) -> void`
-  - Generates the deterministic Pocket Circuit score from the current `project_secret` + `seed` + `style` + palette overrides + traits.
-  - Must be called before any `set_race_state` calls (otherwise the transport is not ready).
-  - Resets the internal tick and synth. Starts transport in the "garage" section.
-  - Errors (via `godot_error`): unknown style, empty `project_secret`.
-  - Determinism: identical inputs (secret, seed, style, palette fingerprint, traits, generator version) always produce the same score identity and event data.
+```gdscript
+var accepted: bool = player.set_race_state(
+    "race",
+    0.8,
+    0.4,
+    false,
+    "none",
+)
+```
 
-- `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> void`
-  - Requests a state change. The transport quantizes to the next bar boundary and performs a musical crossover.
-  - `phase`: string such as `"garage"`, `"grid"`, `"race"`, `"finish"`. The six core sections generated are: garage, grid, cruise (Race Flow), attack (Position Fight), final-lap, victory (Finish).
-  - `intensity`: 0..1 (affects density/velocity targets in the transport).
-  - `pressure`: 0..1 (maps to `position_pressure` in the game state).
-  - `final_lap`: boolean.
-  - `finish_result`: optional, defaults to `"none"`. Pass `"win"` with `phase = "finish"` to reach the victory section.
-  - No-op if no score has been generated yet.
-  - State changes are committed on bar boundaries; new sections begin at phrase bar zero.
+Signature:
 
-## Observable Behavior Buyers Can Rely On
+```text
+set_race_state(
+  phase: String,
+  intensity: float,
+  pressure: float,
+  final_lap: bool,
+  finish_result: String = "none",
+) -> bool
+```
 
-- Generation is deterministic for the tuple `(project_secret, seed, style, palette, energy, complexity, brightness, syncopation, generator version)`.
-- State changes commit on bar boundaries.
-- Audio is rendered at 22050 Hz mono internally and pushed as stereo-identical frames to the Godot generator playback. Route via the "Music" bus.
-- The player creates a transient `AudioStreamPlayer` child named `"LiveStream"` (do not rely on its exact name in your own code beyond what the docs guarantee).
+Returns `false` with a Godot error when no score has been generated or when intensity/pressure are non-finite or outside `0.0..1.0`. Otherwise it returns `true` after accepting the request. The musical change commits on a bar boundary.
 
-## What Is Not Part of the Supported Public API
+Selection priority:
 
-- Any internal Rust modules, types (`PortableScore`, `AdaptiveTransport`, etc.), or symbols not exposed via the `GamestrumentsPlayer` GDScript surface.
-- Exact byte-for-byte output across Godot/gdext patch releases (semantic + musical identity is the contract).
-- Any editor plugins, UI, or authoring tools (none ship).
+1. `phase = "finish"` and `finish_result = "win"` selects `victory`.
+2. `final_lap = true` selects `final-lap`.
+3. `pressure >= 0.68` or `intensity >= 0.72` selects `attack`.
+4. `phase = "race"`, `"grid"`, or `"garage"` selects `cruise`, `grid`, or `garage`.
+5. Unknown phases fall back to the score's default section.
 
-See `kit-contract.md` for the full buyer contract, non-goals, and compatibility notes.
+## Observable Contract
+
+- Generation is deterministic for a specific generator version and input tuple.
+- Generated scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
+- State changes are quantized to bar boundaries and new sections start at phrase bar zero.
+- Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer` routed to the `Music` bus.
+
+Internal Rust types, child-node names, score serialization, and exact bytes across different generator versions are not supported public API.

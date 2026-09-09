@@ -1,8 +1,8 @@
-# Gamestruments Kit Opportunity Brief (2026-09-04)
+# Gamestruments Kit Opportunity Brief (updated 2026-09-08)
 
 ## Target Buyer and Job to be Done
 
-Solo and small-team Godot 4 developers who want unique, adaptive, instrumental music scores that react to gameplay state at runtime.
+Solo and small-team Godot 4 racing-game developers who want adaptive instrumental music without composing, licensing samples, or adopting external middleware.
 
 The job: obtain a musically coherent adaptive score from a single seed + per-title secret + instrument palette, generate the score once at level load inside the game binary, and drive bar-quantized state changes (e.g. race phase, intensity, pressure, final-lap) without shipping samples, Strudel, or a full middleware authoring tool.
 
@@ -20,28 +20,28 @@ Buyers who want "unique per level/playthrough without composing or sampling" cur
 
 ## Product Promise and One-Sentence Differentiator
 
-Promise: a MIT-licensed Rust core + Godot 4 GDExtension that lets a game call `generate(secret, seed, style, traits)` at level load and then `set_race_state(...)` (or equivalent) at runtime; the engine produces and renders a deterministic adaptive score using only synthesized voices, with bar-aware transitions.
+Promise: a MIT-licensed Rust core + Godot 4 GDExtension that lets a game call `generate(seed)` at level load and then `set_race_state(...)` at runtime; the engine produces and renders a deterministic six-section racing score using only synthesized voices, with bar-aware transitions.
 
-One-sentence differentiator: the first seed-driven, sample-free, runtime-adaptive music generator purpose-built for Godot 4 that ships as a small GDExtension with full MIT Rust source and zero authoring UI or sample dependencies.
+One-sentence differentiator: a seed-driven, sample-free adaptive racing score that runs inside Godot 4 as a small cross-platform GDExtension with full MIT Rust source and no authoring UI or sample dependencies.
 
 ## Smallest Sellable Scope and Explicit Exclusions
 
-Smallest sellable: Linux x86_64 GDExtension binary + .gdextension file + the MIT Rust crates source (engine + godot glue) + a minimal demo scene that exercises project_secret + palette + seed + generate + state changes + docs + licenses + changelog.
+Smallest sellable: Linux x86_64, Windows x86_64, and universal macOS GDExtension binaries + configuration + complete MIT Rust source + a minimal exact-runtime racing demo + docs + licenses + changelog.
 
 Explicit exclusions (non-goals for v1 kit):
 - No authoring UI or Strudel Lab.
 - No sample import or redistribution.
 - No Godot < 4 support.
 - No FMOD/Wwise interop.
-- No Windows/macOS binaries (pending GURI-485 platform QA).
 - No web export, mobile, or console targets in first release.
+- No general-purpose state authoring or genres beyond racing in the first release.
 - No pre-rendered WAV catalog shipping with the kit (catalog takes are for validation only).
 
 ## Compatibility and Distribution Assumptions
 
-- Engine: Godot 4.x (minimum 4.2 per .gdextension, tested on 4.7+).
-- Binding: GDExtension (gdext 0.4.x series at time of build).
-- Platforms shipped in v1: linux.x86_64 only.
+- Engine: Godot 4.7 or newer.
+- Binding: GDExtension via gdext 0.5.5.
+- Platforms shipped in v1: Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
 - Source: buyers receive the Rust crates under MIT; they rebuild or use the provided binary.
 - File formats: no external score JSON at runtime for the kit path (generation is inside the extension); demo may include example data.
 - Distribution: itch.io as a zip; buyers drop `addons/gamestruments/` (or equivalent) into their project.
@@ -52,14 +52,15 @@ Primary path: itch.io "Godot" + "audio" + "procedural" / "music" tags, linked fr
 
 Proof needed before launch (per game-kit-release gates):
 - Opportunity + contract docs approved.
-- Clean-room buyer can integrate the archive into a fresh Godot 4 project, set secret/palette/seed, call generate at _ready, hear music, and drive state changes from game logic using only the shipped docs.
+- Clean-room buyer can integrate the archive into a fresh Godot 4.7 project, set namespace/palette/seed, call generate at `_ready`, hear music, and drive state changes using only shipped docs.
 - Reproducibility of reserved takes (e.g. empty secret + level-004 + funk) matches catalog parity test.
-- Linux binary + source build both produce working player.
+- Every advertised native binary and an extracted-source rebuild produce a working player.
 - No Strudel or samples leak into the runtime path.
+- Storefront audio and video are captured from the packaged Godot runtime rather than the richer browser renderer.
 
 ## Price Range Hypothesis and Comparable Products (as of 2026-09-04)
 
-Standard price hypothesis: $19–25.
+Approved standard price: $24.99.
 
 Comparables (dated research):
 - Generic adaptive stem packs + players on itch/asset stores: $5–30 (common $10–20).
@@ -73,9 +74,9 @@ Positioning: priced like a solid Unity procedural kit, above basic stem packs, b
 ## Largest Legal, Technical, Production, and Support Risks
 
 - Legal: gdext dependency is MPL-2.0 (our crates declare MIT); must ship correct combined notices and confirm binary redistribution obligations. Strudel remains strictly outside the runtime (AGPL authoring lab only).
-- Technical: Godot 4.x AudioStreamGeneratorPlayback lifetime / ObjectDB leaks observed in current gdext 0.4.5 + 4.7; documented but must not block buyer use. Cross-platform audio parity and determinism on Windows/macOS unproven (GURI-485 gate).
-- Production: release workflow must produce reproducible per-OS .so/.dll/.dylib + sha256 from tags; no pre-built Godot addons yet.
-- Support: buyers will expect "works in Godot 4.3–4.x on the three desktop OSes"; any platform gap or version skew becomes support load. No sample library means buyers cannot fall back to "just swap the audio files."
+- Technical: Godot playback lifetime and target ABIs require native repeated-free smoke on every advertised OS; compilation alone is insufficient.
+- Production: one candidate archive must be assembled only after all target-native jobs pass and must be rebuilt from the exact tagged source.
+- Support: buyers will expect Godot 4.7+ on all three desktop OS families; unsigned libraries and version skew can create support load. No sample library means buyers cannot fall back to swapping audio files.
 
 ## Kill or Pivot Criteria
 

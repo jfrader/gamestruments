@@ -1,47 +1,198 @@
 name: release
 
 on:
+  pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Candidate version without the v prefix
+        required: true
+        default: 0.1.0-rc2
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7.2-stable
+  GODOT_RELEASE_BASE: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            lib: libgamestruments_godot.so
-          - os: windows-latest
-            target: x86_64-pc-windows-gnu
-            lib: libgamestruments_godot.dll
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            lib: libgamestruments_godot.dylib
-    runs-on: ${{ matrix.os }}
+  linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          targets: ${{ matrix.target }}
-      - name: build
-        run: cargo build -p gamestruments-godot --release --target ${{ matrix.target }}
-      - name: stage
-        shell: bash
+          toolchain: "1.94.0"
+          targets: x86_64-unknown-linux-gnu
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: cargo build -p gamestruments-godot --release --locked --target x86_64-unknown-linux-gnu
+      - name: Stage Linux library
         run: |
-          mkdir -p dist
-          src="target/${{ matrix.target }}/release/${{ matrix.lib }}"
-          if [ ! -f "$src" ]; then
-            # mingw may emit without lib prefix on some setups; try both
-            src="target/${{ matrix.target }}/release/gamestruments_godot.dll"
-          fi
-          cp "$src" "dist/${{ matrix.lib }}" || cp "target/${{ matrix.target }}/release/"*".${{ matrix.lib##*. }}" "dist/${{ matrix.lib }}"
-          (cd dist && sha256sum ${{ matrix.lib }} > ${{ matrix.lib }}.sha256)
+          mkdir -p release-assets
+          cp target/x86_64-unknown-linux-gnu/release/libgamestruments_godot.so release-assets/
+          (cd release-assets && sha256sum libgamestruments_godot.so > libgamestruments_godot.so.sha256)
+      - name: Download verified Godot
+        run: |
+          archive="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
+          curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
+          grep "  $archive$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "$archive" -d godot-bin
+          chmod +x "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+      - name: Smoke Linux runtime
+        run: node tests/godot-package-smoke.mjs --godot "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" --library release-assets/libgamestruments_godot.so
       - uses: actions/upload-artifact@v4
         with:
-          name: gamestruments-godot-${{ matrix.target }}
+          name: native-linux-x86_64
+          path: release-assets/
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94.0"
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: cargo build -p gamestruments-godot --release --locked --target x86_64-pc-windows-msvc
+      - name: Stage Windows library
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item target/x86_64-pc-windows-msvc/release/gamestruments_godot.dll release-assets/
+          $hash = (Get-FileHash release-assets/gamestruments_godot.dll -Algorithm SHA256).Hash.ToLower()
+          "$hash  gamestruments_godot.dll" | Set-Content release-assets/gamestruments_godot.dll.sha256
+      - name: Download verified Godot
+        shell: pwsh
+        run: |
+          $archive = "Godot_v${env:GODOT_VERSION}_win64.exe.zip"
+          curl.exe -fsSLO "${env:GODOT_RELEASE_BASE}/$archive"
+          curl.exe -fsSLO "${env:GODOT_RELEASE_BASE}/SHA512-SUMS.txt"
+          $line = Select-String -Path SHA512-SUMS.txt -Pattern "  $([regex]::Escape($archive))$"
+          if (-not $line) { throw "Missing checksum for $archive" }
+          $expected = ($line.Line -split '\s+')[0].ToLower()
+          $actual = (Get-FileHash $archive -Algorithm SHA512).Hash.ToLower()
+          if ($actual -ne $expected) { throw "Godot checksum mismatch" }
+          Expand-Archive $archive -DestinationPath godot-bin
+          $console = Get-ChildItem godot-bin -Filter "*_console.exe" | Select-Object -First 1
+          if (-not $console) { throw "Godot console executable not found" }
+          "GODOT_BIN=$($console.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Smoke Windows runtime
+        shell: pwsh
+        run: node tests/godot-package-smoke.mjs --godot "$env:GODOT_BIN" --library release-assets/gamestruments_godot.dll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-windows-x86_64
+          path: release-assets/
+
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94.0"
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: |
+          cargo build -p gamestruments-godot --release --locked --target aarch64-apple-darwin
+          cargo build -p gamestruments-godot --release --locked --target x86_64-apple-darwin
+          mkdir -p release-assets
+          lipo -create \
+            target/aarch64-apple-darwin/release/libgamestruments_godot.dylib \
+            target/x86_64-apple-darwin/release/libgamestruments_godot.dylib \
+            -output release-assets/libgamestruments_godot.dylib
+          archs="$(lipo -archs release-assets/libgamestruments_godot.dylib)"
+          [[ "$archs" == *x86_64* && "$archs" == *arm64* ]]
+          (cd release-assets && shasum -a 256 libgamestruments_godot.dylib > libgamestruments_godot.dylib.sha256)
+      - name: Download verified Godot
+        run: |
+          archive="Godot_v${GODOT_VERSION}_macos.universal.zip"
+          curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
+          curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
+          grep "  $archive$" SHA512-SUMS.txt | shasum -a 512 -c -
+          unzip -q "$archive" -d godot-bin
+          chmod +x godot-bin/Godot.app/Contents/MacOS/Godot
+      - name: Smoke macOS runtime
+        run: node tests/godot-package-smoke.mjs --godot godot-bin/Godot.app/Contents/MacOS/Godot --library release-assets/libgamestruments_godot.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-macos-universal
+          path: release-assets/
+
+  package:
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: release-assets
+          merge-multiple: true
+      - name: Resolve version
+        id: version
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            version="0.1.0-pr${PR_NUMBER}"
+          else
+            version="${{ inputs.version }}"
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Package cross-platform kit
+        run: tools/package_kit.sh --version "$VERSION" --assets-dir release-assets --out-dir dist
+      - name: Verify rebuildable archive
+        run: tools/verify_kit_archive.sh "dist/gamestruments-$VERSION-godot4.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gamestruments-${{ steps.version.outputs.value }}-godot4
           path: |
-            dist/${{ matrix.lib }}
-            dist/${{ matrix.lib }}.sha256
+            dist/gamestruments-${{ steps.version.outputs.value }}-godot4.zip
+            dist/gamestruments-${{ steps.version.outputs.value }}-godot4.zip.sha256.txt
+
+  draft-release:
+    if: github.event_name == 'push'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gamestruments-${{ needs.package.outputs.version }}-godot4
+          path: dist
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --draft --generate-notes --title "Gamestruments $VERSION"
+          gh release upload "$GITHUB_REF_NAME" \
+            "dist/gamestruments-$VERSION-godot4.zip" \
+            "dist/gamestruments-$VERSION-godot4.zip.sha256.txt" \
+            --clobber

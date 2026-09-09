@@ -3,13 +3,18 @@
 ## Unreleased
 
 ### Added
+- Cross-platform Godot release candidates now include Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries in one verified archive.
+- Added target-native Godot runtime smoke tests, extracted-source rebuild verification, 256-seed Rust generation stress coverage, and browser end-to-end coverage for generation controls during playback.
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- `GamestrumentsPlayer.generate` and `set_race_state` now return success booleans with descriptive Godot errors, and generator version `1.10.1` validates every score before exposing it to native or WASM callers.
+- Repositioned the first kit as adaptive racing music for Godot 4.7+ and reconciled buyer docs with its six-section API, mono runtime sound, desktop platform support, licensing, and manual publication gates.
 - Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Fixed invalid generated events reaching downstream renderers or trapping WASM, and fixed Godot playback cleanup so repeated generate/play/transition/free cycles exit without extension-owned leaks.
 - Audio Lab: removed duplicate application state introduced during the UI split so playback, regeneration, phase changes, and both play controls stay synchronized.
 
 - Committed the prebuilt engine WASM under `apps/demo/public/engine/` so the
@@ -20,21 +25,20 @@
 ### Added
 
 - Added WASM facade (`crates/engine/src/wasm.rs` + Cargo cdylib), native parity reference (`crates/engine/examples/parity_ref.rs`), and Node harness (`tests/wasm-parity.mjs`) that proves byte-identical PortableScore JSON + 22050 Hz WAV output for fixed inputs between native and `wasm32-unknown-unknown` (plus cross-run determinism). Wired to CI rust job + `npm run parity:wasm`. (GURI-579)
-- Added `tools/package_kit.sh` (deterministic buyer archive builder), produced `gamestruments-0.1.0-rc1-godot4.zip` (1 195 402 bytes, SHA-256 3881c2a7... for GURI-567; later 2 337 255 bytes, 8f705ead... after GURI-568 path+self-contained fixes), clean-copy verification + headless smoke from the extracted archive only, `docs/kit-qa-runbook.md` (Fran's author QA checklist with copy-paste steps, 4/5-arg `set_race_state` coverage, claims tick matrix), and updated `kit/docs/README.md` + this changelog. This completes the "Freeze and land the release candidate" + "Package the buyer artifact" + "Verification profiles" + "Buyer documentation" gates for GURI-567.
+- Added `tools/package_kit.sh`, archive verification, a self-contained demo, and an author QA runbook for deterministic buyer release candidates. The retired Linux-only rc1 is not a releasable artifact.
 - Added `kit/demo/kit_demo.tscn` (and supporting `kit_demo.gd`, generator script, `project.godot` for smoke, README) that a buyer can open to prove load-time `generate(seed)` and `set_race_state` adaptive arc (garage/grid/cruise/attack/final-lap/victory). The scene is produced by a checked-in `tools/generate_demo_scene.gd` (never hand-edited .tscn). Documents integration and headless verification steps.
 - Added `docs/kit-opportunity.md` (buyer, evidence, differentiator, scope,
   comparables dated 2026-09-04, risks, kill/pivot, measurement skeleton with
   owner Fran) and `docs/kit-contract.md` (supported versions, exact inventory,
   public GamestrumentsPlayer API, non-goals, archive name, MIT + gdext MPL note,
-  price hypothesis pending Fran approval).
+  approved $24.99 standard price and manual release gates).
 - Restructured README.md to lead with the Rust engine + GDExtension as the
   shipped kit product for games; Audio Lab is now documented as the authoring /
   research tool only. Added "How games use it", listening-pack example, and
   pinned-build note. TS sections retained but subordinated.
-- Added `.github/workflows/release.yml` (workflow_dispatch + v* tags, matrix
-  ubuntu / windows-mingw / macos, cargo build of gamestruments-godot --release,
-  per-OS lib + sha256 artifacts). This implements the build half of the
-  platform-shipping mechanism.
+- Added `.github/workflows/release.yml` for target-native Linux, Windows MSVC,
+  and universal macOS builds, Godot runtime smoke, one verified archive, and a
+  draft GitHub release from `v*` tags.
 - Updated `docs/procedural-generation.md`: catalog level-004 paragraph now
   points at the engine parity test; gameId references updated to secret +
   palette + seed; added reserved-take reproducibility note (empty secret +
@@ -86,13 +90,10 @@
 
 ### Fixed
 
-- Fixed kit demo project paths and self-contained addon (GURI-568): `kit/demo/kit_demo.tscn` now references `res://kit_demo.gd` (via generator tool that derives demo root from its script location); `tools/package_kit.sh` now stages an identical `addons/gamestruments/` copy inside `kit/demo/addons/` so opening the extracted `kit/demo/` folder directly as a Godot project succeeds (no missing-dependency errors). Updated buyer docs and QA runbook. Rebuilt RC artifact (2 337 255 bytes, SHA-256 8f705ead...).
-- Fixed ObjectDB leak ("2 instances") at Godot quit for GamestrumentsPlayer.
-  The `AudioStreamPlayer` and `AudioStreamGeneratorPlayback` Gd handles are no
-  longer stored long-term; children are looked up transiently by name and only
-  temporary handles are used. `exit_tree` stops the player and clears its
-  stream. Leak count for the player now drops (background unrelated leaks may
-  remain).
+- Fixed kit demo project paths and self-contained addon (GURI-568): `kit/demo/kit_demo.tscn` references `res://kit_demo.gd`, and packaging stages an identical addon inside the demo for direct evaluation.
+- Fixed `GamestrumentsPlayer` lifecycle ownership by retaining its internal
+  `AudioStreamPlayer`, stopping and detaching its stream, and explicitly freeing
+  it during tree exit. Repeated runtime cycles now reject leaked-object output.
 
 ### Improved
 

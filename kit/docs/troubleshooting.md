@@ -1,68 +1,65 @@
 # Troubleshooting
 
-## Extension Not Loaded / "GamestrumentsPlayer" Does Not Appear
+## `GamestrumentsPlayer` Does Not Appear
 
-Symptoms: Node search does not find `GamestrumentsPlayer`; `class` errors at runtime; `.gdextension` shows red in FileSystem.
+1. Confirm you are using Godot 4.7 or newer on a supported desktop architecture.
+2. Confirm `gamestruments.gdextension` is at `res://addons/gamestruments/gamestruments.gdextension`.
+3. Confirm the matching native library exists under `res://addons/gamestruments/bin/`:
+   - Linux: `libgamestruments_godot.so`
+   - Windows: `gamestruments_godot.dll`
+   - macOS: `libgamestruments_godot.dylib`
+4. Restart or reload the Godot project and inspect the complete GDExtension error in Output.
+5. If paths are correct, close Godot, remove the project's `.godot` import cache, and reopen it.
 
-Checks (in order):
+On macOS, a downloaded archive may be quarantined. If macOS blocks a library from an archive you trust, remove quarantine from the extracted kit before copying it:
 
-1. The `.gdextension` file must be directly under `res://addons/gamestruments/gamestruments.gdextension`.
-2. The binary must be at the path declared inside it:
-   ```
-   res://addons/gamestruments/bin/libgamestruments_godot.so
-   ```
-   (Only the Linux entry is present in v1.)
-3. Restart the Godot editor after copying the files (or use "Project → Reload Current Project").
-4. Check the Output panel for gdextension load errors (symbol, architecture mismatch, missing dependencies).
-5. Confirm you are on a supported platform (Linux x86_64 for the binary). On other OSes you must rebuild from the included source.
+```sh
+xattr -dr com.apple.quarantine /path/to/extracted/gamestruments-kit
+```
 
-If the paths are correct but it still fails, delete the `.godot` import cache folder and re-open the project.
+## `generate()` Returns `false`
 
-## Silence / No Sound After generate()
+Read the accompanying Godot error. Common causes are:
 
-1. Confirm you called `player.generate("some-seed")` and that `project_secret` was non-empty at the time of the call (the node errors via `godot_error` if empty).
-2. The player creates an `AudioStreamPlayer` child that routes to the **"Music"** bus. Verify the bus exists and is not muted (Project Settings → Audio → Buses). If you have no "Music" bus, create one or temporarily route via Master for testing.
-3. Run the scene from the editor (not just "play current scene" in some contexts) so the `_ready` path executes.
-4. Check the Audio bus layout volume and that no other bus is soloed.
-5. After `generate`, the transport starts in the "garage" section. If your first `set_race_state` happens before any audio frames, you may hear a brief delay until the next bar.
-6. Use the debugger's Audio tab or add a temporary `AudioStreamPlayer` playing a test tone on the same bus to isolate whether the problem is the extension or Godot audio output.
+- Empty `project_secret`.
+- Unsupported `style` or voice name.
+- Non-finite trait input.
+- An internal score invariant failed. This should not occur with an unmodified release; report the complete error and input tuple.
 
-## Volume Too Low or "Thin" Sound
+Do not call `set_race_state` after failed generation.
 
-- This is a mono 22050 Hz synth by design (see `limitations.md`). It will sound different from sample-based or high-rate music.
-- Raise the Music bus gain in the editor for testing.
-- The traits (`energy`, `brightness`, etc.) and style choice affect perceived density and timbre. Try `style = "fusion"` + higher `energy` for a fuller starting point.
-- The internal velocity and gating are intentional; they are not bugs.
+## Silence After Successful Generation
 
-## State Changes Do Not Seem to Do Anything
+1. Confirm the project has an audible audio bus named `Music`.
+2. Confirm Master and Music are not muted and another bus is not soloed.
+3. Run the scene so `_process` can feed the internal playback buffer.
+4. Try the archive's self-contained `kit/demo/` project to separate installation from game-specific bus configuration.
+5. Use Godot's debugger Audio view to verify the Music bus receives signal.
 
-- `set_race_state` only requests a change. The actual crossover happens on the next bar boundary.
-- You must call `generate(...)` successfully first; otherwise the internal transport is `None` and calls are no-ops (see source).
-- Phase strings are matched against the rule set. Common working values: `"garage"`, `"grid"`, `"race"`, `"attack"`, `"final-lap"`, `"victory"`.
-- Listen over a few bars; crossfades are musical (two-bar default) rather than instant.
+The shipped synth is mono at 22050 Hz and intentionally leaner than the browser Audio Lab.
 
-## Different Results Than Expected / "Not the Same as Catalog"
+## State Does Not Change
 
-- Determinism requires the exact same `(secret, seed, style, palette, traits)` tuple and the generator version that produced the reference.
-- The reserved catalog take uses an empty secret + specific traits (see engine tests). Using a non-empty secret or different floats will produce a different id and events.
-- Rebuilds from source must use the exact toolchain pinned at tag time for bit parity with the distributed binary.
+- Check the boolean result from `set_race_state`. It returns `false` when generation has not succeeded.
+- State changes are quantized to bar boundaries, so listen for several seconds rather than expecting an immediate cut.
+- Use `phase = "race"` for cruise. High intensity or pressure selects attack; `final_lap = true` selects final lap; `phase = "finish"` with `finish_result = "win"` selects victory.
 
-## Godot Errors About Leaks or "2 instances" at Quit
+## Different Result Than a Previous Version
 
-- The shipped implementation already contains mitigations (transient `Gd` handles only, explicit stop + null stream + child free in `exit_tree` + `PREDELETE`).
-- Any remaining ObjectDB counts at quit that are unrelated to `GamestrumentsPlayer` are outside this kit's control. The player itself should not contribute after the fixes.
+Determinism requires the exact same generator version, namespace, seed, style, voice overrides, and traits. Updating the kit can intentionally change a score. Pin the archive and version used by a shipped game.
 
-## Rebuilding from Source (Advanced)
+## Leak or Crash During Shutdown
 
-- The full `crates/engine` and `crates/godot` trees + `Cargo.toml` files are in the archive.
-- Use the Rust toolchain and gdext version that matched the release build for binary compatibility.
-- After a successful `cargo build --release -p gamestruments-godot`, place the resulting cdylib at the path declared in `gamestruments.gdextension`.
-- Platform-specific notes and the release workflow live in the repository at the release tag (not reproduced here).
+An unmodified release is tested through repeated instantiate, generate, play, transition, free, and quit cycles. `Leaked instance`, ObjectDB leak, panic, or crash output involving `GamestrumentsPlayer`, `AudioStreamPlayer`, or `AudioStreamGeneratorPlayback` is a defect. Report the complete log and a minimal scene rather than ignoring it.
 
-If none of the above resolve the issue, open a GitHub issue with:
-- Godot version + OS
-- Exact steps from a fresh project (or a minimal reproduction scene)
-- The exact `project_secret` / `style` / seed / trait values used
-- Any error messages from the Output or Debugger tabs
+## Rebuild From Source
 
-See `api.md` and `kit-contract.md` for the supported surface before reporting.
+The archive root contains `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, and both Rust crates. From that root:
+
+```sh
+cargo build -p gamestruments-godot --release --locked
+```
+
+Use the target matching your operating system and copy the resulting native library to the filename declared in `gamestruments.gdextension`. Standard support covers the provided binaries; custom targets and modified source are best-effort.
+
+When reporting an issue, include kit version, OS and architecture, exact Godot version, reproduction steps, and complete Output text. Do not publish real game secrets; `project_secret` is only a namespace, so replace it consistently in a reproduction.

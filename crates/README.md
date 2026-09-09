@@ -1,10 +1,11 @@
 # In-game engine
 
-Godot games set a **project secret** and an **instrument palette** on
-`GamestrumentsPlayer`, then call `generate(seed)` at level load.
+Godot games set a per-title deterministic namespace and an instrument palette
+on `GamestrumentsPlayer`, then call `generate(seed)` at level load.
 
-Uniqueness is `secret` + `seed` + palette. Buyers of a future itch kit fill
-those in the inspector so two games never share a default sound.
+Score identity uses generator version + namespace + seed + style + palette +
+traits. The public property remains named `project_secret`, but it is embedded
+in the game and is not a security credential.
 
 TypeScript Studio is not used at runtime.
 
@@ -13,13 +14,13 @@ cargo test -p gamestruments-engine
 cargo build -p gamestruments-godot
 ```
 
-`godot` crate targets gdext 0.5.5 (API 4.7) with repo-scoped `rust-toolchain.toml` pinning `channel = "1.94.0"`. Point a
-`.gdextension` file at `target/debug/libgamestruments_godot.so`. Engine crate builds cleanly on the pinned toolchain (no 1.94-only features used).
-
-## Known issues
-
-(none; see changelog for gdext 0.5.5 upgrade)
+`godot` targets gdext 0.5.5 and Godot 4.7 with repository-scoped
+`rust-toolchain.toml` pinning Rust 1.94.0. Release builds produce `.so`, `.dll`,
+or `.dylib` files for the platform-specific paths in
+`gamestruments.gdextension`.
 
 ### Toolchain
 
-The workspace root has `rust-toolchain.toml` pinning Rust 1.94.0 (with rustfmt/clippy) so that `gamestruments-godot` (gdext 0.5.5) builds while `gamestruments-engine` and other machine projects remain on stable 1.93. `cargo` commands inside the worktree auto-select the pinned toolchain via rustup. Engine tests/clippy remain green.
+The workspace root pins Rust 1.94.0 with rustfmt and clippy. Cargo commands
+inside this checkout select it through rustup. The buyer archive includes the
+workspace manifests, lockfile, toolchain pin, and both crates needed to rebuild.

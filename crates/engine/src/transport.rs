@@ -159,6 +159,7 @@ mod tests {
             brightness: 0.5,
             syncopation: 0.6,
         })
+        .expect("transport test score must validate")
     }
 
     #[test]

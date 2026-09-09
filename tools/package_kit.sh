@@ -3,14 +3,14 @@
 # Package the Gamestruments buyer release archive (Godot 4 kit).
 #
 # Usage:
-#   tools/package_kit.sh [--version <ver>] [--out-dir <dir>]
+#   tools/package_kit.sh --version <ver> --assets-dir <dir> [--out-dir <dir>]
 #
-# - VERSION defaults to 0.1.0-rc1 (or first arg, or git describe)
+# - VERSION defaults to 0.1.0-rc2 (or first arg)
 # - Produces gamestruments-$VERSION-godot4.zip in OUT_DIR (default /tmp/opencode)
-# - Builds from the current checkout (pinned via rust-toolchain.toml)
+# - Requires prebuilt Linux, Windows, and universal macOS libraries in ASSETS_DIR
 # - Uses explicit allowlist for reproducible buyer artifact.
 # - Zip is made deterministic: sorted file list + zip -X (no extra fields) +
-#   normalized mtimes in staging. Residual non-determinism: the .so binary
+#   normalized mtimes in staging. Residual non-determinism: native binaries
 #   may contain linker timestamps / build IDs / UUIDs from cargo/rustc even in
 #   release; we do not strip the binary itself (honest). Source files, text,
 #   and zip metadata are normalized.
@@ -19,21 +19,26 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-VERSION="0.1.0-rc1"
+DEFAULT_VERSION="0.1.0-rc2"
+VERSION="$DEFAULT_VERSION"
+VERSION_SET=false
 OUT_DIR="/tmp/opencode"
+ASSETS_DIR=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version|-v)
-      VERSION="$2"; shift 2 ;;
+      VERSION="$2"; VERSION_SET=true; shift 2 ;;
     --out-dir|--out)
       OUT_DIR="$2"; shift 2 ;;
+    --assets-dir)
+      ASSETS_DIR="$2"; shift 2 ;;
     --help|-h)
-      echo "Usage: $0 [--version X.Y.Z-rcN] [--out-dir DIR]"; exit 0 ;;
+      echo "Usage: $0 --version X.Y.Z-rcN --assets-dir DIR [--out-dir DIR]"; exit 0 ;;
     *)
       # positional fallback for version
-      if [[ "$VERSION" == "0.1.0-rc1" && "$1" != --* ]]; then
-        VERSION="$1"; shift
+      if [[ "$VERSION_SET" == false && "$1" != --* ]]; then
+        VERSION="$1"; VERSION_SET=true; shift
       else
         echo "Unknown arg: $1" >&2; exit 1
       fi
@@ -41,23 +46,37 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+  echo "ERROR: version must be SemVer-like (for example 0.1.0 or 0.1.0-rc2)" >&2
+  exit 1
+fi
+if [[ -z "$ASSETS_DIR" ]]; then
+  echo "ERROR: --assets-dir is required for a cross-platform buyer archive" >&2
+  exit 1
+fi
+ASSETS_DIR="$(cd "$ASSETS_DIR" && pwd)"
+
+NATIVE_LIBS=(
+  "libgamestruments_godot.so"
+  "gamestruments_godot.dll"
+  "libgamestruments_godot.dylib"
+)
+for library in "${NATIVE_LIBS[@]}"; do
+  if [[ ! -f "$ASSETS_DIR/$library" ]]; then
+    echo "ERROR: release binary not found at $ASSETS_DIR/$library" >&2
+    exit 1
+  fi
+done
+
 echo "==> Packaging Gamestruments kit version: $VERSION"
 echo "==> Repo: $REPO_ROOT (commit: $(git rev-parse --short HEAD))"
 echo "==> Output dir: $OUT_DIR"
+echo "==> Native assets: $ASSETS_DIR"
 
 mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
-# 1. Build the release binary (uses rust-toolchain.toml pin for gdext 0.5.5)
-echo "==> cargo build -p gamestruments-godot --release"
-cargo build -p gamestruments-godot --release
-
-BIN_SRC="target/release/libgamestruments_godot.so"
-if [[ ! -f "$BIN_SRC" ]]; then
-  echo "ERROR: release binary not found at $BIN_SRC" >&2
-  exit 1
-fi
-
-# 2. Assemble staging with explicit allowlist
+# 1. Assemble staging with explicit allowlist
 STAGING="$(mktemp -d -t gamestruments-kit-XXXXXX)"
 trap 'rm -rf "$STAGING"' EXIT
 
@@ -68,11 +87,15 @@ mkdir -p "$STAGING/crates"
 cp -a crates/engine "$STAGING/crates/engine"
 cp -a crates/godot "$STAGING/crates/godot"
 cp crates/README.md "$STAGING/crates/README.md"
+cp crates/LICENSE.md "$STAGING/crates/LICENSE.md"
+cp Cargo.toml Cargo.lock rust-toolchain.toml CHANGELOG.md "$STAGING/"
 
 # addon layout (buyer drop-in; .gdextension paths are already res://addons/gamestruments/...)
 mkdir -p "$STAGING/addons/gamestruments/bin"
 cp crates/godot/gamestruments.gdextension "$STAGING/addons/gamestruments/gamestruments.gdextension"
-cp "$BIN_SRC" "$STAGING/addons/gamestruments/bin/libgamestruments_godot.so"
+for library in "${NATIVE_LIBS[@]}"; do
+  cp "$ASSETS_DIR/$library" "$STAGING/addons/gamestruments/bin/$library"
+done
 
 # kit content
 mkdir -p "$STAGING/kit"
@@ -85,15 +108,18 @@ cp -a kit/docs "$STAGING/kit/docs"
 # Buyers still get the root addons/ for dropping into their own project.
 mkdir -p "$STAGING/kit/demo/addons/gamestruments/bin"
 cp crates/godot/gamestruments.gdextension "$STAGING/kit/demo/addons/gamestruments/gamestruments.gdextension"
-cp "$BIN_SRC" "$STAGING/kit/demo/addons/gamestruments/bin/libgamestruments_godot.so"
+for library in "${NATIVE_LIBS[@]}"; do
+  cp "$ASSETS_DIR/$library" "$STAGING/kit/demo/addons/gamestruments/bin/$library"
+done
 
 # kit/README.md (one-page buyer overview)
 cat > "$STAGING/kit/README.md" << 'KITREADME'
-# Gamestruments — Godot 4 Kit
+# Gamestruments — Adaptive Racing Music for Godot 4
 
-Seed-driven, sample-free, runtime-adaptive music scores for Godot 4 games.
+Seed-driven, sample-free, runtime-adaptive racing music for Godot 4 games.
 
-A single `project_secret` (per-title) + instrument palette + seed produces a
+A single `project_secret` (a per-title deterministic namespace, not a security
+credential) + instrument palette + seed produces a
 deterministic adaptive score at level load. Drive bar-quantized state changes
 (e.g. race phases) at runtime via `set_race_state`. Pure synthesis; no samples.
 
@@ -103,20 +129,24 @@ deterministic adaptive score at level load. Drive bar-quantized state changes
 
 - `addons/gamestruments/` — ready-to-use layout for your project:
   - `gamestruments.gdextension`
-  - `bin/libgamestruments_godot.so` (linux.x86_64)
+  - `bin/libgamestruments_godot.so` (Linux x86_64)
+  - `bin/gamestruments_godot.dll` (Windows x86_64)
+  - `bin/libgamestruments_godot.dylib` (macOS universal: arm64 + x86_64)
 - `kit/demo/addons/gamestruments/` — **identical copy** inside the demo so that
   `kit/demo/` can be opened directly as a standalone Godot project (its
   `project.godot` points at `res://kit_demo.tscn`; the addon is at
   `res://addons/gamestruments/...` relative to the demo root). Use this copy
   only for evaluating the demo; for your own game use the root `addons/`.
-- `crates/` — full MIT source (`engine/` + `godot/`) + README; rebuild with
+- `crates/` plus the root Cargo manifests, lockfile, and pinned toolchain — full
+  MIT source (`engine/` + `godot/`) + README; rebuild with
   `cargo build -p gamestruments-godot --release`
 - `kit/demo/` — minimal exerciser scene + script for the public API
   (self-contained: open the folder in Godot 4 to run it)
 - `kit/docs/` — buyer documentation (README, quickstart, api, limitations, troubleshooting)
 - `kit/README.md` (this file)
-- `LICENSE.md`, `crates/*/LICENSE.md`, `THIRD_PARTY_NOTICES.md`
-- (CHANGELOG excerpt available in the publishing repo at the release tag)
+- `LICENSE.md`, `crates/*/LICENSE.md`, `THIRD_PARTY_NOTICES.md`, and full
+  dependency license texts under `licenses/`
+- `CHANGELOG.md`
 
 See `kit/docs/README.md` for requirements, quickstart, scope, and claims.
 
@@ -127,8 +157,9 @@ See `kit/docs/README.md` for requirements, quickstart, scope, and claims.
    For quick evaluation of the demo: just open the extracted `kit/demo/` folder
    directly as a Godot project (the addon is already inside it at the correct
    relative location).
-3. Add `GamestrumentsPlayer` node, set `project_secret` + `style`, call
-   `generate("level-seed")` then `set_race_state(...)` as needed.
+3. Add a `GamestrumentsPlayer` node, set `project_secret` + `style`, call
+   `generate("level-seed")`, check that it returns `true`, then call
+   `set_race_state(...)` as needed.
 4. Route its AudioStreamPlayer child (or the node) to a "Music" bus.
 
 Full steps and inspector fields: `kit/docs/quickstart.md` and `kit/docs/api.md`.
@@ -147,67 +178,31 @@ authoring Lab are **not** included in this runtime kit).
 
 ## Verification
 
-This archive was produced by `tools/package_kit.sh` from a clean pinned
-checkout at the release commit. See `docs/kit-qa-runbook.md` (repo) for author
-QA steps and the clean-room buyer test contract in `docs/kit-plan.md`.
+This archive was produced by the release workflow from a pinned checkout and
+target-native libraries. See the release packet for automated and human QA.
 
 For the exact shipped files and SHA-256, see the release notes / PR that
 landed the tag.
 KITREADME
 
-# LICENSE files for crates (MIT from root) + root copy
+# Project, crate, and dependency licenses
 cp LICENSE.md "$STAGING/LICENSE.md"
-cp LICENSE.md "$STAGING/crates/engine/LICENSE.md"
-cp LICENSE.md "$STAGING/crates/godot/LICENSE.md"
+cp crates/LICENSE.md "$STAGING/crates/engine/LICENSE.md"
+cp crates/LICENSE.md "$STAGING/crates/godot/LICENSE.md"
+cp THIRD_PARTY_NOTICES.md "$STAGING/THIRD_PARTY_NOTICES.md"
+cp -a licenses "$STAGING/licenses"
 
-# THIRD_PARTY_NOTICES.md (gdext MPL-2.0 obligations)
-# Shipping the binding *source* is not required for MPL-2.0 when we ship a
-# binary produced from it; we include clear attribution + pointer for rebuilders.
-cat > "$STAGING/THIRD_PARTY_NOTICES.md" << 'THIRD'
-Third-Party Notices
-===================
-
-Gamestruments Godot 4 kit
-
-This archive contains a pre-built GDExtension binary (libgamestruments_godot.so)
-and the full source of the MIT-licensed Gamestruments crates.
-
-Components under third-party licenses:
-
-- godot (gdext) 0.5.5 and its sub-crates:
-    gdextension-api, godot-bindings, godot-cell, godot-core, etc.
-  License: Mozilla Public License 2.0 (MPL-2.0)
-  Origin: https://github.com/godot-rust/gdext
-  What it covers: The Rust bindings and generated glue that let the Rust
-    `gamestruments-godot` cdylib register as a Godot 4 GDExtension (api-4-7).
-    The MPL-2.0 code is linked into the shipped .so at build time.
-  Source of the binding is NOT shipped in this archive. Buyers who rebuild
-    from the included `crates/engine` + `crates/godot` sources will have
-    `cargo` fetch the exact gdext 0.5.5 tree; at that point the MPL-2.0 terms
-    apply to the binding portion.
-  Full license text: https://www.mozilla.org/en-US/MPL/2.0/
-  (The MPL-2.0 requires that modifications to MPL-covered files be made
-   available under MPL; our own crates remain MIT and do not modify the
-   gdext sources.)
-
-Gamestruments crates (engine + godot glue) are under the MIT License.
-See LICENSE.md and the per-crate copies for the full text.
-
-No other third-party notices are required for the contents of this archive.
-If you rebuild or redistribute, satisfy the obligations of any dependencies
-you pull (e.g. via cargo tree).
-THIRD
-
-# 3. Normalize for determinism (mtimes + permissions)
+# 2. Normalize for determinism (mtimes + permissions)
 echo "==> Normalizing staging for deterministic zip (fixed mtime 2024-01-01, sorted, -X)"
 find "$STAGING" -type f -exec touch -t 202401010000.00 {} +
 find "$STAGING" -type d -exec touch -t 202401010000.00 {} +
 # ensure readable; zip will use current umask but -X helps
 chmod -R a+rX "$STAGING"
 
-# 4. Build deterministic zip
+# 3. Build deterministic zip
 ZIPNAME="gamestruments-$VERSION-godot4.zip"
 ZIPPATH="$OUT_DIR/$ZIPNAME"
+rm -f "$ZIPPATH"
 
 ( cd "$STAGING" && \
   find . -type f | LC_ALL=C sort | \
@@ -215,7 +210,7 @@ ZIPPATH="$OUT_DIR/$ZIPNAME"
 
 echo "==> Zip created: $ZIPPATH"
 
-# 5. Report
+# 4. Report
 BYTES=$(stat -c%s "$ZIPPATH" 2>/dev/null || stat -f%z "$ZIPPATH")
 SHA=$(sha256sum "$ZIPPATH" | awk '{print $1}')
 
@@ -223,9 +218,9 @@ echo "==> Size: $BYTES bytes"
 echo "==> SHA-256: $SHA"
 
 ls -l "$ZIPPATH"
-echo "gamestruments-$VERSION-godot4.zip $BYTES $SHA" > "$OUT_DIR/gamestruments-$VERSION-godot4.zip.sha256.txt"
+echo "$SHA  $ZIPNAME" > "$OUT_DIR/$ZIPNAME.sha256.txt"
 
 echo "==> Done. Artifact at $ZIPPATH"
-echo "    (residual non-determinism note: only the compiled .so may embed"
+echo "    (residual non-determinism note: compiled native libraries may embed"
 echo "     rustc/linker build IDs or timestamps; zip container, text, and"
 echo "     file order are normalized.)"

@@ -168,7 +168,8 @@ mod tests {
             complexity: 0.6,
             brightness: 0.5,
             syncopation: 0.7,
-        });
+        })
+        .expect("render test score must validate");
         let wav = render_wav(&score, "cruise", 2, 22050);
         let (sr, _bits, n_samples) = parse_wav_header(&wav);
         assert_eq!(sr, 22050);

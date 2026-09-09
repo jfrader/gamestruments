@@ -6,7 +6,7 @@ import {
 } from "./export-score.js";
 import { pocketCircuitRules } from "./pocket-circuit-score.js";
 
-export const POCKET_CIRCUIT_GENERATOR_VERSION = "1.10.0" as const;
+export const POCKET_CIRCUIT_GENERATOR_VERSION = "1.10.1" as const;
 export const POCKET_CIRCUIT_DNA_SEED_VERSION = "1.1.0" as const;
 
 export const POCKET_CIRCUIT_GENERATOR_DOMAINS = [

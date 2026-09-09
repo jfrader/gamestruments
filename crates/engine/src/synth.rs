@@ -772,7 +772,8 @@ mod tests {
             complexity: 0.6,
             brightness: 0.5,
             syncopation: 0.7,
-        });
+        })
+        .expect("synth test score must validate");
         let ticks_per_second = score.ticks_per_second();
         let mut synth = Synth::new(22050.0);
         for event in &score.section("cruise").unwrap().events {
