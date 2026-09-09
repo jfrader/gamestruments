@@ -4,7 +4,7 @@ use crate::score::{
     SongFormStep, SCORE_SCHEMA_VERSION,
 };
 
-pub const GENERATOR_VERSION: &str = "2.0.0";
+pub const GENERATOR_VERSION: &str = "2.1.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,6 +70,8 @@ enum SectionRole {
     PostChorus,
     Interlude,
     Bridge,
+    BridgeB,
+    Break,
     Solo,
     Outro,
     Coda,
@@ -78,6 +80,7 @@ enum SectionRole {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CueWeight {
     Idle,
+    Drop,
     Work,
     Drive,
     Alarm,
@@ -90,7 +93,7 @@ const KEY_PITCH_CLASSES: [i32; 7] = [0, 2, 3, 5, 7, 8, 10];
 const AEOLIAN: [i32; 7] = [0, 2, 3, 5, 7, 8, 10];
 const CELLS: [[i32; 3]; 4] = [[0, 7, -2], [0, 7, -1], [0, 3, 7], [0, -5, 7]];
 
-const PLANS: [SectionPlan; 12] = [
+const PLANS: [SectionPlan; 14] = [
     SectionPlan {
         id: "intro",
         label: "Handshake",
@@ -124,6 +127,14 @@ const PLANS: [SectionPlan; 12] = [
         role: SectionRole::Chorus,
     },
     SectionPlan {
+        id: "break",
+        label: "Break",
+        feeling: "the floor drops out",
+        color: "#4a5560",
+        bars: 8,
+        role: SectionRole::Break,
+    },
+    SectionPlan {
         id: "verse-b",
         label: "Second Pass",
         feeling: "pulse drops out for a breath",
@@ -154,6 +165,14 @@ const PLANS: [SectionPlan; 12] = [
         color: "#c94f4f",
         bars: 8,
         role: SectionRole::Bridge,
+    },
+    SectionPlan {
+        id: "bridge-b",
+        label: "Other Hall",
+        feeling: "the cell inverted, no arp",
+        color: "#8b4a62",
+        bars: 8,
+        role: SectionRole::BridgeB,
     },
     SectionPlan {
         id: "solo",
@@ -293,10 +312,11 @@ fn midi(pitch: i32) -> u8 {
 fn cue_weight(plan: &SectionPlan) -> CueWeight {
     match plan.role {
         SectionRole::Intro | SectionRole::Outro | SectionRole::Coda => CueWeight::Idle,
+        SectionRole::Break => CueWeight::Drop,
         SectionRole::Verse | SectionRole::PostChorus | SectionRole::Interlude | SectionRole::Solo => {
             CueWeight::Work
         }
-        SectionRole::PreChorus | SectionRole::Chorus => CueWeight::Drive,
+        SectionRole::PreChorus | SectionRole::Chorus | SectionRole::BridgeB => CueWeight::Drive,
         SectionRole::Bridge => CueWeight::Alarm,
     }
 }
@@ -367,6 +387,7 @@ fn cell_hits(weight: CueWeight, solo: bool) -> &'static [(usize, u32)] {
     }
     match weight {
         CueWeight::Idle => &[(1, 4), (3, 0), (5, 4), (7, 0)],
+        CueWeight::Drop => &[(2, 0), (6, 4)],
         CueWeight::Work => &[(0, 4), (2, 0), (4, 4), (6, 0)],
         CueWeight::Drive | CueWeight::Alarm => &[
             (0, 4),
@@ -380,11 +401,11 @@ fn cell_hits(weight: CueWeight, solo: bool) -> &'static [(usize, u32)] {
 
 fn pulse_from_bar(weight: CueWeight, plan: &SectionPlan) -> Option<usize> {
     match plan.role {
-        SectionRole::Solo | SectionRole::Intro | SectionRole::Coda => None,
+        SectionRole::Solo | SectionRole::Intro | SectionRole::Coda | SectionRole::Break => None,
         SectionRole::Verse if plan.id == "verse-b" => None,
         SectionRole::Interlude => Some(0),
         _ => match weight {
-            CueWeight::Idle => None,
+            CueWeight::Idle | CueWeight::Drop => None,
             CueWeight::Work => Some(2),
             CueWeight::Drive | CueWeight::Alarm => Some(0),
         },
@@ -401,7 +422,7 @@ fn has_drone(plan: &SectionPlan) -> bool {
 
 fn hat_from_bar(weight: CueWeight) -> Option<usize> {
     match weight {
-        CueWeight::Idle => None,
+        CueWeight::Idle | CueWeight::Drop => None,
         CueWeight::Work => Some(4),
         CueWeight::Drive => Some(2),
         CueWeight::Alarm => Some(0),
@@ -411,6 +432,7 @@ fn hat_from_bar(weight: CueWeight) -> Option<usize> {
 fn kick_from_bar(weight: CueWeight) -> Option<usize> {
     match weight {
         CueWeight::Idle => Some(4),
+        CueWeight::Drop => None,
         CueWeight::Work => Some(4),
         CueWeight::Drive => Some(2),
         CueWeight::Alarm => Some(0),
@@ -519,8 +541,13 @@ fn build_section(
     let hits = cell_hits(weight, plan.role == SectionRole::Solo);
     for (index, &(bar, step)) in hits.iter().enumerate() {
         let interval = motif.cell[index % motif.cell.len()];
+        let interval = if plan.role == SectionRole::BridgeB {
+            -interval
+        } else {
+            interval
+        };
         let pitch = midi(cell_root + interval);
-        let hold = if matches!(weight, CueWeight::Idle) || traits.mystery >= 0.6 {
+        let hold = if matches!(weight, CueWeight::Idle | CueWeight::Drop) || traits.mystery >= 0.6 {
             pulse * 6
         } else {
             pulse * 3
@@ -679,10 +706,12 @@ fn song_form() -> SongForm {
             "verse",
             "pre-chorus",
             "chorus",
+            "break",
             "verse-b",
             "post-chorus",
             "interlude",
             "bridge",
+            "bridge-b",
             "solo",
             "chorus-final",
         ]
@@ -788,9 +817,19 @@ mod tests {
     }
 
     #[test]
-    fn generates_a_twelve_section_song_form() {
+    fn generates_a_fourteen_section_song_form() {
         let score = generate_suspense(&input("session-7", SuspenseStyle::Terminal)).unwrap();
-        assert_eq!(score.sections.len(), 12);
+        assert_eq!(score.sections.len(), 14);
+        let steps: Vec<_> = score
+            .form
+            .as_ref()
+            .unwrap()
+            .steps
+            .iter()
+            .map(|step| step.section.as_str())
+            .collect();
+        assert!(steps.contains(&"break"));
+        assert!(steps.contains(&"bridge-b"));
         assert!(score.form.is_some());
         assert_eq!(score.default_section, "intro");
         for section in &score.sections {
@@ -828,6 +867,27 @@ mod tests {
         assert!(!intro_has_arp);
         assert!(chorus_has_arp);
         assert!(chorus.events.len() > intro.events.len());
+    }
+
+    fn lane_named(events: &[MusicEvent], needle: &str) -> bool {
+        events.iter().any(|event| match event {
+            MusicEvent::Note { lane, .. } => lane.contains(needle),
+            _ => false,
+        })
+    }
+
+    #[test]
+    fn break_drops_the_machine_and_second_bridge_has_no_arp() {
+        let score = generate_suspense(&input("parts", SuspenseStyle::Terminal)).unwrap();
+        let brk = score.section("break").unwrap();
+        let bridge = score.section("bridge").unwrap();
+        let other = score.section("bridge-b").unwrap();
+        assert!(!lane_named(&brk.events, "pulse"));
+        assert!(!lane_named(&brk.events, "arp"));
+        assert!(melody(&brk.events).len() <= 2);
+        assert!(lane_named(&bridge.events, "arp"));
+        assert!(!lane_named(&other.events, "arp"));
+        assert!(lane_named(&other.events, "pulse"));
     }
 
     #[test]

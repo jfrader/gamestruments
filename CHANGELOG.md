@@ -10,7 +10,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
-- Suspense v2 is no longer a pop song: Santaolalla-style drone + 2–3 note cell, Mr. Robot pulse/clock, static minor harmony, no snare backbeat.
+- Suspense v2 is no longer a pop song: Santaolalla-style drone + 2–3 note cell, Mr. Robot pulse/clock, static minor harmony, no snare backbeat. Form now also passes through a drop (Break) and a second inverted bridge (Other Hall) without rewriting the v2 beds.
 - Kit repositioned as **Gamestruments — Adaptive Music for Godot 4**: Gamestruments is the product, Pocket Circuit is the racing recipe, and the demo remains Night Circuit. Storefront slug moves to `gamestruments-godot`.
 - Buyer archive `README.md` is rewritten in a friendlier, task-first voice and links the browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer).
 - Standard price lowered to $12.99 (set 2026-09-10; revisitable after launch).
