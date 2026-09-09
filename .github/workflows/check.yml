@@ -43,7 +43,10 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox
+      - name: Install Playwright browsers
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          npx playwright install --with-deps chromium firefox
       - run: npm run test:e2e
   godot:
     runs-on: ubuntu-24.04
