@@ -14,18 +14,15 @@ export default defineConfig({
     reducedMotion: "no-preference",
   },
   projects: [
-    { name: "chromium", use: devices["Desktop Chrome"] },
+    {
+      name: "chromium",
+      testIgnore: /firefox-animation-compat\.spec\.ts/,
+      use: devices["Desktop Chrome"],
+    },
     {
       name: "firefox",
-      use: {
-        ...devices["Desktop Firefox"],
-        launchOptions: {
-          firefoxUserPrefs: {
-            "media.autoplay.block-webaudio": false,
-            "media.autoplay.default": 0,
-          },
-        },
-      },
+      testMatch: /firefox-animation-compat\.spec\.ts/,
+      use: devices["Desktop Firefox"],
     },
   ],
   webServer: productionBaseUrl

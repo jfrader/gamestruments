@@ -1,16 +1,16 @@
 # Graph Report - gamestruments-GURI-644  (2026-09-08)
 
 ## Corpus Check
-- 101 files · ~98,725 words
+- 102 files · ~98,802 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1062 nodes · 1925 edges · 63 communities (47 shown, 9 thin omitted)
+- 1063 nodes · 1925 edges · 64 communities (47 shown, 9 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 23 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7477c795`
+- Built from commit: `585c07ae`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -99,7 +99,7 @@
 ## Import Cycles
 - 1-file cycle: `crates/engine/src/synth.rs -> crates/engine/src/synth.rs`
 
-## Communities (63 total, 9 thin omitted)
+## Communities (64 total, 9 thin omitted)
 
 ### Community 0 - "lantern-trail-generator.ts"
 Cohesion: 0.05
@@ -291,7 +291,7 @@ Nodes (3): Audit Table, Engine Synth Voice Audit (GURI-563), Verification comman
 
 ## Knowledge Gaps
 - **381 isolated node(s):** `NoteEvent`, `SynthVoice`, `TransitionCurve`, `SectionBus`, `SynthVoiceSettings` (+376 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 471 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 472 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions

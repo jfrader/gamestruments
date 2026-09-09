@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "playwright.config.ts": {
-    "mtime": 1788920319.4685285,
-    "seen": 1788920489.2963564,
-    "ast_hash": "efbc18b9ee8c9f167e1981257fecc717",
+    "mtime": 1788921046.204585,
+    "seen": 1788921859.1402576,
+    "ast_hash": "130bb3972a34b7ee80aa400bc79d3ed5",
     "semantic_hash": ""
   },
   "tests/browser/audio-lab.spec.ts": {
@@ -645,6 +645,12 @@
     "mtime": 1788918917.2004194,
     "seen": 1788919038.2234828,
     "ast_hash": "7ad343de17e03fb2dfe9fc62833179cb",
+    "semantic_hash": ""
+  },
+  "tests/browser/firefox-animation-compat.spec.ts": {
+    "mtime": 1788921046.204585,
+    "seen": 1788921859.14032,
+    "ast_hash": "232aa3d318f2f01fe6bfe4e3cd742f9a",
     "semantic_hash": ""
   }
 }

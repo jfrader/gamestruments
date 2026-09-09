@@ -8872,6 +8872,17 @@
       "source_location": "L12"
     },
     {
+      "id": "tests_browser_firefox_animation_compat_spec",
+      "label": "firefox-animation-compat.spec.ts",
+      "_origin": "ast",
+      "community": 36,
+      "community_name": "firefox-animation-compat.spec.ts",
+      "file_type": "code",
+      "norm_label": "firefox-animation-compat.spec.ts",
+      "source_file": "tests/browser/firefox-animation-compat.spec.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "packages_runtime_package",
       "label": "runtime/package.json",
       "_origin": "ast",
@@ -34526,5 +34537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "7477c79574d0d1058320f91dd6439f7e4dea01eb"
+  "built_at_commit": "585c07ae3733b6bbda8eebf3fe0e65e0a2d96977"
 }
