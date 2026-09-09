@@ -9,6 +9,25 @@ export interface OrbitMotion {
   rhythmPulse: number;
 }
 
+export type OrbitStyle = Record<
+  | "--orbit-scale"
+  | "--orbit-glow-opacity"
+  | "--orbit-glow-scale"
+  | "--outer-opacity"
+  | "--outer-rotation"
+  | "--outer-scale"
+  | "--inner-opacity"
+  | "--inner-rotation"
+  | "--inner-scale"
+  | "--playhead-opacity"
+  | "--playhead-rotation",
+  string
+>;
+
+function cssNumber(value: number): string {
+  return String(Math.round(value * 1_000_000) / 1_000_000);
+}
+
 function loopDistance(currentTick: number, eventTick: number, lengthTicks: number): number {
   return ((currentTick - eventTick) % lengthTicks + lengthTicks) % lengthTicks;
 }
@@ -95,5 +114,21 @@ export function orbitMotionAt(
       ticksPerBeat * 0.4,
       (event) => event.kind === "percussion",
     ),
+  };
+}
+
+export function orbitStyleAt(motion: OrbitMotion): OrbitStyle {
+  return {
+    "--orbit-scale": cssNumber(1 + motion.beatPulse * 0.012 + motion.rhythmPulse * 0.018),
+    "--orbit-glow-opacity": cssNumber(0.3 + motion.beatPulse * 0.36 + motion.melodyPulse * 0.24),
+    "--orbit-glow-scale": cssNumber(0.9 + motion.melodyPulse * 0.12),
+    "--outer-opacity": cssNumber(0.66 + motion.rhythmPulse * 0.34),
+    "--outer-rotation": `${cssNumber(motion.phraseProgress)}turn`,
+    "--outer-scale": cssNumber(1 + motion.rhythmPulse * 0.035),
+    "--inner-opacity": cssNumber(0.72 + motion.melodyPulse * 0.28),
+    "--inner-rotation": `${cssNumber(motion.melodyAngle)}deg`,
+    "--inner-scale": cssNumber(1 + motion.melodyPulse * 0.075),
+    "--playhead-opacity": cssNumber(0.74 + motion.beatPulse * 0.26),
+    "--playhead-rotation": `${cssNumber(motion.barProgress)}turn`,
   };
 }
