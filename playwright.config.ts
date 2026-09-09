@@ -15,7 +15,18 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: devices["Desktop Chrome"] },
-    { name: "firefox", use: devices["Desktop Firefox"] },
+    {
+      name: "firefox",
+      use: {
+        ...devices["Desktop Firefox"],
+        launchOptions: {
+          firefoxUserPrefs: {
+            "media.autoplay.block-webaudio": false,
+            "media.autoplay.default": 0,
+          },
+        },
+      },
+    },
   ],
   webServer: productionBaseUrl
     ? undefined
