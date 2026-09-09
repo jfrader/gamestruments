@@ -62,20 +62,74 @@ export function renderSections(
   }
 }
 
-export function renderScoreButtons(activeExperimentIndex: number): void {
-  const buttons = pocketCircuitExperiments.map((experiment, index) => {
+export function renderScoreButtons(
+  activeExperimentIndex: number,
+  presets: readonly { style: string }[],
+  recipe: "pocket-circuit" | "suspense",
+): void {
+  const racingLabels = ["Tiny Torque", "Neon Drift", "Countertop", "8-Bit"];
+  const buttons = presets.map((preset, index) => {
     const button = document.createElement("button");
     const label = document.createElement("strong");
     const genre = document.createElement("span");
     button.type = "button";
     button.dataset.experimentIndex = String(index);
     button.setAttribute("aria-pressed", String(index === activeExperimentIndex));
-    label.textContent = experiment.shortLabel;
-    genre.textContent = experiment.genre;
+    label.textContent =
+      recipe === "suspense"
+        ? preset.style
+        : (racingLabels[index] ?? preset.style);
+    genre.textContent = preset.style;
     button.append(label, genre);
     return button;
   });
   elements.scoreButtons.replaceChildren(...buttons);
+}
+
+export function renderRecipeChrome(recipe: "pocket-circuit" | "suspense"): void {
+  const suspense = recipe === "suspense";
+  for (const button of elements.recipeButtons.querySelectorAll<HTMLButtonElement>(
+    "button[data-recipe]",
+  )) {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.recipe === recipe),
+    );
+  }
+  elements.traitEnergyLabel.textContent = suspense ? "Tension" : "Energy";
+  elements.traitComplexityLabel.textContent = suspense ? "Heat" : "Complexity";
+  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : "Brightness";
+  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : "Syncopation";
+  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : "Speed intensity";
+  elements.meterPressureLabel.textContent = suspense ? "Focus" : "Position pressure";
+  elements.meterFinalLabel.textContent = suspense ? "Extracted" : "Final lap";
+  elements.meterFinalCopy.textContent = suspense
+    ? "Hold the coda / disconnect"
+    : "Add the maximum-commitment layer";
+  const phases = suspense
+    ? ([
+        ["boot", "Boot"],
+        ["scan", "Scan"],
+        ["exploit", "Exploit"],
+        ["alert", "Alert"],
+        ["extract", "Extract"],
+        ["complete", "Complete"],
+      ] as const)
+    : ([
+        ["garage", "Garage"],
+        ["grid", "Grid"],
+        ["race", "Race"],
+        ["finish", "Finish"],
+      ] as const);
+  const buttons = phases.map(([id, label], index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.phase = id;
+    button.textContent = label;
+    button.setAttribute("aria-pressed", String(index === (suspense ? 1 : 0)));
+    return button;
+  });
+  elements.phaseButtons.replaceChildren(...buttons);
 }
 
 export function renderGenreIndex(): void {
@@ -106,16 +160,15 @@ export function renderScoreIdentity(
   generationTraits: NormalizedMusicTraits,
   comparisonBaseSeed: string,
   soloMode: SoloMode,
+  recipe: "pocket-circuit" | "suspense",
+  presets: readonly { style: string }[],
 ): void {
-  const experiment = pocketCircuitExperiments[activeExperimentIndex];
-  if (experiment === undefined) {
-    return;
-  }
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
+  renderRecipeChrome(recipe);
   renderGenerationControls(score, levelSeed, generationTraits);
   document.title = `Gamestruments Audio Lab — ${score.title}`;
-  renderScoreButtons(activeExperimentIndex);
+  renderScoreButtons(activeExperimentIndex, presets, recipe);
   createSectionRows(score);
   renderAuditionControls(levelSeed, comparisonBaseSeed, soloMode);
 }
@@ -250,7 +303,9 @@ export function renderFrame(
     : auditionOverride !== null
       ? "Audition override"
       : activeTransition === null
-        ? "Pattern locked"
+        ? score.form === undefined
+          ? "Pattern locked"
+          : "Form playing"
         : tick < activeTransition.startTick
           ? "Waiting for next bar"
           : `Crossing from ${sectionById(activeTransition.from).label}`;

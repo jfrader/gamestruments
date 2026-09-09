@@ -67,6 +67,7 @@ use core::slice;
 use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
 use crate::render::render_wav;
 use crate::score::PortableScore;
+use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
@@ -127,6 +128,10 @@ fn write_error(error: impl AsRef<str>) {
     write_response(error.as_ref().as_bytes(), 1);
 }
 
+fn default_generation_trait() -> f64 {
+    0.5
+}
+
 #[no_mangle]
 pub extern "C" fn gamestruments_output_len() -> usize {
     unsafe { OUT_LEN }
@@ -151,23 +156,42 @@ pub unsafe extern "C" fn gamestruments_score_json(
         }
     };
 
-    #[derive(serde::Deserialize)]
+    #[derive(Default, serde::Deserialize)]
     struct Pal {
+        #[serde(default)]
         melody: String,
+        #[serde(default)]
         harmony: String,
+        #[serde(default)]
         drive: String,
+        #[serde(default)]
         bass: String,
     }
     #[derive(serde::Deserialize)]
     struct Inp {
+        #[serde(default)]
+        recipe: String,
         secret: String,
         seed: String,
         style: String,
+        #[serde(default)]
         palette: Pal,
+        #[serde(default = "default_generation_trait")]
         energy: f64,
+        #[serde(default = "default_generation_trait")]
         complexity: f64,
+        #[serde(default = "default_generation_trait")]
         brightness: f64,
+        #[serde(default = "default_generation_trait")]
         syncopation: f64,
+        #[serde(default = "default_generation_trait")]
+        tension: f64,
+        #[serde(default = "default_generation_trait")]
+        heat: f64,
+        #[serde(default = "default_generation_trait")]
+        mystery: f64,
+        #[serde(default = "default_generation_trait")]
+        pulse: f64,
     }
 
     let inp: Inp = match serde_json::from_str(json_str) {
@@ -177,31 +201,50 @@ pub unsafe extern "C" fn gamestruments_score_json(
             return unsafe { OUT_PTR };
         }
     };
-    let style = match Style::parse(&inp.style) {
-        Ok(value) => value,
-        Err(error) => {
-            write_error(error);
-            return unsafe { OUT_PTR };
-        }
-    };
-    let palette = InstrumentPalette {
-        melody: inp.palette.melody,
-        harmony: inp.palette.harmony,
-        drive: inp.palette.drive,
-        bass: inp.palette.bass,
-    };
-    let gen = GenerateInput {
-        secret: inp.secret,
-        seed: inp.seed,
-        style,
-        palette,
-        energy: inp.energy,
-        complexity: inp.complexity,
-        brightness: inp.brightness,
-        syncopation: inp.syncopation,
+    let generated = if inp.recipe == "suspense" {
+        let style = match SuspenseStyle::parse(&inp.style) {
+            Ok(value) => value,
+            Err(error) => {
+                write_error(error);
+                return unsafe { OUT_PTR };
+            }
+        };
+        generate_suspense(&SuspenseInput {
+            secret: inp.secret,
+            seed: inp.seed,
+            style,
+            tension: inp.tension,
+            heat: inp.heat,
+            mystery: inp.mystery,
+            pulse: inp.pulse,
+        })
+    } else {
+        let style = match Style::parse(&inp.style) {
+            Ok(value) => value,
+            Err(error) => {
+                write_error(error);
+                return unsafe { OUT_PTR };
+            }
+        };
+        let palette = InstrumentPalette {
+            melody: inp.palette.melody,
+            harmony: inp.palette.harmony,
+            drive: inp.palette.drive,
+            bass: inp.palette.bass,
+        };
+        generate_pocket_circuit(&GenerateInput {
+            secret: inp.secret,
+            seed: inp.seed,
+            style,
+            palette,
+            energy: inp.energy,
+            complexity: inp.complexity,
+            brightness: inp.brightness,
+            syncopation: inp.syncopation,
+        })
     };
 
-    match generate_pocket_circuit(&gen).and_then(|score| {
+    match generated.and_then(|score| {
         serde_json::to_vec(&score).map_err(|error| format!("score serialization failed: {error}"))
     }) {
         Ok(out) => write_output(&out),

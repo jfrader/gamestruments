@@ -1,5 +1,6 @@
 import type {
   AdaptiveCondition,
+  AdaptiveRule,
   GameState,
   PortableScore,
   SectionId,
@@ -38,17 +39,22 @@ export function matchesCondition(
   return true;
 }
 
-export function selectSection(
+export function selectMatchingRule(
   score: PortableScore,
   state: GameState,
-): SectionId {
-  const matchingRule = score.rules
+): AdaptiveRule | undefined {
+  return score.rules
     .map((rule, index) => ({ rule, index }))
     .filter(({ rule }) => matchesCondition(rule.when, state))
     .sort(
       (left, right) =>
         right.rule.priority - left.rule.priority || left.index - right.index,
     )[0]?.rule;
+}
 
-  return matchingRule?.target ?? score.defaultSection;
+export function selectSection(
+  score: PortableScore,
+  state: GameState,
+): SectionId {
+  return selectMatchingRule(score, state)?.target ?? score.defaultSection;
 }

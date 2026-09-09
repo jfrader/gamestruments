@@ -48,3 +48,29 @@ test("generation controls remain functional before and during playback", async (
   await expect(page.locator("#start-audio")).toContainText("Start engine");
   expect(runtimeErrors).toEqual([]);
 });
+
+test("switching to Suspense generates song-form music instead of racing", async ({
+  page,
+}) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  await page.locator("#recipe-buttons button", { hasText: "Suspense" }).click();
+  await expect(page.locator("#audition-status")).toContainText("Opened Suspense");
+  await expect(page.locator("#score-title")).toContainText(/Terminal|Cipher|Noir/);
+  await expect(page.locator("#section-list li").first()).toContainText("Handshake");
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: suspense");
+
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#transition-label")).toContainText("Form playing");
+  expect(runtimeErrors).toEqual([]);
+});

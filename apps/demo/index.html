@@ -36,6 +36,14 @@
           </div>
 
           <fieldset class="sound-world-control">
+            <legend>Game type</legend>
+            <div class="score-buttons" id="recipe-buttons">
+              <button type="button" data-recipe="pocket-circuit" aria-pressed="true">Racing</button>
+              <button type="button" data-recipe="suspense" aria-pressed="false">Suspense</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="sound-world-control">
             <legend>Sound world</legend>
             <div class="score-buttons" id="score-buttons"></div>
           </fieldset>
@@ -55,22 +63,22 @@
             </button>
             <div class="generation-traits">
               <label for="generation-energy">
-                <span>Energy</span>
+                <span id="trait-energy-label">Energy</span>
                 <output id="generation-energy-value">62%</output>
                 <input id="generation-energy" type="range" min="0" max="1" step="0.01" value="0.62" />
               </label>
               <label for="generation-complexity">
-                <span>Complexity</span>
+                <span id="trait-complexity-label">Complexity</span>
                 <output id="generation-complexity-value">68%</output>
                 <input id="generation-complexity" type="range" min="0" max="1" step="0.01" value="0.68" />
               </label>
               <label for="generation-brightness">
-                <span>Brightness</span>
+                <span id="trait-brightness-label">Brightness</span>
                 <output id="generation-brightness-value">52%</output>
                 <input id="generation-brightness" type="range" min="0" max="1" step="0.01" value="0.52" />
               </label>
               <label for="generation-syncopation">
-                <span>Syncopation</span>
+                <span id="trait-syncopation-label">Syncopation</span>
                 <output id="generation-syncopation-value">72%</output>
                 <input id="generation-syncopation" type="range" min="0" max="1" step="0.01" value="0.72" />
               </label>
@@ -103,21 +111,21 @@
           </fieldset>
 
           <label class="meter-control" for="intensity">
-            <span>Speed intensity</span>
+            <span id="meter-intensity-label">Speed intensity</span>
             <output id="intensity-value">35%</output>
             <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
           </label>
 
           <label class="meter-control" for="pressure">
-            <span>Position pressure</span>
+            <span id="meter-pressure-label">Position pressure</span>
             <output id="pressure-value">20%</output>
             <input id="pressure" type="range" min="0" max="1" step="0.01" value="0.2" />
           </label>
 
           <label class="toggle-control" for="final-lap">
             <span>
-              <strong>Final lap</strong>
-              Add the maximum-commitment layer
+              <strong id="meter-final-label">Final lap</strong>
+              <span id="meter-final-copy">Add the maximum-commitment layer</span>
             </span>
             <input id="final-lap" type="checkbox" />
             <i aria-hidden="true"></i>
@@ -178,12 +186,17 @@
           <li class="is-live">
             <span>01</span>
             <div><strong>Racing</strong><small>Speed, pressure, final lap, finish</small></div>
-            <button type="button" data-open-lab>4 live experiments</button>
+            <button type="button" data-open-lab data-recipe="pocket-circuit">4 live experiments</button>
           </li>
-          <li><span>02</span><div><strong>Adventure</strong><small>Biome, discovery, danger, shelter</small></div><i>Open slot</i></li>
-          <li><span>03</span><div><strong>Horror</strong><small>Awareness, pursuit, isolation, release</small></div><i>Open slot</i></li>
-          <li><span>04</span><div><strong>Strategy</strong><small>Economy, conflict, momentum, victory</small></div><i>Open slot</i></li>
-          <li><span>05</span><div><strong>Cozy</strong><small>Time, weather, activity, companionship</small></div><i>Open slot</i></li>
+          <li class="is-live">
+            <span>02</span>
+            <div><strong>Suspense</strong><small>Song form, heat, focus, extract</small></div>
+            <button type="button" data-open-lab data-recipe="suspense">3 live experiments</button>
+          </li>
+          <li><span>03</span><div><strong>Adventure</strong><small>Biome, discovery, danger, shelter</small></div><i>Open slot</i></li>
+          <li><span>04</span><div><strong>Horror</strong><small>Awareness, pursuit, isolation, release</small></div><i>Open slot</i></li>
+          <li><span>05</span><div><strong>Strategy</strong><small>Economy, conflict, momentum, victory</small></div><i>Open slot</i></li>
+          <li><span>06</span><div><strong>Cozy</strong><small>Time, weather, activity, companionship</small></div><i>Open slot</i></li>
         </ol>
       </section>
 

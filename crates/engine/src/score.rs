@@ -17,6 +17,32 @@ pub struct PortableScore {
     pub default_section: String,
     pub sections: Vec<PortableSection>,
     pub rules: Vec<AdaptiveRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<SongForm>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SongFormStep {
+    pub section: String,
+    #[serde(default = "one_repeat", skip_serializing_if = "is_one_repeat")]
+    pub repeats: u32,
+}
+
+fn one_repeat() -> u32 {
+    1
+}
+
+fn is_one_repeat(value: &u32) -> bool {
+    *value == 1
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SongForm {
+    pub steps: Vec<SongFormStep>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loop_from: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -108,6 +134,8 @@ pub struct AdaptiveRule {
     pub target: String,
     pub priority: i32,
     pub when: AdaptiveCondition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -125,6 +153,14 @@ pub struct GameState {
     pub final_lap: bool,
     pub race_phase: String,
     pub finish_result: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TraceState {
+    pub phase: String,
+    pub heat: f64,
+    pub focus: f64,
+    pub progress: f64,
 }
 
 impl PortableScore {
@@ -217,8 +253,37 @@ impl PortableScore {
                 ));
             }
         }
+        if let Some(form) = &self.form {
+            validate_song_form(form, &section_ids)?;
+        }
         Ok(())
     }
+}
+
+fn validate_song_form(form: &SongForm, section_ids: &HashSet<&str>) -> Result<(), String> {
+    if form.steps.is_empty() {
+        return Err("song form must contain at least one step".into());
+    }
+    for (index, step) in form.steps.iter().enumerate() {
+        if step.section.is_empty() {
+            return Err(format!("song form step {index} has an empty section"));
+        }
+        if !section_ids.contains(step.section.as_str()) {
+            return Err(format!(
+                "song form step {index} targets unknown section {}",
+                step.section
+            ));
+        }
+        if step.repeats == 0 {
+            return Err(format!("song form step {index} repeats must be positive"));
+        }
+    }
+    if let Some(loop_from) = form.loop_from {
+        if (loop_from as usize) >= form.steps.len() {
+            return Err(format!("song form loopFrom {loop_from} is out of range"));
+        }
+    }
+    Ok(())
 }
 
 fn validate_event<'a>(
@@ -356,6 +421,7 @@ mod tests {
                 }],
             }],
             rules: Vec::new(),
+            form: None,
         }
     }
 

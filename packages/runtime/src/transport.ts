@@ -1,4 +1,4 @@
-import { selectSection } from "./conditions.js";
+import { selectMatchingRule, selectSection } from "./conditions.js";
 import type {
   GameState,
   PortableScore,
@@ -20,6 +20,9 @@ export class AdaptiveTransport {
   #currentSection: SectionId;
   #pendingSection: SectionId | null = null;
   #transition: TransitionPlan | null = null;
+  #formStepIndex = 0;
+  #sectionEnteredAt = 0;
+  #cueTarget: SectionId | null = null;
 
   constructor(score: PortableScore, initialSection = score.defaultSection) {
     validatePortableScore(score);
@@ -36,15 +39,38 @@ export class AdaptiveTransport {
     this.#score = score;
     this.#barTicks = score.beatsPerBar * score.ticksPerBeat;
     this.#currentSection = initialSection;
+    this.#formStepIndex = formIndexFor(score, initialSection) ?? 0;
   }
 
   requestState(state: GameState, atTick: number): TransitionRequest {
-    return this.requestSection(selectSection(this.#score, state), atTick);
+    if (this.#score.form === undefined) {
+      return this.requestSection(selectSection(this.#score, state), atTick);
+    }
+    this.#assertTick(atTick);
+    this.advance(atTick);
+    const match = selectMatchingRule(this.#score, state);
+    if (match === undefined) {
+      this.#cueTarget = null;
+      return { status: "unchanged" };
+    }
+    if (match.hold !== false) {
+      this.#cueTarget = null;
+      this.#syncFormTo(match.target);
+      return this.requestSection(match.target, atTick);
+    }
+    if (this.#cueTarget === match.target) {
+      return { status: "unchanged" };
+    }
+    this.#cueTarget = match.target;
+    this.#syncFormTo(match.target);
+    return this.requestSection(match.target, atTick);
   }
 
   requestSection(target: SectionId, atTick: number): TransitionRequest {
     this.#assertTick(atTick);
     this.advance(atTick);
+    this.#cueTarget = null;
+    this.#syncFormTo(target);
 
     if (
       target === this.#currentSection &&
@@ -91,26 +117,28 @@ export class AdaptiveTransport {
     this.#currentSection = target;
     this.#pendingSection = null;
     this.#transition = null;
+    this.#sectionEnteredAt = atTick;
+    this.#syncFormTo(target);
   }
 
   advance(atTick: number): TransitionPlan | null {
     this.#assertTick(atTick);
-    if (this.#transition === null || atTick < this.#transition.endTick) {
-      return null;
+    if (this.#transition !== null && atTick >= this.#transition.endTick) {
+      this.#currentSection = this.#transition.to;
+      this.#sectionEnteredAt = atTick;
+      this.#syncFormTo(this.#currentSection);
+      this.#transition = null;
+
+      const queued = this.#pendingSection;
+      this.#pendingSection = null;
+      if (queued !== null && queued !== this.#currentSection) {
+        const plan = this.#createPlan(this.#currentSection, queued, atTick);
+        this.#transition = plan;
+        return plan;
+      }
     }
 
-    this.#currentSection = this.#transition.to;
-    this.#transition = null;
-
-    const queued = this.#pendingSection;
-    this.#pendingSection = null;
-    if (queued === null || queued === this.#currentSection) {
-      return null;
-    }
-
-    const plan = this.#createPlan(this.#currentSection, queued, atTick);
-    this.#transition = plan;
-    return plan;
+    return this.#maybeAdvanceForm(atTick);
   }
 
   mixAt(atTick: number): SectionGain[] {
@@ -166,4 +194,57 @@ export class AdaptiveTransport {
       throw new Error(`Tick must be a non-negative safe integer: ${tick}`);
     }
   }
+
+  #syncFormTo(section: SectionId): void {
+    const index = formIndexFor(this.#score, section);
+    if (index !== undefined) {
+      this.#formStepIndex = index;
+    }
+  }
+
+  #maybeAdvanceForm(atTick: number): TransitionPlan | null {
+    const form = this.#score.form;
+    if (
+      form === undefined ||
+      this.#transition !== null ||
+      this.#pendingSection !== null
+    ) {
+      return null;
+    }
+    const step = form.steps[this.#formStepIndex];
+    if (step === undefined || step.section !== this.#currentSection) {
+      return null;
+    }
+    const section = this.#score.sections.find(
+      (candidate) => candidate.id === this.#currentSection,
+    );
+    if (section === undefined) {
+      return null;
+    }
+    const repeats = step.repeats ?? 1;
+    if (atTick - this.#sectionEnteredAt < section.lengthTicks * repeats) {
+      return null;
+    }
+    const nextIndex =
+      this.#formStepIndex + 1 < form.steps.length
+        ? this.#formStepIndex + 1
+        : form.loopFrom;
+    if (nextIndex === undefined || form.steps[nextIndex] === undefined) {
+      return null;
+    }
+    const nextSection = form.steps[nextIndex].section;
+    this.#formStepIndex = nextIndex;
+    if (nextSection === this.#currentSection) {
+      this.#sectionEnteredAt = atTick;
+      return null;
+    }
+    const plan = this.#createPlan(this.#currentSection, nextSection, atTick);
+    this.#transition = plan;
+    return plan;
+  }
+}
+
+function formIndexFor(score: PortableScore, section: SectionId): number | undefined {
+  const index = score.form?.steps.findIndex((step) => step.section === section);
+  return index === undefined || index < 0 ? undefined : index;
 }

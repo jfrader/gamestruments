@@ -1,4 +1,4 @@
-use crate::score::{GameState, PortableScore};
+use crate::score::{GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionPlan {
@@ -14,6 +14,9 @@ pub struct AdaptiveTransport {
     current_section: String,
     pending_section: Option<String>,
     transition: Option<TransitionPlan>,
+    form_step_index: usize,
+    section_entered_at: u32,
+    cue_target: Option<String>,
 }
 
 impl AdaptiveTransport {
@@ -25,13 +28,38 @@ impl AdaptiveTransport {
             return Err(format!("Unknown initial section: {initial}"));
         }
         let bar_ticks = score.bar_ticks();
+        let form_step_index = form_index_for(&score, &initial).unwrap_or(0);
         Ok(Self {
             score,
             bar_ticks,
             current_section: initial,
             pending_section: None,
             transition: None,
+            form_step_index,
+            section_entered_at: 0,
+            cue_target: None,
         })
+    }
+
+    pub fn has_form(&self) -> bool {
+        self.score.form.is_some()
+    }
+
+    pub fn form_step_index(&self) -> usize {
+        self.form_step_index
+    }
+
+    pub fn phrase_tick(&self, at_tick: u32) -> u32 {
+        if self.score.form.is_none() {
+            let length = self
+                .score
+                .section(&self.current_section)
+                .map(|section| section.length_ticks)
+                .unwrap_or(1)
+                .max(1);
+            return at_tick % length;
+        }
+        at_tick.saturating_sub(self.section_entered_at)
     }
 
     pub fn current_section(&self) -> &str {
@@ -41,6 +69,34 @@ impl AdaptiveTransport {
     pub fn request_state(&mut self, state: &GameState, at_tick: u32) -> Option<TransitionPlan> {
         let target = select_section(&self.score, state);
         self.request_section(&target, at_tick)
+    }
+
+    pub fn request_trace_state(
+        &mut self,
+        state: &TraceState,
+        at_tick: u32,
+    ) -> Option<TransitionPlan> {
+        self.advance(at_tick);
+        let target = trace_target(state);
+        match target {
+            Some(section) if !holds_trace_target(section) => {
+                if self.cue_target.as_deref() == Some(section) {
+                    return None;
+                }
+                self.cue_target = Some(section.to_string());
+                self.sync_form_to(section);
+                self.request_section(section, at_tick)
+            }
+            Some(section) => {
+                self.cue_target = None;
+                self.sync_form_to(section);
+                self.request_section(section, at_tick)
+            }
+            None => {
+                self.cue_target = None;
+                None
+            }
+        }
     }
 
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {
@@ -71,6 +127,7 @@ impl AdaptiveTransport {
         }
         let plan = self.create_plan(&self.current_section, target, at_tick);
         self.transition = Some(plan.clone());
+        self.sync_form_to(target);
         Some(plan)
     }
 
@@ -78,6 +135,8 @@ impl AdaptiveTransport {
         if let Some(plan) = &self.transition {
             if at_tick >= plan.end_tick {
                 self.current_section = plan.to.clone();
+                self.section_entered_at = at_tick;
+                self.sync_form_to(&self.current_section.clone());
                 self.transition = None;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
@@ -87,6 +146,7 @@ impl AdaptiveTransport {
                 }
             }
         }
+        self.maybe_advance_form(at_tick);
     }
 
     pub fn section_gain(&self, section_id: &str, at_tick: u32) -> f32 {
@@ -121,6 +181,81 @@ impl AdaptiveTransport {
             end_tick: start + length.max(self.bar_ticks),
         }
     }
+
+    fn sync_form_to(&mut self, section: &str) {
+        if let Some(index) = form_index_for(&self.score, section) {
+            self.form_step_index = index;
+        }
+    }
+
+    fn maybe_advance_form(&mut self, at_tick: u32) {
+        if self.transition.is_some() || self.pending_section.is_some() {
+            return;
+        }
+        let Some(form) = self.score.form.as_ref() else {
+            return;
+        };
+        if form.steps.is_empty() {
+            return;
+        }
+        let step = match form.steps.get(self.form_step_index) {
+            Some(step) if step.section == self.current_section => step,
+            _ => return,
+        };
+        let Some(section) = self.score.section(&self.current_section) else {
+            return;
+        };
+        let repeats = step.repeats.max(1);
+        let duration = section.length_ticks.saturating_mul(repeats);
+        if at_tick.saturating_sub(self.section_entered_at) < duration {
+            return;
+        }
+        let next_index = if self.form_step_index + 1 < form.steps.len() {
+            self.form_step_index + 1
+        } else {
+            match form.loop_from {
+                Some(index) if (index as usize) < form.steps.len() => index as usize,
+                _ => return,
+            }
+        };
+        let next_section = form.steps[next_index].section.clone();
+        self.form_step_index = next_index;
+        if next_section == self.current_section {
+            self.section_entered_at = at_tick;
+            return;
+        }
+        let plan = self.create_plan(&self.current_section, &next_section, at_tick);
+        self.transition = Some(plan);
+    }
+}
+
+fn form_index_for(score: &PortableScore, section: &str) -> Option<usize> {
+    score
+        .form
+        .as_ref()?
+        .steps
+        .iter()
+        .position(|step| step.section == section)
+}
+
+fn trace_target(state: &TraceState) -> Option<&'static str> {
+    if state.phase == "complete" || state.progress >= 0.95 {
+        return Some("coda");
+    }
+    if state.phase == "extract" || state.progress >= 0.8 {
+        return Some("outro");
+    }
+    if state.phase == "alert" || state.heat >= 0.75 {
+        return Some("bridge");
+    }
+    if state.phase == "exploit" && state.focus >= 0.7 {
+        return Some("chorus");
+    }
+    None
+}
+
+fn holds_trace_target(section: &str) -> bool {
+    matches!(section, "coda" | "outro")
 }
 
 pub fn select_section(score: &PortableScore, state: &GameState) -> String {

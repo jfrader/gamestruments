@@ -6,17 +6,19 @@ import {
   type SectionId,
   type TransitionPlan,
 } from "../../../packages/runtime/src/index.ts";
-import {
-  pocketCircuitExperiments,
-  type NormalizedMusicTraits,
-  type PocketCircuitStyle,
-} from "../../../packages/studio/src/index.ts";
+import { type NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
 import { generateScore } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
+import {
+  playbackSectionOnScore,
+  SUSPENSE_PHASE_SECTIONS,
+} from "./playback-section.ts";
+
+export type LabRecipe = "pocket-circuit" | "suspense";
 
 export interface GenerationPreset {
-  style: PocketCircuitStyle;
+  style: string;
   traits: NormalizedMusicTraits;
 }
 
@@ -39,6 +41,22 @@ export const GENERATION_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
+export const SUSPENSE_PRESETS = [
+  {
+    style: "terminal",
+    traits: { energy: 0.62, complexity: 0.48, brightness: 0.72, syncopation: 0.55 },
+  },
+  {
+    style: "cipher",
+    traits: { energy: 0.58, complexity: 0.66, brightness: 0.6, syncopation: 0.7 },
+  },
+  {
+    style: "noir",
+    traits: { energy: 0.7, complexity: 0.4, brightness: 0.78, syncopation: 0.42 },
+  },
+] as const satisfies readonly GenerationPreset[];
+
+export let labRecipe: LabRecipe = "pocket-circuit";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
@@ -55,8 +73,12 @@ let switchingAudio = false;
 let generationQueue: Promise<void> = Promise.resolve();
 let latestGenerationRequest = 0;
 
+export function currentPresets(): readonly GenerationPreset[] {
+  return labRecipe === "suspense" ? SUSPENSE_PRESETS : GENERATION_PRESETS;
+}
+
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
-  const preset = GENERATION_PRESETS[index];
+  const preset = currentPresets()[index];
   if (preset === undefined) {
     throw new Error(`Missing generation preset: ${index}`);
   }
@@ -76,10 +98,15 @@ async function generateRequestedScore(
   return generateScore({
     seed: requestedSeed,
     style: preset.style,
+    recipe: labRecipe,
     energy: requestedTraits.energy,
     complexity: requestedTraits.complexity,
     brightness: requestedTraits.brightness,
     syncopation: requestedTraits.syncopation,
+    tension: requestedTraits.energy,
+    heat: requestedTraits.complexity,
+    mystery: requestedTraits.brightness,
+    pulse: requestedTraits.syncopation,
   });
 }
 
@@ -90,6 +117,18 @@ export async function initializeLab(): Promise<void> {
 }
 
 export function currentState(): GameState {
+  if (labRecipe === "suspense") {
+    return {
+      numeric: {
+        heat: Number(elements.intensity.value),
+        focus: Number(elements.pressure.value),
+        progress: elements.finalLap.checked ? 1 : 0,
+      },
+      categorical: {
+        tracePhase: phase,
+      },
+    };
+  }
   return {
     numeric: {
       intensity: Number(elements.intensity.value),
@@ -145,6 +184,28 @@ export function jumpToSection(target: SectionId): void {
   audio.jumpSection(target, tick);
 }
 
+export function requestSuspensePhase(): void {
+  const target = SUSPENSE_PHASE_SECTIONS[phase];
+  if (target === undefined) {
+    requestMusicState(true);
+    return;
+  }
+  auditionOverride = null;
+  if (!audio.running) {
+    transport.jumpSection(target, 0);
+    return;
+  }
+  const request = transport.requestSection(target, audio.currentTick());
+  if (request.status === "scheduled") {
+    if (request.replacedPlan !== undefined) {
+      audio.cancelTransition(request.replacedPlan);
+    }
+    applyPlan(request.plan);
+  } else if (request.status === "cancelled") {
+    audio.cancelTransition(request.plan);
+  }
+}
+
 export async function activateExperiment(
   index: number,
   nextSeed = levelSeed,
@@ -153,8 +214,7 @@ export async function activateExperiment(
   if (
     switchingScore ||
     switchingAudio ||
-    pocketCircuitExperiments[index] === undefined ||
-    GENERATION_PRESETS[index] === undefined
+    currentPresets()[index] === undefined
   ) {
     return false;
   }
@@ -163,7 +223,7 @@ export async function activateExperiment(
   const wasRunning = previousAudio.running;
   const currentTick = previousAudio.currentTick();
   const previousSnapshot = transport.snapshot();
-  const initialSection =
+  const requestedSection =
     auditionOverride ??
     (previousSnapshot.transition !== null &&
     currentTick >= previousSnapshot.transition.startTick
@@ -171,6 +231,7 @@ export async function activateExperiment(
       : previousSnapshot.currentSection);
   try {
     const nextScore = await generateRequestedScore(index, nextSeed, nextTraits);
+    const initialSection = playbackSectionOnScore(nextScore, requestedSection);
     const nextTransport = new AdaptiveTransport(nextScore, initialSection);
     const nextAudio = new DemoAudioEngine(nextScore);
     nextAudio.soloMode = soloMode;
@@ -256,6 +317,18 @@ export function setComparisonBaseSeed(value: string): void {
 
 export function setPhase(value: string): void {
   phase = value;
+}
+
+export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
+  if (recipe === labRecipe) {
+    return true;
+  }
+  labRecipe = recipe;
+  activeExperimentIndex = 0;
+  auditionOverride = null;
+  phase = recipe === "suspense" ? "scan" : "garage";
+  generationTraits = { ...generationPreset(0).traits };
+  return requestExperiment(0, levelSeed, generationTraits);
 }
 
 export function setSoloMode(value: SoloMode): void {

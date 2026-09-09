@@ -7,6 +7,7 @@ import {
   type PercussionEvent,
   type PortableScore,
   type PortableSection,
+  type SongForm,
   type StemEvent,
 } from "@gamestruments/runtime";
 
@@ -55,6 +56,7 @@ export interface AuthoringScore {
   defaultSection: string;
   sections: readonly AuthoringSection[];
   rules: readonly AdaptiveRule[];
+  form?: SongForm;
 }
 
 const NOTE_OFFSETS: Readonly<Record<string, number>> = {
@@ -238,6 +240,7 @@ export function exportScore(
       exportSection(section, score, seed),
     ),
     rules: score.rules,
+    ...(score.form === undefined ? {} : { form: score.form }),
   };
 
   const ids = new Set(exported.sections.map((section) => section.id));

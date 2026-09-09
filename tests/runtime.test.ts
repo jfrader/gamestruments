@@ -255,6 +255,45 @@ describe("adaptive transport", () => {
       /Unknown target section/,
     );
   });
+
+  it("auto-advances a song form and only cues hold:false once", () => {
+    const formed: PortableScore = {
+      ...score,
+      defaultSection: "garage",
+      form: {
+        steps: [
+          { section: "garage" },
+          { section: "race" },
+          { section: "final" },
+        ],
+        loopFrom: 1,
+      },
+      rules: [
+        {
+          target: "final",
+          priority: 80,
+          hold: false,
+          when: { numeric: { heat: { min: 0.75 } } },
+        },
+      ],
+    };
+    const transport = new AdaptiveTransport(formed);
+    const first = transport.advance(3840);
+    assert.equal(first?.to, "race");
+    transport.advance(3840 + 7680);
+    assert.equal(transport.snapshot().currentSection, "race");
+
+    const cue = transport.requestState(
+      { numeric: { heat: 0.8 }, categorical: {} },
+      3840 + 7680,
+    );
+    assert.equal(cue.status, "scheduled");
+    const again = transport.requestState(
+      { numeric: { heat: 0.8 }, categorical: {} },
+      3840 + 7680,
+    );
+    assert.equal(again.status, "unchanged");
+  });
 });
 
 describe("event query", () => {

@@ -32,6 +32,14 @@ Lantern Trail uses the same domain contract with an independent adventure
 vocabulary. Camp, explore, clue, danger, sanctuary, and quest-complete sections
 share one generated identity without reusing Pocket Circuit's traits or rules.
 
+Suspense is a third interaction model for long tense sessions (Arkhos and
+similar infiltration games). Form still auto-advances, but the writing is
+texture, not pop: a drone, a 2–3 note cell (Santaolalla), and a machine pulse
+(Mr. Robot). Harmony stays on one minor sonority. Outro and coda are hold
+interrupts. Alert/heat cues the bridge once. Styles are `terminal`, `cipher`,
+and `noir`. Generation traits are tension, heat, mystery, and pulse. Runtime
+state is `tracePhase`, heat, focus, and progress.
+
 ## API
 
 The Audio Lab (`apps/demo`) now uses the shared WASM engine for generation

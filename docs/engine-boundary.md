@@ -1,7 +1,9 @@
 # Engine Boundary (Audio Lab + shared Rust engine)
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
-- Owned by the shared Rust engine in `crates/engine` (pocket_circuit + score).
+- Owned by the shared Rust engine in `crates/engine` (`pocket_circuit`,
+  `suspense`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "pocket-circuit" | "suspense"` (default pocket-circuit).
 - Exposed to the lab via WASM: `gamestruments_score_json` (see `crates/engine/src/wasm.rs`).
 - The TypeScript `@gamestruments/studio` generator is retained only for legacy authoring fixtures and catalog research. It is not a runtime or parity authority.
 

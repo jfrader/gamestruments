@@ -79,7 +79,8 @@ Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
 The in-game engine lives in Rust:
 
 - `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
-  from namespace + seed + palette + traits.
+  from namespace + seed + palette + traits. Pocket Circuit racing and Suspense
+  song-form recipes.
 - `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
 
 Games never see Strudel or the authoring packages. See

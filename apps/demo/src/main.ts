@@ -21,6 +21,8 @@ import {
   generationPreset,
   initializeLab,
   levelSeed,
+  labRecipe,
+  currentPresets,
   phase,
   score,
   sectionById,
@@ -28,6 +30,7 @@ import {
   transport,
   applyPlan,
   requestMusicState,
+  requestSuspensePhase,
   jumpToSection,
   toggleEngine,
   requestExperiment,
@@ -35,6 +38,7 @@ import {
   traitsFromControls,
   setComparisonBaseSeed,
   setPhase,
+  setLabRecipe,
   setSoloMode,
 } from "./state";
 
@@ -48,6 +52,8 @@ function renderCurrentScore(): void {
     generationTraits,
     comparisonBaseSeed,
     soloMode,
+    labRecipe,
+    currentPresets(),
   );
   requestMusicState();
 }
@@ -80,7 +86,10 @@ function animate(): void {
 }
 
 function renderRuntimeSignal(): void {
-  elements.runtimeSignal.textContent = `racePhase: ${phase}`;
+  elements.runtimeSignal.textContent =
+    labRecipe === "suspense"
+      ? `recipe: suspense  /  tracePhase: ${phase}`
+      : `racePhase: ${phase}`;
 }
 
 renderGenreIndex();
@@ -224,9 +233,31 @@ elements.genreIndex.addEventListener("click", (event) => {
   });
 });
 
+elements.recipeButtons.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "button[data-recipe]",
+  );
+  const recipe = button?.dataset.recipe;
+  if (recipe !== "pocket-circuit" && recipe !== "suspense") {
+    return;
+  }
+  applyGenerationRequest(setLabRecipe(recipe), () => {
+    renderCurrentScore();
+    renderRuntimeSignal();
+    announceAudition(`Opened ${recipe === "suspense" ? "Suspense" : "Racing"}`);
+  });
+});
+
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-lab]")) {
   button.addEventListener("click", () => {
+    const recipe = button.dataset.recipe;
     window.location.hash = "lab";
+    if (recipe === "pocket-circuit" || recipe === "suspense") {
+      applyGenerationRequest(setLabRecipe(recipe), () => {
+        renderCurrentScore();
+        renderRuntimeSignal();
+      });
+    }
   });
 }
 
@@ -242,7 +273,11 @@ elements.phaseButtons.addEventListener("click", (event) => {
     candidate.setAttribute("aria-pressed", String(candidate === button));
   }
   renderRuntimeSignal();
-  requestMusicState(true);
+  if (labRecipe === "suspense") {
+    requestSuspensePhase();
+  } else {
+    requestMusicState(true);
+  }
 });
 
 elements.intensity.addEventListener("input", () => {

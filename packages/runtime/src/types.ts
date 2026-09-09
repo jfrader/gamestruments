@@ -16,6 +16,17 @@ export interface AdaptiveRule {
   target: SectionId;
   priority: number;
   when: AdaptiveCondition;
+  hold?: boolean;
+}
+
+export interface SongFormStep {
+  section: SectionId;
+  repeats?: number;
+}
+
+export interface SongForm {
+  steps: readonly SongFormStep[];
+  loopFrom?: number;
 }
 
 export interface GameState {
@@ -82,6 +93,7 @@ export interface PortableScore {
   defaultSection: SectionId;
   sections: readonly PortableSection[];
   rules: readonly AdaptiveRule[];
+  form?: SongForm;
 }
 
 export interface TransitionPlan {

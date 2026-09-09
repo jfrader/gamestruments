@@ -602,6 +602,7 @@ pub fn generate_pocket_circuit(input: &GenerateInput) -> Result<PortableScore, S
         default_section: "garage".into(),
         sections,
         rules: default_rules(),
+        form: None,
     };
     score.validate()?;
     Ok(score)
@@ -1407,6 +1408,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({}),
                 categorical: serde_json::json!({"racePhase":"finish","finishResult":"win"}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "final-lap".into(),
@@ -1415,6 +1417,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({"finalLap":{"min":1}}),
                 categorical: serde_json::json!({}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "attack".into(),
@@ -1423,6 +1426,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({"positionPressure":{"min":0.68}}),
                 categorical: serde_json::json!({}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "attack".into(),
@@ -1431,6 +1435,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({"intensity":{"min":0.72}}),
                 categorical: serde_json::json!({}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "cruise".into(),
@@ -1439,6 +1444,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({}),
                 categorical: serde_json::json!({"racePhase":"race"}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "grid".into(),
@@ -1447,6 +1453,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({}),
                 categorical: serde_json::json!({"racePhase":"grid"}),
             },
+            hold: None,
         },
         AdaptiveRule {
             target: "garage".into(),
@@ -1455,6 +1462,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
                 numeric: serde_json::json!({}),
                 categorical: serde_json::json!({"racePhase":"garage"}),
             },
+            hold: None,
         },
     ]
 }

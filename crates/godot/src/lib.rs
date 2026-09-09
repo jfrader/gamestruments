@@ -1,6 +1,6 @@
 use gamestruments_engine::{
-    generate_pocket_circuit, AdaptiveTransport, GameState, GenerateInput, InstrumentPalette,
-    PortableScore, Style, Synth,
+    generate_pocket_circuit, generate_suspense, AdaptiveTransport, GameState, GenerateInput,
+    InstrumentPalette, PortableScore, Style, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -18,6 +18,8 @@ struct GamestrumentsPlayer {
     /// Deterministic per-title namespace, not a security credential.
     #[export]
     project_secret: GString,
+    #[export]
+    recipe: GString,
     #[export]
     style: GString,
     #[export]
@@ -51,6 +53,7 @@ impl INode for GamestrumentsPlayer {
     fn init(base: Base<Node>) -> Self {
         Self {
             project_secret: GString::new(),
+            recipe: "pocket-circuit".into(),
             style: "funk".into(),
             melody_voice: GString::new(),
             harmony_voice: GString::new(),
@@ -120,7 +123,11 @@ impl INode for GamestrumentsPlayer {
             transport.advance(self.tick);
             let section = transport.current_section().to_string();
             let length = score.section(&section).map(|s| s.length_ticks).unwrap_or(1);
-            let local = self.tick % length.max(1);
+            let local = if transport.has_form() {
+                transport.phrase_tick(self.tick)
+            } else {
+                self.tick % length.max(1)
+            };
             for event in gamestruments_engine::synth::events_starting_at(
                 score,
                 &section,
@@ -158,29 +165,47 @@ impl GamestrumentsPlayer {
 impl GamestrumentsPlayer {
     #[func]
     fn generate(&mut self, seed: GString) -> bool {
-        let Ok(style) = Style::parse(&self.style.to_string()) else {
-            godot_error!("Unknown Gamestruments style");
-            return false;
-        };
         if self.project_secret.is_empty() {
             godot_error!("GamestrumentsPlayer.project_secret is empty");
             return false;
         }
-        let score = match generate_pocket_circuit(&GenerateInput {
-            secret: self.project_secret.to_string(),
-            seed: seed.to_string(),
-            style,
-            palette: InstrumentPalette {
-                melody: self.melody_voice.to_string(),
-                harmony: self.harmony_voice.to_string(),
-                drive: self.drive_voice.to_string(),
-                bass: self.bass_voice.to_string(),
-            },
-            energy: self.energy,
-            complexity: self.complexity,
-            brightness: self.brightness,
-            syncopation: self.syncopation,
-        }) {
+        let recipe = self.recipe.to_string();
+        let score = if recipe == "suspense" {
+            let Ok(style) = SuspenseStyle::parse(&self.style.to_string()) else {
+                godot_error!("Unknown Gamestruments suspense style");
+                return false;
+            };
+            generate_suspense(&SuspenseInput {
+                secret: self.project_secret.to_string(),
+                seed: seed.to_string(),
+                style,
+                tension: self.energy,
+                heat: self.complexity,
+                mystery: self.brightness,
+                pulse: self.syncopation,
+            })
+        } else {
+            let Ok(style) = Style::parse(&self.style.to_string()) else {
+                godot_error!("Unknown Gamestruments style");
+                return false;
+            };
+            generate_pocket_circuit(&GenerateInput {
+                secret: self.project_secret.to_string(),
+                seed: seed.to_string(),
+                style,
+                palette: InstrumentPalette {
+                    melody: self.melody_voice.to_string(),
+                    harmony: self.harmony_voice.to_string(),
+                    drive: self.drive_voice.to_string(),
+                    bass: self.bass_voice.to_string(),
+                },
+                energy: self.energy,
+                complexity: self.complexity,
+                brightness: self.brightness,
+                syncopation: self.syncopation,
+            })
+        };
+        let score = match score {
             Ok(score) => score,
             Err(error) => {
                 godot_error!("Gamestruments generation failed: {error}");
@@ -190,7 +215,8 @@ impl GamestrumentsPlayer {
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
         self.synth = Synth::new(self.sample_rate);
-        match AdaptiveTransport::new(score.clone(), Some("garage")) {
+        let initial = score.default_section.clone();
+        match AdaptiveTransport::new(score.clone(), Some(&initial)) {
             Ok(transport) => {
                 self.transport = Some(transport);
                 self.score = Some(score);
@@ -235,6 +261,40 @@ impl GamestrumentsPlayer {
                 } else {
                     finish_result.to_string()
                 },
+            },
+            self.tick,
+        );
+        true
+    }
+
+    #[func]
+    fn set_trace_state(
+        &mut self,
+        phase: GString,
+        heat: f64,
+        focus: f64,
+        progress: f64,
+    ) -> bool {
+        let Some(transport) = self.transport.as_mut() else {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
+            return false;
+        };
+        if !heat.is_finite()
+            || !focus.is_finite()
+            || !progress.is_finite()
+            || !(0.0..=1.0).contains(&heat)
+            || !(0.0..=1.0).contains(&focus)
+            || !(0.0..=1.0).contains(&progress)
+        {
+            godot_error!("Gamestruments trace heat, focus, and progress must be within 0.0..1.0");
+            return false;
+        }
+        transport.request_trace_state(
+            &TraceState {
+                phase: phase.to_string(),
+                heat,
+                focus,
+                progress,
             },
             self.tick,
         );
