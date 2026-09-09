@@ -15,7 +15,7 @@
 
 ### Fixed
 - Fixed invalid generated events reaching downstream renderers or trapping WASM, and fixed Godot playback cleanup so repeated generate/play/transition/free cycles exit without extension-owned leaks.
-- Audio Lab: restored playback-reactive orbit and mix animations in browsers that do not support typed arithmetic inside CSS `calc()` expressions.
+- Audio Lab: restored playback-reactive orbit and mix feedback in Firefox and reduced-motion mode; reduced motion now removes rotation and scaling without suppressing beat, rhythm, and melody opacity cues.
 - Audio Lab: removed duplicate application state introduced during the UI split so playback, regeneration, phase changes, and both play controls stay synchronized.
 
 - Committed the prebuilt engine WASM under `apps/demo/public/engine/` so the
