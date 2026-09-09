@@ -1,23 +1,23 @@
 # Graph Report - gamestruments-GURI-564  (2026-09-09)
 
 ## Corpus Check
-- 114 files · ~163,173 words
+- 114 files · ~163,213 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1151 nodes · 2021 edges · 75 communities (56 shown, 9 thin omitted)
+- 1152 nodes · 2022 edges · 84 communities (65 shown, 9 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 23 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9ab49564`
+- Built from commit: `e43de7ad`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - lantern-trail-generator.ts
 - DemoAudioEngine
-- runtime/src/index.ts
+- AdaptiveTransport
 - generate-cli.ts
 - scripts
 - studio/package.json
@@ -34,7 +34,7 @@
 - phaseMelodyOnsets
 - verify_kit_archive.sh
 - strudel.d.ts
-- createAuthoringScore
+- generatePocketCircuitLevel
 - generation-cli-smoke.mjs
 - studio-import-smoke.mjs
 - update-golden-fixtures.mjs
@@ -80,6 +80,15 @@
 - create-native-library-fixtures.mjs
 - Attribution
 - export-score.ts
+- lantern-trail.test.ts
+- orbit-visualizer.ts
+- runtime/src/index.ts
+- studio/src/index.ts
+- ui.ts
+- createDNA
+- validatePortableScore
+- wasm-engine.ts
+- createSection
 
 ## God Nodes (most connected - your core abstractions)
 1. `DemoAudioEngine` - 48 edges
@@ -96,35 +105,35 @@
 ## Surprising Connections (you probably didn't know these)
 - `DemoAudioEngine` --references--> `PortableScore`  [EXTRACTED]
   apps/demo/src/audio-engine.ts → packages/runtime/src/types.ts
-- `generationPreset` --references--> `NormalizedMusicTraits`  [EXTRACTED]
-  apps/demo/src/state.ts → packages/studio/src/pocket-circuit-generator.ts
-- `generationPreset` --references--> `PocketCircuitStyle`  [EXTRACTED]
-  apps/demo/src/state.ts → packages/studio/src/pocket-circuit-generator.ts
 - `initializeLab()` --calls--> `AdaptiveTransport`  [EXTRACTED]
   apps/demo/src/state.ts → packages/runtime/src/transport.ts
 - `activateExperiment()` --calls--> `AdaptiveTransport`  [EXTRACTED]
   apps/demo/src/state.ts → packages/runtime/src/transport.ts
+- `toggleEngine()` --calls--> `AdaptiveTransport`  [EXTRACTED]
+  apps/demo/src/state.ts → packages/runtime/src/transport.ts
+- `generateScore()` --calls--> `validatePortableScore()`  [EXTRACTED]
+  apps/demo/src/wasm-engine.ts → packages/runtime/src/validate-score.ts
 
 ## Import Cycles
 - 1-file cycle: `crates/engine/src/synth.rs -> crates/engine/src/synth.rs`
 
-## Communities (75 total, 9 thin omitted)
+## Communities (84 total, 9 thin omitted)
 
 ### Community 0 - "lantern-trail-generator.ts"
-Cohesion: 0.05
-Nodes (62): canonicalizeSeed(), clamp(), clampUnit(), createArrangementDNA(), createAuthoringScore(), createBassPattern(), createChordPattern(), createDNA() (+54 more)
+Cohesion: 0.07
+Nodes (33): clamp(), clampUnit(), createPercussionPattern(), HarmonyVoice, KEY_PITCH_CLASSES, LanternTrailArrangementDNA, LanternTrailGeneratorDomain, LanternTrailHarmonyDNA (+25 more)
 
 ### Community 1 - "DemoAudioEngine"
 Cohesion: 0.10
 Nodes (20): clamp(), createBitcrushCurve(), createTransitionCurve(), DemoAudioEngine, deterministicUnit(), midiToFrequency(), NoteEvent, schedulingStartTick() (+12 more)
 
-### Community 2 - "runtime/src/index.ts"
-Cohesion: 0.08
-Nodes (38): eventMatchesSolo(), allocAndWrite(), ensureLoaded(), generateScore(), GenerateScoreParams, getExports(), getMemory(), readOutput() (+30 more)
+### Community 2 - "AdaptiveTransport"
+Cohesion: 0.26
+Nodes (9): AdaptiveTransport, quantizeUp(), GameState, NumericRange, SectionGain, SectionId, TransitionPlan, TransitionRequest (+1 more)
 
 ### Community 3 - "generate-cli.ts"
-Cohesion: 0.09
-Nodes (39): exportScore(), CommonGenerateCliOptions, emit(), FLAG_OPTIONS, GenerateCliOptions, GenerationRecipe, LANTERN_ONLY_OPTIONS, LanternTrailCliOptions (+31 more)
+Cohesion: 0.08
+Nodes (39): generationPreset, PortableScore, CommonGenerateCliOptions, emit(), FLAG_OPTIONS, GenerateCliOptions, GenerationRecipe, LANTERN_ONLY_OPTIONS (+31 more)
 
 ### Community 4 - "scripts"
 Cohesion: 0.05
@@ -147,8 +156,8 @@ Cohesion: 0.08
 Nodes (25): checksum, algorithm, encoding, source, value, domainSeeds, arrangement, harmony (+17 more)
 
 ### Community 10 - "generator.test.ts"
-Cohesion: 0.11
-Nodes (13): createPocketCircuitMusicalDNA(), DEFAULT_POCKET_CIRCUIT_TRAITS, POCKET_CIRCUIT_DNA_SEED_VERSION, POCKET_CIRCUIT_GENERATOR_DOMAINS, POCKET_CIRCUIT_GENERATOR_VERSION, POCKET_CIRCUIT_SECTION_PLANS, PocketCircuitGeneratorInput, BALANCED_TRAITS (+5 more)
+Cohesion: 0.12
+Nodes (12): createPocketCircuitMusicalDNA(), DEFAULT_POCKET_CIRCUIT_TRAITS, POCKET_CIRCUIT_DNA_SEED_VERSION, POCKET_CIRCUIT_GENERATOR_DOMAINS, POCKET_CIRCUIT_GENERATOR_VERSION, POCKET_CIRCUIT_SECTION_PLANS, BALANCED_TRAITS, firstBarDurationSignature() (+4 more)
 
 ### Community 11 - "compilerOptions"
 Cohesion: 0.06
@@ -182,9 +191,9 @@ Nodes (9): breakConsecutiveRuns(), createMelodyPattern(), createPercussionPatter
 Cohesion: 0.22
 Nodes (5): @strudel/mini, StrudelFraction, StrudelHap, StrudelPattern, StrudelSpan
 
-### Community 21 - "createAuthoringScore"
-Cohesion: 0.29
-Nodes (7): canonicalizeSeed(), createAuthoringScore(), derivePocketCircuitDomainSeeds(), derivePocketCircuitSubSeed(), generatePocketCircuitAuthoringScore(), hashText(), scoreId()
+### Community 21 - "generatePocketCircuitLevel"
+Cohesion: 0.25
+Nodes (8): canonicalizeSeed(), createAuthoringScore(), derivePocketCircuitDomainSeeds(), derivePocketCircuitSubSeed(), generatePocketCircuitAuthoringScore(), generatePocketCircuitLevel(), hashText(), scoreId()
 
 ### Community 29 - "pocket_circuit.rs"
 Cohesion: 0.07
@@ -195,8 +204,8 @@ Cohesion: 0.11
 Nodes (21): AdaptiveCondition, AdaptiveCondition, AdaptiveRule, GameState, MusicEvent, PortableScore, PortableSection, rejects_a_pitch_outside_midi_range() (+13 more)
 
 ### Community 31 - "state.ts"
-Cohesion: 0.06
-Nodes (57): SoloMode, elements, requireElement(), animate(), applyGenerationRequest(), renderCurrentScore(), togglePlayback(), cssNumber() (+49 more)
+Cohesion: 0.11
+Nodes (32): animate(), applyGenerationRequest(), renderCurrentScore(), togglePlayback(), activateExperiment(), activeExperimentIndex, applyPlan(), auditionOverride (+24 more)
 
 ### Community 32 - "synth.rs"
 Cohesion: 0.07
@@ -283,8 +292,8 @@ Cohesion: 0.25
 Nodes (7): cargoPackages, inventoriedPackages, inventory, metadata, [metadataPath, noticesPath, inventoryPath, licensesPath], missing, usedLicenseIds
 
 ### Community 54 - "Repository agent notes"
-Cohesion: 0.33
-Nodes (5): Changelog, Linear workflow, Product, Repository agent notes, Verify
+Cohesion: 0.29
+Nodes (6): Changelog, Graphify, Linear workflow, Product, Repository agent notes, Verify
 
 ### Community 55 - "Opportunity"
 Cohesion: 0.33
@@ -331,28 +340,64 @@ Cohesion: 0.40
 Nodes (4): Attribution, [DirectXMath], [GLM], [Realtime Math]
 
 ### Community 73 - "export-score.ts"
-Cohesion: 0.10
-Nodes (27): AdaptiveRule, EventBase, NoteEvent, PercussionEvent, StemEvent, AuthoringLane, AuthoringScore, AuthoringSection (+19 more)
+Cohesion: 0.16
+Nodes (18): EventBase, NoteEvent, PercussionEvent, StemEvent, AuthoringLane, AuthoringSection, clampVelocity(), exportLane() (+10 more)
+
+### Community 75 - "lantern-trail.test.ts"
+Cohesion: 0.13
+Nodes (14): canonicalizeSeed(), createAuthoringScore(), createLanternTrailMusicalDNA(), DEFAULT_LANTERN_TRAIL_TRAITS, deriveLanternTrailDomainSeeds(), deriveLanternTrailSubSeed(), generateLanternTrailAdventure(), generateLanternTrailAuthoringScore() (+6 more)
+
+### Community 76 - "orbit-visualizer.ts"
+Cohesion: 0.21
+Nodes (12): cssNumber(), loopDistance(), melodyPulseAt(), onsetPulse(), OrbitMotion, orbitMotionAt(), OrbitStyle, orbitStyleAt() (+4 more)
+
+### Community 77 - "runtime/src/index.ts"
+Cohesion: 0.18
+Nodes (10): eventMatchesSolo(), matchesCondition(), selectSection(), eventsInRange(), AdaptiveCondition, MusicEvent, harmony, melody (+2 more)
+
+### Community 78 - "studio/src/index.ts"
+Cohesion: 0.22
+Nodes (10): AdaptiveRule, AuthoringScore, lanternTrailRules, pocketCircuitRules, pocketCircuitScore, microMotorScore, neonHairpinScore, pocketCircuitExperiments (+2 more)
+
+### Community 79 - "ui.ts"
+Cohesion: 0.21
+Nodes (12): SoloMode, elements, requireElement(), createSectionRows(), renderAuditionControls(), renderGenerationControls(), renderGenreIndex(), renderScoreButtons() (+4 more)
+
+### Community 80 - "createDNA"
+Cohesion: 0.33
+Nodes (9): createArrangementDNA(), createDNA(), createHarmonyDNA(), createMotifDNA(), createOrnamentDNA(), createRhythmDNA(), createTimbreDNA(), DeterministicRandom (+1 more)
+
+### Community 81 - "validatePortableScore"
+Cohesion: 0.19
+Nodes (10): SCORE_SCHEMA_VERSION, isPositiveSafeInteger(), NOTE_VOICES, PERCUSSION_VOICES, requireValid(), validatePortableScore(), emittedSource, javascriptFiles (+2 more)
+
+### Community 82 - "wasm-engine.ts"
+Cohesion: 0.58
+Nodes (8): allocAndWrite(), ensureLoaded(), generateScore(), GenerateScoreParams, getExports(), getMemory(), readOutput(), renderWav()
+
+### Community 83 - "createSection"
+Cohesion: 0.57
+Nodes (7): createBassPattern(), createChordPattern(), createLiftPattern(), createMelodyPattern(), createSection(), midiToNote(), scalePitch()
 
 ## Knowledge Gaps
-- **436 isolated node(s):** `NoteEvent`, `SynthVoice`, `TransitionCurve`, `SectionBus`, `SynthVoiceSettings` (+431 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 539 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **437 isolated node(s):** `NoteEvent`, `SynthVoice`, `TransitionCurve`, `SectionBus`, `SynthVoiceSettings` (+432 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 540 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PortableScore` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `generate-cli.ts`, `pocket-circuit-generator.ts`, `export-score.ts`, `generator.test.ts`, `state.ts`?**
+- **Why does `PortableScore` connect `generate-cli.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `AdaptiveTransport`, `pocket-circuit-generator.ts`, `export-score.ts`, `generator.test.ts`, `lantern-trail.test.ts`, `runtime/src/index.ts`, `ui.ts`, `validatePortableScore`, `wasm-engine.ts`, `state.ts`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `runtime/src/index.ts`, `state.ts`?**
+- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `generate-cli.ts`, `orbit-visualizer.ts`, `ui.ts`, `state.ts`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Why does `AdaptiveTransport` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `generator.test.ts`, `state.ts`?**
+- **Why does `AdaptiveTransport` connect `AdaptiveTransport` to `generate-cli.ts`, `generator.test.ts`, `lantern-trail.test.ts`, `runtime/src/index.ts`, `ui.ts`, `validatePortableScore`, `state.ts`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `generate_pocket_circuit()` (e.g. with `main()` and `produce()`) actually correct?**
   _`generate_pocket_circuit()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `NoteEvent`, `SynthVoice`, `TransitionCurve` to the rest of the system?**
-  _436 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _437 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `lantern-trail-generator.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0539906103286385 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06951871657754011 - nodes in this community are weakly interconnected._
 - **Should `DemoAudioEngine` be split into smaller, more focused modules?**
   _Cohesion score 0.09781420765027322 - nodes in this community are weakly interconnected._
