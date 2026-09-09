@@ -34,3 +34,28 @@ test("the orbit advances while music is playing", async ({ page }) => {
   await expect(orbit).not.toHaveClass(/is-running/);
   expect(runtimeErrors).toEqual([]);
 });
+
+test("reduced motion preserves playback feedback without rotation", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  const orbit = page.locator("#orbit");
+  const playhead = orbit.locator(".playhead");
+  await page.locator("#center-play").click();
+  await expect(orbit).toHaveClass(/is-running/);
+
+  const opacityRange = await playhead.evaluate(async (element) => {
+    const samples: number[] = [];
+    for (let frame = 0; frame < 90; frame += 1) {
+      await new Promise(requestAnimationFrame);
+      samples.push(Number(getComputedStyle(element).opacity));
+    }
+    return Math.max(...samples) - Math.min(...samples);
+  });
+
+  expect(opacityRange).toBeGreaterThan(0.08);
+  await expect(playhead).toHaveCSS("transform", "none");
+  await page.locator("#start-audio").click();
+  await expect(orbit).not.toHaveClass(/is-running/);
+});

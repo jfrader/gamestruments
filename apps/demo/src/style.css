@@ -1144,28 +1144,24 @@ footer p {
     scroll-behavior: auto !important;
   }
 
-  .orbit,
-  .orbit::before,
-  .orbit-ring,
-  .playhead {
+  .orbit {
     transform: none !important;
-    transition: border-color 900ms ease !important;
+    transition: filter 100ms linear !important;
   }
 
   .orbit::before {
-    opacity: 0.3 !important;
+    transform: none !important;
+    transition: opacity 90ms linear !important;
   }
 
-  .orbit-ring--outer {
-    opacity: 0.66 !important;
-  }
-
-  .orbit-ring--inner {
-    opacity: 0.72 !important;
+  .orbit-ring {
+    transform: none !important;
+    transition: border-color 900ms ease, opacity 80ms linear !important;
   }
 
   .playhead {
-    opacity: 0.74 !important;
+    transform: none !important;
+    transition: opacity 80ms linear !important;
   }
 }
 
