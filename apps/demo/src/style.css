@@ -550,14 +550,14 @@ input[type="range"]::-webkit-slider-thumb {
 .orbit {
   --orbit-scale: 1;
   --orbit-glow-opacity: 0.3;
-  --orbit-glow-scale: 0.9;
-  --outer-opacity: 0.66;
+  --orbit-glow-scale: 0.94;
+  --outer-opacity: 0.7;
   --outer-rotation: 0turn;
   --outer-scale: 1;
-  --inner-opacity: 0.72;
+  --inner-opacity: 0.76;
   --inner-rotation: 0deg;
   --inner-scale: 1;
-  --playhead-opacity: 0.74;
+  --playhead-opacity: 0.82;
   --playhead-rotation: 0turn;
   position: relative;
   grid-row: 2;
@@ -567,7 +567,7 @@ input[type="range"]::-webkit-slider-thumb {
   place-items: center;
   filter: drop-shadow(0 0 38px color-mix(in srgb, var(--mood-color), transparent 84%));
   transform: scale(var(--orbit-scale));
-  transition: filter 100ms linear, transform 50ms linear;
+  transition: filter 100ms linear, transform 140ms ease-out;
   will-change: transform;
 }
 
@@ -583,7 +583,7 @@ input[type="range"]::-webkit-slider-thumb {
   );
   opacity: var(--orbit-glow-opacity);
   transform: scale(var(--orbit-glow-scale));
-  transition: opacity 70ms linear, transform 90ms ease-out;
+  transition: opacity 130ms linear, transform 180ms ease-out;
   pointer-events: none;
 }
 
@@ -599,12 +599,8 @@ input[type="range"]::-webkit-slider-thumb {
   border-style: dashed;
   opacity: var(--outer-opacity);
   transform: rotate(var(--outer-rotation)) scale(var(--outer-scale));
-  transition: border-color 900ms ease, opacity 45ms linear, transform 50ms linear;
+  transition: border-color 900ms ease, opacity 120ms linear, transform 140ms ease-out;
   will-change: transform;
-}
-
-.orbit:not(.is-running) .orbit-ring--outer {
-  animation: rotate 18s linear infinite;
 }
 
 .orbit-ring--inner {
@@ -612,7 +608,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-width: 8px 1px 1px;
   opacity: var(--inner-opacity);
   transform: rotate(var(--inner-rotation)) scale(var(--inner-scale));
-  transition: border-color 900ms ease, opacity 80ms linear, transform 100ms ease-out;
+  transition: border-color 900ms ease, opacity 150ms linear, transform 180ms ease-out;
   will-change: transform;
 }
 
@@ -623,12 +619,15 @@ input[type="range"]::-webkit-slider-thumb {
   border-top: 2px solid var(--signal);
   opacity: var(--playhead-opacity);
   transform: rotate(var(--playhead-rotation));
-  transition: opacity 45ms linear, transform 50ms linear;
+  transition: opacity 120ms linear, transform 120ms linear;
   will-change: transform;
 }
 
+.orbit:not(.is-running),
+.orbit:not(.is-running)::before,
+.orbit:not(.is-running) .orbit-ring,
 .orbit:not(.is-running) .playhead {
-  animation: rotate 3.8s linear infinite;
+  transition: none;
 }
 
 .playhead::before {
@@ -703,13 +702,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   border: 1px solid #d7ff3f;
   opacity: 0.32;
-  animation: center-pulse 2100ms ease-out infinite;
   pointer-events: none;
-}
-@keyframes center-pulse {
-  0% { transform: scale(0.82); opacity: 0.32; }
-  65% { transform: scale(1.28); opacity: 0; }
-  100% { transform: scale(1.28); opacity: 0; }
 }
 
 .mood-readout {
@@ -975,12 +968,6 @@ footer {
 
 footer p {
   margin: 0;
-}
-
-@keyframes rotate {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (min-width: 981px) {

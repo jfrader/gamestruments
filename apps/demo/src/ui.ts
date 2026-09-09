@@ -265,11 +265,11 @@ export function renderFrame(
         score.beatsPerBar,
       )
     : {
-        barProgress: 0,
         beatPulse: 0,
-        melodyAngle: 0,
+        innerTurns: 0,
         melodyPulse: 0,
-        phraseProgress: 0,
+        outerTurns: 0,
+        playheadTurns: 0,
         rhythmPulse: 0,
       };
   for (const [property, value] of Object.entries(orbitStyleAt(motion))) {

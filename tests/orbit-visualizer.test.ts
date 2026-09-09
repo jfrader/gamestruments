@@ -49,42 +49,50 @@ describe("orbitMotionAt", () => {
     expect(decay.rhythmPulse).toBeLessThan(onset.rhythmPulse);
   });
 
-  it("maps active melody pitch and velocity to the inner ring", () => {
+  it("maps active melody velocity to the inner ring pulse", () => {
     const silent = orbitMotionAt(section, 0, 0, 8, 4);
     const melody = orbitMotionAt(section, 8, 8, 8, 4);
     expect(silent.melodyPulse).toBe(0);
     expect(melody.melodyPulse).toBeCloseTo(0.9);
-    expect(melody.melodyAngle).toBe(205);
   });
 
-  it("tracks actual bar and section progress", () => {
+  it("tracks smooth rotation progress", () => {
     const motion = orbitMotionAt(section, 12, 20, 8, 4);
-    expect(motion.barProgress).toBe(0.375);
-    expect(motion.phraseProgress).toBe(0.625);
+    expect(motion.outerTurns).toBeCloseTo(0.046875);
+    expect(motion.innerTurns).toBeCloseTo(-0.09375);
+    expect(motion.playheadTurns).toBeCloseTo(0.1875);
+  });
+
+  it("keeps rotation continuous across bar boundaries", () => {
+    const before = orbitMotionAt(section, 31.9, 31.9, 8, 4);
+    const after = orbitMotionAt(section, 32.1, 0.1, 8, 4);
+    expect(after.outerTurns).toBeGreaterThan(before.outerTurns);
+    expect(after.playheadTurns).toBeGreaterThan(before.playheadTurns);
+    expect(after.innerTurns).toBeLessThan(before.innerTurns);
   });
 
   it("serializes browser-ready values without typed CSS arithmetic", () => {
     const styles = orbitStyleAt({
-      barProgress: 0.375,
       beatPulse: 1,
-      melodyAngle: 205,
+      innerTurns: -0.15625,
       melodyPulse: 0.9,
-      phraseProgress: 0.625,
+      outerTurns: 0.078125,
+      playheadTurns: 0.1875,
       rhythmPulse: 0.8,
     });
 
     expect(styles).toEqual({
-      "--orbit-scale": "1.0264",
-      "--orbit-glow-opacity": "0.876",
-      "--orbit-glow-scale": "1.008",
-      "--outer-opacity": "0.932",
-      "--outer-rotation": "0.625turn",
-      "--outer-scale": "1.028",
-      "--inner-opacity": "0.972",
-      "--inner-rotation": "205deg",
-      "--inner-scale": "1.0675",
-      "--playhead-opacity": "1",
-      "--playhead-rotation": "0.375turn",
+      "--orbit-scale": "1.0144",
+      "--orbit-glow-opacity": "0.558",
+      "--orbit-glow-scale": "0.976",
+      "--outer-opacity": "0.844",
+      "--outer-rotation": "0.078125turn",
+      "--outer-scale": "1.0112",
+      "--inner-opacity": "0.904",
+      "--inner-rotation": "-0.15625turn",
+      "--inner-scale": "1.027",
+      "--playhead-opacity": "0.94",
+      "--playhead-rotation": "0.1875turn",
     });
   });
 });
