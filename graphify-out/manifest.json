@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/release.yml": {
-    "mtime": 1788974559.5777447,
-    "seen": 1788974603.0422413,
-    "ast_hash": "46531b1bfdcf46cbdc61398d8339dfb0",
+    "mtime": 1788975388.9748092,
+    "seen": 1788975444.4381332,
+    "ast_hash": "509d1a19d91bec8c68e0be9c52881a65",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -696,9 +696,9 @@
     "semantic_hash": ""
   },
   "docs/release-packet-template.md": {
-    "mtime": 1788974178.586715,
-    "seen": 1788974603.0426147,
-    "ast_hash": "9d0078128f0b75764561bf5a0344e2a5",
+    "mtime": 1788974827.4607654,
+    "seen": 1788975444.438468,
+    "ast_hash": "86b4f4d8a3c53e7714523e85ba28ecd8",
     "semantic_hash": ""
   },
   "kit/README.md": {

@@ -152,6 +152,7 @@ jobs:
             -output release-assets/libgamestruments_godot.dylib
           archs="$(lipo -archs release-assets/libgamestruments_godot.dylib)"
           [[ "$archs" == *x86_64* && "$archs" == *arm64* ]]
+          install_name_tool -id "@rpath/libgamestruments_godot.dylib" release-assets/libgamestruments_godot.dylib
           # lipo does not preserve the per-slice ad-hoc signatures; Apple Silicon
           # requires a valid (at least ad-hoc) signature before dlopen will load it.
           codesign --force --sign - release-assets/libgamestruments_godot.dylib
