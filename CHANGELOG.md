@@ -23,6 +23,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Suspense Approach/Breach/Other Hall now kick on the downbeat so a form drop punches into the next bed.
 - Audio Lab: Suspense phase buttons now actually change beds. Boot/Scan/Exploit had no adaptive rule so clicks did nothing; Complete/Extract could pin the hold so later clicks never left.
 - Audio Lab: switching from Racing to Suspense no longer dies on a missing `garage` section and keeps playing the racing score.
 - Night Circuit now steers with a heading-based arcade handling model: A/D turns the car, grip straightens it when released, and the circuit wall contains it. The previous lane-strafe control read as sideways movement rather than driving.

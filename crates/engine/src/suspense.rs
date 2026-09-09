@@ -434,8 +434,7 @@ fn kick_from_bar(weight: CueWeight) -> Option<usize> {
         CueWeight::Idle => Some(4),
         CueWeight::Drop => None,
         CueWeight::Work => Some(4),
-        CueWeight::Drive => Some(2),
-        CueWeight::Alarm => Some(0),
+        CueWeight::Drive | CueWeight::Alarm => Some(0),
     }
 }
 
@@ -575,7 +574,7 @@ fn build_section(
                 plan.id,
                 bar_start,
                 pulse,
-                0.28,
+                if bar == 0 { 0.42 } else { 0.28 },
                 "kick",
             );
             if !matches!(weight, CueWeight::Idle) {
@@ -888,6 +887,21 @@ mod tests {
         assert!(lane_named(&bridge.events, "arp"));
         assert!(!lane_named(&other.events, "arp"));
         assert!(lane_named(&other.events, "pulse"));
+    }
+
+    #[test]
+    fn approach_punches_in_on_a_downbeat_kick() {
+        let score = generate_suspense(&input("punch", SuspenseStyle::Noir)).unwrap();
+        let approach = score.section("pre-chorus").unwrap();
+        let downbeat = approach.events.iter().any(|event| match event {
+            MusicEvent::Percussion {
+                start_tick,
+                voice,
+                ..
+            } => voice == "kick" && *start_tick == 0,
+            _ => false,
+        });
+        assert!(downbeat, "Approach should kick on bar 1 beat 1");
     }
 
     #[test]
