@@ -15,6 +15,12 @@ test("the orbit advances while music is playing", async ({ page }) => {
   const orbit = page.locator("#orbit");
   const outerRing = orbit.locator(".orbit-ring--outer");
   const playhead = orbit.locator(".playhead");
+  const pausedTransform = await playhead.evaluate((element) => getComputedStyle(element).transform);
+  const pausedRingTransform = await outerRing.evaluate((element) => getComputedStyle(element).transform);
+  await page.waitForTimeout(250);
+  expect(await playhead.evaluate((element) => getComputedStyle(element).transform)).toBe(pausedTransform);
+  expect(await outerRing.evaluate((element) => getComputedStyle(element).transform)).toBe(pausedRingTransform);
+
   await page.locator("#center-play").click();
   await expect(orbit).toHaveClass(/is-running/);
 
@@ -32,6 +38,11 @@ test("the orbit advances while music is playing", async ({ page }) => {
 
   await page.locator("#start-audio").click();
   await expect(orbit).not.toHaveClass(/is-running/);
+  const stoppedTransform = await playhead.evaluate((element) => getComputedStyle(element).transform);
+  const stoppedRingTransform = await outerRing.evaluate((element) => getComputedStyle(element).transform);
+  await page.waitForTimeout(250);
+  expect(await playhead.evaluate((element) => getComputedStyle(element).transform)).toBe(stoppedTransform);
+  expect(await outerRing.evaluate((element) => getComputedStyle(element).transform)).toBe(stoppedRingTransform);
   expect(runtimeErrors).toEqual([]);
 });
 

@@ -1,11 +1,11 @@
 import type { MusicEvent, PortableSection } from "../../../packages/runtime/src/index.ts";
 
 export interface OrbitMotion {
-  barProgress: number;
   beatPulse: number;
-  melodyAngle: number;
+  innerTurns: number;
   melodyPulse: number;
-  phraseProgress: number;
+  outerTurns: number;
+  playheadTurns: number;
   rhythmPulse: number;
 }
 
@@ -52,25 +52,19 @@ function onsetPulse(
   }, 0);
 }
 
-function melodyMotion(
+function melodyPulseAt(
   section: PortableSection,
   sectionTick: number,
   ticksPerBeat: number,
-): Pick<OrbitMotion, "melodyAngle" | "melodyPulse"> {
+): number {
   const releaseTicks = ticksPerBeat * 0.35;
-  let melodyAngle = 0;
   let melodyPulse = 0;
-  let latestOnsetDistance = Number.POSITIVE_INFINITY;
 
   for (const event of section.events) {
     if (event.kind !== "note" || event.role !== "melody") {
       continue;
     }
     const distance = loopDistance(sectionTick, event.startTick, section.lengthTicks);
-    if (distance < latestOnsetDistance) {
-      latestOnsetDistance = distance;
-      melodyAngle = ((event.pitch % 12) / 12) * 300 + 30;
-    }
     const audibleTicks = event.durationTicks + releaseTicks;
     if (distance >= audibleTicks) {
       continue;
@@ -85,7 +79,7 @@ function melodyMotion(
     }
   }
 
-  return { melodyAngle, melodyPulse };
+  return melodyPulse;
 }
 
 export function orbitMotionAt(
@@ -99,14 +93,15 @@ export function orbitMotionAt(
   const beatProgress = (transportTick % ticksPerBeat) / ticksPerBeat;
   const beatIndex = Math.floor((transportTick % barTicks) / ticksPerBeat);
   const beatWeight = beatIndex === 0 ? 1 : 0.72;
-  const melody = melodyMotion(section, sectionTick, ticksPerBeat);
+  const barPosition = transportTick / barTicks;
+  const melodyPulse = melodyPulseAt(section, sectionTick, ticksPerBeat);
 
   return {
-    barProgress: (transportTick % barTicks) / barTicks,
     beatPulse: Math.pow(1 - beatProgress, 4) * beatWeight,
-    melodyAngle: melody.melodyAngle,
-    melodyPulse: melody.melodyPulse,
-    phraseProgress: sectionTick / section.lengthTicks,
+    innerTurns: -barPosition / 4,
+    melodyPulse,
+    outerTurns: barPosition / 8,
+    playheadTurns: barPosition / 2,
     rhythmPulse: onsetPulse(
       section.events,
       sectionTick,
@@ -119,16 +114,16 @@ export function orbitMotionAt(
 
 export function orbitStyleAt(motion: OrbitMotion): OrbitStyle {
   return {
-    "--orbit-scale": cssNumber(1 + motion.beatPulse * 0.012 + motion.rhythmPulse * 0.018),
-    "--orbit-glow-opacity": cssNumber(0.3 + motion.beatPulse * 0.36 + motion.melodyPulse * 0.24),
-    "--orbit-glow-scale": cssNumber(0.9 + motion.melodyPulse * 0.12),
-    "--outer-opacity": cssNumber(0.66 + motion.rhythmPulse * 0.34),
-    "--outer-rotation": `${cssNumber(motion.phraseProgress)}turn`,
-    "--outer-scale": cssNumber(1 + motion.rhythmPulse * 0.035),
-    "--inner-opacity": cssNumber(0.72 + motion.melodyPulse * 0.28),
-    "--inner-rotation": `${cssNumber(motion.melodyAngle)}deg`,
-    "--inner-scale": cssNumber(1 + motion.melodyPulse * 0.075),
-    "--playhead-opacity": cssNumber(0.74 + motion.beatPulse * 0.26),
-    "--playhead-rotation": `${cssNumber(motion.barProgress)}turn`,
+    "--orbit-scale": cssNumber(1 + motion.beatPulse * 0.008 + motion.rhythmPulse * 0.008),
+    "--orbit-glow-opacity": cssNumber(0.3 + motion.beatPulse * 0.15 + motion.melodyPulse * 0.12),
+    "--orbit-glow-scale": cssNumber(0.94 + motion.melodyPulse * 0.04),
+    "--outer-opacity": cssNumber(0.7 + motion.rhythmPulse * 0.18),
+    "--outer-rotation": `${cssNumber(motion.outerTurns)}turn`,
+    "--outer-scale": cssNumber(1 + motion.rhythmPulse * 0.014),
+    "--inner-opacity": cssNumber(0.76 + motion.melodyPulse * 0.16),
+    "--inner-rotation": `${cssNumber(motion.innerTurns)}turn`,
+    "--inner-scale": cssNumber(1 + motion.melodyPulse * 0.03),
+    "--playhead-opacity": cssNumber(0.82 + motion.beatPulse * 0.12),
+    "--playhead-rotation": `${cssNumber(motion.playheadTurns)}turn`,
   };
 }
