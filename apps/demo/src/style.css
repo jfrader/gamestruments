@@ -548,12 +548,17 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .orbit {
-  --bar-progress: 0;
-  --beat-pulse: 0;
-  --melody-angle: 0;
-  --melody-pulse: 0;
-  --phrase-progress: 0;
-  --rhythm-pulse: 0;
+  --orbit-scale: 1;
+  --orbit-glow-opacity: 0.3;
+  --orbit-glow-scale: 0.9;
+  --outer-opacity: 0.66;
+  --outer-rotation: 0turn;
+  --outer-scale: 1;
+  --inner-opacity: 0.72;
+  --inner-rotation: 0deg;
+  --inner-scale: 1;
+  --playhead-opacity: 0.74;
+  --playhead-rotation: 0turn;
   position: relative;
   grid-row: 2;
   width: min(62vw, 410px);
@@ -561,7 +566,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: grid;
   place-items: center;
   filter: drop-shadow(0 0 38px color-mix(in srgb, var(--mood-color), transparent 84%));
-  transform: scale(calc(1 + var(--beat-pulse) * 0.012 + var(--rhythm-pulse) * 0.018));
+  transform: scale(var(--orbit-scale));
   transition: filter 100ms linear, transform 50ms linear;
   will-change: transform;
 }
@@ -576,8 +581,8 @@ input[type="range"]::-webkit-slider-thumb {
     color-mix(in srgb, var(--mood-color), transparent 86%) 0,
     transparent 68%
   );
-  opacity: calc(0.3 + var(--beat-pulse) * 0.36 + var(--melody-pulse) * 0.24);
-  transform: scale(calc(0.9 + var(--melody-pulse) * 0.12));
+  opacity: var(--orbit-glow-opacity);
+  transform: scale(var(--orbit-glow-scale));
   transition: opacity 70ms linear, transform 90ms ease-out;
   pointer-events: none;
 }
@@ -592,8 +597,8 @@ input[type="range"]::-webkit-slider-thumb {
 .orbit-ring--outer {
   inset: 0;
   border-style: dashed;
-  opacity: calc(0.66 + var(--rhythm-pulse) * 0.34);
-  transform: rotate(calc(var(--phrase-progress) * 1turn)) scale(calc(1 + var(--rhythm-pulse) * 0.035));
+  opacity: var(--outer-opacity);
+  transform: rotate(var(--outer-rotation)) scale(var(--outer-scale));
   transition: border-color 900ms ease, opacity 45ms linear, transform 50ms linear;
   will-change: transform;
 }
@@ -605,8 +610,8 @@ input[type="range"]::-webkit-slider-thumb {
 .orbit-ring--inner {
   inset: 18%;
   border-width: 8px 1px 1px;
-  opacity: calc(0.72 + var(--melody-pulse) * 0.28);
-  transform: rotate(calc(var(--melody-angle) * 1deg)) scale(calc(1 + var(--melody-pulse) * 0.075));
+  opacity: var(--inner-opacity);
+  transform: rotate(var(--inner-rotation)) scale(var(--inner-scale));
   transition: border-color 900ms ease, opacity 80ms linear, transform 100ms ease-out;
   will-change: transform;
 }
@@ -616,8 +621,8 @@ input[type="range"]::-webkit-slider-thumb {
   inset: 6%;
   border-radius: 50%;
   border-top: 2px solid var(--signal);
-  opacity: calc(0.74 + var(--beat-pulse) * 0.26);
-  transform: rotate(calc(var(--bar-progress) * 1turn));
+  opacity: var(--playhead-opacity);
+  transform: rotate(var(--playhead-rotation));
   transition: opacity 45ms linear, transform 50ms linear;
   will-change: transform;
 }
@@ -805,7 +810,7 @@ input[type="range"]::-webkit-slider-thumb {
 .section-list i::after {
   content: "";
   display: block;
-  width: calc(var(--gain) * 100%);
+  width: var(--gain-width, 0%);
   height: 100%;
   background: var(--section-color);
   transition: width 100ms linear;

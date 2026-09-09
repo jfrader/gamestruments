@@ -9,7 +9,7 @@ import type {
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
 import { requireElement, elements } from "./dom";
-import { orbitMotionAt } from "./orbit-visualizer.ts";
+import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
 
 export type ViewName = "lab" | "games" | "genres";
 export { requireElement, elements };
@@ -56,7 +56,7 @@ export function renderSections(
       continue;
     }
     const gain = mix.get(section.id) ?? 0;
-    row.item.style.setProperty("--gain", String(gain));
+    row.item.style.setProperty("--gain-width", `${gain * 100}%`);
     row.item.classList.toggle("is-audible", gain > 0.001);
     row.output.value = `${Math.round(gain * 100)}%`;
   }
@@ -272,15 +272,8 @@ export function renderFrame(
         phraseProgress: 0,
         rhythmPulse: 0,
       };
-  for (const [property, value] of Object.entries({
-    "--bar-progress": motion.barProgress,
-    "--beat-pulse": motion.beatPulse,
-    "--melody-angle": motion.melodyAngle,
-    "--melody-pulse": motion.melodyPulse,
-    "--phrase-progress": motion.phraseProgress,
-    "--rhythm-pulse": motion.rhythmPulse,
-  })) {
-    elements.orbit.style.setProperty(property, String(value));
+  for (const [property, value] of Object.entries(orbitStyleAt(motion))) {
+    elements.orbit.style.setProperty(property, value);
   }
   renderSections(score, transport, audio);
 }

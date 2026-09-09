@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PortableSection } from "../packages/runtime/src/index.ts";
-import { orbitMotionAt } from "../apps/demo/src/orbit-visualizer.ts";
+import { orbitMotionAt, orbitStyleAt } from "../apps/demo/src/orbit-visualizer.ts";
 
 const section: PortableSection = {
   id: "test",
@@ -61,5 +61,30 @@ describe("orbitMotionAt", () => {
     const motion = orbitMotionAt(section, 12, 20, 8, 4);
     expect(motion.barProgress).toBe(0.375);
     expect(motion.phraseProgress).toBe(0.625);
+  });
+
+  it("serializes browser-ready values without typed CSS arithmetic", () => {
+    const styles = orbitStyleAt({
+      barProgress: 0.375,
+      beatPulse: 1,
+      melodyAngle: 205,
+      melodyPulse: 0.9,
+      phraseProgress: 0.625,
+      rhythmPulse: 0.8,
+    });
+
+    expect(styles).toEqual({
+      "--orbit-scale": "1.0264",
+      "--orbit-glow-opacity": "0.876",
+      "--orbit-glow-scale": "1.008",
+      "--outer-opacity": "0.932",
+      "--outer-rotation": "0.625turn",
+      "--outer-scale": "1.028",
+      "--inner-opacity": "0.972",
+      "--inner-rotation": "205deg",
+      "--inner-scale": "1.0675",
+      "--playhead-opacity": "1",
+      "--playhead-rotation": "0.375turn",
+    });
   });
 });

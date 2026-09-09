@@ -1,4 +1,6 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
+
+const productionBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: "tests/browser",
@@ -7,12 +9,19 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:58317",
+    baseURL: productionBaseUrl ?? "http://127.0.0.1:58317",
     headless: true,
+    reducedMotion: "no-preference",
   },
-  webServer: {
-    command: "npm run dev -- --port 58317 --strictPort",
-    url: "http://127.0.0.1:58317/",
-    reuseExistingServer: !process.env.CI,
-  },
+  projects: [
+    { name: "chromium", use: devices["Desktop Chrome"] },
+    { name: "firefox", use: devices["Desktop Firefox"] },
+  ],
+  webServer: productionBaseUrl
+    ? undefined
+    : {
+        command: "npm run dev -- --port 58317 --strictPort",
+        url: "http://127.0.0.1:58317/",
+        reuseExistingServer: !process.env.CI,
+      },
 });
