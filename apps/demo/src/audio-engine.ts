@@ -26,6 +26,10 @@ export function transitionCurveForEvent(event: MusicEvent): TransitionCurve {
     : "equalPower";
 }
 
+export function percussionBypassesTransition(score: PortableScore): boolean {
+  return score.form !== undefined;
+}
+
 export function transitionGainAt(
   startLevel: number,
   targetLevel: number,
@@ -321,7 +325,11 @@ export class DemoAudioEngine {
       equalPowerTransition.gain.value = section.id === initialSection ? 1 : 0;
       melody.connect(equalPowerTransition);
       tonal.connect(tonalTransition);
-      percussion.connect(equalPowerTransition);
+      if (percussionBypassesTransition(this.#score)) {
+        percussion.connect(input);
+      } else {
+        percussion.connect(equalPowerTransition);
+      }
       tonalTransition.connect(input);
       equalPowerTransition.connect(input);
       input.connect(dry).connect(master);
