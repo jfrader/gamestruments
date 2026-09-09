@@ -87,6 +87,9 @@ export function sectionSchedulingState(
   scheduledUntil: number | undefined,
   loopOrigin: number,
 ): { fromTick: number; loopOrigin: number } {
+  if (scheduledUntil === undefined || scheduledUntil <= loopOrigin) {
+    return { fromTick: loopOrigin, loopOrigin };
+  }
   return {
     fromTick: schedulingStartTick(currentTick, scheduledUntil),
     loopOrigin,
@@ -443,6 +446,7 @@ export class DemoAudioEngine {
     this.#fadeSection(from, 0, start, duration);
     this.#fadeSection(to, 1, start, duration);
     this.#releaseSectionAfter(plan.from, start + duration);
+    this.#schedule(plan.startTick);
   }
 
   cancelTransition(plan: TransitionPlan): void {
@@ -491,6 +495,7 @@ export class DemoAudioEngine {
   #activateSection(section: SectionId, loopOrigin?: number): void {
     if (loopOrigin !== undefined) {
       this.#loopOriginBySection.set(section, loopOrigin);
+      this.#scheduledUntilBySection.set(section, loopOrigin);
     }
     const releaseTimer = this.#sectionReleaseTimers.get(section);
     if (releaseTimer !== undefined) {
@@ -499,13 +504,9 @@ export class DemoAudioEngine {
     }
     if (!this.#activeSections.has(section)) {
       this.#activeSections.add(section);
-      this.#scheduledUntilBySection.set(
-        section,
-        schedulingStartTick(
-          this.currentTick(),
-          this.#scheduledUntilBySection.get(section),
-        ),
-      );
+      if (loopOrigin === undefined && !this.#scheduledUntilBySection.has(section)) {
+        this.#scheduledUntilBySection.set(section, this.currentTick());
+      }
     }
   }
 

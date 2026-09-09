@@ -9,6 +9,7 @@ import {
   transitionGainAt,
 } from "../apps/demo/src/audio-engine.ts";
 import type { MusicEvent, PortableScore } from "../packages/runtime/src/index.ts";
+import { eventsInRange } from "../packages/runtime/src/index.ts";
 
 const harmony: MusicEvent = {
   id: "section:harmony:0",
@@ -76,13 +77,13 @@ describe("audio transition curves", () => {
 
   it("lets form-score kicks through the bed fade", () => {
     assert.equal(
-      percussionBypassesTransition({ form: undefined } as PortableScore),
+      percussionBypassesTransition({ form: undefined } as unknown as PortableScore),
       false,
     );
     assert.equal(
       percussionBypassesTransition({
         form: { steps: [{ section: "verse" }] },
-      } as PortableScore),
+      } as unknown as PortableScore),
       true,
     );
   });
@@ -103,5 +104,36 @@ describe("audio scheduling horizons", () => {
       fromTick: 140,
       loopOrigin: 120,
     });
+  });
+
+  it("fills a newly activated bed from its downbeat even if the clock already moved", () => {
+    const origin = 8 * 4 * 960;
+    assert.deepEqual(sectionSchedulingState(origin + 80, undefined, origin), {
+      fromTick: origin,
+      loopOrigin: origin,
+    });
+    assert.deepEqual(sectionSchedulingState(origin + 80, origin, origin), {
+      fromTick: origin,
+      loopOrigin: origin,
+    });
+  });
+});
+
+describe("form handoff kicks", () => {
+  it("includes the incoming downbeat kick when filling from loop origin", () => {
+    const origin = 8 * 4 * 960;
+    const section = {
+      id: "pre-chorus",
+      label: "Approach",
+      feeling: "punch",
+      color: "#000",
+      lengthTicks: 8 * 4 * 960,
+      events: [percussion],
+    };
+    const kick = eventsInRange(section, origin, origin + 480, origin);
+    assert.equal(kick.length, 1);
+    assert.equal(kick[0]?.startTick, origin);
+    const missed = eventsInRange(section, origin + 80, origin + 480, origin);
+    assert.equal(missed.length, 0);
   });
 });
