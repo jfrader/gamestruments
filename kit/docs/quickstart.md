@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Godot 4.7 or newer.
+- Godot 4.7.x.
 - Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
 - An extracted `gamestruments-<version>-godot4.zip`.
 
@@ -25,7 +25,9 @@ Restart Godot. `GamestrumentsPlayer` should appear in the Create New Node dialog
 2. Set `project_secret` to a stable, non-empty namespace for your title. It is not a security credential.
 3. Set `style` to `fusion`, `neon`, `funk`, or `chip`.
 4. Leave voice overrides empty for style defaults or choose a supported voice from `api.md`.
-5. Ensure the project has an audible bus named `Music`.
+5. Optionally add an audible bus named `Music` in Godot's Audio panel for
+   separate music mixing. A fresh project without that bus falls back to
+   `Master`.
 
 ## Drive It
 

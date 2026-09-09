@@ -256,7 +256,7 @@ func _build_actions(panel: PanelContainer) -> void:
 func _show_extension_warning() -> void:
 	warning_label.text = (
 		"GamestrumentsPlayer not found in ClassDB.\n\n" +
-		"Confirm Godot 4.7+ and copy the complete addons/gamestruments folder into place.\n" +
+		"Confirm Godot 4.7.x and copy the complete addons/gamestruments folder into place.\n" +
 		"Restart Godot after placing the native extension."
 	)
 	warning_label.visible = true

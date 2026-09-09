@@ -40,6 +40,9 @@ func _run() -> void:
 	demo.queue_free()
 	for _frame in range(30):
 		await process_frame
+	if added_music_bus:
+		AudioServer.remove_bus(music_bus)
+		added_music_bus = false
 
 	for cycle in range(2):
 		var player: Node = ClassDB.instantiate("GamestrumentsPlayer")
@@ -47,13 +50,17 @@ func _run() -> void:
 			_fail("GamestrumentsPlayer could not be instantiated")
 			return
 		root.add_child(player)
+		await process_frame
+		var live_players := player.find_children("LiveStream", "AudioStreamPlayer", false, false)
+		if live_players.size() != 1 or live_players[0].bus != "Master":
+			_fail("GamestrumentsPlayer did not fall back to Master without a Music bus")
+			return
 		player.set("project_secret", "release-smoke")
 		player.set("style", "neon" if cycle == 0 else "chip")
 		player.set("energy", 0.9)
 		player.set("complexity", 0.9)
 		player.set("brightness", 0.9)
 		player.set("syncopation", 0.1)
-		await process_frame
 		if not bool(player.call("generate", "runtime-smoke-%d" % cycle)):
 			_fail("GamestrumentsPlayer generation failed")
 			return
@@ -66,7 +73,5 @@ func _run() -> void:
 		for _frame in range(30):
 			await process_frame
 
-	if added_music_bus:
-		AudioServer.remove_bus(music_bus)
 	print("GAMESTRUMENTS_RUNTIME_SMOKE_PASS")
 	quit(0)

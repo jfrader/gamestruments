@@ -1,10 +1,10 @@
 # Gamestruments
 
 **The first runtime product** is a seed-driven, sample-free adaptive racing
-music engine for Godot 4. Games generate a deterministic score at level load from
-a per-title `project_secret` + instrument palette + seed and drive bar-quantized
-state changes at runtime. No samples, no Strudel, no authoring UI cross the
-game boundary.
+music engine for Godot 4. Games generate a deterministic score at level load
+from a per-title namespace, instrument palette, and seed, then drive
+bar-quantized state changes at runtime. No samples, no Strudel, and no
+authoring UI cross the game boundary.
 
 **Audio Lab** (the TypeScript + Strudel authoring/research surface in this
 repository) is for exploration, validation, and catalog work only. It is not
@@ -20,7 +20,7 @@ In a Godot 4 project:
 1. Add the GDExtension (binary + `.gdextension`) under `addons/gamestruments/`.
 2. Add a `GamestrumentsPlayer` node (or autoload).
 3. In the inspector (or code) set:
-   - `project_secret` (per-title secret — never a public string like the game name)
+   - `project_secret` (a stable per-title namespace, not a security credential)
    - `style` (e.g. "funk")
    - optional voice overrides (melody/harmony/drive/bass) and traits (energy, complexity, brightness, syncopation)
 4. At level load call `generate(seed)` and check its boolean result.
@@ -79,7 +79,7 @@ Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
 The in-game engine lives in Rust:
 
 - `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
-  from `secret` + `seed` + palette + traits. Pocket Circuit recipe today.
+  from namespace + seed + palette + traits.
 - `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
 
 Games never see Strudel or the authoring packages. See
@@ -94,10 +94,8 @@ and catalog research; Rust is the sole runtime generation authority.
 
 `apps/demo` is the browser playground and validation harness.
 
-The first collection follows Pocket Circuit's audio brief... (see
+The first collection follows Pocket Circuit's audio brief (see
 [`docs/pocket-circuit-music-brief.md`](docs/pocket-circuit-music-brief.md)).
-
-Lantern Trail proves the recipe boundary... (unchanged).
 
 ## Procedural API (authoring / research path)
 
@@ -107,7 +105,6 @@ now drives generation through the shared WASM engine (see `docs/engine-boundary.
 
 ```ts
 import { generatePocketCircuitLevel } from "@gamestruments/studio";
-// ... (subordinate, kept for Lab users and tests)
 ```
 
 See the **How Games Use It** section above and `docs/kit-contract.md` for the
@@ -146,9 +143,7 @@ the game process; no JSON export step is required for the runtime kit.
 - The runtime kit is Godot 4 + GDExtension + synthesized voices only.
 - Release binaries target Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
 - No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
-- See `docs/kit-contract.md` (exact inventory, API, non-goals) and
-  `docs/kit-opportunity.md` (price hypothesis, risks, measurement) for the
-  current commercial contract. Both price and final scope are pending Fran
-  approval.
+- See `docs/kit-contract.md` (exact inventory, API, non-goals) for the
+  authoritative commercial contract. The product price is $24.99.
 - The Audio Lab and its TypeScript packages remain AGPL for the authoring
   surface; they are deliberately kept out of the game runtime.

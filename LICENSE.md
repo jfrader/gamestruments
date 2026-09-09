@@ -5,6 +5,11 @@ The Gamestruments runtime components are licensed under the MIT License:
 - `crates/engine`
 - `crates/godot`
 - `packages/runtime`
+- `crates/godot/gamestruments.gdextension`
+- `catalog/pocket-circuit/tiny-torque-level-004/score.json`
+- `kit/README.md` and its `README.md` copy at the buyer archive root
+- `kit/demo`
+- `kit/docs`
 
 The browser authoring and research surface under `packages/studio` and `apps/demo` uses Strudel and is licensed under AGPL-3.0-or-later. It is not included in the buyer runtime kit. Each package also carries its applicable license metadata or file.
 

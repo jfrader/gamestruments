@@ -28,7 +28,17 @@ The following packages offer MIT or Apache-2.0 terms:
 - `heck` 0.5.0
 - `nanoserde` 0.2.1
 
-The full common license texts are included at `licenses/MIT.txt` and `licenses/Apache-2.0.txt`. Package authorship and source links are recorded in the packages' crates.io metadata and `Cargo.lock`.
+The full common license texts are included at `licenses/MIT.txt` and `licenses/Apache-2.0.txt`. Exact package versions and license expressions are recorded in `licenses/cargo-dependencies.json`; package authorship and source links are available from crates.io metadata.
+
+`glam` contains code ported from DirectXMath, Realtime Math, and GLM. Their required copyright and permission notices are reproduced in `licenses/glam-0.32.1-ATTRIBUTION.md` from the exact `glam` 0.32.1 source package.
+
+## Rust Standard Library
+
+The native libraries statically link the Rust 1.94.0 standard library. Its exact
+generated copyright and third-party attribution report is included at
+`licenses/rust-1.94.0-COPYRIGHT-library.html`. Rust's applicable MIT and Apache
+2.0 license texts are included at `licenses/MIT.txt` and
+`licenses/Apache-2.0.txt`.
 
 ## MIT
 

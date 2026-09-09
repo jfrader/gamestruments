@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "licenseFiles": {
+    "Apache-2.0": "Apache-2.0.txt",
+    "MIT": "MIT.txt",
+    "MPL-2.0": "MPL-2.0.txt",
+    "Unicode-3.0": "Unicode-3.0.txt",
+    "Unlicense": "Unlicense.txt"
+  },
+  "requiredAttributions": [
+    {
+      "package": "glam",
+      "version": "0.32.1",
+      "file": "glam-0.32.1-ATTRIBUTION.md"
+    }
+  ],
+  "toolchainAttributions": [
+    {
+      "component": "Rust standard library",
+      "version": "1.94.0",
+      "file": "rust-1.94.0-COPYRIGHT-library.html",
+      "sha256": "af70aaabed1b73e872f14f9130db37e09f3f4d73a5f7c598b9173697a5d2729f"
+    }
+  ],
+  "packages": [
+    { "name": "gdextension-api", "version": "0.5.1", "license": "MPL-2.0" },
+    { "name": "glam", "version": "0.32.1", "license": "MIT OR Apache-2.0" },
+    { "name": "godot", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-bindings", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-cell", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-codegen", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-core", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-ffi", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "godot-macros", "version": "0.5.5", "license": "MPL-2.0" },
+    { "name": "heck", "version": "0.5.0", "license": "MIT OR Apache-2.0" },
+    { "name": "itoa", "version": "1.0.18", "license": "MIT OR Apache-2.0" },
+    { "name": "libc", "version": "0.2.189", "license": "MIT OR Apache-2.0" },
+    { "name": "memchr", "version": "2.8.3", "license": "Unlicense OR MIT" },
+    { "name": "nanoserde", "version": "0.2.1", "license": "MIT OR Apache-2.0" },
+    { "name": "nanoserde-derive", "version": "0.2.1", "license": "MIT" },
+    { "name": "proc-macro2", "version": "1.0.107", "license": "MIT OR Apache-2.0" },
+    { "name": "quote", "version": "1.0.47", "license": "MIT OR Apache-2.0" },
+    { "name": "serde", "version": "1.0.229", "license": "MIT OR Apache-2.0" },
+    { "name": "serde_core", "version": "1.0.229", "license": "MIT OR Apache-2.0" },
+    { "name": "serde_derive", "version": "1.0.229", "license": "MIT OR Apache-2.0" },
+    { "name": "serde_json", "version": "1.0.151", "license": "MIT OR Apache-2.0" },
+    { "name": "syn", "version": "3.0.4", "license": "MIT OR Apache-2.0" },
+    { "name": "unicode-ident", "version": "1.0.24", "license": "(MIT OR Apache-2.0) AND Unicode-3.0" },
+    { "name": "venial", "version": "0.6.1", "license": "MIT" },
+    { "name": "zmij", "version": "1.0.23", "license": "MIT" }
+  ]
+}

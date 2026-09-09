@@ -3,17 +3,20 @@
 ## Unreleased
 
 ### Added
+- Buyer archives now include a root quickstart, machine-readable release provenance and native-library hashes, the catalog fixture needed by shipped Rust tests and examples, and exact third-party attribution metadata.
 - Cross-platform Godot release candidates now include Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries in one verified archive.
 - Added target-native Godot runtime smoke tests, extracted-source rebuild verification, 256-seed Rust generation stress coverage, and browser end-to-end coverage for generation controls during playback.
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Extracted archive verification now tests the complete shipped Rust source and validates native formats, architectures, duplicate addon copies, licenses, provenance, and binary path hygiene.
 - `GamestrumentsPlayer.generate` and `set_race_state` now return success booleans with descriptive Godot errors, and generator version `1.10.1` validates every score before exposing it to native or WASM callers.
-- Repositioned the first kit as adaptive racing music for Godot 4.7+ and reconciled buyer docs with its six-section API, mono runtime sound, desktop platform support, licensing, and manual publication gates.
+- Repositioned the first kit as adaptive racing music for Godot 4.7.x and reconciled buyer docs with its six-section API, mono runtime sound, desktop platform support, licensing, and manual publication gates.
 - Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Fresh Godot projects without a `Music` bus now play through `Master` until a dedicated music bus is added.
 - Fixed invalid generated events reaching downstream renderers or trapping WASM, and fixed Godot playback cleanup so repeated generate/play/transition/free cycles exit without extension-owned leaks.
 - Audio Lab: made the orbit still while paused and replaced sharp playback jumps with slow continuous rotation and restrained musical pulses in every desktop motion mode.
 - Audio Lab: removed duplicate application state introduced during the UI split so playback, regeneration, phase changes, and both play controls stay synchronized.

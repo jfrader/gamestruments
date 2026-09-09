@@ -6,24 +6,24 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run check
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
           components: clippy
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
       - run: cargo test -p gamestruments-engine --locked
@@ -35,27 +35,30 @@ jobs:
       - run: cargo run -p gamestruments-engine --example parity_ref --release --locked
       - run: node tests/wasm-parity.mjs
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox
+      - name: Install Playwright browsers
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google*
+          npx playwright install --with-deps chromium firefox
       - run: npm run test:e2e
   godot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GODOT_VERSION: 4.7.2-stable
       GODOT_RELEASE_BASE: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           toolchain: "1.94.0"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
       - run: cargo build -p gamestruments-godot --release --locked
@@ -64,7 +67,16 @@ jobs:
           archive="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           curl -fsSLO "$GODOT_RELEASE_BASE/$archive"
           curl -fsSLO "$GODOT_RELEASE_BASE/SHA512-SUMS.txt"
-          grep "  $archive$" SHA512-SUMS.txt | sha512sum -c -
+          expected="$(tr -d '\r' < SHA512-SUMS.txt | awk -v f="$archive" '$2 == f { print $1 }')"
+          if [[ ! "$expected" =~ ^[0-9a-fA-F]{128}$ ]]; then
+            echo "ERROR: missing SHA-512 entry for $archive" >&2
+            exit 1
+          fi
+          actual="$(sha512sum "$archive" | awk '{ print $1 }')"
+          if [[ "${actual,,}" != "${expected,,}" ]]; then
+            echo "ERROR: SHA-512 mismatch for $archive" >&2
+            exit 1
+          fi
           unzip -q "$archive" -d godot-bin
           chmod +x "godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
           echo "GODOT_BIN=$PWD/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
@@ -72,8 +84,6 @@ jobs:
       - name: Verify package structure and source rebuild
         run: |
           mkdir -p release-assets dist
-          cp target/release/libgamestruments_godot.so release-assets/
-          cp target/release/libgamestruments_godot.so release-assets/gamestruments_godot.dll
-          cp target/release/libgamestruments_godot.so release-assets/libgamestruments_godot.dylib
+          node tests/create-native-library-fixtures.mjs release-assets
           tools/package_kit.sh --version 0.1.0-ci --assets-dir release-assets --out-dir dist
-          tools/verify_kit_archive.sh dist/gamestruments-0.1.0-ci-godot4.zip "$GODOT_BIN"
+          tools/verify_kit_archive.sh dist/gamestruments-0.1.0-ci-godot4.zip

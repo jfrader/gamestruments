@@ -52,12 +52,12 @@ try {
     path.join(addonRoot, "gamestruments.gdextension"),
   );
   await cp(library, path.join(addonRoot, "bin", path.basename(library)));
+  // Headless --script does not perform the editor's extension discovery pass.
   await mkdir(path.join(demoRoot, ".godot"), { recursive: true });
   await writeFile(
     path.join(demoRoot, ".godot", "extension_list.cfg"),
     "res://addons/gamestruments/gamestruments.gdextension\n",
   );
-
   const runtimeOutput = runGodot(
     ["--headless", "--verbose", "--path", demoRoot, "--script", "res://tools/runtime_smoke.gd"],
     "runtime smoke",

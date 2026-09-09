@@ -62,13 +62,14 @@ Selection priority:
 2. `final_lap = true` selects `final-lap`.
 3. `pressure >= 0.68` or `intensity >= 0.72` selects `attack`.
 4. `phase = "race"`, `"grid"`, or `"garage"` selects `cruise`, `grid`, or `garage`.
-5. Unknown phases fall back to the score's default section.
+5. Any remaining `phase = "finish"` request selects `victory`.
+6. Unknown phases fall back to the score's default section.
 
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Generated scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
 - State changes are quantized to bar boundaries and new sections start at phrase bar zero.
-- Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer` routed to the `Music` bus.
+- Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 
 Internal Rust types, child-node names, score serialization, and exact bytes across different generator versions are not supported public API.

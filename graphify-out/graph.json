@@ -303,17 +303,17 @@
       "source_location": "L21"
     },
     {
-      "id": "packages_runtime_src_types_musicevent",
-      "label": "MusicEvent",
+      "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitgeneratorinput",
+      "label": "PocketCircuitGeneratorInput",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
+      "community": 10,
+      "community_name": "generator.test.ts",
       "file_type": "code",
-      "norm_label": "musicevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L63"
+      "norm_label": "pocketcircuitgeneratorinput",
+      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
+      "source_location": "L41"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_deterministicrandom",
@@ -420,19 +420,6 @@
       "source_location": "L10"
     },
     {
-      "id": "packages_runtime_src_types_eventbase",
-      "label": "EventBase",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "eventbase",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L26"
-    },
-    {
       "id": "packages_runtime_src_types_gamestate",
       "label": "GameState",
       "_callable": true,
@@ -446,17 +433,17 @@
       "source_location": "L21"
     },
     {
-      "id": "packages_runtime_src_types_noteevent",
-      "label": "NoteEvent",
+      "id": "packages_runtime_src_types_musicevent",
+      "label": "MusicEvent",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "runtime/src/index.ts",
       "file_type": "code",
-      "norm_label": "noteevent",
+      "norm_label": "musicevent",
       "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L35"
+      "source_location": "L63"
     },
     {
       "id": "packages_runtime_src_types_numericrange",
@@ -470,19 +457,6 @@
       "norm_label": "numericrange",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L5"
-    },
-    {
-      "id": "packages_runtime_src_types_percussionevent",
-      "label": "PercussionEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "percussionevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L52"
     },
     {
       "id": "packages_runtime_src_types_portablescore",
@@ -524,19 +498,6 @@
       "source_location": "L3"
     },
     {
-      "id": "packages_runtime_src_types_stemevent",
-      "label": "StemEvent",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "runtime/src/index.ts",
-      "file_type": "code",
-      "norm_label": "stemevent",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L57"
-    },
-    {
       "id": "packages_runtime_src_types_transitionplan",
       "label": "TransitionPlan",
       "_callable": true,
@@ -574,97 +535,6 @@
       "norm_label": "transportsnapshot",
       "source_file": "packages/runtime/src/types.ts",
       "source_location": "L100"
-    },
-    {
-      "id": "packages_runtime_src_types_adaptiverule",
-      "label": "AdaptiveRule",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "adaptiverule",
-      "source_file": "packages/runtime/src/types.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "packages_studio_src_export_score_authoringlane",
-      "label": "AuthoringLane",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "authoringlane",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L30"
-    },
-    {
-      "id": "packages_studio_src_export_score_authoringscore",
-      "label": "AuthoringScore",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "authoringscore",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L48"
-    },
-    {
-      "id": "packages_studio_src_export_score_authoringsection",
-      "label": "AuthoringSection",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "authoringsection",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L38"
-    },
-    {
-      "id": "packages_studio_src_export_score_notelane",
-      "label": "NoteLane",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "notelane",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "packages_studio_src_export_score_percussionlane",
-      "label": "PercussionLane",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "percussionlane",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L23"
-    },
-    {
-      "id": "packages_studio_src_export_score_stemmarker",
-      "label": "StemMarker",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "stemmarker",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L32"
     },
     {
       "id": "packages_studio_src_generate_cli_commongenerateclioptions",
@@ -836,19 +706,6 @@
       "source_location": "L47"
     },
     {
-      "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitgeneratorinput",
-      "label": "PocketCircuitGeneratorInput",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitgeneratorinput",
-      "source_file": "packages/studio/src/pocket-circuit-generator.ts",
-      "source_location": "L41"
-    },
-    {
       "id": "packages_studio_src_pocket_circuit_generator_pocketcircuitstyle",
       "label": "PocketCircuitStyle",
       "_callable": true,
@@ -860,19 +717,6 @@
       "norm_label": "pocketcircuitstyle",
       "source_file": "packages/studio/src/pocket-circuit-generator.ts",
       "source_location": "L25"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations_scoreexperiment",
-      "label": "ScoreExperiment",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "scoreexperiment",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L7"
     },
     {
       "id": "apps_demo_src_audio_engine_solomode",
@@ -1172,6 +1016,162 @@
       "norm_label": "resolvedsectionharmony",
       "source_file": "packages/studio/src/pocket-circuit-generator.ts",
       "source_location": "L665"
+    },
+    {
+      "id": "packages_runtime_src_types_adaptiverule",
+      "label": "AdaptiveRule",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "adaptiverule",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "packages_runtime_src_types_eventbase",
+      "label": "EventBase",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "eventbase",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L26"
+    },
+    {
+      "id": "packages_runtime_src_types_noteevent",
+      "label": "NoteEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "noteevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "packages_runtime_src_types_percussionevent",
+      "label": "PercussionEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "percussionevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L52"
+    },
+    {
+      "id": "packages_runtime_src_types_stemevent",
+      "label": "StemEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "stemevent",
+      "source_file": "packages/runtime/src/types.ts",
+      "source_location": "L57"
+    },
+    {
+      "id": "packages_studio_src_export_score_authoringlane",
+      "label": "AuthoringLane",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "authoringlane",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L30"
+    },
+    {
+      "id": "packages_studio_src_export_score_authoringscore",
+      "label": "AuthoringScore",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "authoringscore",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L48"
+    },
+    {
+      "id": "packages_studio_src_export_score_authoringsection",
+      "label": "AuthoringSection",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "authoringsection",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L38"
+    },
+    {
+      "id": "packages_studio_src_export_score_notelane",
+      "label": "NoteLane",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "notelane",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "packages_studio_src_export_score_percussionlane",
+      "label": "PercussionLane",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "percussionlane",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L23"
+    },
+    {
+      "id": "packages_studio_src_export_score_stemmarker",
+      "label": "StemMarker",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "stemmarker",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L32"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations_scoreexperiment",
+      "label": "ScoreExperiment",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "scoreexperiment",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L7"
     },
     {
       "id": "packages_studio_src_lantern_trail_generator_canonicalizeseed",
@@ -2158,18 +2158,6 @@
       "source_location": "L216"
     },
     {
-      "id": "apps_demo_src_audio_engine_eventmatchessolo",
-      "label": "eventMatchesSolo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "eventmatchessolo()",
-      "source_file": "apps/demo/src/audio-engine.ts",
-      "source_location": "L92"
-    },
-    {
       "id": "apps_demo_src_audio_engine_miditofrequency",
       "label": "midiToFrequency()",
       "_callable": true,
@@ -2866,6 +2854,18 @@
       "source_location": "L240"
     },
     {
+      "id": "apps_demo_src_audio_engine_eventmatchessolo",
+      "label": "eventMatchesSolo()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "eventmatchessolo()",
+      "source_file": "apps/demo/src/audio-engine.ts",
+      "source_location": "L92"
+    },
+    {
       "id": "apps_demo_src_wasm_engine_allocandwrite",
       "label": "allocAndWrite()",
       "_callable": true,
@@ -3250,30 +3250,6 @@
       "source_location": "L11"
     },
     {
-      "id": "packages_studio_src_export_score_clampvelocity",
-      "label": "clampVelocity()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "clampvelocity()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L113"
-    },
-    {
-      "id": "packages_studio_src_export_score_exportlane",
-      "label": "exportLane()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "exportlane()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L117"
-    },
-    {
       "id": "packages_studio_src_export_score_exportscore",
       "label": "exportScore()",
       "_callable": true,
@@ -3284,54 +3260,6 @@
       "norm_label": "exportscore()",
       "source_file": "packages/studio/src/export-score.ts",
       "source_location": "L224"
-    },
-    {
-      "id": "packages_studio_src_export_score_exportsection",
-      "label": "exportSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "exportsection()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L187"
-    },
-    {
-      "id": "packages_studio_src_export_score_hashseed",
-      "label": "hashSeed()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "hashseed()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L77"
-    },
-    {
-      "id": "packages_studio_src_export_score_notetomidi",
-      "label": "noteToMidi()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "notetomidi()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L86"
-    },
-    {
-      "id": "packages_studio_src_export_score_totick",
-      "label": "toTick()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "totick()",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L105"
     },
     {
       "id": "packages_studio_src_generate_cli_emit",
@@ -4018,6 +3946,186 @@
       "source_location": "L14"
     },
     {
+      "id": "tools_create_release_manifest_extractquotedvalue",
+      "label": "extractQuotedValue()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "extractquotedvalue()",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L29"
+    },
+    {
+      "id": "tools_create_release_manifest_requiredvalue",
+      "label": "requiredValue()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "requiredvalue()",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L21"
+    },
+    {
+      "id": "tools_create_release_manifest_sha256",
+      "label": "sha256()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "sha256()",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L37"
+    },
+    {
+      "id": "tests_verify_native_libraries_test_elfx8664",
+      "label": "elfX8664()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "elfx8664()",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "tests_verify_native_libraries_test_fatmacho",
+      "label": "fatMachO()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "fatmacho()",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "tests_verify_native_libraries_test_pex8664",
+      "label": "peX8664()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "pex8664()",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "tools_verify_native_libraries_assert",
+      "label": "assert()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "assert()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L12"
+    },
+    {
+      "id": "tools_verify_native_libraries_assertentrypointmarker",
+      "label": "assertEntryPointMarker()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "assertentrypointmarker()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L92"
+    },
+    {
+      "id": "tools_verify_native_libraries_findprivatebuildpaths",
+      "label": "findPrivateBuildPaths()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "findprivatebuildpaths()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L99"
+    },
+    {
+      "id": "tools_verify_native_libraries_readandverify",
+      "label": "readAndVerify()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "readandverify()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L115"
+    },
+    {
+      "id": "tools_verify_native_libraries_verifyelfx8664",
+      "label": "verifyElfX8664()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verifyelfx8664()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L18"
+    },
+    {
+      "id": "tools_verify_native_libraries_verifyfatmacho",
+      "label": "verifyFatMachO()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verifyfatmacho()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L42"
+    },
+    {
+      "id": "tools_verify_native_libraries_verifynativeassets",
+      "label": "verifyNativeAssets()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verifynativeassets()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L132"
+    },
+    {
+      "id": "tools_verify_native_libraries_verifypackagednativelibraries",
+      "label": "verifyPackagedNativeLibraries()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verifypackagednativelibraries()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L136"
+    },
+    {
+      "id": "tools_verify_native_libraries_verifypex8664",
+      "label": "verifyPeX8664()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verifypex8664()",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L30"
+    },
+    {
       "id": "tests_wasm_parity_allocandwrite",
       "label": "allocAndWrite()",
       "_callable": true,
@@ -4174,6 +4282,78 @@
       "source_location": "L693"
     },
     {
+      "id": "packages_studio_src_export_score_clampvelocity",
+      "label": "clampVelocity()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "clampvelocity()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L113"
+    },
+    {
+      "id": "packages_studio_src_export_score_exportlane",
+      "label": "exportLane()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "exportlane()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L117"
+    },
+    {
+      "id": "packages_studio_src_export_score_exportsection",
+      "label": "exportSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "exportsection()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L187"
+    },
+    {
+      "id": "packages_studio_src_export_score_hashseed",
+      "label": "hashSeed()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "hashseed()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L77"
+    },
+    {
+      "id": "packages_studio_src_export_score_notetomidi",
+      "label": "noteToMidi()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "notetomidi()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L86"
+    },
+    {
+      "id": "packages_studio_src_export_score_totick",
+      "label": "toTick()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "totick()",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L105"
+    },
+    {
       "id": "packages_studio_src_lantern_trail_generator",
       "label": "lantern-trail-generator.ts",
       "_origin": "ast",
@@ -4328,28 +4508,6 @@
       "source_location": "L175"
     },
     {
-      "id": "packages_studio_src_lantern_trail_score",
-      "label": "lantern-trail-score.ts",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "lantern-trail-generator.ts",
-      "file_type": "code",
-      "norm_label": "lantern-trail-score.ts",
-      "source_file": "packages/studio/src/lantern-trail-score.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_studio_src_lantern_trail_score_lanterntrailrules",
-      "label": "lanternTrailRules",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "lantern-trail-generator.ts",
-      "file_type": "code",
-      "norm_label": "lanterntrailrules",
-      "source_file": "packages/studio/src/lantern-trail-score.ts",
-      "source_location": "L3"
-    },
-    {
       "id": "tests_lantern_trail_test",
       "label": "lantern-trail.test.ts",
       "_origin": "ast",
@@ -4447,50 +4605,6 @@
       "norm_label": "percussion",
       "source_file": "tests/audio-engine.test.ts",
       "source_location": "L39"
-    },
-    {
-      "id": "tests_audition_test",
-      "label": "audition.test.ts",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "audition.test.ts",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_audition_test_harmony",
-      "label": "harmony",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "harmony",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "tests_audition_test_melody",
-      "label": "melody",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "melody",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "tests_audition_test_percussion",
-      "label": "percussion",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DemoAudioEngine",
-      "file_type": "code",
-      "norm_label": "percussion",
-      "source_file": "tests/audition.test.ts",
-      "source_location": "L31"
     },
     {
       "id": "packages_studio_src_pocket_circuit_generator_default_pocket_circuit_traits",
@@ -5612,6 +5726,50 @@
       "source_location": "L15"
     },
     {
+      "id": "tests_audition_test",
+      "label": "audition.test.ts",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "audition.test.ts",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_audition_test_harmony",
+      "label": "harmony",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "harmony",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "tests_audition_test_melody",
+      "label": "melody",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "melody",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "tests_audition_test_percussion",
+      "label": "percussion",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "runtime/src/index.ts",
+      "file_type": "code",
+      "norm_label": "percussion",
+      "source_file": "tests/audition.test.ts",
+      "source_location": "L31"
+    },
+    {
       "id": "tests_runtime_import_smoke",
       "label": "runtime-import-smoke.mjs",
       "_origin": "ast",
@@ -6679,39 +6837,6 @@
       "source_location": ""
     },
     {
-      "id": "packages_studio_src_export_score",
-      "label": "export-score.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "export-score.ts",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_studio_src_export_score_note_offsets",
-      "label": "NOTE_OFFSETS",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "note_offsets",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L60"
-    },
-    {
-      "id": "packages_studio_src_export_score_percussion_voices",
-      "label": "PERCUSSION_VOICES",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "percussion_voices",
-      "source_file": "packages/studio/src/export-score.ts",
-      "source_location": "L70"
-    },
-    {
       "id": "packages_studio_src_generate_cli",
       "label": "generate-cli.ts",
       "_origin": "ast",
@@ -6855,105 +6980,6 @@
       "source_location": "L14"
     },
     {
-      "id": "packages_studio_src_index",
-      "label": "studio/src/index.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "studio/src/index.ts",
-      "source_file": "packages/studio/src/index.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_score",
-      "label": "pocket-circuit-score.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocket-circuit-score.ts",
-      "source_file": "packages/studio/src/pocket-circuit-score.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_score_pocketcircuitrules",
-      "label": "pocketCircuitRules",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitrules",
-      "source_file": "packages/studio/src/pocket-circuit-score.ts",
-      "source_location": "L3"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_score_pocketcircuitscore",
-      "label": "pocketCircuitScore",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitscore",
-      "source_file": "packages/studio/src/pocket-circuit-score.ts",
-      "source_location": "L41"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations",
-      "label": "pocket-circuit-variations.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocket-circuit-variations.ts",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations_micromotorscore",
-      "label": "microMotorScore",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "micromotorscore",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L200"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations_neonhairpinscore",
-      "label": "neonHairpinScore",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "neonhairpinscore",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations_pocketcircuitexperiments",
-      "label": "pocketCircuitExperiments",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocketcircuitexperiments",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L292"
-    },
-    {
-      "id": "packages_studio_src_pocket_circuit_variations_pocketfunkscore",
-      "label": "pocketFunkScore",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "pocketfunkscore",
-      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
-      "source_location": "L108"
-    },
-    {
       "id": "tests_generator_fixtures_test",
       "label": "generator-fixtures.test.ts",
       "_origin": "ast",
@@ -6985,17 +7011,6 @@
       "norm_label": "styles",
       "source_file": "tests/generator-stress.test.ts",
       "source_location": "L13"
-    },
-    {
-      "id": "tests_studio_test",
-      "label": "studio.test.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "generate-cli.ts",
-      "file_type": "code",
-      "norm_label": "studio.test.ts",
-      "source_file": "tests/studio.test.ts",
-      "source_location": "L1"
     },
     {
       "id": "adaptivecondition",
@@ -7963,7 +7978,7 @@
       "file_type": "code",
       "norm_label": ".cleanup_audio_child()",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L137"
+      "source_location": "L142"
     },
     {
       "id": "crates_godot_src_lib_gamestrumentsplayer_exit_tree",
@@ -7974,7 +7989,7 @@
       "file_type": "code",
       "norm_label": ".exit_tree()",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L87"
+      "source_location": "L92"
     },
     {
       "id": "crates_godot_src_lib_gamestrumentsplayer_generate",
@@ -7985,7 +8000,7 @@
       "file_type": "code",
       "norm_label": ".generate()",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L155"
+      "source_location": "L160"
     },
     {
       "id": "crates_godot_src_lib_gamestrumentsplayer_init",
@@ -8007,7 +8022,7 @@
       "file_type": "code",
       "norm_label": ".process()",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L91"
+      "source_location": "L96"
     },
     {
       "id": "crates_godot_src_lib_gamestrumentsplayer_ready",
@@ -8029,7 +8044,7 @@
       "file_type": "code",
       "norm_label": ".set_race_state()",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L202"
+      "source_location": "L207"
     },
     {
       "id": "crates_godot_src_lib_rs_option",
@@ -8721,7 +8736,7 @@
       "node_kind": "heading",
       "norm_label": "generation cli (lab / catalog only)",
       "source_file": "README.md",
-      "source_location": "L123"
+      "source_location": "L120"
     },
     {
       "id": "readme_godot_example_portable_score_transport_demo",
@@ -8733,7 +8748,7 @@
       "node_kind": "heading",
       "norm_label": "godot example (portable-score transport demo)",
       "source_file": "README.md",
-      "source_location": "L135"
+      "source_location": "L132"
     },
     {
       "id": "readme_how_games_use_it_the_shipped_product",
@@ -8757,7 +8772,7 @@
       "node_kind": "heading",
       "norm_label": "procedural api (authoring / research path)",
       "source_file": "README.md",
-      "source_location": "L102"
+      "source_location": "L100"
     },
     {
       "id": "readme_runtime_the_kit_product",
@@ -8781,7 +8796,7 @@
       "node_kind": "heading",
       "norm_label": "scope and limits (kit product)",
       "source_file": "README.md",
-      "source_location": "L144"
+      "source_location": "L141"
     },
     {
       "id": "tools_build_wasm",
@@ -9092,7 +9107,7 @@
       "node_kind": "heading",
       "norm_label": "buyer-reliable behavior",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L62"
+      "source_location": "L63"
     },
     {
       "id": "docs_kit_contract_explicit_non_goals",
@@ -9104,7 +9119,7 @@
       "node_kind": "heading",
       "norm_label": "explicit non-goals",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L72"
+      "source_location": "L73"
     },
     {
       "id": "docs_kit_contract_gamestruments_adaptive_racing_music_for_godot_4_product_contract",
@@ -9128,7 +9143,7 @@
       "node_kind": "heading",
       "norm_label": "license and support",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L89"
+      "source_location": "L90"
     },
     {
       "id": "docs_kit_contract_product_scope",
@@ -9140,7 +9155,7 @@
       "node_kind": "heading",
       "norm_label": "product scope",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L31"
+      "source_location": "L32"
     },
     {
       "id": "docs_kit_contract_supported_environment",
@@ -9164,7 +9179,7 @@
       "node_kind": "heading",
       "norm_label": "supported public api",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L44"
+      "source_location": "L45"
     },
     {
       "id": "docs_kit_contract_versioning_and_release",
@@ -9176,7 +9191,7 @@
       "node_kind": "heading",
       "norm_label": "versioning and release",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L81"
+      "source_location": "L82"
     },
     {
       "id": "docs_kit_opportunity",
@@ -9752,6 +9767,171 @@
       "source_location": "L35"
     },
     {
+      "id": "tools_create_release_manifest",
+      "label": "create-release-manifest.mjs",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "create-release-manifest.mjs",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L1"
+    },
+    {
+      "id": "tools_create_release_manifest_allowedprovenance",
+      "label": "allowedProvenance",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "allowedprovenance",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L61"
+    },
+    {
+      "id": "tools_create_release_manifest_assetsdir",
+      "label": "assetsDir",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "assetsdir",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L58"
+    },
+    {
+      "id": "tools_create_release_manifest_dirtyvalue",
+      "label": "dirtyValue",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "dirtyvalue",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L71"
+    },
+    {
+      "id": "tools_create_release_manifest_generatorversion",
+      "label": "generatorVersion",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "generatorversion",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L84"
+    },
+    {
+      "id": "tools_create_release_manifest_manifest",
+      "label": "manifest",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "manifest",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L104"
+    },
+    {
+      "id": "tools_create_release_manifest_nativelibraries",
+      "label": "nativeLibraries",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "nativelibraries",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L6"
+    },
+    {
+      "id": "tools_create_release_manifest_provenance",
+      "label": "provenance",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "provenance",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L60"
+    },
+    {
+      "id": "tools_create_release_manifest_reporoot",
+      "label": "repoRoot",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "reporoot",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L57"
+    },
+    {
+      "id": "tools_create_release_manifest_rustversion",
+      "label": "rustVersion",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "rustversion",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L89"
+    },
+    {
+      "id": "tools_create_release_manifest_values",
+      "label": "{ values }",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "{ values }",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L41"
+    },
+    {
+      "id": "tools_create_release_manifest_version",
+      "label": "version",
+      "_origin": "ast",
+      "community": 40,
+      "community_name": "create-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "version",
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L59"
+    },
+    {
+      "id": "tests_verify_native_libraries_test",
+      "label": "verify-native-libraries.test.ts",
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verify-native-libraries.test.ts",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "tools_verify_native_libraries",
+      "label": "verify-native-libraries.mjs",
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "verify-native-libraries.mjs",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L1"
+    },
+    {
+      "id": "tools_verify_native_libraries_filenames",
+      "label": "filenames",
+      "_origin": "ast",
+      "community": 41,
+      "community_name": "verify-native-libraries.mjs",
+      "file_type": "code",
+      "norm_label": "filenames",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L6"
+    },
+    {
       "id": "crates_engine_src_rng_deterministicrandom",
       "label": "DeterministicRandom",
       "_origin": "ast",
@@ -9938,7 +10118,7 @@
       "node_kind": "heading",
       "norm_label": "mit",
       "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L33"
+      "source_location": "L43"
     },
     {
       "id": "third_party_notices_mit_or_apache_license_2_0",
@@ -9962,7 +10142,7 @@
       "node_kind": "heading",
       "norm_label": "mit or unlicense",
       "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L41"
+      "source_location": "L51"
     },
     {
       "id": "third_party_notices_mozilla_public_license_2_0",
@@ -9975,6 +10155,18 @@
       "norm_label": "mozilla public license 2.0",
       "source_file": "THIRD_PARTY_NOTICES.md",
       "source_location": "L5"
+    },
+    {
+      "id": "third_party_notices_rust_standard_library",
+      "label": "Rust Standard Library",
+      "_origin": "ast",
+      "community": 44,
+      "community_name": "Third-Party Notices",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "rust standard library",
+      "source_file": "THIRD_PARTY_NOTICES.md",
+      "source_location": "L35"
     },
     {
       "id": "third_party_notices_third_party_notices",
@@ -9998,7 +10190,7 @@
       "node_kind": "heading",
       "norm_label": "unicode license v3",
       "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L47"
+      "source_location": "L57"
     },
     {
       "id": "changelog",
@@ -10025,7 +10217,7 @@
       "source_location": "L5"
     },
     {
-      "id": "changelog_added_26",
+      "id": "changelog_added_29",
       "label": "Added",
       "_origin": "ast",
       "community": 45,
@@ -10034,7 +10226,7 @@
       "node_kind": "heading",
       "norm_label": "added",
       "source_file": "CHANGELOG.md",
-      "source_location": "L26"
+      "source_location": "L29"
     },
     {
       "id": "changelog_changed",
@@ -10046,7 +10238,7 @@
       "node_kind": "heading",
       "norm_label": "changed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L10"
+      "source_location": "L11"
     },
     {
       "id": "changelog_changelog",
@@ -10070,10 +10262,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L16"
+      "source_location": "L18"
     },
     {
-      "id": "changelog_fixed_120",
+      "id": "changelog_fixed_123",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10082,10 +10274,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L120"
+      "source_location": "L123"
     },
     {
-      "id": "changelog_fixed_92",
+      "id": "changelog_fixed_95",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10094,7 +10286,7 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L92"
+      "source_location": "L95"
     },
     {
       "id": "changelog_improved",
@@ -10106,7 +10298,7 @@
       "node_kind": "heading",
       "norm_label": "improved",
       "source_file": "CHANGELOG.md",
-      "source_location": "L99"
+      "source_location": "L102"
     },
     {
       "id": "changelog_unreleased",
@@ -10310,7 +10502,7 @@
       "node_kind": "heading",
       "norm_label": "different result than a previous version",
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L47"
+      "source_location": "L48"
     },
     {
       "id": "kit_docs_troubleshooting_gamestrumentsplayer_does_not_appear",
@@ -10346,7 +10538,7 @@
       "node_kind": "heading",
       "norm_label": "leak or crash during shutdown",
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L51"
+      "source_location": "L52"
     },
     {
       "id": "kit_docs_troubleshooting_rebuild_from_source",
@@ -10358,7 +10550,7 @@
       "node_kind": "heading",
       "norm_label": "rebuild from source",
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L55"
+      "source_location": "L56"
     },
     {
       "id": "kit_docs_troubleshooting_silence_after_successful_generation",
@@ -10382,7 +10574,7 @@
       "node_kind": "heading",
       "norm_label": "state does not change",
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L41"
+      "source_location": "L42"
     },
     {
       "id": "kit_docs_troubleshooting_troubleshooting",
@@ -10430,7 +10622,7 @@
       "node_kind": "heading",
       "norm_label": "claims audit",
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L63"
+      "source_location": "L64"
     },
     {
       "id": "docs_kit_qa_runbook_extracted_demo",
@@ -10442,7 +10634,7 @@
       "node_kind": "heading",
       "norm_label": "extracted demo",
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L41"
+      "source_location": "L42"
     },
     {
       "id": "docs_kit_qa_runbook_gamestruments_kit_author_qa_runbook",
@@ -10478,7 +10670,7 @@
       "node_kind": "heading",
       "norm_label": "result",
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L77"
+      "source_location": "L78"
     },
     {
       "id": "packages_studio_package",
@@ -10833,7 +11025,7 @@
       "node_kind": "heading",
       "norm_label": "literal product claims",
       "source_file": "kit/docs/README.md",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "kit_docs_readme_quickstart",
@@ -10869,7 +11061,7 @@
       "node_kind": "heading",
       "norm_label": "support",
       "source_file": "kit/docs/README.md",
-      "source_location": "L43"
+      "source_location": "L44"
     },
     {
       "id": "kit_docs_readme_what_ships",
@@ -10881,7 +11073,7 @@
       "node_kind": "heading",
       "norm_label": "what ships",
       "source_file": "kit/docs/README.md",
-      "source_location": "L24"
+      "source_location": "L25"
     },
     {
       "id": "docs_product_contract",
@@ -11039,6 +11231,39 @@
       "source_location": "L1"
     },
     {
+      "id": "tests_verify_third_party_notices_cargopackages",
+      "label": "cargoPackages",
+      "_origin": "ast",
+      "community": 53,
+      "community_name": "verify-third-party-notices.mjs",
+      "file_type": "code",
+      "norm_label": "cargopackages",
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L20"
+    },
+    {
+      "id": "tests_verify_third_party_notices_inventoriedpackages",
+      "label": "inventoriedPackages",
+      "_origin": "ast",
+      "community": 53,
+      "community_name": "verify-third-party-notices.mjs",
+      "file_type": "code",
+      "norm_label": "inventoriedpackages",
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L24"
+    },
+    {
+      "id": "tests_verify_third_party_notices_inventory",
+      "label": "inventory",
+      "_origin": "ast",
+      "community": 53,
+      "community_name": "verify-third-party-notices.mjs",
+      "file_type": "code",
+      "norm_label": "inventory",
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L15"
+    },
+    {
       "id": "tests_verify_third_party_notices_metadata",
       "label": "metadata",
       "_origin": "ast",
@@ -11047,18 +11272,18 @@
       "file_type": "code",
       "norm_label": "metadata",
       "source_file": "tests/verify-third-party-notices.mjs",
-      "source_location": "L9"
+      "source_location": "L13"
     },
     {
-      "id": "tests_verify_third_party_notices_metadatapath_noticespath",
-      "label": "[metadataPath, noticesPath]",
+      "id": "tests_verify_third_party_notices_metadatapath_noticespath_inventorypath_licensespath",
+      "label": "[metadataPath, noticesPath, inventoryPath, licensesPath]",
       "_origin": "ast",
       "community": 53,
       "community_name": "verify-third-party-notices.mjs",
       "file_type": "code",
-      "norm_label": "[metadatapath, noticespath]",
+      "norm_label": "[metadatapath, noticespath, inventorypath, licensespath]",
       "source_file": "tests/verify-third-party-notices.mjs",
-      "source_location": "L4"
+      "source_location": "L6"
     },
     {
       "id": "tests_verify_third_party_notices_missing",
@@ -11069,7 +11294,18 @@
       "file_type": "code",
       "norm_label": "missing",
       "source_file": "tests/verify-third-party-notices.mjs",
-      "source_location": "L11"
+      "source_location": "L31"
+    },
+    {
+      "id": "tests_verify_third_party_notices_usedlicenseids",
+      "label": "usedLicenseIds",
+      "_origin": "ast",
+      "community": 53,
+      "community_name": "verify-third-party-notices.mjs",
+      "file_type": "code",
+      "norm_label": "usedlicenseids",
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L43"
     },
     {
       "id": "agents",
@@ -11273,7 +11509,7 @@
       "node_kind": "heading",
       "norm_label": "observable contract",
       "source_file": "kit/docs/api.md",
-      "source_location": "L67"
+      "source_location": "L68"
     },
     {
       "id": "kit_docs_api_set_race_state",
@@ -11393,7 +11629,7 @@
       "node_kind": "heading",
       "norm_label": "drive it",
       "source_file": "kit/docs/quickstart.md",
-      "source_location": "L30"
+      "source_location": "L32"
     },
     {
       "id": "kit_docs_quickstart_install",
@@ -11597,6 +11833,162 @@
       "source_location": "L469"
     },
     {
+      "id": "storefront_listing",
+      "label": "listing.md",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "listing.md",
+      "source_file": "storefront/listing.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "storefront_listing_gamestruments_adaptive_racing_music",
+      "label": "Gamestruments Adaptive Racing Music",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gamestruments adaptive racing music",
+      "source_file": "storefront/listing.md",
+      "source_location": "L43"
+    },
+    {
+      "id": "storefront_listing_gamestruments_itch_io_storefront_listing",
+      "label": "Gamestruments - itch.io Storefront Listing",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gamestruments - itch.io storefront listing",
+      "source_file": "storefront/listing.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "storefront_listing_included_files",
+      "label": "Included Files",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "included files",
+      "source_file": "storefront/listing.md",
+      "source_location": "L47"
+    },
+    {
+      "id": "storefront_listing_installation_instructions",
+      "label": "Installation Instructions",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "installation instructions",
+      "source_file": "storefront/listing.md",
+      "source_location": "L67"
+    },
+    {
+      "id": "storefront_listing_license_and_disclosures",
+      "label": "License and Disclosures",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "license and disclosures",
+      "source_file": "storefront/listing.md",
+      "source_location": "L82"
+    },
+    {
+      "id": "storefront_listing_limitations",
+      "label": "Limitations",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "limitations",
+      "source_file": "storefront/listing.md",
+      "source_location": "L75"
+    },
+    {
+      "id": "storefront_listing_literal_claims",
+      "label": "Literal Claims",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "literal claims",
+      "source_file": "storefront/listing.md",
+      "source_location": "L56"
+    },
+    {
+      "id": "storefront_listing_long_description",
+      "label": "Long Description",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "long description",
+      "source_file": "storefront/listing.md",
+      "source_location": "L41"
+    },
+    {
+      "id": "storefront_listing_metadata_fields",
+      "label": "Metadata Fields",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "metadata fields",
+      "source_file": "storefront/listing.md",
+      "source_location": "L7"
+    },
+    {
+      "id": "storefront_listing_requirements",
+      "label": "Requirements",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "requirements",
+      "source_file": "storefront/listing.md",
+      "source_location": "L62"
+    },
+    {
+      "id": "storefront_listing_support",
+      "label": "Support",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "support",
+      "source_file": "storefront/listing.md",
+      "source_location": "L86"
+    },
+    {
+      "id": "storefront_listing_visual_thesis_and_media_capture_checklist",
+      "label": "Visual Thesis and Media Capture Checklist",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "Long Description",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "visual thesis and media capture checklist",
+      "source_file": "storefront/listing.md",
+      "source_location": "L22"
+    },
+    {
       "id": "crates_engine_readme",
       "label": "engine/README.md",
       "_origin": "ast",
@@ -11678,7 +12070,7 @@
       "node_kind": "heading",
       "norm_label": "toolchain",
       "source_file": "crates/README.md",
-      "source_location": "L22"
+      "source_location": "L25"
     },
     {
       "id": "docs_engine_boundary",
@@ -11738,7 +12130,7 @@
       "node_kind": "heading",
       "norm_label": "mit license",
       "source_file": "LICENSE.md",
-      "source_location": "L11"
+      "source_location": "L16"
     },
     {
       "id": "pkg_gamestruments_engine",
@@ -11795,6 +12187,322 @@
       "norm_label": "package_kit.sh script",
       "source_file": "tools/package_kit.sh",
       "source_location": "L1"
+    },
+    {
+      "id": "docs_release_packet_template",
+      "label": "release-packet-template.md",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "release-packet-template.md",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_release_packet_template_archive_information",
+      "label": "Archive Information",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "archive information",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L19"
+    },
+    {
+      "id": "docs_release_packet_template_exact_storefront_media",
+      "label": "Exact Storefront Media",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "exact storefront media",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L94"
+    },
+    {
+      "id": "docs_release_packet_template_gamestruments_release_packet_template",
+      "label": "Gamestruments Release Packet Template",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gamestruments release packet template",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_release_packet_template_independent_clean_room_acceptance",
+      "label": "Independent Clean-Room Acceptance",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "independent clean-room acceptance",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L50"
+    },
+    {
+      "id": "docs_release_packet_template_release_identity",
+      "label": "Release Identity",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "release identity",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "docs_release_packet_template_single_use_operator_approval",
+      "label": "Single-Use Operator Approval",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "single-use operator approval",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L120"
+    },
+    {
+      "id": "docs_release_packet_template_storefront_metadata_itch_io",
+      "label": "Storefront Metadata (itch.io)",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "storefront metadata (itch.io)",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L69"
+    },
+    {
+      "id": "docs_release_packet_template_support_and_disclosures",
+      "label": "Support and Disclosures",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "support and disclosures",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L109"
+    },
+    {
+      "id": "docs_release_packet_template_transaction_and_rollback_plan",
+      "label": "Transaction and Rollback Plan",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "transaction and rollback plan",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L114"
+    },
+    {
+      "id": "docs_release_packet_template_verification_evidence",
+      "label": "Verification Evidence",
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "Gamestruments Release Packet Template",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "verification evidence",
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L26"
+    },
+    {
+      "id": "tests_verify_release_manifest",
+      "label": "verify-release-manifest.mjs",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "verify-release-manifest.mjs",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_verify_release_manifest_expectedlibraries",
+      "label": "expectedLibraries",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "expectedlibraries",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L65"
+    },
+    {
+      "id": "tests_verify_release_manifest_generatormatch",
+      "label": "generatorMatch",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "generatormatch",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L52"
+    },
+    {
+      "id": "tests_verify_release_manifest_manifest",
+      "label": "manifest",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "manifest",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L12"
+    },
+    {
+      "id": "tests_verify_release_manifest_provenancevalues",
+      "label": "provenanceValues",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "provenancevalues",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L29"
+    },
+    {
+      "id": "tests_verify_release_manifest_root",
+      "label": "root",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "root",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L11"
+    },
+    {
+      "id": "tests_verify_release_manifest_rootargument_archivename",
+      "label": "[rootArgument, archiveName]",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "[rootargument, archivename]",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L6"
+    },
+    {
+      "id": "tests_verify_release_manifest_rustmatch",
+      "label": "rustMatch",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "verify-release-manifest.mjs",
+      "file_type": "code",
+      "norm_label": "rustmatch",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L57"
+    },
+    {
+      "id": "kit_readme",
+      "label": "kit/README.md",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "kit/readme.md",
+      "source_file": "kit/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "kit_readme_archive_contents",
+      "label": "Archive Contents",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "archive contents",
+      "source_file": "kit/README.md",
+      "source_location": "L17"
+    },
+    {
+      "id": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "label": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gamestruments \u2014 adaptive racing music for godot 4",
+      "source_file": "kit/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "kit_readme_license_and_provenance",
+      "label": "License and Provenance",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "license and provenance",
+      "source_file": "kit/README.md",
+      "source_location": "L51"
+    },
+    {
+      "id": "kit_readme_rebuild_and_test",
+      "label": "Rebuild and Test",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "rebuild and test",
+      "source_file": "kit/README.md",
+      "source_location": "L31"
+    },
+    {
+      "id": "kit_readme_runtime_use",
+      "label": "Runtime Use",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "runtime use",
+      "source_file": "kit/README.md",
+      "source_location": "L43"
+    },
+    {
+      "id": "kit_readme_start_here",
+      "label": "Start Here",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "start here",
+      "source_file": "kit/README.md",
+      "source_location": "L6"
+    },
+    {
+      "id": "kit_readme_support",
+      "label": "Support",
+      "_origin": "ast",
+      "community": 69,
+      "community_name": "Gamestruments \u2014 Adaptive Racing Music for Godot 4",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "support",
+      "source_file": "kit/README.md",
+      "source_location": "L61"
     },
     {
       "id": "crates_engine_src_transport",
@@ -12004,6 +12712,308 @@
       "norm_label": "gamestate",
       "source_file": "",
       "source_location": ""
+    },
+    {
+      "id": "tests_create_native_library_fixtures",
+      "label": "create-native-library-fixtures.mjs",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "create-native-library-fixtures.mjs",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_create_native_library_fixtures_elf",
+      "label": "elf",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "elf",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L21"
+    },
+    {
+      "id": "tests_create_native_library_fixtures_macho",
+      "label": "machO",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "macho",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L40"
+    },
+    {
+      "id": "tests_create_native_library_fixtures_output",
+      "label": "output",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "output",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L9"
+    },
+    {
+      "id": "tests_create_native_library_fixtures_outputargument",
+      "label": "[outputArgument]",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "[outputargument]",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L5"
+    },
+    {
+      "id": "tests_create_native_library_fixtures_pe",
+      "label": "pe",
+      "_origin": "ast",
+      "community": 70,
+      "community_name": "create-native-library-fixtures.mjs",
+      "file_type": "code",
+      "norm_label": "pe",
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L29"
+    },
+    {
+      "id": "licenses_glam_0_32_1_attribution",
+      "label": "glam-0.32.1-ATTRIBUTION.md",
+      "_origin": "ast",
+      "community": 71,
+      "community_name": "Attribution",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "glam-0.32.1-attribution.md",
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "licenses_glam_0_32_1_attribution_attribution",
+      "label": "Attribution",
+      "_origin": "ast",
+      "community": 71,
+      "community_name": "Attribution",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "attribution",
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "licenses_glam_0_32_1_attribution_directxmath",
+      "label": "[DirectXMath]",
+      "_origin": "ast",
+      "community": 71,
+      "community_name": "Attribution",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "[directxmath]",
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L5"
+    },
+    {
+      "id": "licenses_glam_0_32_1_attribution_glm",
+      "label": "[GLM]",
+      "_origin": "ast",
+      "community": 71,
+      "community_name": "Attribution",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "[glm]",
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L56"
+    },
+    {
+      "id": "licenses_glam_0_32_1_attribution_realtime_math",
+      "label": "[Realtime Math]",
+      "_origin": "ast",
+      "community": 71,
+      "community_name": "Attribution",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "[realtime math]",
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L30"
+    },
+    {
+      "id": "tools_verify_native_libraries_d",
+      "label": "verify-native-libraries.d.mts",
+      "_origin": "ast",
+      "community": 72,
+      "community_name": "verify-native-libraries.d.mts",
+      "file_type": "code",
+      "norm_label": "verify-native-libraries.d.mts",
+      "source_file": "tools/verify-native-libraries.d.mts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_export_score",
+      "label": "export-score.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "export-score.ts",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_export_score_note_offsets",
+      "label": "NOTE_OFFSETS",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "note_offsets",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L60"
+    },
+    {
+      "id": "packages_studio_src_export_score_percussion_voices",
+      "label": "PERCUSSION_VOICES",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "percussion_voices",
+      "source_file": "packages/studio/src/export-score.ts",
+      "source_location": "L70"
+    },
+    {
+      "id": "packages_studio_src_index",
+      "label": "studio/src/index.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "studio/src/index.ts",
+      "source_file": "packages/studio/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_lantern_trail_score",
+      "label": "lantern-trail-score.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "lantern-trail-score.ts",
+      "source_file": "packages/studio/src/lantern-trail-score.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_lantern_trail_score_lanterntrailrules",
+      "label": "lanternTrailRules",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "lanterntrailrules",
+      "source_file": "packages/studio/src/lantern-trail-score.ts",
+      "source_location": "L3"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_score",
+      "label": "pocket-circuit-score.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocket-circuit-score.ts",
+      "source_file": "packages/studio/src/pocket-circuit-score.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_score_pocketcircuitrules",
+      "label": "pocketCircuitRules",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocketcircuitrules",
+      "source_file": "packages/studio/src/pocket-circuit-score.ts",
+      "source_location": "L3"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_score_pocketcircuitscore",
+      "label": "pocketCircuitScore",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocketcircuitscore",
+      "source_file": "packages/studio/src/pocket-circuit-score.ts",
+      "source_location": "L41"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations",
+      "label": "pocket-circuit-variations.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocket-circuit-variations.ts",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations_micromotorscore",
+      "label": "microMotorScore",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "micromotorscore",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L200"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations_neonhairpinscore",
+      "label": "neonHairpinScore",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "neonhairpinscore",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations_pocketcircuitexperiments",
+      "label": "pocketCircuitExperiments",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocketcircuitexperiments",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L292"
+    },
+    {
+      "id": "packages_studio_src_pocket_circuit_variations_pocketfunkscore",
+      "label": "pocketFunkScore",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "pocketfunkscore",
+      "source_file": "packages/studio/src/pocket-circuit-variations.ts",
+      "source_location": "L108"
+    },
+    {
+      "id": "tests_studio_test",
+      "label": "studio.test.ts",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "export-score.ts",
+      "file_type": "code",
+      "norm_label": "studio.test.ts",
+      "source_file": "tests/studio.test.ts",
+      "source_location": "L1"
     },
     {
       "id": "tests_browser_playback_animation_spec",
@@ -15541,7 +16551,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L88",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -17858,6 +18868,162 @@
       "context": "call",
       "source_file": "tests/wasm-parity.mjs",
       "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_assertentrypointmarker",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L93",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_verifyelfx8664",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L121",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_verifypex8664",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L122",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_verifyfatmacho",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L123",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_assertentrypointmarker",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L125",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_findprivatebuildpaths",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L126",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_readandverify",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L127",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifyelfx8664",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L19",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifyfatmacho",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifynativeassets",
+      "target": "tools_verify_native_libraries_readandverify",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L133",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifypackagednativelibraries",
+      "target": "tools_verify_native_libraries_readandverify",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L140",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifypackagednativelibraries",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L143",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries_verifypex8664",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -21821,6 +22987,66 @@
       "weight": 1.0
     },
     {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries_assertentrypointmarker",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries_findprivatebuildpaths",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries_verifyelfx8664",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries_verifyfatmacho",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries_verifypex8664",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "apps_demo_src_audio_engine",
       "target": "packages_runtime_src_index",
       "relation": "imports_from",
@@ -22765,6 +23991,18 @@
       "weight": 1.0
     },
     {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tools_verify_native_libraries",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "apps_demo_src_audio_engine_demoaudioengine_activatesection",
       "target": "packages_runtime_src_types_sectionid",
       "relation": "references",
@@ -23565,7 +24803,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L155",
+      "source_location": "L160",
       "weight": 1.0
     },
     {
@@ -23589,7 +24827,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L202",
+      "source_location": "L207",
       "weight": 1.0
     },
     {
@@ -25714,24 +26952,35 @@
     },
     {
       "source": "changelog_unreleased",
+      "target": "changelog_improved",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CHANGELOG.md",
+      "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "changelog_unreleased",
       "target": "changelog_changed",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_120",
+      "target": "changelog_fixed_123",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L120",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -25742,18 +26991,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L16",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_added_26",
+      "target": "changelog_added_29",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L26",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -25769,24 +27018,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_92",
+      "target": "changelog_fixed_95",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L92",
-      "weight": 1.0
-    },
-    {
-      "source": "changelog_unreleased",
-      "target": "changelog_improved",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CHANGELOG.md",
-      "source_location": "L99",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -27227,7 +28465,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/README.md",
-      "source_location": "L22",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -27271,7 +28509,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L31",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -27282,7 +28520,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L44",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -27293,7 +28531,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L62",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -27304,7 +28542,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L72",
+      "source_location": "L73",
       "weight": 1.0
     },
     {
@@ -27326,7 +28564,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L81",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -27337,7 +28575,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L89",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -27557,7 +28795,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -27568,7 +28806,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L63",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -27590,7 +28828,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L77",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -27858,6 +29096,116 @@
       "weight": 1.0
     },
     {
+      "source": "docs_release_packet_template",
+      "target": "docs_release_packet_template_gamestruments_release_packet_template",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_support_and_disclosures",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_transaction_and_rollback_plan",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L114",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_single_use_operator_approval",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L120",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_archive_information",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L19",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_verification_evidence",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_storefront_metadata_itch_io",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L69",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_gamestruments_release_packet_template",
+      "target": "docs_release_packet_template_release_identity",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_storefront_metadata_itch_io",
+      "target": "docs_release_packet_template_exact_storefront_media",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L94",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_release_packet_template_verification_evidence",
+      "target": "docs_release_packet_template_independent_clean_room_acceptance",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/release-packet-template.md",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
       "source": "examples_godot_readme",
       "target": "examples_godot_readme_godot_portable_score_example",
       "relation": "contains",
@@ -27997,7 +29345,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/api.md",
-      "source_location": "L67",
+      "source_location": "L68",
       "weight": 1.0
     },
     {
@@ -28107,7 +29455,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/quickstart.md",
-      "source_location": "L30",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -28151,7 +29499,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/README.md",
-      "source_location": "L24",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -28162,7 +29510,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/README.md",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -28173,7 +29521,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/README.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -28239,7 +29587,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -28250,7 +29598,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L47",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -28261,7 +29609,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L51",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -28272,7 +29620,84 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/troubleshooting.md",
-      "source_location": "L55",
+      "source_location": "L56",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme",
+      "target": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_archive_contents",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_rebuild_and_test",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L31",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_runtime_use",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_license_and_provenance",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_start_here",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "kit_readme_gamestruments_adaptive_racing_music_for_godot_4",
+      "target": "kit_readme_support",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "kit/README.md",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -28294,7 +29719,51 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "LICENSE.md",
-      "source_location": "L11",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "licenses_glam_0_32_1_attribution",
+      "target": "licenses_glam_0_32_1_attribution_attribution",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "licenses_glam_0_32_1_attribution_attribution",
+      "target": "licenses_glam_0_32_1_attribution_realtime_math",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "licenses_glam_0_32_1_attribution_attribution",
+      "target": "licenses_glam_0_32_1_attribution_directxmath",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "licenses_glam_0_32_1_attribution_attribution",
+      "target": "licenses_glam_0_32_1_attribution_glm",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "licenses/glam-0.32.1-ATTRIBUTION.md",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -31880,7 +33349,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "README.md",
-      "source_location": "L102",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -31891,7 +33360,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "README.md",
-      "source_location": "L123",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -31902,7 +33371,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "README.md",
-      "source_location": "L135",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -31913,7 +33382,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "README.md",
-      "source_location": "L144",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -31947,6 +33416,138 @@
       "confidence_score": 1.0,
       "source_file": "README.md",
       "source_location": "L75",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing",
+      "target": "storefront_listing_gamestruments_itch_io_storefront_listing",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_gamestruments_itch_io_storefront_listing",
+      "target": "storefront_listing_visual_thesis_and_media_capture_checklist",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_gamestruments_itch_io_storefront_listing",
+      "target": "storefront_listing_long_description",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_gamestruments_itch_io_storefront_listing",
+      "target": "storefront_listing_metadata_fields",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_gamestruments_adaptive_racing_music",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_included_files",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_literal_claims",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L56",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_requirements",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L62",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_installation_instructions",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L67",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_limitations",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L75",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_license_and_disclosures",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L82",
+      "weight": 1.0
+    },
+    {
+      "source": "storefront_listing_long_description",
+      "target": "storefront_listing_support",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "storefront/listing.md",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -32024,6 +33625,61 @@
       "confidence_score": 1.0,
       "source_file": "tests/audition.test.ts",
       "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_create_native_library_fixtures",
+      "target": "tests_create_native_library_fixtures_elf",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_create_native_library_fixtures",
+      "target": "tests_create_native_library_fixtures_pe",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L29",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_create_native_library_fixtures",
+      "target": "tests_create_native_library_fixtures_macho",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L40",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_create_native_library_fixtures",
+      "target": "tests_create_native_library_fixtures_outputargument",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_create_native_library_fixtures",
+      "target": "tests_create_native_library_fixtures_output",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/create-native-library-fixtures.mjs",
+      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -32478,25 +34134,113 @@
       "weight": 1.0
     },
     {
-      "source": "tests_verify_third_party_notices",
-      "target": "tests_verify_third_party_notices_missing",
+      "source": "tests_verify_native_libraries_test",
+      "target": "tests_verify_native_libraries_test_elfx8664",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tests_verify_native_libraries_test_pex8664",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_native_libraries_test",
+      "target": "tests_verify_native_libraries_test_fatmacho",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-native-libraries.test.ts",
+      "source_location": "L35",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_root",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
       "source_location": "L11",
       "weight": 1.0
     },
     {
-      "source": "tests_verify_third_party_notices",
-      "target": "tests_verify_third_party_notices_metadatapath_noticespath",
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_manifest",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "tests/verify-third-party-notices.mjs",
-      "source_location": "L4",
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_provenancevalues",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L29",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_generatormatch",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L52",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_rustmatch",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_rootargument_archivename",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_release_manifest",
+      "target": "tests_verify_release_manifest_expectedlibraries",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-release-manifest.mjs",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -32507,7 +34251,73 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/verify-third-party-notices.mjs",
-      "source_location": "L9",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_inventory",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L15",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_cargopackages",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L20",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_inventoriedpackages",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_missing",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L31",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_usedlicenseids",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_verify_third_party_notices",
+      "target": "tests_verify_third_party_notices_metadatapath_noticespath_inventorypath_licensespath",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/verify-third-party-notices.mjs",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -32644,35 +34454,24 @@
     },
     {
       "source": "third_party_notices_third_party_notices",
+      "target": "third_party_notices_rust_standard_library",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "THIRD_PARTY_NOTICES.md",
+      "source_location": "L35",
+      "weight": 1.0
+    },
+    {
+      "source": "third_party_notices_third_party_notices",
       "target": "third_party_notices_mit",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L33",
-      "weight": 1.0
-    },
-    {
-      "source": "third_party_notices_third_party_notices",
-      "target": "third_party_notices_mit_or_unlicense",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L41",
-      "weight": 1.0
-    },
-    {
-      "source": "third_party_notices_third_party_notices",
-      "target": "third_party_notices_unicode_license_v3",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "THIRD_PARTY_NOTICES.md",
-      "source_location": "L47",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -32684,6 +34483,28 @@
       "confidence_score": 1.0,
       "source_file": "THIRD_PARTY_NOTICES.md",
       "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "third_party_notices_third_party_notices",
+      "target": "third_party_notices_mit_or_unlicense",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "THIRD_PARTY_NOTICES.md",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "third_party_notices_third_party_notices",
+      "target": "third_party_notices_unicode_license_v3",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "THIRD_PARTY_NOTICES.md",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -32786,6 +34607,160 @@
       "weight": 1.0
     },
     {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_manifest",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_requiredvalue",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_extractquotedvalue",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L29",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_sha256",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L37",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_values",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_reporoot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_assetsdir",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_version",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L59",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_nativelibraries",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_provenance",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L60",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_allowedprovenance",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L61",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_dirtyvalue",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L71",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_generatorversion",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L84",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_create_release_manifest",
+      "target": "tools_create_release_manifest_rustversion",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/create-release-manifest.mjs",
+      "source_location": "L89",
+      "weight": 1.0
+    },
+    {
       "source": "tools_package_kit",
       "target": "tools_package_kit_sh__entry",
       "relation": "contains",
@@ -32805,6 +34780,116 @@
       "confidence_score": 1.0,
       "source_file": "tools/verify_kit_archive.sh",
       "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_readandverify",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L115",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_assert",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_verifynativeassets",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L132",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_verifypackagednativelibraries",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L136",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_verifyelfx8664",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_verifypex8664",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_verifyfatmacho",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L42",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_filenames",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_assertentrypointmarker",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L92",
+      "weight": 1.0
+    },
+    {
+      "source": "tools_verify_native_libraries",
+      "target": "tools_verify_native_libraries_findprivatebuildpaths",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tools/verify-native-libraries.mjs",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -33926,7 +36011,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L137",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -33937,7 +36022,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L155",
+      "source_location": "L160",
       "weight": 1.0
     },
     {
@@ -33948,7 +36033,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L202",
+      "source_location": "L207",
       "weight": 1.0
     },
     {
@@ -33981,7 +36066,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L87",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -33992,7 +36077,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L91",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -34245,7 +36330,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "README.md",
-      "source_location": "L118",
+      "source_location": "L115",
       "weight": 1.0
     },
     {
@@ -34532,10 +36617,10 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "crates/godot/src/lib.rs",
-      "source_location": "L164",
+      "source_location": "L169",
       "weight": 1.0
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "fb797bd0c102388abc6c6c20b76bbe7a5aa2515e"
+  "built_at_commit": "e4a0f9262696071175579b27c57e4e519621d0b0"
 }

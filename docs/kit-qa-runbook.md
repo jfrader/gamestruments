@@ -30,6 +30,7 @@ The release workflow must be green and show all of these before author QA:
 - Linux x86_64 build and native Godot runtime smoke.
 - Windows x86_64 build and native Godot runtime smoke.
 - macOS arm64/x86_64 universal build, architecture check, and native Godot runtime smoke.
+- Separate native Godot runtime smoke on macOS arm64 and macOS Intel x86_64 runners.
 - Repeated generate/play/transition/free cycles without error, crash, or leaked-object output.
 - One cross-platform archive containing all native libraries.
 - Extracted-source rebuild with Rust 1.94.0 and the committed lockfile.
@@ -65,7 +66,7 @@ An unsupported voice must fail generation clearly instead of playing an invalid 
 Confirm directly from the extracted archive and demo:
 
 - [ ] Product is described as adaptive racing music, not a general adaptive music engine.
-- [ ] Godot 4.7+ and the three supported desktop platform families are explicit.
+- [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
 - [ ] `generate(seed) -> bool` and five-argument `set_race_state(...) -> bool` match runtime behavior.
 - [ ] The six documented sections are reachable.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
@@ -90,4 +91,4 @@ Confirm directly from the extracted archive and demo:
 | Claims and archive contents | | |
 | Exact-runtime listening quality | | |
 
-Author QA passes only when every row passes on all advertised OS families. Next, run independent clean-room acceptance. Publication still requires explicit approval of the final immutable release packet and exact storefront changes.
+Author QA passes only when every row passes on all advertised OS families. Next, run independent clean-room acceptance. The final itch transaction remains manual and requires single-use operator approval over the exact immutable release packet (`docs/release-packet-template.md`) and storefront listing (`storefront/listing.md`); drafting is not approval.

@@ -2,7 +2,7 @@
 
 ## `GamestrumentsPlayer` Does Not Appear
 
-1. Confirm you are using Godot 4.7 or newer on a supported desktop architecture.
+1. Confirm you are using Godot 4.7.x on a supported desktop architecture.
 2. Confirm `gamestruments.gdextension` is at `res://addons/gamestruments/gamestruments.gdextension`.
 3. Confirm the matching native library exists under `res://addons/gamestruments/bin/`:
    - Linux: `libgamestruments_godot.so`
@@ -30,8 +30,9 @@ Do not call `set_race_state` after failed generation.
 
 ## Silence After Successful Generation
 
-1. Confirm the project has an audible audio bus named `Music`.
-2. Confirm Master and Music are not muted and another bus is not soloed.
+1. Confirm `Master` is audible. The player uses `Music` when that bus exists and
+   otherwise falls back to `Master`.
+2. If `Music` exists, confirm Master and Music are not muted and another bus is not soloed.
 3. Run the scene so `_process` can feed the internal playback buffer.
 4. Try the archive's self-contained `kit/demo/` project to separate installation from game-specific bus configuration.
 5. Use Godot's debugger Audio view to verify the Music bus receives signal.
@@ -42,7 +43,7 @@ The shipped synth is mono at 22050 Hz and intentionally leaner than the browser 
 
 - Check the boolean result from `set_race_state`. It returns `false` when generation has not succeeded.
 - State changes are quantized to bar boundaries, so listen for several seconds rather than expecting an immediate cut.
-- Use `phase = "race"` for cruise. High intensity or pressure selects attack; `final_lap = true` selects final lap; `phase = "finish"` with `finish_result = "win"` selects victory.
+- Use `phase = "race"` for cruise. High intensity or pressure selects attack; `final_lap = true` selects final lap; every `phase = "finish"` request selects victory, with `finish_result = "win"` representing the intended win case.
 
 ## Different Result Than a Previous Version
 
@@ -62,4 +63,4 @@ cargo build -p gamestruments-godot --release --locked
 
 Use the target matching your operating system and copy the resulting native library to the filename declared in `gamestruments.gdextension`. Standard support covers the provided binaries; custom targets and modified source are best-effort.
 
-When reporting an issue, include kit version, OS and architecture, exact Godot version, reproduction steps, and complete Output text. Do not publish real game secrets; `project_secret` is only a namespace, so replace it consistently in a reproduction.
+When reporting an issue through the itch.io product page's public comments, include kit version, OS and architecture, exact Godot version, reproduction steps, and complete Output text. Do not publish private project data; `project_secret` is only a namespace, so replace it consistently in a reproduction. Use itch.io's purchase-support flow for purchase-specific or private matters.

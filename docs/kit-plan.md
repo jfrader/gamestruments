@@ -31,8 +31,8 @@
    - Storefront screenshots and audio/video evidence come from the packaged Godot demo.
 7. **Release and launch**
    - Source is an immutable remote commit and tag.
-   - The release packet records archive digest, workflow run, platform evidence, listing fields, price, and rollback plan.
-   - itch.io is changed only after explicit approval of the exact packet; there is no automatic publication.
+   - The release packet (`docs/release-packet-template.md`) records archive digest, workflow run, platform evidence, listing fields (`storefront/listing.md`), price, and rollback plan.
+   - The final itch.io transaction remains manual and requires single-use operator approval over the exact immutable packet; drafting is not approval. CI never publishes the storefront.
 
 Failure at any gate returns the work to the relevant implementation or documentation gate. Passing CI alone does not satisfy independent acceptance or publication approval.
 
@@ -45,7 +45,7 @@ Failure at any gate returns the work to the relevant implementation or documenta
 | Six adaptive racing sections with bar-quantized crossover | Transport tests plus exact-runtime Godot smoke and human demo run |
 | Zero samples and offline runtime | Archive audio-extension scan and source dependency review |
 | Linux, Windows, and universal macOS support | Successful target-native release jobs and GDExtension mappings |
-| Godot 4.7+ support | Fresh-project smoke with the pinned 4.7.2 release on every target OS |
+| Godot 4.7.x support | Fresh-project smoke with the pinned 4.7.2 release on every target OS |
 | MIT source included and rebuildable | Extracted archive build using root manifests, lockfile, and pinned toolchain |
 | Exact buyer sound shown publicly | Media captured from the immutable packaged Godot demo, not the Web Audio Lab |
 
@@ -67,7 +67,7 @@ The independent tester receives only `gamestruments-<version>-godot4.zip` and pr
 
 - **Native lifecycle:** Godot playback resources can leak at shutdown. Automated repeated-free smoke blocks release.
 - **Cross-platform ABI:** compilation does not prove loadability. Every advertised binary must run under Godot on its own OS.
-- **Unsigned native files:** macOS quarantine or platform security may require buyer action. Troubleshooting must remain explicit and target testing must use downloaded artifacts.
+- **Native signing:** the macOS library is ad-hoc signed but not Developer ID-signed or notarized; Linux and Windows libraries are not publisher-signed. Quarantine or platform security may require buyer action. Troubleshooting must remain explicit and target testing must use downloaded artifacts.
 - **Audio expectation mismatch:** the mono runtime is intentionally leaner than the stereo Web Audio Lab. Storefront evidence must use the runtime.
 - **Narrow genre model:** current parameters and sections are racing-specific. The product is sold that way rather than as a general adaptive-music engine.
 - **Determinism drift:** output identity is scoped to generator version. Version changes require fixture regeneration and changelog coverage.
