@@ -85,5 +85,5 @@ jobs:
         run: |
           mkdir -p release-assets dist
           node tests/create-native-library-fixtures.mjs release-assets
-          tools/package_kit.sh --version 0.1.0-ci --assets-dir release-assets --out-dir dist
+          GAMESTRUMENTS_PROVENANCE=local tools/package_kit.sh --version 0.1.0-ci --assets-dir release-assets --out-dir dist
           tools/verify_kit_archive.sh dist/gamestruments-0.1.0-ci-godot4.zip
