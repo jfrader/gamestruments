@@ -43,6 +43,15 @@ pub struct SongForm {
     pub steps: Vec<SongFormStep>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub loop_from: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<FormOrigin>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FormOrigin {
+    TransitionStart,
+    TransitionEnd,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -341,9 +350,9 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 10] = [
+            const NOTE_VOICES: [&str; 12] = [
                 "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle",
+                "triangle", "felt", "dusk",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -356,7 +365,14 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 4] = ["kick", "snare", "hat", "tom"];
+            const PERCUSSION_VOICES: [&str; 6] = [
+                "kick",
+                "snare",
+                "hat",
+                "tom",
+                "reverse-cymbal",
+                "air-impact",
+            ];
             if !PERCUSSION_VOICES.contains(&voice.as_str()) {
                 return Err(format!("percussion {id} has unsupported voice {voice}"));
             }

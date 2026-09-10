@@ -1,4 +1,4 @@
-use crate::score::{GameState, PortableScore, TraceState};
+use crate::score::{FormOrigin, GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionPlan {
@@ -6,6 +6,13 @@ pub struct TransitionPlan {
     pub to: String,
     pub start_tick: u32,
     pub end_tick: u32,
+}
+
+pub struct SectionPlayback<'a> {
+    pub section: &'a str,
+    pub origin: u32,
+    pub gain: f32,
+    pub percussion: bool,
 }
 
 pub struct AdaptiveTransport {
@@ -17,6 +24,9 @@ pub struct AdaptiveTransport {
     form_step_index: usize,
     section_entered_at: u32,
     cue_target: Option<String>,
+    form_held: bool,
+    form_not_before: u32,
+    automatic_transition: bool,
 }
 
 impl AdaptiveTransport {
@@ -38,6 +48,9 @@ impl AdaptiveTransport {
             form_step_index,
             section_entered_at: 0,
             cue_target: None,
+            form_held: false,
+            form_not_before: 0,
+            automatic_transition: false,
         })
     }
 
@@ -84,12 +97,10 @@ impl AdaptiveTransport {
                     return None;
                 }
                 self.cue_target = Some(section.to_string());
-                self.sync_form_to(section);
                 self.request_section(section, at_tick)
             }
             Some(section) => {
                 self.cue_target = None;
-                self.sync_form_to(section);
                 self.request_section(section, at_tick)
             }
             None => {
@@ -100,14 +111,15 @@ impl AdaptiveTransport {
     }
 
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {
+        self.score.section(target)?;
         self.advance(at_tick);
+        self.automatic_transition = false;
         if target == self.current_section
             && self.transition.is_none()
             && self.pending_section.is_none()
         {
             return None;
         }
-        self.score.section(target)?;
         if let Some(plan) = &self.transition {
             if plan.to == target {
                 self.pending_section = None;
@@ -116,6 +128,8 @@ impl AdaptiveTransport {
             if at_tick < plan.start_tick {
                 if target == self.current_section {
                     self.transition = None;
+                    self.pending_section = None;
+                    self.sync_form_to(&self.current_section.clone());
                     return None;
                 }
                 let next = self.create_plan(&self.current_section, target, at_tick);
@@ -127,7 +141,6 @@ impl AdaptiveTransport {
         }
         let plan = self.create_plan(&self.current_section, target, at_tick);
         self.transition = Some(plan.clone());
-        self.sync_form_to(target);
         Some(plan)
     }
 
@@ -135,9 +148,19 @@ impl AdaptiveTransport {
         if let Some(plan) = &self.transition {
             if at_tick >= plan.end_tick {
                 self.current_section = plan.to.clone();
-                self.section_entered_at = at_tick;
+                self.section_entered_at = if self.score.form.as_ref().and_then(|form| form.origin)
+                    == Some(FormOrigin::TransitionStart)
+                {
+                    plan.start_tick
+                } else if self.score.form.is_some() {
+                    plan.end_tick
+                } else {
+                    at_tick
+                };
                 self.sync_form_to(&self.current_section.clone());
                 self.transition = None;
+                self.automatic_transition = false;
+                self.form_not_before = 0;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
                         let next = self.create_plan(&self.current_section, &pending, at_tick);
@@ -170,6 +193,99 @@ impl AdaptiveTransport {
         }
     }
 
+    pub fn is_form_held(&self) -> bool {
+        self.form_held
+    }
+
+    pub fn set_form_held(&mut self, held: bool, at_tick: u32) -> Option<TransitionPlan> {
+        if self.score.form.is_none() || self.form_held == held {
+            return None;
+        }
+        self.form_held = held;
+        if !held {
+            self.form_not_before = at_tick;
+        }
+        if held
+            && self.automatic_transition
+            && self
+                .transition
+                .as_ref()
+                .is_some_and(|plan| at_tick < plan.start_tick)
+        {
+            let plan = self.transition.take();
+            self.automatic_transition = false;
+            self.pending_section = None;
+            self.sync_form_to(&self.current_section.clone());
+            return plan;
+        }
+        None
+    }
+
+    pub fn next_form_section(&self, at_tick: u32) -> Option<String> {
+        let form = self.score.form.as_ref()?;
+        let current = self
+            .transition
+            .as_ref()
+            .filter(|plan| at_tick >= plan.start_tick)
+            .map_or(self.current_section.as_str(), |plan| plan.to.as_str());
+        let index = form_index_for(&self.score, current)?;
+        let next = if index + 1 < form.steps.len() {
+            index + 1
+        } else {
+            form.loop_from? as usize
+        };
+        let target = &form.steps.get(next)?.section;
+        (target != current).then(|| target.clone())
+    }
+
+    pub fn advance_form(&mut self, at_tick: u32) -> Option<TransitionPlan> {
+        let target = self.next_form_section(at_tick)?;
+        self.request_section(&target, at_tick)
+    }
+
+    pub fn playback_at(&self, at_tick: u32) -> [Option<SectionPlayback<'_>>; 2] {
+        if let Some(plan) = &self.transition {
+            if at_tick >= plan.end_tick {
+                return [
+                    Some(SectionPlayback {
+                        section: &plan.to,
+                        origin: plan.start_tick,
+                        gain: 1.0,
+                        percussion: true,
+                    }),
+                    None,
+                ];
+            }
+            if at_tick >= plan.start_tick && at_tick < plan.end_tick {
+                let progress =
+                    (at_tick - plan.start_tick) as f32 / (plan.end_tick - plan.start_tick) as f32;
+                return [
+                    Some(SectionPlayback {
+                        section: &plan.from,
+                        origin: self.section_entered_at,
+                        gain: 1.0 - progress,
+                        percussion: false,
+                    }),
+                    Some(SectionPlayback {
+                        section: &plan.to,
+                        origin: plan.start_tick,
+                        gain: progress,
+                        percussion: true,
+                    }),
+                ];
+            }
+        }
+        [
+            Some(SectionPlayback {
+                section: &self.current_section,
+                origin: self.section_entered_at,
+                gain: 1.0,
+                percussion: true,
+            }),
+            None,
+        ]
+    }
+
     fn create_plan(&self, from: &str, to: &str, at_tick: u32) -> TransitionPlan {
         let start = at_tick.div_ceil(self.bar_ticks) * self.bar_ticks;
         let start = start.max(at_tick);
@@ -189,7 +305,7 @@ impl AdaptiveTransport {
     }
 
     fn maybe_advance_form(&mut self, at_tick: u32) {
-        if self.transition.is_some() || self.pending_section.is_some() {
+        if self.form_held || self.transition.is_some() || self.pending_section.is_some() {
             return;
         }
         let Some(form) = self.score.form.as_ref() else {
@@ -206,7 +322,13 @@ impl AdaptiveTransport {
             return;
         };
         let repeats = step.repeats.max(1);
-        let duration = section.length_ticks.saturating_mul(repeats);
+        let cycles = repeats.max(
+            self.form_not_before
+                .saturating_sub(self.section_entered_at)
+                .div_ceil(section.length_ticks),
+        );
+        let duration = section.length_ticks.saturating_mul(cycles);
+        let boundary_tick = self.section_entered_at.saturating_add(duration);
         if at_tick.saturating_sub(self.section_entered_at) < duration {
             return;
         }
@@ -221,11 +343,18 @@ impl AdaptiveTransport {
         let next_section = form.steps[next_index].section.clone();
         self.form_step_index = next_index;
         if next_section == self.current_section {
-            self.section_entered_at = at_tick;
+            self.section_entered_at = boundary_tick;
             return;
         }
-        let plan = self.create_plan(&self.current_section, &next_section, at_tick);
+        let length = (self.score.crossfade_bars * f64::from(self.bar_ticks)).round() as u32;
+        let plan = TransitionPlan {
+            from: self.current_section.clone(),
+            to: next_section,
+            start_tick: boundary_tick,
+            end_tick: boundary_tick.saturating_add(length.max(self.bar_ticks)),
+        };
         self.transition = Some(plan);
+        self.automatic_transition = true;
     }
 }
 
@@ -282,6 +411,7 @@ mod tests {
     use super::AdaptiveTransport;
     use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
     use crate::score::GameState;
+    use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
     fn score() -> crate::score::PortableScore {
         generate_pocket_circuit(&GenerateInput {
@@ -315,5 +445,97 @@ mod tests {
         );
         transport.advance(bar * 4);
         assert_eq!(transport.current_section(), "cruise");
+    }
+
+    #[test]
+    fn game_hold_advances_to_the_variation_and_resumes_on_a_future_loop_boundary() {
+        let score = crate::generate_suspense_arrangement(
+            &SuspenseInput {
+                secret: "qa".into(),
+                seed: "game-controls".into(),
+                style: SuspenseStyle::Terminal,
+                tension: 0.62,
+                heat: 0.48,
+                mystery: 0.72,
+                pulse: 0.55,
+            },
+            crate::SuspenseArrangement::Extended,
+        )
+        .unwrap();
+        let bar = score.bar_ticks();
+        let length = score.section("verse").unwrap().length_ticks;
+        let mut transport = AdaptiveTransport::new(score, Some("verse")).unwrap();
+        transport.set_form_held(true, 0);
+        transport.advance(5 * length);
+        assert_eq!(transport.current_section(), "verse");
+        assert!(transport.transition.is_none());
+        let plan = transport.advance_form(5 * length + 100).unwrap();
+        assert_eq!(plan.to, "scan-ii");
+        assert_eq!(plan.start_tick % bar, 0);
+        transport.advance(plan.end_tick);
+        assert!(transport.is_form_held());
+        assert_eq!(transport.current_section(), "scan-ii");
+        let now = 20 * length + 100;
+        transport.advance(now);
+        transport.set_form_held(false, now);
+        transport.advance(now);
+        assert!(transport.transition.is_none());
+        let boundary = transport.section_entered_at
+            + (now - transport.section_entered_at).div_ceil(length) * length;
+        transport.advance(boundary - 1);
+        assert!(transport.transition.is_none());
+        transport.advance(boundary);
+        assert_eq!(transport.transition.as_ref().unwrap().start_tick, boundary);
+        assert_eq!(transport.transition.as_ref().unwrap().to, "pre-chorus");
+    }
+
+    #[test]
+    fn holding_during_an_automatic_blend_keeps_the_incoming_section() {
+        let score = crate::generate_suspense_arrangement(
+            &SuspenseInput {
+                secret: "qa".into(),
+                seed: "hold-blend".into(),
+                style: SuspenseStyle::Terminal,
+                tension: 0.62,
+                heat: 0.48,
+                mystery: 0.72,
+                pulse: 0.55,
+            },
+            crate::SuspenseArrangement::Extended,
+        )
+        .unwrap();
+        let length = score.section("verse").unwrap().length_ticks;
+        let mut transport = AdaptiveTransport::new(score, Some("verse")).unwrap();
+        transport.advance(length);
+        let end = transport.transition.as_ref().unwrap().end_tick;
+        assert!(transport.set_form_held(true, length + 1).is_none());
+        transport.advance(end);
+        transport.advance(10 * length);
+        assert_eq!(transport.current_section(), "scan-ii");
+        assert!(transport.transition.is_none());
+    }
+
+    #[test]
+    fn late_form_poll_keeps_the_authored_boundary() {
+        let score = generate_suspense(&SuspenseInput {
+            secret: "transport-regression".into(),
+            seed: "scan-seam".into(),
+            style: SuspenseStyle::Terminal,
+            tension: 0.62,
+            heat: 0.48,
+            mystery: 0.72,
+            pulse: 0.55,
+        })
+        .unwrap();
+        let mut transport = AdaptiveTransport::new(score, Some("verse")).unwrap();
+        transport.advance(30719);
+        assert!(transport.transition.is_none());
+        transport.advance(30726);
+        let plan = transport.transition.as_ref().unwrap();
+        assert_eq!(plan.to, "pre-chorus");
+        assert_eq!(plan.start_tick, 30720);
+        assert_eq!(plan.end_tick, 38400);
+        transport.advance(38406);
+        assert_eq!(transport.section_entered_at, 38400);
     }
 }

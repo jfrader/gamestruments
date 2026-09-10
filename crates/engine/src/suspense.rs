@@ -4,7 +4,7 @@ use crate::score::{
     SongFormStep, SCORE_SCHEMA_VERSION,
 };
 
-pub const GENERATOR_VERSION: &str = "2.1.0";
+pub const GENERATOR_VERSION: &str = "2.1.1";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -617,6 +617,10 @@ fn build_section(
         );
     }
 
+    if plan.id == "verse" {
+        push_perc(&mut events, plan.id, 0, pulse, 0.42, "kick");
+    }
+
     events.sort_by(|left, right| {
         left.start_tick()
             .cmp(&right.start_tick())
@@ -721,6 +725,7 @@ fn song_form() -> SongForm {
         })
         .collect(),
         loop_from: Some(1),
+        origin: None,
     }
 }
 
@@ -902,6 +907,25 @@ mod tests {
             _ => false,
         });
         assert!(downbeat, "Approach should kick on bar 1 beat 1");
+    }
+
+    #[test]
+    fn scan_has_one_entrance_kick_without_filling_its_quiet_opening() {
+        let score = generate_suspense(&input("default-play", SuspenseStyle::Terminal)).unwrap();
+        let scan = score.section("verse").unwrap();
+        let kicks: Vec<_> = scan.events.iter().filter_map(|event| match event {
+            MusicEvent::Percussion { voice, start_tick, velocity, .. } if voice == "kick" => {
+                Some((*start_tick, *velocity))
+            }
+            _ => None,
+        }).collect();
+        let bar = score.bar_ticks();
+        assert_eq!(kicks.first(), Some(&(0, 0.42)));
+        assert_eq!(kicks.iter().filter(|(tick, _)| *tick < 4 * bar).count(), 1);
+        let expected: Vec<_> = (4..8).flat_map(|index| {
+            [(index * bar, 0.28), (index * bar + bar / 2, 0.22)]
+        }).collect();
+        assert_eq!(&kicks[1..], expected.as_slice());
     }
 
     #[test]

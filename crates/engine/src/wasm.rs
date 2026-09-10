@@ -67,7 +67,8 @@ use core::slice;
 use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
 use crate::render::render_wav;
 use crate::score::PortableScore;
-use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
+use crate::suspense::{SuspenseInput, SuspenseStyle};
+use crate::suspense_arrangement::{generate_suspense_arrangement, SuspenseArrangement};
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
@@ -171,6 +172,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
     struct Inp {
         #[serde(default)]
         recipe: String,
+        #[serde(default)]
+        arrangement: String,
         secret: String,
         seed: String,
         style: String,
@@ -209,15 +212,25 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 return unsafe { OUT_PTR };
             }
         };
-        generate_suspense(&SuspenseInput {
-            secret: inp.secret,
-            seed: inp.seed,
-            style,
-            tension: inp.tension,
-            heat: inp.heat,
-            mystery: inp.mystery,
-            pulse: inp.pulse,
-        })
+        let arrangement = match SuspenseArrangement::parse(&inp.arrangement) {
+            Ok(value) => value,
+            Err(error) => {
+                write_error(error);
+                return unsafe { OUT_PTR };
+            }
+        };
+        generate_suspense_arrangement(
+            &SuspenseInput {
+                secret: inp.secret,
+                seed: inp.seed,
+                style,
+                tension: inp.tension,
+                heat: inp.heat,
+                mystery: inp.mystery,
+                pulse: inp.pulse,
+            },
+            arrangement,
+        )
     } else {
         let style = match Style::parse(&inp.style) {
             Ok(value) => value,

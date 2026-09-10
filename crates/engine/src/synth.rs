@@ -11,6 +11,8 @@ enum VoiceType {
     Glass,
     Pulse,
     Pluck,
+    Felt,
+    Dusk,
     Bass,
     Epiano,
     Organ,
@@ -21,6 +23,8 @@ enum VoiceType {
     Snare,
     Hat,
     Tom,
+    ReverseCymbal,
+    AirImpact,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -30,6 +34,7 @@ enum FilterMode {
     Bandpass,
 }
 
+#[derive(Clone)]
 struct Biquad {
     x1: f32,
     x2: f32,
@@ -86,6 +91,7 @@ impl Biquad {
     }
 }
 
+#[derive(Clone)]
 struct Voice {
     voice_type: VoiceType,
     base_freq: f32,
@@ -138,10 +144,18 @@ impl Synth {
                 "triangle" => VoiceType::Triangle,
                 "bass" => VoiceType::Bass,
                 "epiano" => VoiceType::Epiano,
+                "felt" => VoiceType::Felt,
+                "dusk" => VoiceType::Dusk,
                 _ => VoiceType::Warm,
             };
-            let life = duration as f32 + NOTE_TAIL_SECONDS + 0.05;
-            self.voices.push(Voice {
+            let life = duration as f32
+                + match vtype {
+                    VoiceType::Felt => 0.6,
+                    VoiceType::Dusk => 1.2,
+                    _ => NOTE_TAIL_SECONDS,
+                }
+                + 0.05;
+            let voice = Voice {
                 voice_type: vtype,
                 base_freq,
                 velocity: velocity.clamp(0.0, 1.0),
@@ -157,7 +171,14 @@ impl Synth {
                 vib_phase: 0.0,
                 trem_phase: 0.0,
                 filt: Biquad::new(),
-            });
+            };
+            if matches!(vtype, VoiceType::Felt | VoiceType::Dusk) {
+                let mut echo = voice.clone();
+                echo.start_phase += 0.42;
+                echo.velocity *= 0.16;
+                self.voices.push(echo);
+            }
+            self.voices.push(voice);
             return;
         }
         // percussion
@@ -166,6 +187,8 @@ impl Synth {
             "snare" => VoiceType::Snare,
             "hat" => VoiceType::Hat,
             "tom" => VoiceType::Tom,
+            "reverse-cymbal" => VoiceType::ReverseCymbal,
+            "air-impact" => VoiceType::AirImpact,
             _ => VoiceType::Kick,
         };
         let mut base_freq = 80.0f32;
@@ -174,6 +197,7 @@ impl Synth {
             VoiceType::Snare => 0.125,
             VoiceType::Hat => 0.085,
             VoiceType::Tom => 0.20,
+            VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
             _ => 0.12,
         };
         let mut perc_id: Option<String> = None;
@@ -185,7 +209,12 @@ impl Synth {
             }
         } else if matches!(
             vtype,
-            VoiceType::Kick | VoiceType::Snare | VoiceType::Hat | VoiceType::Tom
+            VoiceType::Kick
+                | VoiceType::Snare
+                | VoiceType::Hat
+                | VoiceType::Tom
+                | VoiceType::ReverseCymbal
+                | VoiceType::AirImpact
         ) {
             if let MusicEvent::Percussion { id, .. } = event {
                 perc_id = Some(id.clone());
@@ -219,7 +248,11 @@ impl Synth {
             velocity: velocity.clamp(0.0, 1.0),
             is_melody: false,
             start_phase: self.phase,
-            duration: life,
+            duration: if matches!(vtype, VoiceType::ReverseCymbal | VoiceType::AirImpact) {
+                duration.max(0.04) as f32
+            } else {
+                life
+            },
             life: life + 0.01,
             pitch: 0,
             noise_state,
@@ -241,6 +274,10 @@ impl Synth {
             let mut mix = 0.0f32;
             let mut j = 0;
             while j < self.voices.len() {
+                if t < self.voices[j].start_phase {
+                    j += 1;
+                    continue;
+                }
                 let age = (t - self.voices[j].start_phase).max(0.0);
                 if age >= self.voices[j].life {
                     self.voices.swap_remove(j);
@@ -261,7 +298,12 @@ impl Synth {
         let is_mel = v.is_melody;
         let base = v.base_freq;
         match v.voice_type {
-            VoiceType::Warm | VoiceType::Glass | VoiceType::Pulse | VoiceType::Pluck => {
+            VoiceType::Warm
+            | VoiceType::Glass
+            | VoiceType::Pulse
+            | VoiceType::Pluck
+            | VoiceType::Felt
+            | VoiceType::Dusk => {
                 let (
                     primary,
                     secondary,
@@ -342,6 +384,38 @@ impl Synth {
                         0.9,
                         0.004,
                     ),
+                    VoiceType::Felt => (
+                        Wave::Sine,
+                        Wave::Triangle,
+                        2.0,
+                        0.06,
+                        2.0,
+                        0.06,
+                        0.025,
+                        0.35,
+                        0.12,
+                        0.6,
+                        1400.0,
+                        420.0,
+                        0.25,
+                        0.0,
+                    ),
+                    VoiceType::Dusk => (
+                        Wave::Triangle,
+                        Wave::Sine,
+                        1.001,
+                        0.35,
+                        3.0,
+                        0.055,
+                        0.4,
+                        0.9,
+                        0.55,
+                        1.2,
+                        900.0,
+                        500.0,
+                        0.25,
+                        0.0,
+                    ),
                     _ => unreachable!(),
                 };
                 let f1 = compute_freq(base, age, pd) * 2f32.powf(-det_c / 1200.0);
@@ -365,7 +439,12 @@ impl Synth {
                 let q = res + if is_mel { 0.25 } else { 0.0 };
                 sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
                 let peak = g * velocity_curve(vel, 0.82) * if is_mel { 1.18 } else { 1.0 };
-                let env = compute_envelope(age, v.duration, peak, sus, att, dec, rel);
+                let cap = if matches!(v.voice_type, VoiceType::Felt | VoiceType::Dusk) {
+                    rel
+                } else {
+                    0.24
+                };
+                let env = compute_envelope_with_cap(age, v.duration, peak, sus, att, dec, rel, cap);
                 sig * env
             }
             VoiceType::Bass => {
@@ -576,6 +655,34 @@ impl Synth {
                 let nf = v.filt.process(n, 6200.0, 0.35, sr, FilterMode::Highpass);
                 nf * ng
             }
+            VoiceType::ReverseCymbal | VoiceType::AirImpact => {
+                let reverse = matches!(v.voice_type, VoiceType::ReverseCymbal);
+                let progress = (age / v.duration).clamp(0.0, 1.0);
+                let peak = (vel * if reverse { 0.085 } else { 0.075 }).max(MIN_GAIN);
+                let gain = if reverse && age < v.duration {
+                    MIN_GAIN * (peak / MIN_GAIN).powf(progress)
+                } else if reverse && age < v.duration + 0.12 {
+                    peak * (MIN_GAIN / peak).powf((age - v.duration) / 0.12)
+                } else if !reverse && age < 0.006 {
+                    MIN_GAIN + (peak - MIN_GAIN) * age / 0.006
+                } else if !reverse && age < v.duration {
+                    peak * (MIN_GAIN / peak).powf((age - 0.006) / (v.duration - 0.006))
+                } else {
+                    0.0
+                };
+                let frequency = if reverse {
+                    1600.0 + 3200.0 * progress
+                } else {
+                    1200.0
+                };
+                let mode = if reverse {
+                    FilterMode::Highpass
+                } else {
+                    FilterMode::Bandpass
+                };
+                let sample = noise(&mut v.noise_state);
+                v.filt.process(sample, frequency, 0.45, sr, mode) * gain
+            }
             VoiceType::Tom => {
                 let bs = v.base_freq;
                 let bf = if age < 0.15 {
@@ -673,11 +780,25 @@ fn compute_envelope(
     decay: f32,
     release: f32,
 ) -> f32 {
+    compute_envelope_with_cap(age, duration, peak, sustain, attack, decay, release, 0.24)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn compute_envelope_with_cap(
+    age: f32,
+    duration: f32,
+    peak: f32,
+    sustain: f32,
+    attack: f32,
+    decay: f32,
+    release: f32,
+    cap: f32,
+) -> f32 {
     let attack_d = clamp_f(attack, 0.001, duration * 0.24);
     let decay_d = clamp_f(decay, 0.001, duration * 0.46);
     let attack_end = attack_d;
     let decay_end = (duration * 0.7).min(attack_end + decay_d);
-    let release_t = clamp_f(release, 0.02, 0.24);
+    let release_t = clamp_f(release, 0.02, cap);
     let safe_p = peak.max(MIN_GAIN);
     let sus_g = (safe_p * sustain).max(MIN_GAIN);
     let t = age;
@@ -760,6 +881,80 @@ use crate::score::PortableScore;
 mod tests {
     use super::Synth;
     use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use crate::score::MusicEvent;
+
+    #[test]
+    fn ambient_voices_render_soft_tails_and_do_not_start_the_echo_early() {
+        for voice in ["felt", "dusk"] {
+            let mut synth = Synth::new(8000.0);
+            synth.trigger(
+                &MusicEvent::Note {
+                    id: "ambient".into(),
+                    section: "scan".into(),
+                    lane: "atmosphere".into(),
+                    start_tick: 0,
+                    duration_ticks: 960,
+                    velocity: 0.2,
+                    pitch: 60,
+                    voice: voice.into(),
+                    role: Some("melody".into()),
+                },
+                960.0,
+            );
+            assert_eq!(synth.voices.len(), 2);
+            let mut opening = vec![0.0; 800];
+            synth.fill(&mut opening);
+            let delayed = synth
+                .voices
+                .iter()
+                .find(|note| note.start_phase > 0.0)
+                .unwrap();
+            assert_eq!(delayed.phase1, 0.0);
+            let mut tail = vec![0.0; 24000];
+            synth.fill(&mut tail);
+            assert!(tail.iter().any(|sample| sample.abs() > 0.001));
+            assert!(tail
+                .iter()
+                .all(|sample| sample.is_finite() && sample.abs() < 0.1));
+            assert!(synth.voices.is_empty(), "ambient tails must be cleaned up");
+        }
+    }
+
+    #[test]
+    fn procedural_noise_effects_have_opposite_envelopes_and_clean_up() {
+        fn rms(samples: &[f32]) -> f32 {
+            (samples.iter().map(|sample| sample * sample).sum::<f32>() / samples.len() as f32)
+                .sqrt()
+        }
+        for voice in ["reverse-cymbal", "air-impact"] {
+            let mut synth = Synth::new(22050.0);
+            synth.trigger(
+                &MusicEvent::Percussion {
+                    id: "effect-test".into(),
+                    section: "scan".into(),
+                    lane: "effects".into(),
+                    start_tick: 0,
+                    duration_ticks: 960,
+                    velocity: 0.2,
+                    voice: voice.into(),
+                },
+                960.0,
+            );
+            let mut samples = vec![0.0; 44100];
+            synth.fill(&mut samples);
+            let early = rms(&samples[1000..5000]);
+            let late = rms(&samples[17000..21000]);
+            if voice == "reverse-cymbal" {
+                assert!(late > early * 4.0);
+            } else {
+                assert!(early > late * 4.0);
+            }
+            assert!(samples
+                .iter()
+                .all(|sample| sample.is_finite() && sample.abs() < 0.1));
+            assert!(synth.voices.is_empty());
+        }
+    }
 
     #[test]
     fn cruise_events_render_audible_samples() {
