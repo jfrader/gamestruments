@@ -30,6 +30,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Suspense Extended now enters Disconnect for `progress` in the 0.80–0.94 range, matching the game-engine selector; alert/heat cues re-arm after the form leaves the cued section instead of being swallowed.
 - Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.
 - Fixed the missing Suspense kick at Scan bar 9: form entrances are prepared by the audio scheduler at their exact boundary instead of rounding a late animation frame up to bar 10. The music and two-bar bed fades are unchanged.
 - Audio Lab: Suspense phase buttons now actually change beds. Boot/Scan/Exploit had no adaptive rule so clicks did nothing; Complete/Extract could pin the hold so later clicks never left.

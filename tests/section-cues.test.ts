@@ -50,13 +50,32 @@ describe("musical section cues", () => {
     assert.equal(transport.snapshot().pendingSection, null);
   });
 
-  it("does not repeatedly trigger an edge cue after it has begun", () => {
+  it("keeps an edge cue quiet while its section plays and re-arms once the form leaves", () => {
     const transport = new AdaptiveTransport({ ...score, rules: [{ target: "scan", hold: false, priority: 1, when: {} }] });
     transport.requestState({ numeric: {}, categorical: {} }, 0);
     transport.advance(7680);
     transport.advance(30720);
     transport.advance(38400);
     assert.equal(transport.snapshot().currentSection, "anomaly");
-    assert.equal(transport.requestState({ numeric: {}, categorical: {} }, 38500).status, "unchanged");
+    assert.equal(transport.requestState({ numeric: {}, categorical: {} }, 38500).status, "scheduled");
+  });
+
+  it("re-arms an edge cue once the form leaves the cued section", () => {
+    const transport = new AdaptiveTransport({
+      ...score,
+      rules: [{ target: "anomaly", hold: false, priority: 1, when: { numeric: { heat: { min: 0.75 } } } }],
+    });
+    const alert = { numeric: { heat: 0.8 }, categorical: {} };
+    const cue = transport.requestState(alert, 0);
+    assert.equal(cue.status, "scheduled");
+    if (cue.status !== "scheduled") return;
+    transport.advance(cue.plan.endTick);
+    assert.equal(transport.snapshot().currentSection, "anomaly");
+    assert.equal(transport.requestState(alert, cue.plan.endTick).status, "unchanged");
+    transport.advance(cue.plan.endTick + 30720);
+    transport.advance(cue.plan.endTick + 30720 + 7680);
+    assert.equal(transport.snapshot().currentSection, "scan");
+    const rearmed = transport.requestState(alert, cue.plan.endTick + 30720 + 7680);
+    assert.equal(rearmed.status, "scheduled");
   });
 });

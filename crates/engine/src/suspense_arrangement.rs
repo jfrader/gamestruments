@@ -1,6 +1,6 @@
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{FormOrigin, MusicEvent, PortableScore, PortableSection, SongFormStep};
-use crate::suspense::{generate_suspense, SuspenseInput};
+use crate::suspense::{extended_trace_rules, generate_suspense, SuspenseInput, GENERATOR_VERSION};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SuspenseArrangement {
@@ -111,7 +111,11 @@ pub fn generate_suspense_arrangement(
             repeats: 1,
         },
     );
-    score.id.push_str("-extended-v6");
+    score.rules = extended_trace_rules();
+    score.id.push_str(&format!(
+        "-extended-v{}",
+        GENERATOR_VERSION.replace('.', "-")
+    ));
     score.title.push_str(" — Extended");
     score.validate()?;
     Ok(score)
@@ -490,6 +494,10 @@ fn occasional_effect(section: &mut PortableSection, bar: u32, seed: u32) {
     if matches!(section.id.as_str(), "intro" | "break" | "outro" | "coda") {
         return;
     }
+    let bars = section.length_ticks / bar;
+    if bars < 5 {
+        return;
+    }
     let mut random = DeterministicRandom::new(seed ^ hash_text(&format!("{}:effects", section.id)));
     if random.integer(3) != 0 {
         return;
@@ -503,7 +511,7 @@ fn occasional_effect(section: &mut PortableSection, bar: u32, seed: u32) {
             0.14,
         );
     } else {
-        let position = 4 + random.integer(section.length_ticks / bar - 4);
+        let position = 4 + random.integer(bars - 4);
         effect(section, "air-impact", position * bar, bar / 4, 0.14);
     }
     section.events.sort_by_key(MusicEvent::start_tick);

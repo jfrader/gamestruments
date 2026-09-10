@@ -19,7 +19,7 @@ test("base/development pairs are independent and a held starting section survive
   await expect(page.locator("#cue-status")).toHaveText("Start with Scan II");
   await page.locator("#new-take").click();
   await expect(page.locator("#level-seed")).toHaveValue("level-002");
-  await expect(page.locator("#generator-summary")).toContainText("extended-v6");
+  await expect(page.locator("#generator-summary")).toContainText("extended-v2-1-1");
   await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#section-select")).toHaveValue("scan-ii");
 });

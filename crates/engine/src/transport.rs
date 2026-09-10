@@ -90,24 +90,22 @@ impl AdaptiveTransport {
         at_tick: u32,
     ) -> Option<TransitionPlan> {
         self.advance(at_tick);
-        let target = trace_target(state);
-        match target {
-            Some(section) if !holds_trace_target(section) => {
-                if self.cue_target.as_deref() == Some(section) {
-                    return None;
-                }
-                self.cue_target = Some(section.to_string());
-                self.request_section(section, at_tick)
-            }
-            Some(section) => {
-                self.cue_target = None;
-                self.request_section(section, at_tick)
-            }
-            None => {
-                self.cue_target = None;
-                None
-            }
+        let Some((section, hold)) = crate::suspense::select_trace_section(state) else {
+            self.cue_target = None;
+            return None;
+        };
+        if hold {
+            self.cue_target = None;
+            return self.request_section(section, at_tick);
         }
+        let already_cued = self.cue_target.as_deref() == Some(section)
+            && self.current_section == section
+            && self.transition.is_none();
+        if already_cued {
+            return None;
+        }
+        self.cue_target = Some(section.to_string());
+        self.request_section(section, at_tick)
     }
 
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {
@@ -148,6 +146,7 @@ impl AdaptiveTransport {
         if let Some(plan) = &self.transition {
             if at_tick >= plan.end_tick {
                 self.current_section = plan.to.clone();
+                self.cue_target = None;
                 self.section_entered_at = if self.score.form.as_ref().and_then(|form| form.origin)
                     == Some(FormOrigin::TransitionStart)
                 {
@@ -175,8 +174,7 @@ impl AdaptiveTransport {
     pub fn section_gain(&self, section_id: &str, at_tick: u32) -> f32 {
         if let Some(plan) = &self.transition {
             if at_tick >= plan.start_tick && at_tick < plan.end_tick {
-                let progress = (at_tick - plan.start_tick) as f32
-                    / (plan.end_tick - plan.start_tick).max(1) as f32;
+                let progress = self.fade_progress(plan, at_tick);
                 if section_id == plan.from {
                     return 1.0 - progress;
                 }
@@ -257,8 +255,7 @@ impl AdaptiveTransport {
                 ];
             }
             if at_tick >= plan.start_tick && at_tick < plan.end_tick {
-                let progress =
-                    (at_tick - plan.start_tick) as f32 / (plan.end_tick - plan.start_tick) as f32;
+                let progress = self.fade_progress(plan, at_tick);
                 return [
                     Some(SectionPlayback {
                         section: &plan.from,
@@ -287,15 +284,25 @@ impl AdaptiveTransport {
     }
 
     fn create_plan(&self, from: &str, to: &str, at_tick: u32) -> TransitionPlan {
-        let start = at_tick.div_ceil(self.bar_ticks) * self.bar_ticks;
+        let start = at_tick
+            .div_ceil(self.bar_ticks)
+            .saturating_mul(self.bar_ticks);
         let start = start.max(at_tick);
-        let length = (self.score.crossfade_bars * f64::from(self.bar_ticks)).round() as u32;
         TransitionPlan {
             from: from.to_string(),
             to: to.to_string(),
             start_tick: start,
-            end_tick: start + length.max(self.bar_ticks),
+            end_tick: start.saturating_add(self.transition_length()),
         }
+    }
+
+    fn transition_length(&self) -> u32 {
+        let length = (self.score.crossfade_bars * f64::from(self.bar_ticks)).round() as u32;
+        length.max(self.bar_ticks)
+    }
+
+    fn fade_progress(&self, plan: &TransitionPlan, at_tick: u32) -> f32 {
+        (at_tick - plan.start_tick) as f32 / (plan.end_tick - plan.start_tick).max(1) as f32
     }
 
     fn sync_form_to(&mut self, section: &str) {
@@ -346,12 +353,12 @@ impl AdaptiveTransport {
             self.section_entered_at = boundary_tick;
             return;
         }
-        let length = (self.score.crossfade_bars * f64::from(self.bar_ticks)).round() as u32;
+        let length = self.transition_length();
         let plan = TransitionPlan {
             from: self.current_section.clone(),
             to: next_section,
             start_tick: boundary_tick,
-            end_tick: boundary_tick.saturating_add(length.max(self.bar_ticks)),
+            end_tick: boundary_tick.saturating_add(length),
         };
         self.transition = Some(plan);
         self.automatic_transition = true;
@@ -365,26 +372,6 @@ fn form_index_for(score: &PortableScore, section: &str) -> Option<usize> {
         .steps
         .iter()
         .position(|step| step.section == section)
-}
-
-fn trace_target(state: &TraceState) -> Option<&'static str> {
-    if state.phase == "complete" || state.progress >= 0.95 {
-        return Some("coda");
-    }
-    if state.phase == "extract" || state.progress >= 0.8 {
-        return Some("outro");
-    }
-    if state.phase == "alert" || state.heat >= 0.75 {
-        return Some("bridge");
-    }
-    if state.phase == "exploit" && state.focus >= 0.7 {
-        return Some("chorus");
-    }
-    None
-}
-
-fn holds_trace_target(section: &str) -> bool {
-    matches!(section, "coda" | "outro")
 }
 
 pub fn select_section(score: &PortableScore, state: &GameState) -> String {
@@ -410,7 +397,7 @@ pub fn select_section(score: &PortableScore, state: &GameState) -> String {
 mod tests {
     use super::AdaptiveTransport;
     use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
-    use crate::score::GameState;
+    use crate::score::{GameState, TraceState};
     use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
     fn score() -> crate::score::PortableScore {
@@ -537,5 +524,103 @@ mod tests {
         assert_eq!(plan.end_tick, 38400);
         transport.advance(38406);
         assert_eq!(transport.section_entered_at, 38400);
+    }
+
+    #[test]
+    fn trace_selector_and_serialized_rules_agree_across_states() {
+        use crate::suspense::{extended_trace_rules, select_trace_section};
+        let phases = ["boot", "scan", "exploit", "alert", "extract", "complete"];
+        for phase in phases {
+            for heat in [0.0, 0.5, 0.76, 1.0] {
+                for focus in [0.0, 0.5, 0.71, 1.0] {
+                    for progress in [0.0, 0.5, 0.81, 0.96, 1.0] {
+                        let state = TraceState {
+                            phase: phase.into(),
+                            heat,
+                            focus,
+                            progress,
+                        };
+                        let selected: Option<(String, bool)> = select_trace_section(&state)
+                            .map(|(section, hold)| (section.to_string(), hold));
+                        let ruled: Option<(String, bool)> = extended_trace_rules()
+                            .into_iter()
+                            .find(|rule| {
+                                let phase_ok = rule
+                                    .when
+                                    .categorical
+                                    .get("tracePhase")
+                                    .is_none_or(|expected| expected == &state.phase);
+                                let numeric = rule.when.numeric.as_object().unwrap();
+                                let numeric_ok = [
+                                    ("heat", state.heat),
+                                    ("focus", state.focus),
+                                    ("progress", state.progress),
+                                ]
+                                .into_iter()
+                                .all(|(key, value)| {
+                                    numeric
+                                        .get(key)
+                                        .is_none_or(|spec| value >= spec["min"].as_f64().unwrap())
+                                });
+                                phase_ok && numeric_ok
+                            })
+                            .map(|rule| (rule.target.clone(), rule.hold.unwrap_or(true)));
+                        assert_eq!(
+                            selected, ruled,
+                            "{phase} heat={heat} focus={focus} progress={progress}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_stale_alert_cue_does_not_swallow_later_alerts() {
+        let score = crate::generate_suspense_arrangement(
+            &SuspenseInput {
+                secret: "qa".into(),
+                seed: "alert-rearm".into(),
+                style: SuspenseStyle::Terminal,
+                tension: 0.62,
+                heat: 0.48,
+                mystery: 0.72,
+                pulse: 0.55,
+            },
+            crate::SuspenseArrangement::Extended,
+        )
+        .unwrap();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        let alert = TraceState {
+            phase: "alert".into(),
+            heat: 0.8,
+            focus: 0.2,
+            progress: 0.1,
+        };
+        let plan = transport
+            .request_trace_state(&alert, 0)
+            .expect("first alert cues bridge");
+        assert_eq!(plan.to, "bridge");
+        transport.advance(plan.end_tick);
+        assert_eq!(transport.current_section(), "bridge");
+        assert!(transport
+            .request_trace_state(&alert, plan.end_tick)
+            .is_none());
+        let mut far = plan.end_tick + bar;
+        for _ in 0..64 {
+            transport.advance(far);
+            if transport.current_section() == "solo"
+                || transport.current_section() == "chorus-final"
+            {
+                break;
+            }
+            far += bar;
+        }
+        assert_ne!(transport.current_section(), "bridge");
+        let rearmed = transport
+            .request_trace_state(&alert, far)
+            .expect("later alert must re-cue bridge");
+        assert_eq!(rearmed.to, "bridge");
     }
 }

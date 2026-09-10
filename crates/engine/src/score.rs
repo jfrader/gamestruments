@@ -174,7 +174,7 @@ pub struct TraceState {
 
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
-        self.beats_per_bar * self.ticks_per_beat
+        self.beats_per_bar.saturating_mul(self.ticks_per_beat)
     }
 
     pub fn ticks_per_second(&self) -> f64 {

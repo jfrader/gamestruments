@@ -10,9 +10,9 @@ const originalDigests = {
   noir: "87c745db5d9c82e7253c72f27bfdd2dbbda4668a8ad674d24553543670dfe0aa",
 };
 const withoutConfirmedBeep = {
-  terminal: "bb3fefe97eec3751b11967fbebde9996bdc13ad5be6ce8b417cbbdd13412cb57",
-  cipher: "4919a4cc0051b2d20adb6c727cb82e8a09313efc42ead29c837d42893f7db082",
-  noir: "37901a9400d7b32b61bbabeed8d3a1ee3b04047d1e14d4358009b69b1e956746",
+  terminal: "0ded1d45d98044fb2f63dfb34e015dc6064d754c572c5b7d1bc3d25509b7e928",
+  cipher: "8f4149f2c792f960a18cc6c64f9241fb0cb9c49159e1a0a2abbaa89f4c006611",
+  noir: "27120987b59cb1062b2b3afdaace83c724fa28f4a8f8d6b68688efb548a74ed5",
 };
 
 const { instance } = await WebAssembly.instantiate(new Uint8Array(await readFile(
@@ -129,7 +129,7 @@ describe("Suspense arrangements through the shipped WASM", () => {
     it(`${style} extends the main beds but preserves Handshake and the break`, () => {
       const original = generate(style).score;
       const extended = generate(style, "extended").score;
-      assert.match(extended.id, /-extended-v6$/);
+      assert.match(extended.id, /-extended-v2-1-1$/);
       assert.deepEqual(generate(style, "extended").score, extended);
       for (const section of extended.sections) {
         if (section.id === "anomaly") {
@@ -164,7 +164,7 @@ describe("Suspense arrangements through the shipped WASM", () => {
   for (const [style, digest] of Object.entries(withoutConfirmedBeep)) {
     it(`${style} preserves the approved base material and Anomaly outside the independent variations`, () => {
       const { id, ...music } = generate(style, "extended").score;
-      assert.match(id, /-extended-v6$/);
+      assert.match(id, /-extended-v2-1-1$/);
       const checkpoint = {
         ...music,
         sections: music.sections.filter((section) => !["scan-ii", "breach-ii"].includes(section.id)),

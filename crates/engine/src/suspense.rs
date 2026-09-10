@@ -1,7 +1,7 @@
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{
     AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection, SongForm,
-    SongFormStep, SCORE_SCHEMA_VERSION,
+    SongFormStep, TraceState, SCORE_SCHEMA_VERSION,
 };
 
 pub const GENERATOR_VERSION: &str = "2.1.1";
@@ -267,9 +267,7 @@ fn create_motif(seed: u32) -> MotifDna {
     }
 }
 
-fn create_timbre(seed: u32, style: SuspenseStyle) -> TimbreDna {
-    let mut random = DeterministicRandom::new(seed);
-    let _ = random.next();
+fn create_timbre(style: SuspenseStyle) -> TimbreDna {
     match style {
         SuspenseStyle::Terminal => TimbreDna {
             drone_voice: "warm".into(),
@@ -292,7 +290,11 @@ fn create_timbre(seed: u32, style: SuspenseStyle) -> TimbreDna {
     }
 }
 
-fn create_arrangement(seed: u32, style: SuspenseStyle, traits: &NormalizedTraits) -> ArrangementDna {
+fn create_arrangement(
+    seed: u32,
+    style: SuspenseStyle,
+    traits: &NormalizedTraits,
+) -> ArrangementDna {
     let mut random = DeterministicRandom::new(seed);
     let jitter = f64::from(random.integer(3)) - 1.0;
     let base = match style {
@@ -313,9 +315,10 @@ fn cue_weight(plan: &SectionPlan) -> CueWeight {
     match plan.role {
         SectionRole::Intro | SectionRole::Outro | SectionRole::Coda => CueWeight::Idle,
         SectionRole::Break => CueWeight::Drop,
-        SectionRole::Verse | SectionRole::PostChorus | SectionRole::Interlude | SectionRole::Solo => {
-            CueWeight::Work
-        }
+        SectionRole::Verse
+        | SectionRole::PostChorus
+        | SectionRole::Interlude
+        | SectionRole::Solo => CueWeight::Work,
         SectionRole::PreChorus | SectionRole::Chorus | SectionRole::BridgeB => CueWeight::Drive,
         SectionRole::Bridge => CueWeight::Alarm,
     }
@@ -389,13 +392,7 @@ fn cell_hits(weight: CueWeight, solo: bool) -> &'static [(usize, u32)] {
         CueWeight::Idle => &[(1, 4), (3, 0), (5, 4), (7, 0)],
         CueWeight::Drop => &[(2, 0), (6, 4)],
         CueWeight::Work => &[(0, 4), (2, 0), (4, 4), (6, 0)],
-        CueWeight::Drive | CueWeight::Alarm => &[
-            (0, 4),
-            (2, 0),
-            (3, 4),
-            (5, 0),
-            (6, 4),
-        ],
+        CueWeight::Drive | CueWeight::Alarm => &[(0, 4), (2, 0), (3, 4), (5, 0), (6, 4)],
     }
 }
 
@@ -643,63 +640,137 @@ fn event_sort_id(event: &MusicEvent) -> &str {
     }
 }
 
+pub(crate) struct TraceSpec {
+    section: &'static str,
+    hold: bool,
+    priority: i32,
+    heat_min: Option<f64>,
+    focus_min: Option<f64>,
+    progress_min: Option<f64>,
+    phase: Option<&'static str>,
+    base: bool,
+}
+
+const TRACE_SPECS: &[TraceSpec] = &[
+    TraceSpec {
+        section: "coda",
+        hold: true,
+        priority: 100,
+        heat_min: None,
+        focus_min: None,
+        progress_min: None,
+        phase: Some("complete"),
+        base: true,
+    },
+    TraceSpec {
+        section: "coda",
+        hold: true,
+        priority: 95,
+        heat_min: None,
+        focus_min: None,
+        progress_min: Some(0.95),
+        phase: None,
+        base: true,
+    },
+    TraceSpec {
+        section: "outro",
+        hold: true,
+        priority: 90,
+        heat_min: None,
+        focus_min: None,
+        progress_min: None,
+        phase: Some("extract"),
+        base: true,
+    },
+    TraceSpec {
+        section: "bridge",
+        hold: false,
+        priority: 80,
+        heat_min: Some(0.75),
+        focus_min: None,
+        progress_min: None,
+        phase: None,
+        base: true,
+    },
+    TraceSpec {
+        section: "bridge",
+        hold: false,
+        priority: 70,
+        heat_min: None,
+        focus_min: None,
+        progress_min: None,
+        phase: Some("alert"),
+        base: true,
+    },
+    TraceSpec {
+        section: "outro",
+        hold: true,
+        priority: 65,
+        heat_min: None,
+        focus_min: None,
+        progress_min: Some(0.8),
+        phase: None,
+        base: false,
+    },
+    TraceSpec {
+        section: "chorus",
+        hold: false,
+        priority: 60,
+        heat_min: None,
+        focus_min: Some(0.7),
+        progress_min: None,
+        phase: Some("exploit"),
+        base: true,
+    },
+];
+
+pub(crate) fn select_trace_section(state: &TraceState) -> Option<(&'static str, bool)> {
+    TRACE_SPECS.iter().find_map(|spec| {
+        let heat_ok = spec.heat_min.is_none_or(|min| state.heat >= min);
+        let focus_ok = spec.focus_min.is_none_or(|min| state.focus >= min);
+        let progress_ok = spec.progress_min.is_none_or(|min| state.progress >= min);
+        let phase_ok = spec.phase.is_none_or(|phase| state.phase == phase);
+        (heat_ok && focus_ok && progress_ok && phase_ok).then_some((spec.section, spec.hold))
+    })
+}
+
+fn rules_from_specs(include_extended: bool) -> Vec<AdaptiveRule> {
+    TRACE_SPECS
+        .iter()
+        .filter(|spec| include_extended || spec.base)
+        .map(|spec| {
+            let mut numeric = serde_json::Map::new();
+            if let Some(min) = spec.heat_min {
+                numeric.insert("heat".into(), serde_json::json!({"min": min}));
+            }
+            if let Some(min) = spec.focus_min {
+                numeric.insert("focus".into(), serde_json::json!({"min": min}));
+            }
+            if let Some(min) = spec.progress_min {
+                numeric.insert("progress".into(), serde_json::json!({"min": min}));
+            }
+            AdaptiveRule {
+                target: spec.section.into(),
+                priority: spec.priority,
+                when: AdaptiveCondition {
+                    numeric: serde_json::Value::Object(numeric),
+                    categorical: match spec.phase {
+                        Some(phase) => serde_json::json!({"tracePhase": phase}),
+                        None => serde_json::json!({}),
+                    },
+                },
+                hold: Some(spec.hold),
+            }
+        })
+        .collect()
+}
+
 fn default_rules() -> Vec<AdaptiveRule> {
-    vec![
-        AdaptiveRule {
-            target: "coda".into(),
-            priority: 100,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({}),
-                categorical: serde_json::json!({"tracePhase":"complete"}),
-            },
-            hold: Some(true),
-        },
-        AdaptiveRule {
-            target: "coda".into(),
-            priority: 95,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({"progress":{"min":0.95}}),
-                categorical: serde_json::json!({}),
-            },
-            hold: Some(true),
-        },
-        AdaptiveRule {
-            target: "outro".into(),
-            priority: 90,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({}),
-                categorical: serde_json::json!({"tracePhase":"extract"}),
-            },
-            hold: Some(true),
-        },
-        AdaptiveRule {
-            target: "bridge".into(),
-            priority: 80,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({"heat":{"min":0.75}}),
-                categorical: serde_json::json!({}),
-            },
-            hold: Some(false),
-        },
-        AdaptiveRule {
-            target: "bridge".into(),
-            priority: 70,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({}),
-                categorical: serde_json::json!({"tracePhase":"alert"}),
-            },
-            hold: Some(false),
-        },
-        AdaptiveRule {
-            target: "chorus".into(),
-            priority: 60,
-            when: AdaptiveCondition {
-                numeric: serde_json::json!({"focus":{"min":0.7}}),
-                categorical: serde_json::json!({"tracePhase":"exploit"}),
-            },
-            hold: Some(false),
-        },
-    ]
+    rules_from_specs(false)
+}
+
+pub(crate) fn extended_trace_rules() -> Vec<AdaptiveRule> {
+    rules_from_specs(true)
 }
 
 fn song_form() -> SongForm {
@@ -749,29 +820,17 @@ pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String>
     let traits = normalize(input);
     let harmony = create_harmony(subseed(&input.secret, &input.seed, "harmony"));
     let motif = create_motif(subseed(&input.secret, &input.seed, "motif"));
-    let _rhythm = subseed(&input.secret, &input.seed, "rhythm");
-    let timbre = create_timbre(subseed(&input.secret, &input.seed, "timbre"), input.style);
+    let timbre = create_timbre(input.style);
     let arrangement = create_arrangement(
         subseed(&input.secret, &input.seed, "arrangement"),
         input.style,
         &traits,
     );
-    let _ornaments = subseed(&input.secret, &input.seed, "ornaments");
     let bar_ticks = 4 * 960;
     let pulse = 480;
     let sections = PLANS
         .iter()
-        .map(|plan| {
-            build_section(
-                plan,
-                &harmony,
-                &motif,
-                &timbre,
-                &traits,
-                bar_ticks,
-                pulse,
-            )
-        })
+        .map(|plan| build_section(plan, &harmony, &motif, &timbre, &traits, bar_ticks, pulse))
         .collect();
     let score = PortableScore {
         schema_version: SCORE_SCHEMA_VERSION,
@@ -853,7 +912,11 @@ mod tests {
         assert!(melody(&intro.events).len() <= melody(&verse.events).len());
         assert!(
             intro.events.iter().any(|event| match event {
-                MusicEvent::Note { duration_ticks, lane, .. } => {
+                MusicEvent::Note {
+                    duration_ticks,
+                    lane,
+                    ..
+                } => {
                     lane.contains("drone") && *duration_ticks >= 4 * 3840
                 }
                 _ => false,
@@ -900,9 +963,7 @@ mod tests {
         let approach = score.section("pre-chorus").unwrap();
         let downbeat = approach.events.iter().any(|event| match event {
             MusicEvent::Percussion {
-                start_tick,
-                voice,
-                ..
+                start_tick, voice, ..
             } => voice == "kick" && *start_tick == 0,
             _ => false,
         });
@@ -913,18 +974,25 @@ mod tests {
     fn scan_has_one_entrance_kick_without_filling_its_quiet_opening() {
         let score = generate_suspense(&input("default-play", SuspenseStyle::Terminal)).unwrap();
         let scan = score.section("verse").unwrap();
-        let kicks: Vec<_> = scan.events.iter().filter_map(|event| match event {
-            MusicEvent::Percussion { voice, start_tick, velocity, .. } if voice == "kick" => {
-                Some((*start_tick, *velocity))
-            }
-            _ => None,
-        }).collect();
+        let kicks: Vec<_> = scan
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                MusicEvent::Percussion {
+                    voice,
+                    start_tick,
+                    velocity,
+                    ..
+                } if voice == "kick" => Some((*start_tick, *velocity)),
+                _ => None,
+            })
+            .collect();
         let bar = score.bar_ticks();
         assert_eq!(kicks.first(), Some(&(0, 0.42)));
         assert_eq!(kicks.iter().filter(|(tick, _)| *tick < 4 * bar).count(), 1);
-        let expected: Vec<_> = (4..8).flat_map(|index| {
-            [(index * bar, 0.28), (index * bar + bar / 2, 0.22)]
-        }).collect();
+        let expected: Vec<_> = (4..8)
+            .flat_map(|index| [(index * bar, 0.28), (index * bar + bar / 2, 0.22)])
+            .collect();
         assert_eq!(&kicks[1..], expected.as_slice());
     }
 
@@ -945,7 +1013,10 @@ mod tests {
         let first = generate_suspense(&input("same", SuspenseStyle::Cipher)).unwrap();
         let second = generate_suspense(&input("same", SuspenseStyle::Cipher)).unwrap();
         assert_eq!(first.id, second.id);
-        assert_eq!(first.sections[0].events.len(), second.sections[0].events.len());
+        assert_eq!(
+            first.sections[0].events.len(),
+            second.sections[0].events.len()
+        );
         let noir = generate_suspense(&input("same", SuspenseStyle::Noir)).unwrap();
         assert_ne!(first.id, noir.id);
     }

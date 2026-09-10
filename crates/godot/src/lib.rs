@@ -187,9 +187,19 @@ impl GamestrumentsPlayer {
         }
         let recipe = self.recipe.to_string();
         let score = if recipe == "suspense" {
-            let Ok(style) = SuspenseStyle::parse(&self.style.to_string()) else {
-                godot_error!("Unknown Gamestruments suspense style");
-                return false;
+            let style = if self.style.is_empty() {
+                SuspenseStyle::Terminal
+            } else {
+                match SuspenseStyle::parse(&self.style.to_string()) {
+                    Ok(style) => style,
+                    Err(_) => {
+                        godot_error!(
+                            "Unknown Gamestruments suspense style \"{}\"; use terminal, cipher, or noir",
+                            self.style
+                        );
+                        return false;
+                    }
+                }
             };
             let Ok(arrangement) = SuspenseArrangement::parse(&self.arrangement.to_string()) else {
                 godot_error!("Unknown Gamestruments suspense arrangement");

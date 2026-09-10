@@ -60,7 +60,11 @@ export class AdaptiveTransport {
       this.#cueTarget = null;
       return this.requestSection(match.target, atTick);
     }
-    if (this.#cueTarget === match.target) {
+    if (
+      this.#cueTarget === match.target &&
+      this.#currentSection === match.target &&
+      this.#transition === null
+    ) {
       return { status: "unchanged" };
     }
     const result = this.requestSection(match.target, atTick);
@@ -145,6 +149,7 @@ export class AdaptiveTransport {
     this.#assertTick(lookaheadTicks);
     if (this.#transition !== null && atTick >= this.#transition.endTick) {
       this.#currentSection = this.#transition.to;
+      this.#cueTarget = null;
       this.#sectionEnteredAt = this.#score.form?.origin === "transitionStart"
         ? this.#transition.startTick
         : this.#score.form === undefined ? atTick : this.#transition.endTick;
