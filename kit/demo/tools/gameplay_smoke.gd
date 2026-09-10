@@ -66,7 +66,24 @@ func _run() -> void:
 		_check(demo.music.error_message.is_empty(), "Demo music failed to initialize")
 		_check(demo.find_children("*", "GamestrumentsPlayer", true, false).size() == 1, "Demo must own exactly one music player")
 	_check(demo.find_children("*", "LineEdit", true, false).is_empty(), "Gameplay must not be a generation form")
-	await _capture("01-garage.png")
+	_check(demo.CIRCUITS.size() == 4, "Demo must expose four circuits")
+	var circuit_styles := {}
+	for entry in demo.CIRCUITS:
+		circuit_styles[entry["style"]] = true
+	_check(circuit_styles.keys().size() == 4, "Four circuits must cover four music styles")
+	for index in range(demo.CIRCUITS.size()):
+		demo._set_circuit(index)
+		demo._physics_process(0.0)
+		await process_frame
+		if without_music:
+			_check(not demo.music.error_message.is_empty(), "Missing extension must warn on every circuit")
+		else:
+			_check(demo.music.error_message.is_empty(), "Circuit music failed: " + str(demo.music.error_message))
+			_check(demo.music.style == demo.CIRCUITS[index]["style"], "Circuit must configure its own style")
+		await _capture("01-garage-%d-%s.png" % [index + 1, demo.CIRCUITS[index]["style"]])
+	demo._set_circuit(0)
+	demo._physics_process(0.0)
+	await process_frame
 	await _click(demo.start_button)
 	_check(demo.race.phase == "grid", "Start action must start the countdown")
 	if not without_music:

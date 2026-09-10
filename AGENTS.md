@@ -38,10 +38,9 @@ Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.
 
 ## Graphify
 
-- `graphify-out/` is tracked repository state, not disposable local output.
 - Query `graphify-out/graph.json` before broad source searches.
-- After repository changes, run `graphify update .` and commit every resulting
-  `graphify-out/` change, including the HTML visualization and cache metadata.
+- `graphify-out/` is local generated state, ignored per repo: dirty files there
+  are expected and never committed. Never delete files inside it.
 
 ## Changelog
 

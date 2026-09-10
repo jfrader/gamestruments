@@ -63,7 +63,9 @@ Run the scene. The initial `garage` score starts immediately; accepted state req
 
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.
-Read `race_model.gd` for deriving intensity/pressure from gameplay and
+The demo ships four circuits, one per engine style (neon, pocket funk, fusion,
+micro motor); switch circuits in the garage to hear each regenerate. Read
+`race_model.gd` for deriving intensity/pressure from gameplay and
 `race_music.gd` for generation and checked state requests. No timers or manual
 section buttons simulate the race. The music readout reports a request, not the
 current audible bar.

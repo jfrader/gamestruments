@@ -5,16 +5,26 @@ const RaceMusic = preload("res://race_music.gd")
 const BG := Color("0b1519")
 const INK := Color("edf4e8")
 const MUTED := Color("8aaca9")
-const ACCENT := Color("c9f36b")
 const RIVAL := Color("ff936c")
 const CENTER := Vector2(480, 321)
-const RADIUS := Vector2(333, 155)
+const CIRCUITS := [
+	{"name": "NIGHT CIRCUIT", "style": "neon", "style_label": "NEON", "seed": "night-circuit-001", "accent": Color("c9f36b"), "radius": Vector2(333, 155)},
+	{"name": "HARBOR SPRINT", "style": "funk", "style_label": "POCKET FUNK", "seed": "harbor-sprint-002", "accent": Color("ffb347"), "radius": Vector2(300, 178)},
+	{"name": "CANYON RUN", "style": "fusion", "style_label": "FUSION", "seed": "canyon-run-003", "accent": Color("6be3ff"), "radius": Vector2(350, 138)},
+	{"name": "MICRO MILE", "style": "chip", "style_label": "MICRO MOTOR", "seed": "micro-mile-004", "accent": Color("ff8ad8"), "radius": Vector2(318, 162)},
+]
 
 var race = RaceModel.new()
 var music: Node
 var paused := false
 var music_clock := 0.0
+var circuit_index := 0
+var circuit: Dictionary = CIRCUITS[0]
+var accent: Color = CIRCUITS[0]["accent"]
+var radius: Vector2 = CIRCUITS[0]["radius"]
 var start_button: Button
+var prev_button: Button
+var next_button: Button
 var pause_button: Button
 var hud: Control
 var font: Font
@@ -25,15 +35,19 @@ func _ready() -> void:
 	music = RaceMusic.new()
 	music.name = "RaceMusic"
 	add_child(music)
-	music.sync_race(race.music_state())
 	hud = Control.new()
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
 	start_button = _button("RACE  /  ENTER", Vector2(385, 367), Vector2(190, 42))
 	start_button.pressed.connect(start_race)
+	prev_button = _button("PREV", Vector2(285, 367), Vector2(90, 42))
+	prev_button.pressed.connect(_on_prev_pressed)
+	next_button = _button("NEXT", Vector2(585, 367), Vector2(90, 42))
+	next_button.pressed.connect(_on_next_pressed)
 	pause_button = _button("PAUSE  /  ESC", Vector2(792, 24), Vector2(140, 34))
 	pause_button.pressed.connect(toggle_pause)
 	pause_button.visible = false
+	_set_circuit(0)
 	start_button.grab_focus()
 	get_window().focus_exited.connect(_on_focus_exited)
 	resized.connect(_layout)
@@ -51,7 +65,7 @@ func _button(caption: String, at: Vector2, dimensions: Vector2) -> Button:
 	button.add_theme_color_override("font_hover_color", BG)
 	button.add_theme_color_override("font_pressed_color", BG)
 	var style := StyleBoxFlat.new()
-	style.bg_color = ACCENT
+	style.bg_color = accent
 	style.set_corner_radius_all(4)
 	button.add_theme_stylebox_override("normal", style)
 	var hover := style.duplicate() as StyleBoxFlat
@@ -60,6 +74,36 @@ func _button(caption: String, at: Vector2, dimensions: Vector2) -> Button:
 	button.add_theme_stylebox_override("pressed", hover)
 	hud.add_child(button)
 	return button
+
+
+func _set_circuit(index: int) -> void:
+	circuit_index = wrapi(index, 0, CIRCUITS.size())
+	circuit = CIRCUITS[circuit_index]
+	accent = circuit["accent"]
+	radius = circuit["radius"]
+	race = RaceModel.new()
+	paused = false
+	music.process_mode = Node.PROCESS_MODE_INHERIT
+	music_clock = 0.0
+	if music.configure(circuit["style"], circuit["seed"]):
+		music.sync_race(race.music_state())
+	_tint_buttons()
+	queue_redraw()
+
+
+func _tint_buttons() -> void:
+	for button in [start_button, prev_button, next_button, pause_button]:
+		var normal := button.get_theme_stylebox("normal") as StyleBoxFlat
+		if normal != null:
+			normal.bg_color = accent
+
+
+func _on_prev_pressed() -> void:
+	_set_circuit(circuit_index - 1)
+
+
+func _on_next_pressed() -> void:
+	_set_circuit(circuit_index + 1)
 
 
 func _layout() -> void:
@@ -95,7 +139,11 @@ func _on_focus_exited() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event.is_pressed() or event.is_echo():
 		return
-	if event.keycode == KEY_ENTER and race.phase in ["garage", "finish"]:
+	if race.phase in ["garage", "finish"] and event.keycode in [KEY_A, KEY_LEFT]:
+		_set_circuit(circuit_index - 1)
+	elif race.phase in ["garage", "finish"] and event.keycode in [KEY_D, KEY_RIGHT]:
+		_set_circuit(circuit_index + 1)
+	elif event.keycode == KEY_ENTER and race.phase in ["garage", "finish"]:
 		start_race()
 	elif event.keycode == KEY_R:
 		start_race()
@@ -113,6 +161,8 @@ func _physics_process(delta: float) -> void:
 			music_clock = 0.2
 	start_button.visible = race.phase in ["garage", "finish"]
 	start_button.text = "RACE AGAIN  /  ENTER" if race.phase == "finish" else "RACE  /  ENTER"
+	prev_button.visible = start_button.visible
+	next_button.visible = start_button.visible
 	pause_button.visible = race.phase in ["grid", "race"]
 	pause_button.text = "RESUME  /  ESC" if paused else "PAUSE  /  ESC"
 	queue_redraw()
@@ -120,8 +170,8 @@ func _physics_process(delta: float) -> void:
 
 func _track_point(progress: float, lane: float = 0.0) -> Vector2:
 	var angle := progress * TAU - PI * 0.5
-	var base := Vector2(cos(angle) * RADIUS.x, sin(angle) * RADIUS.y)
-	var normal := Vector2(cos(angle) / RADIUS.x, sin(angle) / RADIUS.y).normalized()
+	var base := Vector2(cos(angle) * radius.x, sin(angle) * radius.y)
+	var normal := Vector2(cos(angle) / radius.x, sin(angle) / radius.y).normalized()
 	return CENTER + base + normal * lane
 
 
@@ -153,7 +203,7 @@ func _draw() -> void:
 		draw_line(Vector2(20, y), Vector2(940, y), Color("112226"))
 	_draw_track()
 	_draw_car(race.rival_progress, race.rival_lane, race.rival_heading, RIVAL, false)
-	_draw_car(race.progress, race.lane, race.heading, ACCENT, race.boosting)
+	_draw_car(race.progress, race.lane, race.heading, accent, race.boosting)
 	_draw_hud()
 	_draw_island()
 	draw_set_transform(Vector2.ZERO)
@@ -167,14 +217,15 @@ func _draw_track() -> void:
 		for index in range(80):
 			var p := _track_point(index / 80.0, side * 38.0)
 			var q := _track_point((index + 0.72) / 80.0, side * 38.0)
-			draw_line(p, q, ACCENT.darkened(0.42) if index % 2 == 0 else Color("1a3032"), 5.0, true)
+			draw_line(p, q, accent.darkened(0.42) if index % 2 == 0 else Color("1a3032"), 5.0, true)
 	for index in range(48):
 		draw_line(_track_point(index / 48.0), _track_point((index + 0.4) / 48.0), Color("55716e"), 1.5, true)
+	var line := _track_point(0.0)
 	for row in range(8):
 		for col in range(2):
-			draw_rect(Rect2(474 + col * 6, 128 + row * 9, 6, 9), INK if (row + col) % 2 == 0 else BG)
-	_text(Vector2(514, 117), "START / FINISH", 11, MUTED)
-	_text(Vector2(82, 547), "01   NIGHT CIRCUIT", 12, MUTED)
+			draw_rect(Rect2(line.x - 6 + col * 6, line.y - 38 + row * 9, 6, 9), INK if (row + col) % 2 == 0 else BG)
+	_text(Vector2(line.x + 34, line.y - 49), "START / FINISH", 11, MUTED)
+	_text(Vector2(82, 547), "%02d   %s" % [circuit_index + 1, circuit["name"]], 12, MUTED)
 	_text(Vector2(710, 547), "3 LAPS   /   1 RIVAL", 12, MUTED)
 
 
@@ -206,22 +257,22 @@ func _draw_car(progress: float, lane: float, heading: float, color: Color, boost
 
 func _draw_hud() -> void:
 	_text(Vector2(28, 27), "GAMESTRUMENTS  /  PLAYABLE INTEGRATION", 11, MUTED)
-	_text(Vector2(26, 65), "NIGHT CIRCUIT", 30)
+	_text(Vector2(26, 65), circuit["name"], 30)
 	_text(Vector2(404, 29), "LAP", 11, MUTED)
 	_text(Vector2(401, 64), "%02d / 03" % race.lap(), 26)
 	_text(Vector2(548, 29), "TIME", 11, MUTED)
 	_text(Vector2(545, 64), "%05.1f" % race.elapsed, 26)
 	_text(Vector2(683, 29), "POSITION", 11, MUTED)
-	_text(Vector2(682, 64), "1 / 2" if race.progress >= race.rival_progress else "2 / 2", 26, ACCENT)
+	_text(Vector2(682, 64), "1 / 2" if race.progress >= race.rival_progress else "2 / 2", 26, accent)
 	draw_line(Vector2(28, 83), Vector2(932, 83), Color("294044"))
 	draw_line(Vector2(28, 560), Vector2(932, 560), Color("294044"))
-	_text(Vector2(28, 583), "MUSIC REQUEST  /  " + music.requested_section.to_upper(), 13, ACCENT)
+	_text(Vector2(28, 583), "MUSIC  /  %s  /  %s" % [circuit["style_label"], music.requested_section.to_upper()], 13, accent)
 	_text(Vector2(28, 604), "Changes land on the next musical bar", 11, MUTED)
 	_text(Vector2(390, 583), "W / UP  THROTTLE     S / DOWN  BRAKE", 11)
 	_text(Vector2(390, 604), "A D / ARROWS  STEER     SPACE  BOOST     R  RESTART", 11, MUTED)
 	_text(Vector2(810, 582), "BOOST", 11, MUTED)
 	draw_rect(Rect2(810, 594, 122, 7), Color("294044"))
-	draw_rect(Rect2(810, 594, 122 * race.charge, 7), ACCENT)
+	draw_rect(Rect2(810, 594, 122 * race.charge, 7), accent)
 	if not music.error_message.is_empty():
 		draw_rect(Rect2(20, 90, 920, 31), BG)
 		_text(Vector2(28, 111), music.error_message, 12, RIVAL)
@@ -232,17 +283,17 @@ func _draw_island() -> void:
 		_centered(292, "PAUSED", 36)
 		_centered(325, "Take a breath. ESC to resume.", 15, MUTED)
 	elif race.phase == "garage":
-		_centered(263, "BEAT THE RIVAL.", 32)
-		_centered(299, "Hold W to accelerate. A / D to steer.", 15, MUTED)
-		_centered(325, "Pass with SPACE. Stay off the kerbs.", 15, MUTED)
-		_centered(350, "Grip-assisted steering  /  You control the racing line", 11, MUTED)
+		_centered(255, "CIRCUIT  %02d / %02d" % [circuit_index + 1, CIRCUITS.size()], 13, MUTED)
+		_centered(292, circuit["name"], 32)
+		_centered(325, "MUSIC  /  %s" % circuit["style_label"], 15, accent)
+		_centered(350, "A / D choose circuit   /   ENTER race   /   SPACE boost", 11, MUTED)
 	elif race.phase == "grid":
-		_centered(305, str(maxi(1, int(ceil(race.countdown)))), 70, ACCENT)
+		_centered(305, str(maxi(1, int(ceil(race.countdown)))), 70, accent)
 		_centered(344, "HOLD W  /  LIGHTS OUT", 14, MUTED)
 	elif race.phase == "finish":
-		_centered(278, "YOU WIN." if race.won else "RIVAL WINS.", 36, ACCENT if race.won else RIVAL)
+		_centered(278, "YOU WIN." if race.won else "RIVAL WINS.", 36, accent if race.won else RIVAL)
 		_centered(315, "3 laps  /  %.1f seconds  /  %d contacts" % [race.elapsed, race.impacts], 14, MUTED)
-		_centered(341, "Same circuit. Same score. A better line?", 13, MUTED)
+		_centered(341, "ENTER race again   /   A / D next circuit", 13, MUTED)
 	else:
 		var callout := "FINAL LAP" if race.lap() == 3 else "KEEP YOUR LINE"
 		if race.off_road():
@@ -253,6 +304,6 @@ func _draw_island() -> void:
 			callout = "FULL SEND"
 		elif race.pressure() >= 0.68:
 			callout = "RIVAL CLOSE"
-		_centered(294, callout, 29, RIVAL if race.off_road() else ACCENT)
+		_centered(294, callout, 29, RIVAL if race.off_road() else accent)
 		_centered(327, "%03d" % int(race.speed / RaceModel.CRUISE_SPEED * 160), 36)
 		_centered(350, "KM/H  /  GRIP-ASSISTED STEERING", 11, MUTED)

@@ -51,6 +51,9 @@ Perform the following on every supported OS family:
 - Play Night Circuit: start the countdown, use throttle/brake and grip-assisted
   steering, avoid the rival, spend/recharge boost, and complete three laps. No
   music section buttons may stand in for gameplay.
+- Switch through all four circuits in the garage and confirm each style
+  (neon, pocket funk, fusion, micro motor) regenerates and plays its own
+  garage section before racing.
 - Confirm off-road/contact penalties, finish order, pause/resume (including
   audio), focus-loss pause, and restart. Check both 960×620 and 1280×800 windows.
 - Observe garage before starting, grid at countdown, cruise away from the
