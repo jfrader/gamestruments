@@ -83,6 +83,9 @@ A detailed quickstart is included in the archive. The player uses a `Music` bus 
 - Gamestruments first-party Rust crates, addon descriptor, buyer documentation, and demo integration are provided under the MIT license, permitting use in closed-source commercial games.
 - gdext and related binding crates are MPL-2.0. Complete attribution and dependency disclosures are provided in `THIRD_PARTY_NOTICES.md` inside the archive.
 
+### Updates
+All future updates to this kit are included with your purchase. itch.io automatically delivers new files uploaded to this page to existing owners, and major releases are announced through the page's devlog.
+
 ### Support
 Support is provided best-effort for reproducible defects within the advertised environment. Use the public comments section on this page and include the kit version, OS, architecture, exact Godot version, reproduction steps, and complete Godot Output text. Use itch.io's purchase-support flow for purchase-specific or private matters.
 Refunds follow the standard itch.io terms presented at purchase time.
