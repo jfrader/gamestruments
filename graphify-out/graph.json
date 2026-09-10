@@ -12940,7 +12940,7 @@
       "node_kind": "heading",
       "norm_label": "exact storefront media",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L116"
+      "source_location": "L117"
     },
     {
       "id": "docs_releases_v0_1_0_gamestruments_v0_1_0_release_packet",
@@ -12964,7 +12964,7 @@
       "node_kind": "heading",
       "norm_label": "independent clean-room acceptance",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L74"
+      "source_location": "L75"
     },
     {
       "id": "docs_releases_v0_1_0_release_identity",
@@ -12988,7 +12988,7 @@
       "node_kind": "heading",
       "norm_label": "single-use operator approval",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L155"
+      "source_location": "L156"
     },
     {
       "id": "docs_releases_v0_1_0_storefront_metadata_itch_io",
@@ -13000,7 +13000,7 @@
       "node_kind": "heading",
       "norm_label": "storefront metadata (itch.io)",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L93"
+      "source_location": "L94"
     },
     {
       "id": "docs_releases_v0_1_0_supplementary_exact_archive_linux_evidence",
@@ -13012,7 +13012,7 @@
       "node_kind": "heading",
       "norm_label": "supplementary exact-archive linux evidence",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L60"
+      "source_location": "L61"
     },
     {
       "id": "docs_releases_v0_1_0_support_and_disclosures",
@@ -13024,7 +13024,7 @@
       "node_kind": "heading",
       "norm_label": "support and disclosures",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L132"
+      "source_location": "L133"
     },
     {
       "id": "docs_releases_v0_1_0_transaction_and_rollback_plan",
@@ -13036,7 +13036,7 @@
       "node_kind": "heading",
       "norm_label": "transaction and rollback plan",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L140"
+      "source_location": "L141"
     },
     {
       "id": "docs_releases_v0_1_0_verification_evidence",
@@ -13048,7 +13048,7 @@
       "node_kind": "heading",
       "norm_label": "verification evidence",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L29"
+      "source_location": "L30"
     },
     {
       "id": "packages_studio_src_index",
@@ -29402,7 +29402,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L132",
+      "source_location": "L133",
       "weight": 1.0
     },
     {
@@ -29413,7 +29413,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L140",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -29424,7 +29424,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -29446,7 +29446,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
@@ -29468,7 +29468,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -29479,7 +29479,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -29490,7 +29490,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L60",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -29501,7 +29501,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L74",
+      "source_location": "L75",
       "weight": 1.0
     },
     {
@@ -36921,5 +36921,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "d3472810e0407b13554cd48494250db98fad9e7c"
+  "built_at_commit": "8de6d6e05d04f314177546008a1c7041fffddc1b"
 }
