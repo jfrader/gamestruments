@@ -1,7 +1,7 @@
 extends Node
 
-@export var level_seed := "night-circuit-001"
-@export var music_style := "funk"
+var level_seed := "night-circuit-001"
+var style := "neon"
 
 var player: Node
 var error_message := ""
@@ -17,9 +17,24 @@ func _ready() -> void:
 	player.name = "GamestrumentsPlayer"
 	add_child(player)
 	player.set("project_secret", "gamestruments-night-circuit")
-	player.set("style", music_style)
+
+
+# Regenerates for a different circuit style/seed. Safe to call from the garage:
+# the player resets transport and starts at the garage section.
+func configure(new_style: String, new_seed: String) -> bool:
+	style = new_style
+	level_seed = new_seed
+	requested_section = "garage"
+	last_state = {}
+	if player == null:
+		error_message = "Music extension missing. Open this project in Godot 4.7.x and let the initial import finish."
+		return false
+	error_message = ""
+	player.set("style", style)
 	if not bool(player.call("generate", level_seed)):
 		error_message = "Music generation failed. See Godot Output; the race can still be played."
+		return false
+	return true
 
 
 # This is the integration seam: game telemetry in, public library calls out.
