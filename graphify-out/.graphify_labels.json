@@ -1,7 +1,7 @@
 {
   "0": "lantern-trail-generator.ts",
   "1": "DemoAudioEngine",
-  "2": "AdaptiveTransport",
+  "2": "runtime/src/index.ts",
   "3": "generate-cli.ts",
   "4": "scripts",
   "5": "studio/package.json",
@@ -75,12 +75,8 @@
   "73": "export-score.ts",
   "74": "release-workflow.test.ts",
   "75": "lantern-trail.test.ts",
-  "76": "orbit-visualizer.ts",
-  "77": "runtime/src/index.ts",
+  "76": "Gamestruments v0.1.0 Release Packet",
   "78": "studio/src/index.ts",
-  "79": "ui.ts",
   "80": "createDNA",
-  "81": "validatePortableScore",
-  "82": "wasm-engine.ts",
   "83": "createSection"
 }
