@@ -60,7 +60,7 @@ Proof needed before launch (per game-kit-release gates):
 
 ## Price Range Hypothesis and Comparable Products (as of 2026-09-04)
 
-Approved standard price: $24.99.
+Approved standard price: $12.99 (set 2026-09-10; revisitable after launch).
 
 Comparables (dated research):
 - Generic adaptive stem packs + players on itch/asset stores: $5–30 (common $10–20).

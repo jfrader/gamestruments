@@ -75,7 +75,7 @@ SHA-256 so approval covers exact text.
 - **Slug:** gamestruments-racing-music-godot
 - **Classification / kind:** Game Assets / Downloadable
 - **Short description:** A seed-driven, sample-free adaptive racing music engine for Godot 4.
-- **Price:** $24.99 (Minimum / Pay-what-you-want above)
+- **Price:** $12.99 (Minimum / Pay-what-you-want above)
 - **Launch discount:** None
 - **Language / release status:** English / Released
 - **Tags:** godot, godot-4, music, adaptive-music, dynamic-music, procedural, racing, soundtrack, audio, engine

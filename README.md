@@ -144,6 +144,6 @@ the game process; no JSON export step is required for the runtime kit.
 - Release binaries target Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
 - No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
 - See `docs/kit-contract.md` (exact inventory, API, non-goals) for the
-  authoritative commercial contract. The product price is $24.99.
+  authoritative commercial contract. The product price is $12.99.
 - The Audio Lab and its TypeScript packages remain AGPL for the authoring
   surface; they are deliberately kept out of the game runtime.

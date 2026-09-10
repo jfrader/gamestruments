@@ -9,6 +9,8 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Buyer archive `README.md` is rewritten in a friendlier, task-first voice and links the browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer).
+- Standard price lowered to $12.99 (set 2026-09-10; revisitable after launch).
 - Buyer archive `README.md` now leads with a copy-paste integration guide: install the addon, configure `GamestrumentsPlayer`, call `generate(seed)`, and drive `set_race_state(...)`. The playable demo is documented as an optional reference, and the storefront listing moves usage steps above the feature list.
 - Replaced the Godot generator panel with a playable four-circuit race series against a rival, grip-assisted steering, boost, and music responding automatically to gameplay. Each circuit configures its own shipped style and seed in the garage, so all four styles (neon, pocket funk, fusion, micro motor) are audible without editing code. A first-run intro card states that the music adapts to gameplay. Includes a separate music integration script, pause/restart, and gameplay regression checks.
 - Extracted archive verification now tests the complete shipped Rust source and validates native formats, architectures, duplicate addon copies, licenses, provenance, and binary path hygiene.

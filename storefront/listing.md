@@ -11,13 +11,13 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 - **Short Description:** A seed-driven, sample-free adaptive racing music engine for Godot 4.
 - **Classification:** Game Assets
 - **Kind:** Downloadable
-- **Pricing:** $24.99 minimum / Pay-what-you-want above (No launch discount)
+- **Pricing:** $12.99 minimum / Pay-what-you-want above (No launch discount)
 - **Language:** English
 - **Tags:** godot, godot-4, music, adaptive-music, dynamic-music, procedural, racing, soundtrack, audio, engine
 - **Release Status:** Released
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
-- **External Links:** None at launch; the source repository is private.
+- **External Links:** Browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer). The source repository is private.
 
 ## Visual Thesis and Media Capture Checklist
 
@@ -33,7 +33,7 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 **Media Capture Checklist:**
 - [ ] All screenshots must come from the immutable packaged Godot demo.
 - [ ] All audio and video evidence must be captured directly from the immutable packaged Godot runtime.
-- [ ] Do NOT use browser Audio Lab proof. Do not claim a free demo or use media not yet captured.
+- [ ] Do NOT use browser Audio Lab captures as kit media. The Audio Lab link is allowed as a preview; kit media must be captured from the packaged Godot demo.
 - [ ] Cover image follows the 315:250 ratio (630x500 recommended).
 - [ ] Include 3–5 screenshots of playable racing, rival pressure, final lap, and finish. Generator panels or manual section selection are not gameplay evidence.
 - [ ] Include an optional YouTube/Vimeo video demonstrating the runtime audio transitions.
@@ -43,6 +43,8 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 ### Gamestruments Adaptive Racing Music
 
 Gamestruments is a seed-driven, sample-free adaptive racing music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. No samples, no web authoring UI, and no external runtime services.
+
+**Try it in your browser:** https://gamestruments.gurisitos.games — the Audio Lab preview uses the same generator with a browser audio layer; the included Godot demo is the exact in-game sound.
 
 ### Use It in Your Game
 1. Copy the `addons/gamestruments/` directory into your Godot 4 project at `res://addons/gamestruments/`.

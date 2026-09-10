@@ -2,7 +2,7 @@
 
 Gamestruments generates deterministic, sample-free racing music inside a Godot game. Configure one `GamestrumentsPlayer`, call `generate(seed)` at level load, then drive bar-quantized changes from garage through grid, racing pressure, final lap, and victory.
 
-New to the kit? The archive root `README.md` has a copy-paste integration with the exact properties and calls. This folder is the reference set.
+New to the kit? The archive root `README.md` has a copy-paste integration with the exact properties and calls. This folder is the reference set. Prefer to hear it first? Try the browser preview at <https://gamestruments.gurisitos.games>.
 
 The Rust core is MIT licensed and its complete rebuildable source is included.
 
@@ -44,10 +44,10 @@ No samples, Strudel code, browser Audio Lab, authoring UI, pre-rendered audio, o
 - The shipped runtime is a 22050 Hz mono synthesizer routed through Godot's audio buses.
 - The addon works offline on the three supported desktop platform families.
 
-The public browser Audio Lab uses a different Web Audio presentation layer with stereo room processing. It is an authoring surface, not an exact audio preview of this kit. Buyer-facing audio and video must be captured from the included Godot demo.
+The browser preview at <https://gamestruments.gurisitos.games> uses a different Web Audio presentation layer with stereo room processing. It previews the musical range, not the exact kit mix; buyer-facing audio and video must be captured from the included Godot demo.
 
 ## Support
 
 Best-effort support is available through the public comments section on the itch.io product page for reproducible problems within the advertised scope. Include your OS, Godot version, kit version, minimal reproduction, and complete Output-panel error. Use itch.io's purchase-support flow for purchase-specific or private matters.
 
-Standard price: $24.99.
+Standard price: $12.99.
