@@ -65,6 +65,30 @@ try {
   if (!runtimeOutput.includes("GAMESTRUMENTS_RUNTIME_SMOKE_PASS")) {
     throw new Error("runtime smoke did not print its success marker");
   }
+  const screenshotDirectory = args.get("--screenshots");
+  if (screenshotDirectory) {
+    await mkdir(path.resolve(screenshotDirectory), { recursive: true });
+  }
+  const gameplayOutput = runGodot(
+    [
+      ...(screenshotDirectory ? [] : ["--headless"]),
+      "--path", demoRoot, "--script", "res://tools/gameplay_smoke.gd",
+      ...(screenshotDirectory ? ["--", "--screenshots", path.resolve(screenshotDirectory)] : []),
+    ],
+    "gameplay smoke",
+  );
+  if (!gameplayOutput.includes("GAMESTRUMENTS_GAMEPLAY_SMOKE_PASS")) {
+    throw new Error("gameplay smoke did not print its success marker");
+  }
+  await rm(addonRoot, { recursive: true, force: true });
+  await writeFile(path.join(demoRoot, ".godot", "extension_list.cfg"), "");
+  const fallbackOutput = runGodot(
+    ["--headless", "--path", demoRoot, "--script", "res://tools/gameplay_smoke.gd", "--", "--without-music"],
+    "missing-extension gameplay smoke",
+  );
+  if (!fallbackOutput.includes("GAMESTRUMENTS_GAMEPLAY_SMOKE_PASS")) {
+    throw new Error("missing-extension gameplay smoke did not print its success marker");
+  }
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

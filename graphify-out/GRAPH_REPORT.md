@@ -1,7 +1,7 @@
 # Graph Report - gamestruments-GURI-564  (2026-09-09)
 
 ## Corpus Check
-- 115 files · ~164,492 words
+- 115 files · ~165,390 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8de6d6e0`
+- Built from commit: `3680f2d0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -60,7 +60,7 @@
 - Gamestruments Kit — Author QA Runbook
 - Gamestruments — Adaptive Racing Music for Godot 4
 - Prototype Contract
-- Gamestruments Kit Demo
+- Night Circuit — Gamestruments Gameplay Demo
 - verify-third-party-notices.mjs
 - Repository agent notes
 - Opportunity
@@ -279,9 +279,9 @@ Nodes (6): Gamestruments — Adaptive Racing Music for Godot 4, Literal Product 
 Cohesion: 0.29
 Nodes (6): Compatibility, Constraints, Included, Non-Goals, Promise, Prototype Contract
 
-### Community 52 - "Gamestruments Kit Demo"
+### Community 52 - "Night Circuit — Gamestruments Gameplay Demo"
 Cohesion: 0.40
-Nodes (4): Demonstrated API, Gamestruments Kit Demo, Repository Smoke Test, Run the Packaged Demo
+Nodes (4): How the Game Uses the Library, Night Circuit — Gamestruments Gameplay Demo, Play, Repository Verification
 
 ### Community 53 - "verify-third-party-notices.mjs"
 Cohesion: 0.25

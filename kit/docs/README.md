@@ -26,7 +26,9 @@ See `quickstart.md` for a complete integration and `api.md` for the supported su
 
 - One cross-platform addon with Linux, Windows, and universal macOS native libraries.
 - Full Rust source, workspace manifests, lockfile, and pinned toolchain.
-- A self-contained Godot demo that exercises generation and all six racing sections.
+- Night Circuit, a self-contained playable three-lap Godot race with a rival,
+  boost, and gameplay-driven music. A separate `race_music.gd` demonstrates the
+  integration. See `../demo/README.md` for keyboard controls.
 - Buyer documentation, changelog, MIT license, third-party notices, and full dependency license texts.
 
 No samples, Strudel code, browser Audio Lab, authoring UI, pre-rendered audio, or external services ship in the kit.

@@ -35,7 +35,7 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 - [ ] All audio and video evidence must be captured directly from the immutable packaged Godot runtime.
 - [ ] Do NOT use browser Audio Lab proof. Do not claim a free demo or use media not yet captured.
 - [ ] Cover image follows the 315:250 ratio (630x500 recommended).
-- [ ] Include 3–5 screenshots representing the Godot demo and parameters.
+- [ ] Include 3–5 screenshots of playable racing, rival pressure, final lap, and finish. Generator panels or manual section selection are not gameplay evidence.
 - [ ] Include an optional YouTube/Vimeo video demonstrating the runtime audio transitions.
 
 ## Long Description
@@ -47,7 +47,7 @@ Gamestruments is a seed-driven, sample-free adaptive racing music engine built s
 ### Included Files
 The buyer archive contains:
 - `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor.
-- `kit/demo/` — self-contained Godot demo with an identical addon copy.
+- `kit/demo/` — Night Circuit, a playable three-lap race with lane steering, boost, one rival, gameplay-driven music, and a readable integration adapter; includes an identical addon copy.
 - `kit/docs/` — quickstart, API, limitations, and troubleshooting documentation.
 - Source crates, the required catalog fixture, `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` — complete pinned Rust rebuild inputs.
 - First-party and third-party license terms.

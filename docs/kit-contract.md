@@ -40,7 +40,14 @@ The kit generates one deterministic six-section racing score from a per-title na
 - `final-lap`
 - `victory`
 
-The included demo exposes the exact buyer API and shipped synth. It is intentionally an integration example, not a complete game or authoring tool.
+The included Night Circuit demo is a playable three-lap race against one rival,
+not an authoring tool or a full racing-game template. The car follows the track
+automatically; keyboard throttle, brake, lane steering, and rechargeable boost
+control the race. Contact and leaving the road slow the player. Real countdown,
+pace/rival pressure, lap, and finish state drive the shipped synth through a
+separate `race_music.gd` adapter. The demo supports pause, restart, keyboard/mouse,
+and a scaling 960×620 layout. No gamepad or touch controls are claimed. The browser
+Audio Lab is not its UI or runtime. See `kit/demo/README.md` for controls.
 
 ## Supported Public API
 
