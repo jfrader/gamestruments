@@ -44,6 +44,14 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 Gamestruments is a seed-driven, sample-free adaptive racing music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. No samples, no web authoring UI, and no external runtime services.
 
+### Use It in Your Game
+1. Copy the `addons/gamestruments/` directory into your Godot 4 project at `res://addons/gamestruments/`.
+2. Add a `GamestrumentsPlayer` node.
+3. Set a stable non-empty `project_secret` namespace, choose a style, call `generate(seed)` at level load, and check its result.
+4. Drive states via `set_race_state(...)`; changes commit on musical bar boundaries.
+
+The archive root `README.md` and `kit/docs/quickstart.md` contain copy-paste GDScript examples. The player uses a `Music` bus when present and otherwise routes to `Master`.
+
 ### Included Files
 The buyer archive contains:
 - `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor.
@@ -64,14 +72,6 @@ The buyer archive contains:
 - **Godot Version:** Godot 4.7.x via GDExtension. Future Godot minor releases are not implied. Tested exactly against CI version 4.7.2.
 - **Operating Systems:** Linux x86_64 (built on Ubuntu 24.04), Windows x86_64, and macOS arm64/x86_64. No mobile or web targets.
 - **Playback:** Godot `AudioStreamGenerator` routed to a 22050 Hz mono internal synth.
-
-### Installation Instructions
-1. Copy the `addons/gamestruments/` directory into your Godot 4 project at `res://addons/gamestruments/`.
-2. Add a `GamestrumentsPlayer` node.
-3. Set a stable non-empty `project_secret` namespace, call `generate(seed)` at level load, and check its result.
-4. Drive states via `set_race_state(...)`.
-
-A detailed quickstart is included in the archive. The player uses a `Music` bus when present and otherwise routes to `Master`.
 
 ### Limitations
 - Racing-specific game state model; this is not a general-purpose adaptive music graph.
