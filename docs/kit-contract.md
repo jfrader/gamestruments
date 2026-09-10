@@ -41,7 +41,8 @@ The kit generates one deterministic six-section racing score from a per-title na
 - `victory`
 
 The included four-circuit demo is a playable three-lap race series against one
-rival, not an authoring tool or a full racing-game template. Each circuit
+rival, not an authoring tool or a full racing-game template. An intro card states
+the point before play: the music adapts to gameplay. Each circuit
 configures its own shipped style and seed in the garage (neon, pocket funk,
 fusion, micro motor). Grip-assisted keyboard steering, throttle, brake, and
 rechargeable boost control the car. Contact, leaving the road, or hitting the

@@ -11,7 +11,9 @@ music-section buttons or generator panels.
 1. Extract the buyer archive and open `kit/demo/project.godot` in Godot 4.7.x.
 2. Let the initial extension scan finish, then press Play (F6 runs the current
    scene; F5 runs this project's main scene).
-3. In the garage, use A/D or the PREV/NEXT buttons to hear each circuit's score.
+3. A short intro card states the point: play to hear the music adapt. Press
+   Enter, Space, Escape, or click GOT IT to dismiss it.
+4. In the garage, use A/D or the PREV/NEXT buttons to hear each circuit's score.
    Press Enter or click Race, then hold W through the countdown to accelerate.
 
 | Control | Action |

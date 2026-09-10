@@ -26,6 +26,8 @@ var start_button: Button
 var prev_button: Button
 var next_button: Button
 var pause_button: Button
+var intro_button: Button
+var intro_visible := true
 var hud: Control
 var font: Font
 
@@ -47,8 +49,10 @@ func _ready() -> void:
 	pause_button = _button("PAUSE  /  ESC", Vector2(792, 24), Vector2(140, 34))
 	pause_button.pressed.connect(toggle_pause)
 	pause_button.visible = false
+	intro_button = _button("GOT IT  /  ENTER", Vector2(385, 376), Vector2(190, 42))
+	intro_button.pressed.connect(dismiss_intro)
 	_set_circuit(0)
-	start_button.grab_focus()
+	intro_button.grab_focus()
 	get_window().focus_exited.connect(_on_focus_exited)
 	resized.connect(_layout)
 	_layout()
@@ -92,10 +96,18 @@ func _set_circuit(index: int) -> void:
 
 
 func _tint_buttons() -> void:
-	for button in [start_button, prev_button, next_button, pause_button]:
+	for button in [start_button, prev_button, next_button, pause_button, intro_button]:
 		var normal := button.get_theme_stylebox("normal") as StyleBoxFlat
 		if normal != null:
 			normal.bg_color = accent
+
+
+func dismiss_intro() -> void:
+	if not intro_visible:
+		return
+	intro_visible = false
+	intro_button.release_focus()
+	start_button.grab_focus()
 
 
 func _on_prev_pressed() -> void:
@@ -139,6 +151,10 @@ func _on_focus_exited() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event.is_pressed() or event.is_echo():
 		return
+	if intro_visible:
+		if event.keycode in [KEY_ENTER, KEY_SPACE, KEY_ESCAPE, KEY_R]:
+			dismiss_intro()
+		return
 	if race.phase in ["garage", "finish"] and event.keycode in [KEY_A, KEY_LEFT]:
 		_set_circuit(circuit_index - 1)
 	elif race.phase in ["garage", "finish"] and event.keycode in [KEY_D, KEY_RIGHT]:
@@ -152,6 +168,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if intro_visible:
+		start_button.visible = false
+		prev_button.visible = false
+		next_button.visible = false
+		pause_button.visible = false
+		intro_button.visible = true
+		queue_redraw()
+		return
+	intro_button.visible = false
 	if not paused:
 		var steering := float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT))
 		race.step(delta, Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP), steering, Input.is_physical_key_pressed(KEY_SPACE), Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN))
@@ -206,6 +231,7 @@ func _draw() -> void:
 	_draw_car(race.progress, race.lane, race.heading, accent, race.boosting)
 	_draw_hud()
 	_draw_island()
+	_draw_intro()
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -307,3 +333,16 @@ func _draw_island() -> void:
 		_centered(294, callout, 29, RIVAL if race.off_road() else accent)
 		_centered(327, "%03d" % int(race.speed / RaceModel.CRUISE_SPEED * 160), 36)
 		_centered(350, "KM/H  /  GRIP-ASSISTED STEERING", 11, MUTED)
+
+
+func _draw_intro() -> void:
+	if not intro_visible:
+		return
+	draw_rect(Rect2(0, 0, 960, 620), Color(0, 0, 0, 0.62))
+	draw_rect(Rect2(200, 190, 560, 250), BG)
+	draw_rect(Rect2(200, 190, 560, 250), accent, false, 2.0)
+	_centered(236, "PLAY TO HEAR THE MUSIC ADAPT", 24, accent)
+	_centered(278, "Every circuit generates its soundtrack live in Godot.", 14, INK)
+	_centered(302, "Drive, and the music follows the race.", 14, INK)
+	_centered(334, "4 circuits   ·   4 styles   ·   6 adaptive sections", 12, MUTED)
+	_centered(356, "No music buttons. No pre-baked tracks.", 12, MUTED)
