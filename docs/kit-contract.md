@@ -1,4 +1,4 @@
-# Gamestruments Adaptive Racing Music for Godot 4 — Product Contract
+# Gamestruments — Adaptive Music for Godot 4: Product Contract
 
 **Status:** approved scope; release remains gated on automated platform checks, independent buyer testing, human listening, and explicit publication approval.
 **Standard price:** $12.99 (set 2026-09-10; revisitable after launch).

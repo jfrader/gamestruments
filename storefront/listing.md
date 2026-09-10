@@ -6,9 +6,9 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 ## Metadata Fields
 
-- **Title:** Gamestruments Adaptive Racing Music
-- **Recommended Slug:** gamestruments-racing-music-godot
-- **Short Description:** A seed-driven, sample-free adaptive racing music engine for Godot 4.
+- **Title:** Gamestruments — Adaptive Music for Godot 4
+- **Recommended Slug:** gamestruments-godot
+- **Short Description:** A seed-driven, sample-free adaptive music engine for Godot 4.
 - **Classification:** Game Assets
 - **Kind:** Downloadable
 - **Pricing:** $12.99 minimum / Pay-what-you-want above (No launch discount)
@@ -40,9 +40,9 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 ## Long Description
 
-### Gamestruments Adaptive Racing Music
+### Gamestruments — Adaptive Music for Godot 4
 
-Gamestruments is a seed-driven, sample-free adaptive racing music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. No samples, no web authoring UI, and no external runtime services.
+Gamestruments is a seed-driven, sample-free adaptive music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. The shipped Pocket Circuit recipe scores racing from garage through victory; no samples, no web authoring UI, and no external runtime services.
 
 **Try it in your browser:** https://gamestruments.gurisitos.games — the Audio Lab preview uses the same generator with a browser audio layer; the included Godot demo is the exact in-game sound.
 

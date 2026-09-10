@@ -1,10 +1,10 @@
-# Gamestruments — Adaptive Racing Music for Godot 4
+# Gamestruments — Adaptive Music for Godot 4
 
 **Your game generates its own soundtrack.** Gamestruments writes deterministic,
-sample-free racing music right inside Godot — no audio files to ship, no
+sample-free adaptive music right inside Godot — no audio files to ship, no
 authoring tool, no external services. Add one node, call `generate()` when a
-level loads, and tell it what's happening in the race. It takes care of the rest,
-moving between six musical sections on bar boundaries.
+level loads, and tell it what's happening in the game. It takes care of the rest,
+moving between musical sections on bar boundaries.
 
 **Try it in your browser:** <https://gamestruments.gurisitos.games>
 

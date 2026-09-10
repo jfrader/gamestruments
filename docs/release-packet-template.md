@@ -71,10 +71,10 @@ The complete candidate copy is `storefront/listing.md`. Record its Git blob or
 SHA-256 so approval covers exact text.
 
 - **`storefront/listing.md` identity:**
-- **Title:** Gamestruments Adaptive Racing Music
+- **Title:** Gamestruments — Adaptive Music for Godot 4
 - **Slug:** gamestruments-racing-music-godot
 - **Classification / kind:** Game Assets / Downloadable
-- **Short description:** A seed-driven, sample-free adaptive racing music engine for Godot 4.
+- **Short description:** A seed-driven, sample-free adaptive music engine for Godot 4.
 - **Price:** $12.99 (Minimum / Pay-what-you-want above)
 - **Launch discount:** None
 - **Language / release status:** English / Released
