@@ -187,9 +187,18 @@ func _check_model() -> void:
 	_check(not race.boosting and race.boost_exhausted, "Holding exhausted boost must not pulse on recharge")
 	race.step(0.1, true, 0.0, false, false)
 	_check(not race.boost_exhausted, "Releasing boost must rearm it")
-	for _tick in range(60):
+	for _tick in range(30):
 		race.step(1.0 / 60.0, true, 1.0, false, false)
-	_check(race.off_road() and race.speed < cruise_speed, "Leaving the road must slow the car")
+	_check(race.heading > 0.2, "Steering must turn the car instead of strafing it")
+	var left_road := race.off_road()
+	for _tick in range(120):
+		race.step(1.0 / 60.0, true, 1.0, false, false)
+		left_road = left_road or race.off_road()
+	_check(left_road and race.speed < cruise_speed, "Leaving the road must slow the car")
+	_check(absf(race.lane) <= RaceModel.WALL_EDGE, "Steering must not escape the circuit")
+	for _tick in range(90):
+		race.step(1.0 / 60.0, true, 0.0, false, false)
+	_check(absf(race.heading) < 0.05, "Releasing the steering must straighten the car")
 	for _tick in range(120):
 		race.step(1.0 / 60.0, true, 0.0, false, true)
 	_check(race.speed == 0.0, "Brake must override throttle")

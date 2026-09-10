@@ -3,7 +3,13 @@ extends RefCounted
 const LAPS := 3
 const CRUISE_SPEED := 0.064
 const BOOST_SPEED := 0.092
-const ROAD_EDGE := 32.0
+const ROAD_EDGE := 30.0
+const WALL_EDGE := 40.0
+const LANE_PER_LAP := 1500.0
+const MAX_STEER := 0.62
+const STEER_RATE := 3.0
+const STEER_CENTER := 2.2
+const RIVAL_CRUISE := 0.061
 
 var phase := "garage"
 var countdown := 3.0
@@ -12,6 +18,8 @@ var progress := 0.0
 var rival_progress := 0.015
 var lane := 0.0
 var rival_lane := -14.0
+var heading := 0.0
+var rival_heading := 0.0
 var speed := 0.0
 var charge := 1.0
 var boosting := false
@@ -29,6 +37,8 @@ func start() -> void:
 	rival_progress = 0.015
 	lane = 0.0
 	rival_lane = -14.0
+	heading = 0.0
+	rival_heading = 0.0
 	speed = 0.0
 	charge = 1.0
 	boosting = false
@@ -48,7 +58,11 @@ func step(delta: float, throttle: bool, steering: float, boost: bool, brake: boo
 		return
 	elapsed += delta
 	collision_cooldown = maxf(0.0, collision_cooldown - delta)
-	lane = clampf(lane + steering * 65.0 * delta, -58.0, 58.0)
+	var speed_ratio := clampf(speed / CRUISE_SPEED, 0.0, 1.0)
+	if absf(steering) > 0.01:
+		heading = move_toward(heading, steering * MAX_STEER, STEER_RATE * speed_ratio * delta)
+	else:
+		heading = move_toward(heading, 0.0, STEER_CENTER * speed_ratio * delta)
 	if not boost:
 		boost_exhausted = false
 	boosting = boost and throttle and not brake and charge > 0.0 and not boost_exhausted and not off_road()
@@ -61,9 +75,20 @@ func step(delta: float, throttle: bool, steering: float, boost: bool, brake: boo
 	if off_road():
 		target_speed = minf(target_speed, 0.025)
 	speed = move_toward(speed, target_speed, delta * (0.12 if brake or off_road() else 0.035))
+	progress += speed * cos(heading) * delta
+	lane -= speed * sin(heading) * LANE_PER_LAP * delta
+	if absf(lane) > WALL_EDGE:
+		lane = clampf(lane, -WALL_EDGE, WALL_EDGE)
+		heading = -heading * 0.35
+		speed *= 0.72
+		if collision_cooldown == 0.0:
+			collision_cooldown = 0.5
+			impacts += 1
+	var rival_speed := RIVAL_CRUISE + 0.004 * sin(elapsed * 0.3)
+	var rival_lane_rate := 19.0 * 0.55 * cos(elapsed * 0.55)
 	rival_lane = sin(elapsed * 0.55) * 19.0
-	rival_progress = minf(float(LAPS), rival_progress + (0.061 + 0.004 * sin(elapsed * 0.3)) * delta)
-	progress += speed * delta
+	rival_heading = -asin(clampf(rival_lane_rate / (rival_speed * LANE_PER_LAP), -0.5, 0.5))
+	rival_progress = minf(float(LAPS), rival_progress + rival_speed * delta)
 	if rival_progress < LAPS and absf(rival_progress - progress) < 0.008 and absf(lane - rival_lane) < 12.0 and collision_cooldown == 0.0:
 		speed *= 0.45
 		collision_cooldown = 1.2

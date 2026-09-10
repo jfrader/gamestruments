@@ -10382,7 +10382,7 @@
       "source_location": "L5"
     },
     {
-      "id": "changelog_added_30",
+      "id": "changelog_added_31",
       "label": "Added",
       "_origin": "ast",
       "community": 45,
@@ -10391,7 +10391,7 @@
       "node_kind": "heading",
       "norm_label": "added",
       "source_file": "CHANGELOG.md",
-      "source_location": "L30"
+      "source_location": "L31"
     },
     {
       "id": "changelog_changed",
@@ -10430,7 +10430,7 @@
       "source_location": "L19"
     },
     {
-      "id": "changelog_fixed_124",
+      "id": "changelog_fixed_125",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10439,10 +10439,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L124"
+      "source_location": "L125"
     },
     {
-      "id": "changelog_fixed_96",
+      "id": "changelog_fixed_97",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10451,7 +10451,7 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L96"
+      "source_location": "L97"
     },
     {
       "id": "changelog_improved",
@@ -10463,7 +10463,7 @@
       "node_kind": "heading",
       "norm_label": "improved",
       "source_file": "CHANGELOG.md",
-      "source_location": "L103"
+      "source_location": "L104"
     },
     {
       "id": "changelog_unreleased",
@@ -11346,7 +11346,7 @@
       "node_kind": "heading",
       "norm_label": "how the game uses the library",
       "source_file": "kit/demo/README.md",
-      "source_location": "L30"
+      "source_location": "L31"
     },
     {
       "id": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
@@ -11382,7 +11382,7 @@
       "node_kind": "heading",
       "norm_label": "repository verification",
       "source_file": "kit/demo/README.md",
-      "source_location": "L61"
+      "source_location": "L63"
     },
     {
       "id": "tests_verify_third_party_notices",
@@ -27220,7 +27220,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L103",
+      "source_location": "L104",
       "weight": 1.0
     },
     {
@@ -27236,13 +27236,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_124",
+      "target": "changelog_fixed_125",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L124",
+      "source_location": "L125",
       "weight": 1.0
     },
     {
@@ -27258,13 +27258,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_added_30",
+      "target": "changelog_added_31",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -27280,13 +27280,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_96",
+      "target": "changelog_fixed_97",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L96",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -29717,7 +29717,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/demo/README.md",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -29728,7 +29728,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/demo/README.md",
-      "source_location": "L61",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -37071,5 +37071,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4f1e099a7a7b04d5d24140baf88a90b003308885"
+  "built_at_commit": "f61a825c89ea7c12093def7deb5bc02dc72757a6"
 }
