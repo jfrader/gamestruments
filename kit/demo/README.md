@@ -15,22 +15,24 @@ to the race; there are no manual music-section buttons or generator panels.
 |---|---|
 | W / Up | Throttle |
 | S / Down | Brake (overrides throttle) |
-| A, D / Left, Right | Move inward / outward across the road |
+| A, D / Left, Right | Steer left / right (grip-assisted) |
 | Space | Boost while accelerating; release to recharge/rearm |
 | Escape / Pause button | Pause or resume race and music |
 | R | Restart the race |
 | Enter / Race Again | Race from the title or finish screen |
 
-The car automatically follows the circuit. You control speed, lane, and boost
-timing. Pass the orange rival without contact; leaving the road or hitting the
-rival slows you down. Finish three laps first to win. Focus loss pauses the
-race. Keyboard and mouse are supported; no gamepad or touch controls are claimed.
+The car steers with grip assist: hold A/D to turn, release to straighten out.
+You control speed, racing line, and boost timing. Pass the orange rival without
+contact; leaving the road, hitting the barrier, or touching the rival slows you
+down. Finish three laps first to win. Focus loss pauses the race. Keyboard and
+mouse are supported; no gamepad or touch controls are claimed.
 The 960×620 layout scales and letterboxes when the window is resized.
 
 ## How the Game Uses the Library
 
-- `race_model.gd`: race rules, rival motion, boost, contact, lap counting, and
-  gameplay telemetry. It has no dependency on the music library or UI.
+- `race_model.gd`: race rules, grip-assisted steering, rival motion, boost,
+  contact, lap counting, and gameplay telemetry. It has no dependency on the
+  music library or UI.
 - `race_music.gd`: the small integration adapter to reuse as a reference. It
   creates one player, configures the title namespace/style, and checks
   `generate(level_seed)` on level load. `sync_race` checks `set_race_state`.

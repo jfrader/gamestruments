@@ -1,7 +1,7 @@
 # Graph Report - gamestruments-GURI-564  (2026-09-10)
 
 ## Corpus Check
-- 116 files · ~166,248 words
+- 116 files · ~166,294 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4f1e099a`
+- Built from commit: `f61a825c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

@@ -47,7 +47,7 @@ Gamestruments is a seed-driven, sample-free adaptive racing music engine built s
 ### Included Files
 The buyer archive contains:
 - `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor.
-- `kit/demo/` — Night Circuit, a playable three-lap race with lane steering, boost, one rival, gameplay-driven music, and a readable integration adapter; includes an identical addon copy.
+- `kit/demo/` — Night Circuit, a playable three-lap race with grip-assisted steering, boost, one rival, gameplay-driven music, and a readable integration adapter; includes an identical addon copy.
 - `kit/docs/` — quickstart, API, limitations, and troubleshooting documentation.
 - Source crates, the required catalog fixture, `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` — complete pinned Rust rebuild inputs.
 - First-party and third-party license terms.

@@ -120,7 +120,9 @@ func _physics_process(delta: float) -> void:
 
 func _track_point(progress: float, lane: float = 0.0) -> Vector2:
 	var angle := progress * TAU - PI * 0.5
-	return CENTER + Vector2(cos(angle) * (RADIUS.x + lane), sin(angle) * (RADIUS.y + lane))
+	var base := Vector2(cos(angle) * RADIUS.x, sin(angle) * RADIUS.y)
+	var normal := Vector2(cos(angle) / RADIUS.x, sin(angle) / RADIUS.y).normalized()
+	return CENTER + base + normal * lane
 
 
 func _ring(lane: float) -> PackedVector2Array:
@@ -150,8 +152,8 @@ func _draw() -> void:
 	for y in range(100, 541, 40):
 		draw_line(Vector2(20, y), Vector2(940, y), Color("112226"))
 	_draw_track()
-	_draw_car(race.rival_progress, race.rival_lane, RIVAL, false)
-	_draw_car(race.progress, race.lane, ACCENT, race.boosting)
+	_draw_car(race.rival_progress, race.rival_lane, race.rival_heading, RIVAL, false)
+	_draw_car(race.progress, race.lane, race.heading, ACCENT, race.boosting)
 	_draw_hud()
 	_draw_island()
 	draw_set_transform(Vector2.ZERO)
@@ -176,9 +178,17 @@ func _draw_track() -> void:
 	_text(Vector2(710, 547), "3 LAPS   /   1 RIVAL", 12, MUTED)
 
 
-func _draw_car(progress: float, lane: float, color: Color, boosting: bool) -> void:
+func _car_direction(progress: float, lane: float, heading: float) -> Vector2:
+	var epsilon := 0.002
+	var tangent := _track_point(progress + epsilon, lane) - _track_point(progress - epsilon, lane)
+	var normal := _track_point(progress, lane + 1.0) - _track_point(progress, lane)
+	var motion := tangent * cos(heading) - normal * sin(heading) * RaceModel.LANE_PER_LAP * 2.0 * epsilon
+	return motion.normalized() if motion.length_squared() > 0.000001 else tangent.normalized()
+
+
+func _draw_car(progress: float, lane: float, heading: float, color: Color, boosting: bool) -> void:
 	var pos := _track_point(progress, lane)
-	var direction := (_track_point(progress + 0.001, lane) - pos).normalized()
+	var direction := _car_direction(progress, lane, heading)
 	var side := direction.orthogonal()
 	var body := PackedVector2Array()
 	for point in [Vector2(12, -5), Vector2(12, 5), Vector2(-11, 7), Vector2(-11, -7)]:
@@ -208,7 +218,7 @@ func _draw_hud() -> void:
 	_text(Vector2(28, 583), "MUSIC REQUEST  /  " + music.requested_section.to_upper(), 13, ACCENT)
 	_text(Vector2(28, 604), "Changes land on the next musical bar", 11, MUTED)
 	_text(Vector2(390, 583), "W / UP  THROTTLE     S / DOWN  BRAKE", 11)
-	_text(Vector2(390, 604), "A D / ARROWS  LANE     SPACE  BOOST     R  RESTART", 11, MUTED)
+	_text(Vector2(390, 604), "A D / ARROWS  STEER     SPACE  BOOST     R  RESTART", 11, MUTED)
 	_text(Vector2(810, 582), "BOOST", 11, MUTED)
 	draw_rect(Rect2(810, 594, 122, 7), Color("294044"))
 	draw_rect(Rect2(810, 594, 122 * race.charge, 7), ACCENT)
@@ -223,9 +233,9 @@ func _draw_island() -> void:
 		_centered(325, "Take a breath. ESC to resume.", 15, MUTED)
 	elif race.phase == "garage":
 		_centered(263, "BEAT THE RIVAL.", 32)
-		_centered(299, "Hold W to accelerate. A / D to change lanes.", 15, MUTED)
+		_centered(299, "Hold W to accelerate. A / D to steer.", 15, MUTED)
 		_centered(325, "Pass with SPACE. Stay off the kerbs.", 15, MUTED)
-		_centered(350, "Auto-follow circuit  /  You control pace and racing line", 11, MUTED)
+		_centered(350, "Grip-assisted steering  /  You control the racing line", 11, MUTED)
 	elif race.phase == "grid":
 		_centered(305, str(maxi(1, int(ceil(race.countdown)))), 70, ACCENT)
 		_centered(344, "HOLD W  /  LIGHTS OUT", 14, MUTED)
@@ -245,4 +255,4 @@ func _draw_island() -> void:
 			callout = "RIVAL CLOSE"
 		_centered(294, callout, 29, RIVAL if race.off_road() else ACCENT)
 		_centered(327, "%03d" % int(race.speed / RaceModel.CRUISE_SPEED * 160), 36)
-		_centered(350, "KM/H  /  ASSISTED CIRCUIT", 11, MUTED)
+		_centered(350, "KM/H  /  GRIP-ASSISTED STEERING", 11, MUTED)
