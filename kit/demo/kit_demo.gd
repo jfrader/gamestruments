@@ -1,359 +1,248 @@
 extends Control
 
-const SURFACE := Color("151a21")
-const SURFACE_RAISED := Color("1d242d")
-const INK := Color("edf1e8")
-const MUTED := Color("87919b")
-const ACCENT := Color("f4b740")
-const BG := Color("0c1015")
+const RaceModel = preload("res://race_model.gd")
+const RaceMusic = preload("res://race_music.gd")
+const BG := Color("0b1519")
+const INK := Color("edf4e8")
+const MUTED := Color("8aaca9")
+const ACCENT := Color("c9f36b")
+const RIVAL := Color("ff936c")
+const CENTER := Vector2(480, 321)
+const RADIUS := Vector2(333, 155)
 
-var player: Node = null
-var warning_label: Label
-var status_label: Label
-
-# UI controls
-var style_option: OptionButton
-var seed_edit: LineEdit
-var melody_edit: LineEdit
-var harmony_edit: LineEdit
-var drive_edit: LineEdit
-var bass_edit: LineEdit
-var energy_slider: HSlider
-var complexity_slider: HSlider
-var brightness_slider: HSlider
-var syncopation_slider: HSlider
-var intensity_value: Label  # reuse energy as intensity proxy for state calls
+var race = RaceModel.new()
+var music: Node
+var paused := false
+var music_clock := 0.0
+var start_button: Button
+var pause_button: Button
+var hud: Control
+var font: Font
 
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_build_interface()
-	_ensure_music_bus()
+	font = ThemeDB.fallback_font
+	music = RaceMusic.new()
+	music.name = "RaceMusic"
+	add_child(music)
+	music.sync_race(race.music_state())
+	hud = Control.new()
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hud)
+	start_button = _button("RACE  /  ENTER", Vector2(385, 367), Vector2(190, 42))
+	start_button.pressed.connect(start_race)
+	pause_button = _button("PAUSE  /  ESC", Vector2(792, 24), Vector2(140, 34))
+	pause_button.pressed.connect(toggle_pause)
+	pause_button.visible = false
+	start_button.grab_focus()
+	get_window().focus_exited.connect(_on_focus_exited)
+	resized.connect(_layout)
+	_layout()
 
-	if not ClassDB.class_exists("GamestrumentsPlayer"):
-		_show_extension_warning()
+
+func _button(caption: String, at: Vector2, dimensions: Vector2) -> Button:
+	var button := Button.new()
+	button.text = caption
+	button.position = at
+	button.size = dimensions
+	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", BG)
+	button.add_theme_color_override("font_focus_color", BG)
+	button.add_theme_color_override("font_hover_color", BG)
+	button.add_theme_color_override("font_pressed_color", BG)
+	var style := StyleBoxFlat.new()
+	style.bg_color = ACCENT
+	style.set_corner_radius_all(4)
+	button.add_theme_stylebox_override("normal", style)
+	var hover := style.duplicate() as StyleBoxFlat
+	hover.bg_color = INK
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", hover)
+	hud.add_child(button)
+	return button
+
+
+func _layout() -> void:
+	var factor := minf(size.x / 960.0, size.y / 620.0)
+	hud.scale = Vector2.ONE * factor
+	hud.position = (size - Vector2(960, 620) * factor) * 0.5
+	queue_redraw()
+
+
+func start_race() -> void:
+	race.start()
+	paused = false
+	music.process_mode = Node.PROCESS_MODE_INHERIT
+	music_clock = 0.0
+	music.sync_race(race.music_state())
+	start_button.release_focus()
+
+
+func toggle_pause() -> void:
+	if race.phase not in ["race", "grid"]:
 		return
+	paused = not paused
+	pause_button.release_focus()
+	# Disabling this subtree freezes native synthesis/transport as well as playback.
+	music.process_mode = Node.PROCESS_MODE_DISABLED if paused else Node.PROCESS_MODE_INHERIT
 
-	_apply_defaults_to_ui()
-	_on_generate_pressed()
+
+func _on_focus_exited() -> void:
+	if not paused and race.phase in ["race", "grid"]:
+		toggle_pause()
 
 
-func _ensure_music_bus() -> void:
-	if AudioServer.get_bus_index("Music") >= 0:
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event.is_pressed() or event.is_echo():
 		return
-	AudioServer.add_bus()
-	AudioServer.set_bus_name(AudioServer.bus_count - 1, "Music")
+	if event.keycode == KEY_ENTER and race.phase in ["garage", "finish"]:
+		start_race()
+	elif event.keycode == KEY_R:
+		start_race()
+	elif event.keycode == KEY_ESCAPE:
+		toggle_pause()
 
 
-func _build_interface() -> void:
-	var background := ColorRect.new()
-	background.color = BG
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 20)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 20)
-	add_child(margin)
-
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 14)
-	margin.add_child(page)
-
-	# Header
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 16)
-	page.add_child(header)
-
-	var title_box := VBoxContainer.new()
-	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title_box)
-
-	var eyebrow := _make_label("KIT DEMO — GODOT 4 GDEXTENSION", 11, ACCENT)
-	title_box.add_child(eyebrow)
-
-	var title := _make_label("GamestrumentsPlayer", 26, INK)
-	title_box.add_child(title)
-
-	var subtitle := _make_label("Load-time generation + adaptive race arc (bar-quantized)", 12, MUTED)
-	title_box.add_child(subtitle)
-
-	status_label = _make_label("", 12, INK)
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	header.add_child(status_label)
-
-	# Warning (hidden until needed)
-	warning_label = _make_label("", 13, Color(0.95, 0.6, 0.2))
-	warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	warning_label.visible = false
-	page.add_child(warning_label)
-
-	# Controls row
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 12)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_child(body)
-
-	# Left: params
-	var params_panel := _make_panel()
-	params_panel.custom_minimum_size = Vector2(280, 0)
-	body.add_child(params_panel)
-	_build_params(params_panel)
-
-	# Right: actions + states
-	var actions_panel := _make_panel()
-	actions_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(actions_panel)
-	_build_actions(actions_panel)
-
-	# Footer note
-	var note := _make_label(
-		"After Generate, use the section buttons to drive set_race_state. " +
-		"Transitions quantize to bar boundaries inside the extension.",
-		11, MUTED
-	)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	page.add_child(note)
+func _physics_process(delta: float) -> void:
+	if not paused:
+		var steering := float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT))
+		race.step(delta, Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP), steering, Input.is_physical_key_pressed(KEY_SPACE), Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN))
+		music_clock -= delta
+		if music_clock <= 0.0:
+			music.sync_race(race.music_state())
+			music_clock = 0.2
+	start_button.visible = race.phase in ["garage", "finish"]
+	start_button.text = "RACE AGAIN  /  ENTER" if race.phase == "finish" else "RACE  /  ENTER"
+	pause_button.visible = race.phase in ["grid", "race"]
+	pause_button.text = "RESUME  /  ESC" if paused else "PAUSE  /  ESC"
+	queue_redraw()
 
 
-func _build_params(panel: PanelContainer) -> void:
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
-	panel.add_child(stack)
-
-	stack.add_child(_make_label("GENERATION", 12, ACCENT))
-
-	# Style
-	stack.add_child(_make_label("Style", 11, MUTED))
-	style_option = OptionButton.new()
-	for s in ["fusion", "neon", "funk", "chip"]:
-		style_option.add_item(s)
-	style_option.selected = 2  # funk
-	style_option.custom_minimum_size = Vector2(0, 28)
-	stack.add_child(style_option)
-
-	# Seed
-	stack.add_child(_make_label("Seed", 11, MUTED))
-	seed_edit = LineEdit.new()
-	seed_edit.text = "kit-demo-001"
-	seed_edit.placeholder_text = "any string"
-	seed_edit.custom_minimum_size = Vector2(0, 28)
-	stack.add_child(seed_edit)
-
-	# Voices
-	stack.add_child(_make_label("Voices (empty = style default)", 11, MUTED))
-	var voices := [
-		{"ref": "melody", "lbl": "Melody"},
-		{"ref": "harmony", "lbl": "Harmony"},
-		{"ref": "drive", "lbl": "Drive"},
-		{"ref": "bass", "lbl": "Bass"},
-	]
-	for v in voices:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		var l := _make_label(v.lbl, 10, MUTED)
-		l.custom_minimum_size.x = 64
-		row.add_child(l)
-		var edit := LineEdit.new()
-		edit.placeholder_text = "(default)"
-		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		edit.custom_minimum_size = Vector2(0, 26)
-		row.add_child(edit)
-		stack.add_child(row)
-		if v.ref == "melody": melody_edit = edit
-		elif v.ref == "harmony": harmony_edit = edit
-		elif v.ref == "drive": drive_edit = edit
-		elif v.ref == "bass": bass_edit = edit
-
-	stack.add_child(HSeparator.new())
-	stack.add_child(_make_label("TRAITS (0..1)", 12, ACCENT))
-
-	# Trait sliders
-	var traits := [
-		{"ref": "energy", "lbl": "Energy", "def": 0.62},
-		{"ref": "complexity", "lbl": "Complexity", "def": 0.60},
-		{"ref": "brightness", "lbl": "Brightness", "def": 0.52},
-		{"ref": "syncopation", "lbl": "Syncopation", "def": 0.70},
-	]
-	for t in traits:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		var l := _make_label(t.lbl, 10, MUTED)
-		l.custom_minimum_size.x = 78
-		row.add_child(l)
-		var sl := HSlider.new()
-		sl.min_value = 0.0
-		sl.max_value = 1.0
-		sl.step = 0.01
-		sl.value = t.def
-		sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(sl)
-		var val := _make_label("%.2f" % t.def, 10, INK)
-		val.custom_minimum_size.x = 32
-		row.add_child(val)
-		sl.value_changed.connect(func(v: float): val.text = "%.2f" % v)
-		stack.add_child(row)
-
-		if t.ref == "energy": energy_slider = sl
-		elif t.ref == "complexity": complexity_slider = sl
-		elif t.ref == "brightness": brightness_slider = sl
-		elif t.ref == "syncopation": syncopation_slider = sl
-
-	# Generate button
-	stack.add_child(HSeparator.new())
-	var gen_btn := Button.new()
-	gen_btn.text = "Generate"
-	gen_btn.custom_minimum_size = Vector2(0, 36)
-	gen_btn.pressed.connect(_on_generate_pressed)
-	stack.add_child(gen_btn)
+func _track_point(progress: float, lane: float = 0.0) -> Vector2:
+	var angle := progress * TAU - PI * 0.5
+	return CENTER + Vector2(cos(angle) * (RADIUS.x + lane), sin(angle) * (RADIUS.y + lane))
 
 
-func _build_actions(panel: PanelContainer) -> void:
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
-	panel.add_child(stack)
-
-	stack.add_child(_make_label("ADAPTIVE ARC — set_race_state", 12, ACCENT))
-	stack.add_child(_make_label(
-		"phase, intensity (energy slider), pressure, final_lap",
-		10, MUTED
-	))
-
-	var btn_grid := GridContainer.new()
-	btn_grid.columns = 2
-	btn_grid.add_theme_constant_override("h_separation", 6)
-	btn_grid.add_theme_constant_override("v_separation", 6)
-	stack.add_child(btn_grid)
-
-	var sections := [
-		{"text": "Garage", "phase": "garage", "use_int": false, "press": 0.0, "fin": false},
-		{"text": "Grid", "phase": "grid", "use_int": false, "press": 0.1, "fin": false},
-		{"text": "Cruise", "phase": "race", "use_int": true, "press": 0.15, "fin": false},
-		{"text": "Attack", "phase": "race", "use_int": true, "press": 0.8, "fin": false},
-		{"text": "Final Lap", "phase": "race", "use_int": true, "press": 0.9, "fin": true},
-		{"text": "Victory", "phase": "finish", "use_int": true, "press": 0.0, "fin": false, "result": "win"},
-	]
-
-	for sec in sections:
-		var b := Button.new()
-		b.text = sec.text
-		b.custom_minimum_size = Vector2(108, 32)
-		b.pressed.connect(_on_section_pressed.bind(
-			sec.phase, sec.use_int, sec.press, sec.fin, String(sec.get("result", "none"))
-		))
-		btn_grid.add_child(b)
-
-	stack.add_child(HSeparator.new())
-	status_label = _make_label("No score yet", 11, MUTED)
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stack.add_child(status_label)
+func _ring(lane: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for index in range(161):
+		points.append(_track_point(index / 160.0, lane))
+	return points
 
 
-func _show_extension_warning() -> void:
-	warning_label.text = (
-		"GamestrumentsPlayer not found in ClassDB.\n\n" +
-		"Confirm Godot 4.7.x and copy the complete addons/gamestruments folder into place.\n" +
-		"Restart Godot after placing the native extension."
-	)
-	warning_label.visible = true
+func _text(at: Vector2, text: String, font_size: int, color: Color = INK) -> void:
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
-func _create_player() -> void:
-	player = ClassDB.instantiate("GamestrumentsPlayer")
-	if player == null:
-		_show_extension_warning()
+func _centered(y: float, text: String, font_size: int, color: Color = INK) -> void:
+	_text(Vector2(480 - font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x * 0.5, y), text, font_size, color)
+
+
+func _draw() -> void:
+	if font == null:
 		return
-	add_child(player)
+	draw_rect(Rect2(Vector2.ZERO, size), BG)
+	var factor := minf(size.x / 960.0, size.y / 620.0)
+	var origin := (size - Vector2(960, 620) * factor) * 0.5
+	draw_set_transform(origin, 0.0, Vector2.ONE * factor)
+	for x in range(0, 960, 40):
+		draw_line(Vector2(x, 90), Vector2(x, 540), Color("112226"))
+	for y in range(100, 541, 40):
+		draw_line(Vector2(20, y), Vector2(940, y), Color("112226"))
+	_draw_track()
+	_draw_car(race.rival_progress, race.rival_lane, RIVAL, false)
+	_draw_car(race.progress, race.lane, ACCENT, race.boosting)
+	_draw_hud()
+	_draw_island()
+	draw_set_transform(Vector2.ZERO)
 
 
-func _apply_defaults_to_ui() -> void:
-	if style_option:
-		style_option.selected = 2  # funk
-	if seed_edit:
-		seed_edit.text = "kit-demo-001"
-	if energy_slider: energy_slider.value = 0.62
-	if complexity_slider: complexity_slider.value = 0.60
-	if brightness_slider: brightness_slider.value = 0.52
-	if syncopation_slider: syncopation_slider.value = 0.70
+func _draw_track() -> void:
+	draw_polyline(_ring(0), Color("060d10"), 94.0, true)
+	draw_polyline(_ring(0), Color("33494a"), 80.0, true)
+	draw_polyline(_ring(0), Color("202f34"), 69.0, true)
+	for side in [-1, 1]:
+		for index in range(80):
+			var p := _track_point(index / 80.0, side * 38.0)
+			var q := _track_point((index + 0.72) / 80.0, side * 38.0)
+			draw_line(p, q, ACCENT.darkened(0.42) if index % 2 == 0 else Color("1a3032"), 5.0, true)
+	for index in range(48):
+		draw_line(_track_point(index / 48.0), _track_point((index + 0.4) / 48.0), Color("55716e"), 1.5, true)
+	for row in range(8):
+		for col in range(2):
+			draw_rect(Rect2(474 + col * 6, 128 + row * 9, 6, 9), INK if (row + col) % 2 == 0 else BG)
+	_text(Vector2(514, 117), "START / FINISH", 11, MUTED)
+	_text(Vector2(82, 547), "01   NIGHT CIRCUIT", 12, MUTED)
+	_text(Vector2(710, 547), "3 LAPS   /   1 RIVAL", 12, MUTED)
 
 
-func _on_generate_pressed() -> void:
-	if player == null:
-		_create_player()
-	if player == null:
-		status_label.text = "Failed to create player"
-		return
-
-	player.set("project_secret", "demo-secret")
-	player.set("style", style_option.get_item_text(style_option.selected))
-	player.set("melody_voice", melody_edit.text if melody_edit else "")
-	player.set("harmony_voice", harmony_edit.text if harmony_edit else "")
-	player.set("drive_voice", drive_edit.text if drive_edit else "")
-	player.set("bass_voice", bass_edit.text if bass_edit else "")
-	player.set("energy", energy_slider.value if energy_slider else 0.62)
-	player.set("complexity", complexity_slider.value if complexity_slider else 0.60)
-	player.set("brightness", brightness_slider.value if brightness_slider else 0.52)
-	player.set("syncopation", syncopation_slider.value if syncopation_slider else 0.70)
-
-	var level_seed := seed_edit.text if seed_edit and seed_edit.text != "" else "kit-demo-001"
-	var generated := bool(player.call("generate", level_seed))
-	if not generated:
-		status_label.text = "Generation failed — check the Godot Output panel"
-		return
-
-	status_label.text = "Generated seed: %s  style: %s" % [level_seed, style_option.get_item_text(style_option.selected)]
-
-	# Kick off the arc at garage so audio starts immediately
-	_on_section_pressed("garage", false, 0.0, false, "none")
+func _draw_car(progress: float, lane: float, color: Color, boosting: bool) -> void:
+	var pos := _track_point(progress, lane)
+	var direction := (_track_point(progress + 0.001, lane) - pos).normalized()
+	var side := direction.orthogonal()
+	var body := PackedVector2Array()
+	for point in [Vector2(12, -5), Vector2(12, 5), Vector2(-11, 7), Vector2(-11, -7)]:
+		body.append(pos + direction * point.x + side * point.y)
+	if boosting:
+		draw_line(pos - direction * 10, pos - direction * 33, Color(0.78, 0.95, 0.42, 0.24), 10.0, true)
+		draw_line(pos - direction * 10, pos - direction * 27, INK, 3.0, true)
+	draw_circle(pos + Vector2(2, 4), 12, Color(0, 0, 0, 0.3))
+	draw_colored_polygon(body, color)
+	draw_line(pos - side * 4, pos + side * 4, BG, 6.0, true)
+	draw_line(pos - direction * 8 - side * 8, pos - direction * 8 + side * 8, INK, 2.0, true)
+	draw_circle(pos + direction * 10 - side * 4, 2, INK)
+	draw_circle(pos + direction * 10 + side * 4, 2, INK)
 
 
-func _on_section_pressed(
-	phase: String,
-	use_intensity_slider: bool,
-	pressure: float,
-	final_lap: bool,
-	finish_result: String = "none",
-) -> void:
-	if player == null:
-		return
-
-	var intensity := 0.35
-	if use_intensity_slider and energy_slider:
-		intensity = energy_slider.value
-
-	var accepted := bool(player.call("set_race_state", phase, intensity, pressure, final_lap, finish_result))
-	if not accepted:
-		status_label.text = "State change rejected — generate a score first"
-		return
-
-	status_label.text = "set_race_state(\"%s\", %.2f, %.2f, %s, \"%s\")" % [
-		phase, intensity, pressure, str(final_lap), finish_result
-	]
-
-
-func _make_panel() -> PanelContainer:
-	var p := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = SURFACE
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	sb.content_margin_left = 10
-	sb.content_margin_top = 10
-	sb.content_margin_right = 10
-	sb.content_margin_bottom = 10
-	p.add_theme_stylebox_override("panel", sb)
-	return p
+func _draw_hud() -> void:
+	_text(Vector2(28, 27), "GAMESTRUMENTS  /  PLAYABLE INTEGRATION", 11, MUTED)
+	_text(Vector2(26, 65), "NIGHT CIRCUIT", 30)
+	_text(Vector2(404, 29), "LAP", 11, MUTED)
+	_text(Vector2(401, 64), "%02d / 03" % race.lap(), 26)
+	_text(Vector2(548, 29), "TIME", 11, MUTED)
+	_text(Vector2(545, 64), "%05.1f" % race.elapsed, 26)
+	_text(Vector2(683, 29), "POSITION", 11, MUTED)
+	_text(Vector2(682, 64), "1 / 2" if race.progress >= race.rival_progress else "2 / 2", 26, ACCENT)
+	draw_line(Vector2(28, 83), Vector2(932, 83), Color("294044"))
+	draw_line(Vector2(28, 560), Vector2(932, 560), Color("294044"))
+	_text(Vector2(28, 583), "MUSIC REQUEST  /  " + music.requested_section.to_upper(), 13, ACCENT)
+	_text(Vector2(28, 604), "Changes land on the next musical bar", 11, MUTED)
+	_text(Vector2(390, 583), "W / UP  THROTTLE     S / DOWN  BRAKE", 11)
+	_text(Vector2(390, 604), "A D / ARROWS  LANE     SPACE  BOOST     R  RESTART", 11, MUTED)
+	_text(Vector2(810, 582), "BOOST", 11, MUTED)
+	draw_rect(Rect2(810, 594, 122, 7), Color("294044"))
+	draw_rect(Rect2(810, 594, 122 * race.charge, 7), ACCENT)
+	if not music.error_message.is_empty():
+		draw_rect(Rect2(20, 90, 920, 31), BG)
+		_text(Vector2(28, 111), music.error_message, 12, RIVAL)
 
 
-func _make_label(text_value: String, font_size: int, color: Color) -> Label:
-	var l := Label.new()
-	l.text = text_value
-	l.add_theme_font_size_override("font_size", font_size)
-	l.add_theme_color_override("font_color", color)
-	return l
+func _draw_island() -> void:
+	if paused:
+		_centered(292, "PAUSED", 36)
+		_centered(325, "Take a breath. ESC to resume.", 15, MUTED)
+	elif race.phase == "garage":
+		_centered(263, "BEAT THE RIVAL.", 32)
+		_centered(299, "Hold W to accelerate. A / D to change lanes.", 15, MUTED)
+		_centered(325, "Pass with SPACE. Stay off the kerbs.", 15, MUTED)
+		_centered(350, "Auto-follow circuit  /  You control pace and racing line", 11, MUTED)
+	elif race.phase == "grid":
+		_centered(305, str(maxi(1, int(ceil(race.countdown)))), 70, ACCENT)
+		_centered(344, "HOLD W  /  LIGHTS OUT", 14, MUTED)
+	elif race.phase == "finish":
+		_centered(278, "YOU WIN." if race.won else "RIVAL WINS.", 36, ACCENT if race.won else RIVAL)
+		_centered(315, "3 laps  /  %.1f seconds  /  %d contacts" % [race.elapsed, race.impacts], 14, MUTED)
+		_centered(341, "Same circuit. Same score. A better line?", 13, MUTED)
+	else:
+		var callout := "FINAL LAP" if race.lap() == 3 else "KEEP YOUR LINE"
+		if race.off_road():
+			callout = "BACK ON TRACK"
+		elif race.collision_cooldown > 0.6:
+			callout = "CONTACT"
+		elif race.boosting:
+			callout = "FULL SEND"
+		elif race.pressure() >= 0.68:
+			callout = "RIVAL CLOSE"
+		_centered(294, callout, 29, RIVAL if race.off_road() else ACCENT)
+		_centered(327, "%03d" % int(race.speed / RaceModel.CRUISE_SPEED * 160), 36)
+		_centered(350, "KM/H  /  ASSISTED CIRCUIT", 11, MUTED)

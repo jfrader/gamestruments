@@ -48,15 +48,23 @@ Any missing, skipped, or failing job blocks the candidate.
 
 Perform the following on every supported OS family:
 
-- Generate all four styles and confirm each is audible and materially distinct.
-- Generate the same seed twice and confirm the musical result is stable.
-- Change the seed and confirm the motif changes.
-- Try supported voice overrides such as `pluck`, `organ`, `supersaw`, and `chip`.
-- Trigger garage, grid, cruise, attack, final lap, and victory.
+- Play Night Circuit: start the countdown, use throttle/brake and lane steering,
+  avoid the rival, spend/recharge boost, and complete three laps. No music
+  section buttons may stand in for gameplay.
+- Confirm off-road/contact penalties, finish order, pause/resume (including
+  audio), focus-loss pause, and restart. Check both 960×620 and 1280×800 windows.
+- Observe garage before starting, grid at countdown, cruise away from the
+  rival, attack under pressure/boost, final lap on lap three, and the finish
+  outro. The HUD is a requested-section indicator, not audible-bar telemetry.
+- Change `music_style` in `race_music.gd` and reload for all four styles;
+  confirm each is audible and materially distinct. Reload twice with the same
+  `level_seed`, then change it and verify stable/different music respectively.
+- In a fresh-project API integration, try supported voice overrides such as
+  `pluck`, `organ`, `supersaw`, and `chip`.
 - Confirm transitions wait for musical boundaries rather than cutting immediately.
 - Let at least one section loop for 30 seconds and listen for clicks, silence, or discontinuity.
 - Test Music and Master bus gain/mute behavior.
-- Regenerate while playback is active.
+- Regenerate while playback is active in the fresh-project API integration.
 - Close and reopen the scene twice; confirm clean shutdown without leak or crash output.
 
 An unsupported voice must fail generation clearly instead of playing an invalid score.
@@ -82,6 +90,7 @@ Confirm directly from the extracted archive and demo:
 | Digest and source identity | | |
 | Native workflow jobs | | |
 | Fresh extracted demo | | |
+| Playable race, controls, win/loss, pause/restart, resize | | |
 | Four styles and seed behavior | | |
 | Voice validation | | |
 | Six adaptive sections | | |

@@ -9052,7 +9052,7 @@
       "node_kind": "heading",
       "norm_label": "buyer-reliable behavior",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L63"
+      "source_location": "L70"
     },
     {
       "id": "docs_kit_contract_explicit_non_goals",
@@ -9064,7 +9064,7 @@
       "node_kind": "heading",
       "norm_label": "explicit non-goals",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L73"
+      "source_location": "L80"
     },
     {
       "id": "docs_kit_contract_gamestruments_adaptive_racing_music_for_godot_4_product_contract",
@@ -9088,7 +9088,7 @@
       "node_kind": "heading",
       "norm_label": "license and support",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L90"
+      "source_location": "L97"
     },
     {
       "id": "docs_kit_contract_product_scope",
@@ -9124,7 +9124,7 @@
       "node_kind": "heading",
       "norm_label": "supported public api",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L45"
+      "source_location": "L52"
     },
     {
       "id": "docs_kit_contract_versioning_and_release",
@@ -9136,7 +9136,7 @@
       "node_kind": "heading",
       "norm_label": "versioning and release",
       "source_file": "docs/kit-contract.md",
-      "source_location": "L82"
+      "source_location": "L89"
     },
     {
       "id": "docs_kit_opportunity",
@@ -10162,7 +10162,7 @@
       "source_location": "L5"
     },
     {
-      "id": "changelog_added_29",
+      "id": "changelog_added_30",
       "label": "Added",
       "_origin": "ast",
       "community": 45,
@@ -10171,7 +10171,7 @@
       "node_kind": "heading",
       "norm_label": "added",
       "source_file": "CHANGELOG.md",
-      "source_location": "L29"
+      "source_location": "L30"
     },
     {
       "id": "changelog_changed",
@@ -10207,10 +10207,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L18"
+      "source_location": "L19"
     },
     {
-      "id": "changelog_fixed_123",
+      "id": "changelog_fixed_124",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10219,10 +10219,10 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L123"
+      "source_location": "L124"
     },
     {
-      "id": "changelog_fixed_95",
+      "id": "changelog_fixed_96",
       "label": "Fixed",
       "_origin": "ast",
       "community": 45,
@@ -10231,7 +10231,7 @@
       "node_kind": "heading",
       "norm_label": "fixed",
       "source_file": "CHANGELOG.md",
-      "source_location": "L95"
+      "source_location": "L96"
     },
     {
       "id": "changelog_improved",
@@ -10243,7 +10243,7 @@
       "node_kind": "heading",
       "norm_label": "improved",
       "source_file": "CHANGELOG.md",
-      "source_location": "L102"
+      "source_location": "L103"
     },
     {
       "id": "changelog_unreleased",
@@ -10279,7 +10279,7 @@
       "node_kind": "heading",
       "norm_label": "claim-to-evidence matrix",
       "source_file": "docs/kit-plan.md",
-      "source_location": "L39"
+      "source_location": "L40"
     },
     {
       "id": "docs_kit_plan_clean_room_buyer_tasks",
@@ -10291,7 +10291,7 @@
       "node_kind": "heading",
       "norm_label": "clean-room buyer tasks",
       "source_file": "docs/kit-plan.md",
-      "source_location": "L52"
+      "source_location": "L53"
     },
     {
       "id": "docs_kit_plan_gamestruments_godot_4_kit_release_plan",
@@ -10327,7 +10327,7 @@
       "node_kind": "heading",
       "norm_label": "post-launch measurement",
       "source_file": "docs/kit-plan.md",
-      "source_location": "L76"
+      "source_location": "L77"
     },
     {
       "id": "docs_kit_plan_risks",
@@ -10339,7 +10339,7 @@
       "node_kind": "heading",
       "norm_label": "risks",
       "source_file": "docs/kit-plan.md",
-      "source_location": "L66"
+      "source_location": "L67"
     },
     {
       "id": "kit_docs_limitations",
@@ -10567,7 +10567,7 @@
       "node_kind": "heading",
       "norm_label": "claims audit",
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L64"
+      "source_location": "L72"
     },
     {
       "id": "docs_kit_qa_runbook_extracted_demo",
@@ -10615,7 +10615,7 @@
       "node_kind": "heading",
       "norm_label": "result",
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L78"
+      "source_location": "L86"
     },
     {
       "id": "packages_studio_package",
@@ -10970,7 +10970,7 @@
       "node_kind": "heading",
       "norm_label": "literal product claims",
       "source_file": "kit/docs/README.md",
-      "source_location": "L34"
+      "source_location": "L36"
     },
     {
       "id": "kit_docs_readme_quickstart",
@@ -11006,7 +11006,7 @@
       "node_kind": "heading",
       "norm_label": "support",
       "source_file": "kit/docs/README.md",
-      "source_location": "L44"
+      "source_location": "L46"
     },
     {
       "id": "kit_docs_readme_what_ships",
@@ -11109,7 +11109,7 @@
       "label": "demo/README.md",
       "_origin": "ast",
       "community": 52,
-      "community_name": "Gamestruments Kit Demo",
+      "community_name": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "demo/readme.md",
@@ -11117,52 +11117,52 @@
       "source_location": "L1"
     },
     {
-      "id": "kit_demo_readme_demonstrated_api",
-      "label": "Demonstrated API",
+      "id": "kit_demo_readme_how_the_game_uses_the_library",
+      "label": "How the Game Uses the Library",
       "_origin": "ast",
       "community": 52,
-      "community_name": "Gamestruments Kit Demo",
+      "community_name": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "demonstrated api",
+      "norm_label": "how the game uses the library",
       "source_file": "kit/demo/README.md",
-      "source_location": "L15"
+      "source_location": "L30"
     },
     {
-      "id": "kit_demo_readme_gamestruments_kit_demo",
-      "label": "Gamestruments Kit Demo",
+      "id": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
+      "label": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "_origin": "ast",
       "community": 52,
-      "community_name": "Gamestruments Kit Demo",
+      "community_name": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "gamestruments kit demo",
+      "norm_label": "night circuit \u2014 gamestruments gameplay demo",
       "source_file": "kit/demo/README.md",
       "source_location": "L1"
     },
     {
-      "id": "kit_demo_readme_repository_smoke_test",
-      "label": "Repository Smoke Test",
+      "id": "kit_demo_readme_play",
+      "label": "Play",
       "_origin": "ast",
       "community": 52,
-      "community_name": "Gamestruments Kit Demo",
+      "community_name": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "repository smoke test",
+      "norm_label": "play",
       "source_file": "kit/demo/README.md",
-      "source_location": "L25"
+      "source_location": "L7"
     },
     {
-      "id": "kit_demo_readme_run_the_packaged_demo",
-      "label": "Run the Packaged Demo",
+      "id": "kit_demo_readme_repository_verification",
+      "label": "Repository Verification",
       "_origin": "ast",
       "community": 52,
-      "community_name": "Gamestruments Kit Demo",
+      "community_name": "Night Circuit \u2014 Gamestruments Gameplay Demo",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "run the packaged demo",
+      "norm_label": "repository verification",
       "source_file": "kit/demo/README.md",
-      "source_location": "L5"
+      "source_location": "L61"
     },
     {
       "id": "tests_verify_third_party_notices",
@@ -11274,7 +11274,7 @@
       "node_kind": "heading",
       "norm_label": "changelog",
       "source_file": "AGENTS.md",
-      "source_location": "L43"
+      "source_location": "L46"
     },
     {
       "id": "agents_graphify",
@@ -11286,7 +11286,7 @@
       "node_kind": "heading",
       "norm_label": "graphify",
       "source_file": "AGENTS.md",
-      "source_location": "L36"
+      "source_location": "L39"
     },
     {
       "id": "agents_linear_workflow",
@@ -11334,7 +11334,7 @@
       "node_kind": "heading",
       "norm_label": "verify",
       "source_file": "AGENTS.md",
-      "source_location": "L24"
+      "source_location": "L27"
     },
     {
       "id": "docs_opportunity",
@@ -12928,7 +12928,7 @@
       "node_kind": "heading",
       "norm_label": "archive information",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L19"
+      "source_location": "L22"
     },
     {
       "id": "docs_releases_v0_1_0_exact_storefront_media",
@@ -12940,7 +12940,7 @@
       "node_kind": "heading",
       "norm_label": "exact storefront media",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L117"
+      "source_location": "L120"
     },
     {
       "id": "docs_releases_v0_1_0_gamestruments_v0_1_0_release_packet",
@@ -12964,7 +12964,7 @@
       "node_kind": "heading",
       "norm_label": "independent clean-room acceptance",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L75"
+      "source_location": "L78"
     },
     {
       "id": "docs_releases_v0_1_0_release_identity",
@@ -12976,7 +12976,7 @@
       "node_kind": "heading",
       "norm_label": "release identity",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L8"
+      "source_location": "L11"
     },
     {
       "id": "docs_releases_v0_1_0_single_use_operator_approval",
@@ -12988,7 +12988,7 @@
       "node_kind": "heading",
       "norm_label": "single-use operator approval",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L156"
+      "source_location": "L159"
     },
     {
       "id": "docs_releases_v0_1_0_storefront_metadata_itch_io",
@@ -13000,7 +13000,7 @@
       "node_kind": "heading",
       "norm_label": "storefront metadata (itch.io)",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L94"
+      "source_location": "L97"
     },
     {
       "id": "docs_releases_v0_1_0_supplementary_exact_archive_linux_evidence",
@@ -13012,7 +13012,7 @@
       "node_kind": "heading",
       "norm_label": "supplementary exact-archive linux evidence",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L61"
+      "source_location": "L64"
     },
     {
       "id": "docs_releases_v0_1_0_support_and_disclosures",
@@ -13024,7 +13024,7 @@
       "node_kind": "heading",
       "norm_label": "support and disclosures",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L133"
+      "source_location": "L136"
     },
     {
       "id": "docs_releases_v0_1_0_transaction_and_rollback_plan",
@@ -13036,7 +13036,7 @@
       "node_kind": "heading",
       "norm_label": "transaction and rollback plan",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L141"
+      "source_location": "L144"
     },
     {
       "id": "docs_releases_v0_1_0_verification_evidence",
@@ -13048,7 +13048,7 @@
       "node_kind": "heading",
       "norm_label": "verification evidence",
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L30"
+      "source_location": "L33"
     },
     {
       "id": "packages_studio_src_index",
@@ -25915,7 +25915,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L24",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -25937,7 +25937,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L36",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -25948,7 +25948,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L43",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -27136,7 +27136,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -27152,13 +27152,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_123",
+      "target": "changelog_fixed_124",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L123",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -27169,18 +27169,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L18",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_added_29",
+      "target": "changelog_added_30",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
@@ -27196,13 +27196,13 @@
     },
     {
       "source": "changelog_unreleased",
-      "target": "changelog_fixed_95",
+      "target": "changelog_fixed_96",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "CHANGELOG.md",
-      "source_location": "L95",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -28698,7 +28698,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L45",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -28709,18 +28709,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L63",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_kit_contract_gamestruments_adaptive_racing_music_for_godot_4_product_contract",
-      "target": "docs_kit_contract_explicit_non_goals",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/kit-contract.md",
-      "source_location": "L73",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -28736,13 +28725,24 @@
     },
     {
       "source": "docs_kit_contract_gamestruments_adaptive_racing_music_for_godot_4_product_contract",
+      "target": "docs_kit_contract_explicit_non_goals",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/kit-contract.md",
+      "source_location": "L80",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_kit_contract_gamestruments_adaptive_racing_music_for_godot_4_product_contract",
       "target": "docs_kit_contract_versioning_and_release",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L82",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -28753,7 +28753,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-contract.md",
-      "source_location": "L90",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -28896,7 +28896,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-plan.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -28907,7 +28907,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-plan.md",
-      "source_location": "L52",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -28918,7 +28918,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-plan.md",
-      "source_location": "L66",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -28940,7 +28940,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-plan.md",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -28978,17 +28978,6 @@
     },
     {
       "source": "docs_kit_qa_runbook_gamestruments_kit_author_qa_runbook",
-      "target": "docs_kit_qa_runbook_claims_audit",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L64",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_kit_qa_runbook_gamestruments_kit_author_qa_runbook",
       "target": "docs_kit_qa_runbook_release_packet_header",
       "relation": "contains",
       "_origin": "ast",
@@ -29000,13 +28989,24 @@
     },
     {
       "source": "docs_kit_qa_runbook_gamestruments_kit_author_qa_runbook",
+      "target": "docs_kit_qa_runbook_claims_audit",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/kit-qa-runbook.md",
+      "source_location": "L72",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_kit_qa_runbook_gamestruments_kit_author_qa_runbook",
       "target": "docs_kit_qa_runbook_result",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/kit-qa-runbook.md",
-      "source_location": "L78",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -29396,13 +29396,24 @@
     },
     {
       "source": "docs_releases_v0_1_0_gamestruments_v0_1_0_release_packet",
+      "target": "docs_releases_v0_1_0_release_identity",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/releases/v0.1.0.md",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_releases_v0_1_0_gamestruments_v0_1_0_release_packet",
       "target": "docs_releases_v0_1_0_support_and_disclosures",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L133",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -29413,7 +29424,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L141",
+      "source_location": "L144",
       "weight": 1.0
     },
     {
@@ -29424,7 +29435,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L156",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -29435,7 +29446,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L19",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -29446,18 +29457,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L30",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_releases_v0_1_0_gamestruments_v0_1_0_release_packet",
-      "target": "docs_releases_v0_1_0_release_identity",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L8",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -29468,7 +29468,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L94",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -29479,7 +29479,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L117",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -29490,7 +29490,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L61",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -29501,7 +29501,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/releases/v0.1.0.md",
-      "source_location": "L75",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -29550,7 +29550,7 @@
     },
     {
       "source": "kit_demo_readme",
-      "target": "kit_demo_readme_gamestruments_kit_demo",
+      "target": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -29560,36 +29560,36 @@
       "weight": 1.0
     },
     {
-      "source": "kit_demo_readme_gamestruments_kit_demo",
-      "target": "kit_demo_readme_demonstrated_api",
+      "source": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
+      "target": "kit_demo_readme_how_the_game_uses_the_library",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/demo/README.md",
-      "source_location": "L15",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
-      "source": "kit_demo_readme_gamestruments_kit_demo",
-      "target": "kit_demo_readme_repository_smoke_test",
+      "source": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
+      "target": "kit_demo_readme_repository_verification",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/demo/README.md",
-      "source_location": "L25",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
-      "source": "kit_demo_readme_gamestruments_kit_demo",
-      "target": "kit_demo_readme_run_the_packaged_demo",
+      "source": "kit_demo_readme_night_circuit_gamestruments_gameplay_demo",
+      "target": "kit_demo_readme_play",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/demo/README.md",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -29809,7 +29809,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/README.md",
-      "source_location": "L34",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -29820,7 +29820,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "kit/docs/README.md",
-      "source_location": "L44",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -36921,5 +36921,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8de6d6e05d04f314177546008a1c7041fffddc1b"
+  "built_at_commit": "3680f2d0c9efbce942bf9a029c2388d7a8b654dc"
 }

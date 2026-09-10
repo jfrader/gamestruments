@@ -414,15 +414,15 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1789002066.5368829,
-    "seen": 1789002855.641869,
-    "ast_hash": "3df4ba424514fb2654b2e1e4144d770b",
+    "mtime": 1789005399.6021419,
+    "seen": 1789006663.6393042,
+    "ast_hash": "944ad02e205ea24f047a4e399fea13bc",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1788990816.2210083,
-    "seen": 1788990884.4576013,
-    "ast_hash": "cfa6270de1e6fc062909cd6d82b79cd0",
+    "mtime": 1789005399.6021419,
+    "seen": 1789006663.6393058,
+    "ast_hash": "5ad14ce68843e0d009e7aae926786cf7",
     "semantic_hash": ""
   },
   "LICENSE.md": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "docs/kit-contract.md": {
-    "mtime": 1788990816.2283015,
-    "seen": 1788990884.4576097,
-    "ast_hash": "9e7eaa7ee1a6860abf5a6327c7b0e03d",
+    "mtime": 1789005399.5961418,
+    "seen": 1789006663.63945,
+    "ast_hash": "36174aa1035512ab0b82df6141bc2c2b",
     "semantic_hash": ""
   },
   "docs/kit-opportunity.md": {
@@ -474,15 +474,15 @@
     "semantic_hash": ""
   },
   "docs/kit-plan.md": {
-    "mtime": 1788990816.2283015,
-    "seen": 1788990884.457612,
-    "ast_hash": "ba20759f69bf1337c9d7cf3e0451df24",
+    "mtime": 1789005399.597142,
+    "seen": 1789006663.6394694,
+    "ast_hash": "cfb62f934f43328ed8a84392f75eff1a",
     "semantic_hash": ""
   },
   "docs/kit-qa-runbook.md": {
-    "mtime": 1788990816.2283015,
-    "seen": 1788990884.4576128,
-    "ast_hash": "610c955db743dbb68ff103ee0cbfaa9a",
+    "mtime": 1789005399.6001418,
+    "seen": 1789006663.6394703,
+    "ast_hash": "6f8db8fb6d20bc4ffedbf2e1d2375409",
     "semantic_hash": ""
   },
   "docs/opportunity.md": {
@@ -516,15 +516,15 @@
     "semantic_hash": ""
   },
   "kit/demo/README.md": {
-    "mtime": 1788990816.241692,
-    "seen": 1788990884.4576204,
-    "ast_hash": "d449666f61d848374c7472aef08d1f37",
+    "mtime": 1789005399.5961418,
+    "seen": 1789006663.6396,
+    "ast_hash": "12059aff96be5df42337449d5a4bcb6b",
     "semantic_hash": ""
   },
   "kit/docs/README.md": {
-    "mtime": 1788990816.2418702,
-    "seen": 1788990884.4576216,
-    "ast_hash": "30fc8895e4f59d8ff0a28201debbf90c",
+    "mtime": 1789005399.597142,
+    "seen": 1789006663.6396012,
+    "ast_hash": "8c26156dc7ad6952b7e936aebf9b92d4",
     "semantic_hash": ""
   },
   "kit/docs/api.md": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "kit/docs/quickstart.md": {
-    "mtime": 1788990816.2419364,
-    "seen": 1788990884.457624,
-    "ast_hash": "462cff3110212c6fa2e8724e12032143",
+    "mtime": 1789005399.597142,
+    "seen": 1789006663.6396418,
+    "ast_hash": "73809f9c8fc34e04cb65658f9be4cc62",
     "semantic_hash": ""
   },
   "kit/docs/troubleshooting.md": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "tests/godot-package-smoke.mjs": {
-    "mtime": 1788990816.2490082,
-    "seen": 1788990884.4575741,
-    "ast_hash": "8daed4f903756e44d5638cd0f019da30",
+    "mtime": 1789005904.7801812,
+    "seen": 1789006663.6388216,
+    "ast_hash": "54fe505071914ecd0f10dea9df66cad1",
     "semantic_hash": ""
   },
   "tools/verify_kit_archive.sh": {
@@ -714,9 +714,9 @@
     "semantic_hash": ""
   },
   "storefront/listing.md": {
-    "mtime": 1788990816.2450082,
-    "seen": 1788990884.4576328,
-    "ast_hash": "6a5349b7c0ea59a478273dd6b4ecd039",
+    "mtime": 1789005399.601142,
+    "seen": 1789006663.6397889,
+    "ast_hash": "52976d3fb6c3ba9fdc7fcaa59d9539be",
     "semantic_hash": ""
   },
   "licenses/rust-1.94.0-COPYRIGHT-library.html": {
@@ -732,9 +732,9 @@
     "semantic_hash": ""
   },
   "docs/releases/v0.1.0.md": {
-    "mtime": 1789002840.939943,
-    "seen": 1789002855.6423006,
-    "ast_hash": "327b629c88a6bdc4e18ae9dc68837970",
+    "mtime": 1789005399.601142,
+    "seen": 1789006663.6395605,
+    "ast_hash": "18b3d39833b46d087a71884167b57e20",
     "semantic_hash": ""
   }
 }

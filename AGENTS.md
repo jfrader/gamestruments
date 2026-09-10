@@ -20,6 +20,9 @@
   project secret, instrument palette, and seed. Do not pre-bake every
   procedural race to WAV.
 - `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
+- The buyer demo is a playable game integration: actual racing drives music.
+  Neither a generator parameter panel nor a copy of the Audio Lab UI satisfies
+  demo acceptance. Keep music integration separate from game presentation.
 
 ## Verify
 

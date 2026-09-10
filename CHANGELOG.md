@@ -9,6 +9,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Replaced the Godot generator panel with Night Circuit, a playable three-lap race with a rival, lane steering, boost, and music responding automatically to gameplay. Includes a separate music integration script, pause/restart, and gameplay regression checks.
 - Extracted archive verification now tests the complete shipped Rust source and validates native formats, architectures, duplicate addon copies, licenses, provenance, and binary path hygiene.
 - `GamestrumentsPlayer.generate` and `set_race_state` now return success booleans with descriptive Godot errors, and generator version `1.10.1` validates every score before exposing it to native or WASM callers.
 - Repositioned the first kit as adaptive racing music for Godot 4.7.x and reconciled buyer docs with its six-section API, mono runtime sound, desktop platform support, licensing, and manual publication gates.

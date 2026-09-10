@@ -16,7 +16,8 @@
    - Determinism and validity pass across at least 256 varied seeds.
 3. **Runtime lifecycle**
    - Repeated instantiate, generate, play, state-change, and free cycles exit without leaked-object errors.
-   - A fresh extracted demo loads the extension and executes the public API.
+   - A fresh extracted demo loads the extension and demonstrates a playable race using the public API.
+   - Countdown, player speed/boost, rival proximity, lap, and finish order drive music automatically; a generator panel or manual music-section selector does not meet demo acceptance.
 4. **Native platforms**
    - Linux x86_64, Windows x86_64, macOS arm64, and macOS x86_64 compile.
    - A universal macOS library contains both architectures.
@@ -57,8 +58,8 @@ The independent tester receives only `gamestruments-<version>-godot4.zip` and pr
 2. Open `kit/demo/` directly and reach audible output.
 3. Copy the root addon into a new Godot 4.7 project.
 4. Add `GamestrumentsPlayer`, configure a non-empty namespace, and check `generate(seed)` succeeds.
-5. Trigger grid, cruise, attack, final-lap, and victory states and observe musical transitions.
-6. Generate the same input twice, then change the seed, and confirm stable/suitably different results.
+5. Play a three-lap race: countdown, drive away from/near the rival, boost, reach the final lap, and finish. Observe the music responding without manually choosing musical sections. Test pause and restart.
+6. Reload with the same `level_seed` in `race_music.gd`, then change it and reload; confirm stable/suitably different musical results.
 7. Follow one troubleshooting path without repository access.
 8. Confirm the archive contents, limitations, and listing claims agree.
 9. Record OS, Godot version, time to first sound, failures, unclear wording, and listening notes.

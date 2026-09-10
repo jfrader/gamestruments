@@ -31,36 +31,41 @@ Restart Godot. `GamestrumentsPlayer` should appear in the Create New Node dialog
 
 ## Drive It
 
-Attach this script to the scene root:
+Attach this script to the scene root and call the three race callbacks from
+your game's countdown, telemetry updates, and finish event:
 
 ```gdscript
 extends Node
 
 @onready var player: GamestrumentsPlayer = $GamestrumentsPlayer
+var music_ready := false
 
 func _ready() -> void:
-    if not player.generate("level-001"):
+    music_ready = player.generate("level-001")
+    if not music_ready:
         push_error("Gamestruments score generation failed")
-        return
 
-    await get_tree().create_timer(2.0).timeout
-    player.set_race_state("grid", 0.5, 0.2, false)
+func countdown_started() -> void:
+    if music_ready:
+        player.set_race_state("grid", 0.0, 0.0, false)
 
-    await get_tree().create_timer(4.0).timeout
-    player.set_race_state("race", 0.6, 0.3, false)
+func race_updated(intensity: float, pressure: float, lap: int, total_laps: int) -> void:
+    if music_ready:
+        player.set_race_state("race", clampf(intensity, 0.0, 1.0),
+            clampf(pressure, 0.0, 1.0), lap == total_laps)
 
-    await get_tree().create_timer(4.0).timeout
-    player.set_race_state("race", 0.9, 0.8, false)
-
-    await get_tree().create_timer(4.0).timeout
-    player.set_race_state("race", 1.0, 0.9, true)
-
-    await get_tree().create_timer(4.0).timeout
-    player.set_race_state("finish", 0.3, 0.0, false, "win")
+func race_finished(won: bool) -> void:
+    if music_ready:
+        player.set_race_state("finish", 0.0, 0.0, false, "win" if won else "loss")
 ```
 
 Run the scene. The initial `garage` score starts immediately; accepted state requests commit on upcoming bar boundaries rather than cutting instantly.
 
-For the shortest evaluation path, open the archive's `kit/demo/` folder directly as a Godot project. Its addon is already installed and its controls exercise the same public methods.
+For a complete playable integration, open `kit/demo/` as a Godot project and
+race using the controls in `kit/demo/README.md`. Its addon is already installed.
+Read `race_model.gd` for deriving intensity/pressure from gameplay and
+`race_music.gd` for generation and checked state requests. No timers or manual
+section buttons simulate the race. The music readout reports a request, not the
+current audible bar.
 
 See `api.md`, `limitations.md`, and `troubleshooting.md` before shipping an integration.
