@@ -66,6 +66,10 @@ func _run() -> void:
 		_check(demo.music.error_message.is_empty(), "Demo music failed to initialize")
 		_check(demo.find_children("*", "GamestrumentsPlayer", true, false).size() == 1, "Demo must own exactly one music player")
 	_check(demo.find_children("*", "LineEdit", true, false).is_empty(), "Gameplay must not be a generation form")
+	_check(demo.intro_visible, "Demo must explain its point on launch")
+	await _capture("00-intro.png")
+	await _click(demo.intro_button)
+	_check(not demo.intro_visible, "Intro must dismiss on its button")
 	_check(demo.CIRCUITS.size() == 4, "Demo must expose four circuits")
 	var circuit_styles := {}
 	for entry in demo.CIRCUITS:

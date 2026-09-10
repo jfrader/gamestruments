@@ -44,7 +44,9 @@ Any missing, skipped, or failing job blocks the candidate.
 1. Extract the verified archive to a clean directory.
 2. Open only the extracted `kit/demo/` folder in Godot 4.7.2 or the release-packet version.
 3. Confirm `GamestrumentsPlayer` loads without GDExtension errors.
-4. Run the scene. Audio should begin from the generated garage section without requiring repository files.
+4. Run the scene. A short intro card must state that the music adapts to
+   gameplay; dismiss it and confirm audio begins from the generated garage
+   section without requiring repository files.
 
 Perform the following on every supported OS family:
 
