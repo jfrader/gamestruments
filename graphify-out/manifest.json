@@ -714,9 +714,9 @@
     "semantic_hash": ""
   },
   "storefront/listing.md": {
-    "mtime": 1789014158.7578228,
-    "seen": 1789014206.8436952,
-    "ast_hash": "e97912956de4ee8aa1bef8ad60395974",
+    "mtime": 1789016095.1559732,
+    "seen": 1789016122.8696673,
+    "ast_hash": "202de17db0d683cc183934ee2cfc522b",
     "semantic_hash": ""
   },
   "licenses/rust-1.94.0-COPYRIGHT-library.html": {
@@ -738,9 +738,15 @@
     "semantic_hash": ""
   },
   "docs/releases/v0.1.1-rc2.md": {
-    "mtime": 1789014020.2766683,
-    "seen": 1789014206.84368,
-    "ast_hash": "4706c0d09fe2325dfde3f8b17b36ee1e",
+    "mtime": 1789016100.4759736,
+    "seen": 1789016122.869375,
+    "ast_hash": "5b62c0e8b61a2e3c94693ed9403d709b",
+    "semantic_hash": ""
+  },
+  "docs/releases/v0.1.1-rc3.md": {
+    "mtime": 1789016116.927975,
+    "seen": 1789016122.8693774,
+    "ast_hash": "51e56e8b8b700f28120843f9d311cfba",
     "semantic_hash": ""
   }
 }

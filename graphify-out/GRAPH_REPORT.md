@@ -1,23 +1,23 @@
 # Graph Report - gamestruments-GURI-564  (2026-09-10)
 
 ## Corpus Check
-- 116 files · ~166,294 words
+- 117 files · ~167,238 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1171 nodes · 2039 edges · 76 communities (57 shown, 9 thin omitted)
+- 1180 nodes · 2047 edges · 77 communities (58 shown, 9 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 23 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f61a825c`
+- Built from commit: `8a8b327f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - lantern-trail-generator.ts
 - DemoAudioEngine
-- AdaptiveTransport
+- runtime/src/index.ts
 - generate-cli.ts
 - scripts
 - studio/package.json
@@ -80,6 +80,7 @@
 - create-native-library-fixtures.mjs
 - Attribution
 - Gamestruments v0.1.1-rc2 — Release Candidate
+- Gamestruments v0.1.1-rc3 — Release Candidate
 - Gamestruments v0.1.0 Release Packet
 
 ## God Nodes (most connected - your core abstractions)
@@ -97,35 +98,35 @@
 ## Surprising Connections (you probably didn't know these)
 - `DemoAudioEngine` --references--> `PortableScore`  [EXTRACTED]
   apps/demo/src/audio-engine.ts → packages/runtime/src/types.ts
-- `generationPreset` --references--> `NormalizedMusicTraits`  [EXTRACTED]
-  apps/demo/src/state.ts → packages/studio/src/pocket-circuit-generator.ts
-- `generationPreset` --references--> `PocketCircuitStyle`  [EXTRACTED]
-  apps/demo/src/state.ts → packages/studio/src/pocket-circuit-generator.ts
 - `initializeLab()` --calls--> `AdaptiveTransport`  [EXTRACTED]
   apps/demo/src/state.ts → packages/runtime/src/transport.ts
 - `activateExperiment()` --calls--> `AdaptiveTransport`  [EXTRACTED]
   apps/demo/src/state.ts → packages/runtime/src/transport.ts
+- `toggleEngine()` --calls--> `AdaptiveTransport`  [EXTRACTED]
+  apps/demo/src/state.ts → packages/runtime/src/transport.ts
+- `generationPreset` --references--> `NormalizedMusicTraits`  [EXTRACTED]
+  apps/demo/src/state.ts → packages/studio/src/pocket-circuit-generator.ts
 
 ## Import Cycles
 - 1-file cycle: `crates/engine/src/synth.rs -> crates/engine/src/synth.rs`
 
-## Communities (76 total, 9 thin omitted)
+## Communities (77 total, 9 thin omitted)
 
 ### Community 0 - "lantern-trail-generator.ts"
 Cohesion: 0.05
 Nodes (62): canonicalizeSeed(), clamp(), clampUnit(), createArrangementDNA(), createAuthoringScore(), createBassPattern(), createChordPattern(), createDNA() (+54 more)
 
 ### Community 1 - "DemoAudioEngine"
-Cohesion: 0.08
-Nodes (26): clamp(), createBitcrushCurve(), createTransitionCurve(), DemoAudioEngine, deterministicUnit(), eventMatchesSolo(), midiToFrequency(), NoteEvent (+18 more)
+Cohesion: 0.09
+Nodes (25): clamp(), createBitcrushCurve(), createTransitionCurve(), DemoAudioEngine, deterministicUnit(), eventMatchesSolo(), midiToFrequency(), NoteEvent (+17 more)
 
-### Community 2 - "AdaptiveTransport"
-Cohesion: 0.10
-Nodes (29): matchesCondition(), selectSection(), AdaptiveTransport, quantizeUp(), AdaptiveCondition, AdaptiveRule, EventBase, GameState (+21 more)
+### Community 2 - "runtime/src/index.ts"
+Cohesion: 0.09
+Nodes (37): allocAndWrite(), ensureLoaded(), generateScore(), GenerateScoreParams, getExports(), getMemory(), readOutput(), renderWav() (+29 more)
 
 ### Community 3 - "generate-cli.ts"
 Cohesion: 0.05
-Nodes (61): PortableScore, AuthoringLane, AuthoringScore, AuthoringSection, clampVelocity(), exportLane(), exportScore(), exportSection() (+53 more)
+Nodes (63): generationPreset, AdaptiveRule, AuthoringLane, AuthoringScore, AuthoringSection, clampVelocity(), exportLane(), exportScore() (+55 more)
 
 ### Community 4 - "scripts"
 Cohesion: 0.05
@@ -197,7 +198,7 @@ Nodes (21): AdaptiveCondition, AdaptiveCondition, AdaptiveRule, GameState, Music
 
 ### Community 31 - "state.ts"
 Cohesion: 0.06
-Nodes (65): SoloMode, elements, requireElement(), animate(), applyGenerationRequest(), renderCurrentScore(), togglePlayback(), cssNumber() (+57 more)
+Nodes (56): SoloMode, elements, requireElement(), animate(), applyGenerationRequest(), renderCurrentScore(), togglePlayback(), cssNumber() (+48 more)
 
 ### Community 32 - "synth.rs"
 Cohesion: 0.07
@@ -304,8 +305,8 @@ Cohesion: 0.33
 Nodes (5): Configure, Drive It, Install, Prerequisites, Quickstart — Fresh Godot Project
 
 ### Community 60 - "Long Description"
-Cohesion: 0.15
-Nodes (12): Gamestruments Adaptive Racing Music, Gamestruments - itch.io Storefront Listing, Included Files, Installation Instructions, License and Disclosures, Limitations, Literal Claims, Long Description (+4 more)
+Cohesion: 0.14
+Nodes (13): Gamestruments Adaptive Racing Music, Gamestruments - itch.io Storefront Listing, Included Files, Installation Instructions, License and Disclosures, Limitations, Literal Claims, Long Description (+5 more)
 
 ### Community 61 - "Engine Synth Voice Audit (GURI-563)"
 Cohesion: 0.50
@@ -335,29 +336,33 @@ Nodes (4): Attribution, [DirectXMath], [GLM], [Realtime Math]
 Cohesion: 0.29
 Nodes (6): CI and Independent Artifact Verification, Gameplay and Media, Gamestruments v0.1.1-rc2 — Release Candidate, Human Acceptance Handoff, Immutable Identity, Proposed Launch Settings — Not Authorization
 
+### Community 75 - "Gamestruments v0.1.1-rc3 — Release Candidate"
+Cohesion: 0.25
+Nodes (7): CI and Independent Artifact Verification, Gameplay and Media, Gamestruments v0.1.1-rc3 — Release Candidate, Human Acceptance Handoff, Immutable Identity, Proposed Launch Settings — Not Authorization, Why rc2 Was Rejected
+
 ### Community 76 - "Gamestruments v0.1.0 Release Packet"
 Cohesion: 0.17
 Nodes (11): Archive Information, Exact Storefront Media, Gamestruments v0.1.0 Release Packet, Independent Clean-Room Acceptance, Release Identity, Single-Use Operator Approval, Storefront Metadata (itch.io), Supplementary exact-archive Linux evidence (+3 more)
 
 ## Knowledge Gaps
-- **450 isolated node(s):** `NoteEvent`, `SynthVoice`, `TransitionCurve`, `SectionBus`, `SynthVoiceSettings` (+445 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 555 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **457 isolated node(s):** `NoteEvent`, `SynthVoice`, `TransitionCurve`, `SectionBus`, `SynthVoiceSettings` (+452 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 563 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PortableScore` connect `generate-cli.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `AdaptiveTransport`, `pocket-circuit-generator.ts`, `generator.test.ts`, `state.ts`?**
+- **Why does `PortableScore` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `DemoAudioEngine`, `generate-cli.ts`, `pocket-circuit-generator.ts`, `generator.test.ts`, `state.ts`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
-- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `generate-cli.ts`, `state.ts`?**
+- **Why does `DemoAudioEngine` connect `DemoAudioEngine` to `runtime/src/index.ts`, `state.ts`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
-- **Why does `AdaptiveTransport` connect `AdaptiveTransport` to `lantern-trail-generator.ts`, `generator.test.ts`, `generate-cli.ts`, `state.ts`?**
+- **Why does `AdaptiveTransport` connect `runtime/src/index.ts` to `lantern-trail-generator.ts`, `generator.test.ts`, `state.ts`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `generate_pocket_circuit()` (e.g. with `main()` and `produce()`) actually correct?**
   _`generate_pocket_circuit()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `NoteEvent`, `SynthVoice`, `TransitionCurve` to the rest of the system?**
-  _450 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _457 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `lantern-trail-generator.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.0539906103286385 - nodes in this community are weakly interconnected._
 - **Should `DemoAudioEngine` be split into smaller, more focused modules?**
-  _Cohesion score 0.08269394714407502 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08593396653098145 - nodes in this community are weakly interconnected._
