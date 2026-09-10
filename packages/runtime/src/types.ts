@@ -27,6 +27,7 @@ export interface SongFormStep {
 export interface SongForm {
   steps: readonly SongFormStep[];
   loopFrom?: number;
+  origin?: "transitionStart" | "transitionEnd";
 }
 
 export interface GameState {
@@ -56,13 +57,15 @@ export interface NoteEvent extends EventBase {
     | "epiano"
     | "organ"
     | "supersaw"
-    | "triangle";
+    | "triangle"
+    | "felt"
+    | "dusk";
   role?: "melody";
 }
 
 export interface PercussionEvent extends EventBase {
   kind: "percussion";
-  voice: "kick" | "snare" | "hat" | "tom";
+  voice: "kick" | "snare" | "hat" | "tom" | "reverse-cymbal" | "air-impact";
 }
 
 export interface StemEvent extends EventBase {

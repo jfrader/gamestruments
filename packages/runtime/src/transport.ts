@@ -23,6 +23,9 @@ export class AdaptiveTransport {
   #formStepIndex = 0;
   #sectionEnteredAt = 0;
   #cueTarget: SectionId | null = null;
+  #formHeld = false;
+  #formNotBefore = 0;
+  #automaticTransition = false;
 
   constructor(score: PortableScore, initialSection = score.defaultSection) {
     validatePortableScore(score);
@@ -55,22 +58,24 @@ export class AdaptiveTransport {
     }
     if (match.hold !== false) {
       this.#cueTarget = null;
-      this.#syncFormTo(match.target);
       return this.requestSection(match.target, atTick);
     }
     if (this.#cueTarget === match.target) {
       return { status: "unchanged" };
     }
+    const result = this.requestSection(match.target, atTick);
     this.#cueTarget = match.target;
-    this.#syncFormTo(match.target);
-    return this.requestSection(match.target, atTick);
+    return result;
   }
 
   requestSection(target: SectionId, atTick: number): TransitionRequest {
     this.#assertTick(atTick);
+    if (!this.#score.sections.some((section) => section.id === target)) {
+      throw new Error(`Unknown target section: ${target}`);
+    }
     this.advance(atTick);
+    this.#automaticTransition = false;
     this.#cueTarget = null;
-    this.#syncFormTo(target);
 
     if (
       target === this.#currentSection &&
@@ -78,10 +83,6 @@ export class AdaptiveTransport {
       this.#pendingSection === null
     ) {
       return { status: "unchanged" };
-    }
-
-    if (!this.#score.sections.some((section) => section.id === target)) {
-      throw new Error(`Unknown target section: ${target}`);
     }
 
     if (this.#transition !== null) {
@@ -94,6 +95,7 @@ export class AdaptiveTransport {
         this.#pendingSection = null;
         if (target === this.#currentSection) {
           this.#transition = null;
+          this.#syncFormTo(this.#currentSection);
           return { status: "cancelled", plan: replacedPlan };
         }
         const plan = this.#createPlan(this.#currentSection, target, atTick);
@@ -109,6 +111,20 @@ export class AdaptiveTransport {
     return { status: "scheduled", plan };
   }
 
+  cancelPending(atTick: number): TransitionPlan | null {
+    this.#assertTick(atTick);
+    this.#pendingSection = null;
+    if (this.#transition !== null && atTick < this.#transition.startTick) {
+      const plan = this.#transition;
+      this.#transition = null;
+      this.#automaticTransition = false;
+      this.#syncFormTo(this.#currentSection);
+      this.#cueTarget = null;
+      return plan;
+    }
+    return null;
+  }
+
   jumpSection(target: SectionId, atTick: number): void {
     this.#assertTick(atTick);
     if (!this.#score.sections.some((section) => section.id === target)) {
@@ -117,17 +133,25 @@ export class AdaptiveTransport {
     this.#currentSection = target;
     this.#pendingSection = null;
     this.#transition = null;
+    this.#automaticTransition = false;
+    this.#formNotBefore = 0;
+    this.#cueTarget = null;
     this.#sectionEnteredAt = atTick;
     this.#syncFormTo(target);
   }
 
-  advance(atTick: number): TransitionPlan | null {
+  advance(atTick: number, lookaheadTicks = 0): TransitionPlan | null {
     this.#assertTick(atTick);
+    this.#assertTick(lookaheadTicks);
     if (this.#transition !== null && atTick >= this.#transition.endTick) {
       this.#currentSection = this.#transition.to;
-      this.#sectionEnteredAt = atTick;
+      this.#sectionEnteredAt = this.#score.form?.origin === "transitionStart"
+        ? this.#transition.startTick
+        : this.#score.form === undefined ? atTick : this.#transition.endTick;
       this.#syncFormTo(this.#currentSection);
       this.#transition = null;
+      this.#automaticTransition = false;
+      this.#formNotBefore = 0;
 
       const queued = this.#pendingSection;
       this.#pendingSection = null;
@@ -138,7 +162,7 @@ export class AdaptiveTransport {
       }
     }
 
-    return this.#maybeAdvanceForm(atTick);
+    return this.#maybeAdvanceForm(atTick, lookaheadTicks);
   }
 
   mixAt(atTick: number): SectionGain[] {
@@ -174,6 +198,35 @@ export class AdaptiveTransport {
     };
   }
 
+  get formHeld(): boolean { return this.#formHeld; }
+
+  setFormHeld(held: boolean, atTick: number): TransitionPlan | null {
+    this.#assertTick(atTick);
+    if (this.#score.form === undefined || this.#formHeld === held) return null;
+    this.#formHeld = held;
+    if (!held) this.#formNotBefore = atTick;
+    if (held && this.#automaticTransition && this.#transition !== null && atTick < this.#transition.startTick) {
+      return this.cancelPending(atTick);
+    }
+    return null;
+  }
+
+  nextFormSection(atTick: number): SectionId | null {
+    this.#assertTick(atTick);
+    const form = this.#score.form;
+    const current = this.#transition !== null && atTick >= this.#transition.startTick ? this.#transition.to : this.#currentSection;
+    const index = formIndexFor(this.#score, current);
+    if (form === undefined || index === undefined) return null;
+    const next = index + 1 < form.steps.length ? index + 1 : form.loopFrom;
+    const target = next === undefined ? undefined : form.steps[next]?.section;
+    return target === undefined || target === current ? null : target;
+  }
+
+  advanceForm(atTick: number): TransitionRequest {
+    const target = this.nextFormSection(atTick);
+    return target === null ? { status: "unchanged" } : this.requestSection(target, atTick);
+  }
+
   #createPlan(
     from: SectionId,
     to: SectionId,
@@ -202,10 +255,10 @@ export class AdaptiveTransport {
     }
   }
 
-  #maybeAdvanceForm(atTick: number): TransitionPlan | null {
+  #maybeAdvanceForm(atTick: number, lookaheadTicks: number): TransitionPlan | null {
     const form = this.#score.form;
     if (
-      form === undefined ||
+      form === undefined || this.#formHeld ||
       this.#transition !== null ||
       this.#pendingSection !== null
     ) {
@@ -222,7 +275,9 @@ export class AdaptiveTransport {
       return null;
     }
     const repeats = step.repeats ?? 1;
-    if (atTick - this.#sectionEnteredAt < section.lengthTicks * repeats) {
+    const cycles = Math.max(repeats, Math.ceil(Math.max(0, this.#formNotBefore - this.#sectionEnteredAt) / section.lengthTicks));
+    const boundaryTick = this.#sectionEnteredAt + section.lengthTicks * cycles;
+    if (atTick + lookaheadTicks < boundaryTick) {
       return null;
     }
     const nextIndex =
@@ -233,13 +288,23 @@ export class AdaptiveTransport {
       return null;
     }
     const nextSection = form.steps[nextIndex].section;
-    this.#formStepIndex = nextIndex;
     if (nextSection === this.#currentSection) {
-      this.#sectionEnteredAt = atTick;
+      if (atTick >= boundaryTick) {
+        this.#formStepIndex = nextIndex;
+        this.#sectionEnteredAt = boundaryTick;
+      }
       return null;
     }
-    const plan = this.#createPlan(this.#currentSection, nextSection, atTick);
+    this.#formStepIndex = nextIndex;
+    const plan: TransitionPlan = {
+      from: this.#currentSection,
+      to: nextSection,
+      requestedAtTick: atTick,
+      startTick: boundaryTick,
+      endTick: boundaryTick + this.#score.crossfadeBars * this.#barTicks,
+    };
     this.#transition = plan;
+    this.#automaticTransition = true;
     return plan;
   }
 }

@@ -26,10 +26,6 @@ export function transitionCurveForEvent(event: MusicEvent): TransitionCurve {
     : "equalPower";
 }
 
-export function percussionBypassesTransition(score: PortableScore): boolean {
-  return score.form !== undefined;
-}
-
 export function transitionGainAt(
   startLevel: number,
   targetLevel: number,
@@ -111,6 +107,7 @@ interface SectionBus {
   percussion: GainNode;
   tonalTransition: GainNode;
   equalPowerTransition: GainNode;
+  percussionTransition: GainNode;
 }
 
 interface SynthVoiceSettings {
@@ -129,9 +126,22 @@ interface SynthVoiceSettings {
   resonance: number;
   width: number;
   pitchDrop: number;
+  echoGain?: number;
 }
 
 const SYNTH_VOICES: Record<SynthVoice, SynthVoiceSettings> = {
+  felt: {
+    primary: "sine", secondary: "triangle", secondaryRatio: 2, secondaryGain: 0.06,
+    detuneCents: 2, gain: 0.06, attack: 0.025, decay: 0.35, sustain: 0.12,
+    release: 0.6, cutoffStart: 1400, cutoffEnd: 420, resonance: 0.25,
+    width: 0.12, pitchDrop: 0, echoGain: 0.22,
+  },
+  dusk: {
+    primary: "triangle", secondary: "sine", secondaryRatio: 1.001, secondaryGain: 0.35,
+    detuneCents: 3, gain: 0.055, attack: 0.4, decay: 0.9, sustain: 0.55,
+    release: 1.2, cutoffStart: 900, cutoffEnd: 500, resonance: 0.25,
+    width: 0.38, pitchDrop: 0, echoGain: 0.22,
+  },
   warm: {
     primary: "sawtooth",
     secondary: "triangle",
@@ -243,6 +253,9 @@ export class DemoAudioEngine {
   #originTime = 0;
   #timer: number | null = null;
   #soloMode: SoloMode = "full";
+  #schedulingSection: SectionId | null = null;
+  #sourcesBySection = new Map<SectionId, Set<() => void>>();
+  #advanceTransport: ((atTick: number, lookaheadTicks: number) => TransitionPlan | null) | undefined;
 
   constructor(score: PortableScore) {
     this.#score = score;
@@ -262,7 +275,11 @@ export class DemoAudioEngine {
     this.#applySoloMode();
   }
 
-  async start(initialSection: SectionId): Promise<void> {
+  async start(
+    initialSection: SectionId,
+    advanceTransport?: (atTick: number, lookaheadTicks: number) => TransitionPlan | null,
+  ): Promise<void> {
+    this.#advanceTransport = advanceTransport;
     if (this.#context !== null) {
       await this.#context.resume();
       return;
@@ -312,6 +329,7 @@ export class DemoAudioEngine {
       const percussion = context.createGain();
       const tonalTransition = context.createGain();
       const equalPowerTransition = context.createGain();
+      const percussionTransition = context.createGain();
       const dry = context.createGain();
       const roomHighpass = context.createBiquadFilter();
       const roomLowpass = context.createBiquadFilter();
@@ -326,13 +344,10 @@ export class DemoAudioEngine {
       roomReturn.gain.value = 0.14;
       tonalTransition.gain.value = section.id === initialSection ? 1 : 0;
       equalPowerTransition.gain.value = section.id === initialSection ? 1 : 0;
+      percussionTransition.gain.value = section.id === initialSection ? 1 : 0;
       melody.connect(equalPowerTransition);
       tonal.connect(tonalTransition);
-      if (percussionBypassesTransition(this.#score)) {
-        percussion.connect(input);
-      } else {
-        percussion.connect(equalPowerTransition);
-      }
+      percussion.connect(percussionTransition).connect(input);
       tonalTransition.connect(input);
       equalPowerTransition.connect(input);
       input.connect(dry).connect(master);
@@ -349,6 +364,7 @@ export class DemoAudioEngine {
         percussion,
         tonalTransition,
         equalPowerTransition,
+        percussionTransition,
       });
     }
 
@@ -383,12 +399,14 @@ export class DemoAudioEngine {
       window.clearTimeout(timer);
     }
     this.#sectionBuses.clear();
+    this.#sourcesBySection.clear();
     this.#activeSections.clear();
     this.#sectionReleaseTimers.clear();
     this.#scheduledUntilBySection.clear();
     this.#loopOriginBySection.clear();
     this.#noiseBuffer = null;
     this.#echoSend = null;
+    this.#advanceTransport = undefined;
     if (context !== null && context.state !== "closed") {
       await context.close();
     }
@@ -417,7 +435,7 @@ export class DemoAudioEngine {
     return ((elapsed % section.lengthTicks) + section.lengthTicks) % section.lengthTicks;
   }
 
-  applyTransition(plan: TransitionPlan): void {
+  applyTransition(plan: TransitionPlan, scheduleImmediately = true): void {
     const context = this.#context;
     const from = this.#sectionBuses.get(plan.from);
     const to = this.#sectionBuses.get(plan.to);
@@ -446,7 +464,9 @@ export class DemoAudioEngine {
     this.#fadeSection(from, 0, start, duration);
     this.#fadeSection(to, 1, start, duration);
     this.#releaseSectionAfter(plan.from, start + duration);
-    this.#schedule(plan.startTick);
+    if (scheduleImmediately) {
+      this.#schedule();
+    }
   }
 
   cancelTransition(plan: TransitionPlan): void {
@@ -457,11 +477,12 @@ export class DemoAudioEngine {
       return;
     }
     const now = context.currentTime;
+    this.#activateSection(plan.from);
+    this.#clearSectionSources(plan.to);
     this.#holdTransitionGains(from, now);
     this.#holdTransitionGains(to, now);
     this.#rampTransitionGains(from, 1, now + 0.03);
     this.#rampTransitionGains(to, 0, now + 0.03);
-    this.#releaseSectionAfter(plan.to, now + 0.03);
   }
 
   jumpSection(target: SectionId, atTick: number): void {
@@ -494,6 +515,7 @@ export class DemoAudioEngine {
 
   #activateSection(section: SectionId, loopOrigin?: number): void {
     if (loopOrigin !== undefined) {
+      if (this.#loopOriginBySection.get(section) !== loopOrigin) this.#clearSectionSources(section);
       this.#loopOriginBySection.set(section, loopOrigin);
       this.#scheduledUntilBySection.set(section, loopOrigin);
     }
@@ -527,6 +549,14 @@ export class DemoAudioEngine {
     this.#sectionReleaseTimers.set(section, timer);
   }
 
+  #clearSectionSources(section: SectionId): void {
+    for (const cancel of [...(this.#sourcesBySection.get(section) ?? [])]) cancel();
+    this.#sourcesBySection.delete(section);
+    this.#activeSections.delete(section);
+    this.#scheduledUntilBySection.delete(section);
+    this.#loopOriginBySection.delete(section);
+  }
+
   #applySoloMode(): void {
     const context = this.#context;
     if (context === null) {
@@ -548,6 +578,7 @@ export class DemoAudioEngine {
     return [
       [bus.tonalTransition.gain, "linear"],
       [bus.equalPowerTransition.gain, "equalPower"],
+      [bus.percussionTransition.gain, "equalPower"],
     ];
   }
 
@@ -564,6 +595,10 @@ export class DemoAudioEngine {
     duration: number,
   ): void {
     for (const [gain, curve] of this.#transitionGains(bus)) {
+      if (this.#score.form !== undefined && gain === bus.percussionTransition.gain) {
+        gain.setValueAtTime(target, start);
+        continue;
+      }
       const startLevel = clamp(gain.value, 0, 1);
       gain.setValueAtTime(startLevel, start);
       gain.setValueCurveAtTime(
@@ -615,6 +650,10 @@ export class DemoAudioEngine {
     }
     const lookaheadTicks = Math.ceil(LOOKAHEAD_SECONDS / this.#secondsPerTick);
     const toTick = currentTick + lookaheadTicks;
+    const plan = this.#advanceTransport?.(currentTick, lookaheadTicks);
+    if (plan !== undefined && plan !== null) {
+      this.applyTransition(plan, false);
+    }
 
     for (const section of this.#score.sections) {
       if (!this.#activeSections.has(section.id)) {
@@ -650,17 +689,23 @@ export class DemoAudioEngine {
       return;
     }
     const start = Math.max(context.currentTime + 0.004, this.#tickToTime(event.startTick));
-    if (event.kind === "note") {
-      this.#scheduleNote(
-        event,
-        start,
-        transitionCurveForEvent(event) === "equalPower"
-          ? bus.melody
-          : bus.tonal,
-      );
-      return;
+    const previousSection = this.#schedulingSection;
+    this.#schedulingSection = event.section;
+    try {
+      if (event.kind === "note") {
+        this.#scheduleNote(
+          event,
+          start,
+          transitionCurveForEvent(event) === "equalPower"
+            ? bus.melody
+            : bus.tonal,
+        );
+        return;
+      }
+      this.#schedulePercussion(event, start, event.voice === "reverse-cymbal" ? bus.tonal : bus.percussion);
+    } finally {
+      this.#schedulingSection = previousSection;
     }
-    this.#schedulePercussion(event, start, bus.percussion);
   }
 
   #scheduleNote(
@@ -714,7 +759,7 @@ export class DemoAudioEngine {
     const velocity = clamp(event.velocity, 0, 1);
     const frequency = midiToFrequency(event.pitch);
     const end = start + duration;
-    const stop = end + NOTE_TAIL_SECONDS;
+    const stop = end + (settings.echoGain === undefined ? NOTE_TAIL_SECONDS : settings.release + 0.43);
     const primary = context.createOscillator();
     const secondary = context.createOscillator();
     const primaryGain = context.createGain();
@@ -764,11 +809,25 @@ export class DemoAudioEngine {
       settings.attack,
       settings.decay,
       settings.release,
+      settings.echoGain === undefined ? 0.24 : settings.release,
     );
 
     primary.connect(primaryGain).connect(primaryPan).connect(filter);
     secondary.connect(secondaryGain).connect(secondaryPan).connect(filter);
     filter.connect(envelope).connect(destination);
+    const echoNodes: AudioNode[] = [];
+    if (settings.echoGain !== undefined) {
+      const delay = context.createDelay(1);
+      const tone = context.createBiquadFilter();
+      const wet = context.createGain();
+      delay.delayTime.value = 0.42;
+      tone.type = "lowpass";
+      tone.frequency.value = 800;
+      tone.Q.value = 0.35;
+      wet.gain.value = settings.echoGain;
+      envelope.connect(delay).connect(tone).connect(wet).connect(destination);
+      echoNodes.push(delay, tone, wet);
+    }
     primary.start(start);
     secondary.start(start);
     primary.stop(stop);
@@ -780,6 +839,7 @@ export class DemoAudioEngine {
       secondaryGain,
       primaryPan,
       secondaryPan,
+      ...echoNodes,
       filter,
       envelope,
     ]);
@@ -1166,8 +1226,39 @@ export class DemoAudioEngine {
         this.#scheduleHat(event.velocity, start, destination, event.id),
       tom: () =>
         this.#scheduleTom(event.velocity, start, destination, event.id),
+      "reverse-cymbal": () => this.#scheduleEffect(event, start, destination),
+      "air-impact": () => this.#scheduleEffect(event, start, destination),
     };
     schedulers[event.voice]();
+  }
+
+  #scheduleEffect(event: Extract<MusicEvent, { kind: "percussion" }>, start: number, destination: AudioNode): void {
+    const context = this.#context;
+    if (context === null || this.#noiseBuffer === null) return;
+    const reverse = event.voice === "reverse-cymbal";
+    const duration = Math.max(0.04, event.durationTicks * this.#secondsPerTick);
+    const peak = Math.max(MIN_GAIN, clamp(event.velocity, 0, 1) * (reverse ? 0.085 : 0.075));
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    source.buffer = this.#noiseBuffer;
+    source.loop = true;
+    filter.type = reverse ? "highpass" : "bandpass";
+    filter.Q.value = 0.45;
+    filter.frequency.setValueAtTime(reverse ? 1600 : 1200, start);
+    if (reverse) filter.frequency.linearRampToValueAtTime(4800, start + duration);
+    envelope.gain.setValueAtTime(MIN_GAIN, start);
+    if (reverse) {
+      envelope.gain.exponentialRampToValueAtTime(peak, start + duration);
+      envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + duration + 0.12);
+    } else {
+      envelope.gain.linearRampToValueAtTime(peak, start + 0.006);
+      envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + duration);
+    }
+    source.connect(filter).connect(envelope).connect(destination);
+    source.start(start, deterministicUnit(event.id) * this.#noiseBuffer.duration);
+    source.stop(start + duration + 0.13);
+    this.#cleanupAfter(source, [source, filter, envelope]);
   }
 
   #scheduleKick(
@@ -1366,6 +1457,7 @@ export class DemoAudioEngine {
     attack: number,
     decay: number,
     release: number,
+    releaseCap = 0.24,
   ): void {
     const end = start + duration;
     const attackEnd = start + clamp(attack, 0.001, duration * 0.24);
@@ -1373,7 +1465,7 @@ export class DemoAudioEngine {
       start + duration * 0.7,
       attackEnd + clamp(decay, 0.001, duration * 0.46),
     );
-    const releaseTime = clamp(release, 0.02, 0.24);
+    const releaseTime = clamp(release, 0.02, releaseCap);
     const safePeak = Math.max(MIN_GAIN, peak);
     const sustainGain = Math.max(MIN_GAIN, safePeak * sustain);
     parameter.setValueAtTime(MIN_GAIN, start);
@@ -1387,15 +1479,31 @@ export class DemoAudioEngine {
     source: AudioScheduledSourceNode,
     nodes: readonly AudioNode[],
   ): void {
-    source.addEventListener(
-      "ended",
-      () => {
-        for (const node of nodes) {
-          node.disconnect();
+    const section = this.#schedulingSection;
+    const owned = section === null ? undefined : this.#sourcesBySection.get(section) ?? new Set<() => void>();
+    let disposed = false;
+    const cleanup = () => {
+      if (disposed) return;
+      disposed = true;
+      for (const node of nodes) node.disconnect();
+      owned?.delete(cancel);
+      if (section !== null && owned?.size === 0 && this.#sourcesBySection.get(section) === owned) this.#sourcesBySection.delete(section);
+    };
+    const cancel = () => {
+      for (const node of nodes) {
+        if (node instanceof AudioScheduledSourceNode) {
+          try { node.stop(); } catch (error) {
+            if (!(error instanceof DOMException && error.name === "InvalidStateError")) throw error;
+          }
         }
-      },
-      { once: true },
-    );
+      }
+      cleanup();
+    };
+    if (section !== null && owned !== undefined) {
+      owned.add(cancel);
+      this.#sourcesBySection.set(section, owned);
+    }
+    source.addEventListener("ended", cleanup, { once: true });
   }
 
   #createNoiseBuffer(context: AudioContext): AudioBuffer {

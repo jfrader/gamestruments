@@ -8,15 +8,22 @@ import type {
   TransitionPlan,
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
+import type { SuspenseArrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
+import { cueView } from "./section-cues.ts";
+import { SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
 
 export type ViewName = "lab" | "games" | "genres";
+const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
+  original: "The current sound, unchanged.",
+  extended: "Scan → Scan II and Breach → Breach II are independent 16-bar sections. Hold, cue or advance them to match gameplay. Anomaly stays intact.",
+};
 export { requireElement, elements };
 
 const sectionRows = new Map<
   string,
-  { item: HTMLLIElement; output: HTMLOutputElement }
+  { item: HTMLLIElement; output: HTMLOutputElement; button: HTMLButtonElement }
 >();
 
 export function createSectionRows(score: PortableScore): void {
@@ -27,29 +34,54 @@ export function createSectionRows(score: PortableScore): void {
     const meter = document.createElement("i");
     const output = document.createElement("output");
     const jump = document.createElement("button");
-    label.textContent = section.label;
+    label.textContent = score.form === undefined
+      ? section.label
+      : `${section.label} · ${section.lengthTicks / (score.beatsPerBar * score.ticksPerBeat)} bars`;
     jump.type = "button";
-    jump.dataset.jumpSection = section.id;
-    jump.textContent = "Jump";
-    jump.setAttribute("aria-label", `Jump to ${section.label}`);
+    jump.dataset.cueSection = section.id;
+    jump.textContent = "Cue";
+    jump.setAttribute("aria-label", `Cue ${section.label}`);
     item.style.setProperty("--section-color", section.color);
     item.append(label, meter, output, jump);
-    sectionRows.set(section.id, { item, output });
+    sectionRows.set(section.id, { item, output, button: jump });
     return item;
   });
   elements.sectionList.replaceChildren(...rows);
+  elements.sectionSelect.replaceChildren(...score.sections.map((section) => {
+    const option = document.createElement("option");
+    option.value = section.id;
+    option.textContent = `${section.label} · ${section.lengthTicks / (score.beatsPerBar * score.ticksPerBeat)} bars`;
+    return option;
+  }));
 }
 
 export function renderSections(
   score: PortableScore,
   transport: AdaptiveTransport,
   audio: DemoAudioEngine,
+  requested: SectionId | null,
+  busy: boolean,
 ): void {
   const visualTick = audio.currentVisualTick();
   const tick = Math.floor(visualTick);
   const mix = new Map(
     transport.mixAt(tick).map((item) => [item.section, item.gain]),
   );
+  const view = cueView(score, transport.snapshot(), tick, audio.running, requested, transport.formHeld);
+  const next = transport.nextFormSection(tick);
+  elements.holdForm.disabled = busy || score.form === undefined;
+  elements.holdForm.setAttribute("aria-pressed", String(transport.formHeld));
+  elements.holdForm.textContent = transport.formHeld ? "Resume automatic" : "Hold section";
+  elements.advanceForm.disabled = busy || next === null || transport.snapshot().transition !== null;
+  elements.advanceForm.textContent = next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`;
+  const status = busy ? "Preparing playback…" : view.status;
+  const detail = busy ? "Please wait before cueing a section." : view.detail;
+  if (elements.cueStatus.textContent !== status) elements.cueStatus.textContent = status;
+  if (elements.cueDetail.textContent !== detail) elements.cueDetail.textContent = detail;
+  elements.cancelCue.disabled = busy || !view.cancellable;
+  elements.sectionSelect.disabled = busy;
+  for (const control of [elements.intensity, elements.pressure, elements.finalLap, ...elements.phaseButtons.querySelectorAll<HTMLButtonElement>("button")]) control.disabled = busy;
+  if (document.activeElement !== elements.sectionSelect) elements.sectionSelect.value = view.select;
   for (const section of score.sections) {
     const row = sectionRows.get(section.id);
     if (row === undefined) {
@@ -58,6 +90,13 @@ export function renderSections(
     const gain = mix.get(section.id) ?? 0;
     row.item.style.setProperty("--gain-width", `${gain * 100}%`);
     row.item.classList.toggle("is-audible", gain > 0.001);
+    const queued = section.id === view.target;
+    const current = section.id === view.current;
+    row.item.classList.toggle("is-cued", queued);
+    if (current) row.item.setAttribute("aria-current", "true");
+    else row.item.removeAttribute("aria-current");
+    row.button.textContent = queued ? view.cancellable ? "Queued" : "Next" : current ? audio.running ? "Playing" : "Selected" : "Cue";
+    row.button.disabled = busy || (current && !view.cancellable);
     row.output.value = `${Math.round(gain * 100)}%`;
   }
 }
@@ -86,8 +125,12 @@ export function renderScoreButtons(
   elements.scoreButtons.replaceChildren(...buttons);
 }
 
-export function renderRecipeChrome(recipe: "pocket-circuit" | "suspense"): void {
+export function renderRecipeChrome(recipe: "pocket-circuit" | "suspense", phase: string): void {
   const suspense = recipe === "suspense";
+  elements.shell.dataset.recipe = recipe;
+  elements.sectionControl.hidden = !suspense;
+  if (elements.gameSignals.dataset.recipe !== recipe) elements.gameSignals.open = !suspense;
+  elements.gameSignals.dataset.recipe = recipe;
   for (const button of elements.recipeButtons.querySelectorAll<HTMLButtonElement>(
     "button[data-recipe]",
   )) {
@@ -107,26 +150,19 @@ export function renderRecipeChrome(recipe: "pocket-circuit" | "suspense"): void 
     ? "Hold the coda / disconnect"
     : "Add the maximum-commitment layer";
   const phases = suspense
-    ? ([
-        ["boot", "Boot"],
-        ["scan", "Scan"],
-        ["exploit", "Exploit"],
-        ["alert", "Alert"],
-        ["extract", "Extract"],
-        ["complete", "Complete"],
-      ] as const)
+    ? Object.keys(SUSPENSE_PHASE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
     : ([
         ["garage", "Garage"],
         ["grid", "Grid"],
         ["race", "Race"],
         ["finish", "Finish"],
       ] as const);
-  const buttons = phases.map(([id, label], index) => {
+  const buttons = phases.map(([id, label]) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.phase = id;
     button.textContent = label;
-    button.setAttribute("aria-pressed", String(index === (suspense ? 1 : 0)));
+    button.setAttribute("aria-pressed", String(id === phase));
     return button;
   });
   elements.phaseButtons.replaceChildren(...buttons);
@@ -162,10 +198,17 @@ export function renderScoreIdentity(
   soloMode: SoloMode,
   recipe: "pocket-circuit" | "suspense",
   presets: readonly { style: string }[],
+  arrangement: SuspenseArrangement,
+  phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
-  renderRecipeChrome(recipe);
+  renderRecipeChrome(recipe, phase);
+  elements.arrangementControl.hidden = recipe !== "suspense";
+  for (const button of elements.arrangementButtons.querySelectorAll<HTMLButtonElement>("button[data-arrangement]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.arrangement === arrangement));
+  }
+  elements.arrangementSummary.value = recipe === "suspense" ? ARRANGEMENT_DESCRIPTIONS[arrangement] : "";
   renderGenerationControls(score, levelSeed, generationTraits);
   document.title = `Gamestruments Audio Lab — ${score.title}`;
   renderScoreButtons(activeExperimentIndex, presets, recipe);
@@ -250,6 +293,13 @@ export function setStartButton(running: boolean): void {
 export function setPlaybackPending(pending: boolean): void {
   elements.start.disabled = pending;
   elements.centerPlay.disabled = pending;
+  if (pending) {
+    elements.sectionSelect.disabled = true;
+    elements.cancelCue.disabled = true;
+    elements.holdForm.disabled = true;
+    elements.advanceForm.disabled = true;
+    for (const row of sectionRows.values()) row.button.disabled = true;
+  }
 }
 
 export function renderView(): void {
@@ -273,14 +323,15 @@ export function renderFrame(
   audio: DemoAudioEngine,
   score: PortableScore,
   transport: AdaptiveTransport,
-  auditionOverride: SectionId | null,
+  requested: SectionId | null,
   applyPlan: (plan: TransitionPlan) => void,
   sectionById: (id: string) => PortableSection,
+  busy = false,
 ): void {
   const visualTick = audio.currentVisualTick();
   const tick = Math.floor(visualTick);
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
-  const nextPlan = transport.advance(tick);
+  const nextPlan = score.form === undefined ? transport.advance(tick) : null;
   if (nextPlan !== null) {
     applyPlan(nextPlan);
   }
@@ -296,18 +347,18 @@ export function renderFrame(
   elements.beat.textContent = String(
     Math.floor((tick % barTicks) / score.ticksPerBeat) + 1,
   ).padStart(2, "0");
-  elements.moodName.textContent = section.label;
+  if (elements.moodName.textContent !== section.label) elements.moodName.textContent = section.label;
   elements.moodFeeling.textContent = section.feeling;
   elements.transitionLabel.textContent = !audio.running
     ? "Engine offline"
-    : auditionOverride !== null
-      ? "Audition override"
+    : snapshot.pendingSection !== null
+      ? `Queued: ${sectionById(snapshot.pendingSection).label} · after this blend`
       : activeTransition === null
         ? score.form === undefined
           ? "Pattern locked"
-          : "Form playing"
+           : transport.formHeld ? "Holding section" : "Form playing"
         : tick < activeTransition.startTick
-          ? "Waiting for next bar"
+           ? `Waiting for next bar → ${sectionById(activeTransition.to).label}`
           : `Crossing from ${sectionById(activeTransition.from).label}`;
   elements.orbit.style.setProperty("--mood-color", section.color);
   elements.orbit.classList.toggle("is-running", audio.running);
@@ -330,5 +381,5 @@ export function renderFrame(
   for (const [property, value] of Object.entries(orbitStyleAt(motion))) {
     elements.orbit.style.setProperty(property, value);
   }
-  renderSections(score, transport, audio);
+  renderSections(score, transport, audio, requested, busy);
 }

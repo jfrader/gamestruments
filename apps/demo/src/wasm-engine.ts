@@ -59,6 +59,8 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
+export type SuspenseArrangement = "original" | "extended";
+
 export interface GenerateScoreParams {
   seed: string;
   style: string;
@@ -67,6 +69,7 @@ export interface GenerateScoreParams {
   brightness: number;
   syncopation: number;
   recipe?: "pocket-circuit" | "suspense";
+  arrangement?: SuspenseArrangement;
   tension?: number;
   heat?: number;
   mystery?: number;
@@ -83,6 +86,7 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     seed: params.seed,
     style: params.style,
     recipe: params.recipe ?? "pocket-circuit",
+    arrangement: params.arrangement ?? "original",
     palette: { melody: "", harmony: "", drive: "", bass: "" },
     energy: params.energy,
     complexity: params.complexity,

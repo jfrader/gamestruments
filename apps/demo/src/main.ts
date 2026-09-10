@@ -14,7 +14,7 @@ import {
 } from "./ui";
 import {
   activeExperimentIndex,
-  auditionOverride,
+  pendingCue,
   audio,
   comparisonBaseSeed,
   generationTraits,
@@ -22,6 +22,8 @@ import {
   initializeLab,
   levelSeed,
   labRecipe,
+  suspenseArrangement,
+  setSuspenseArrangement,
   currentPresets,
   phase,
   score,
@@ -31,7 +33,11 @@ import {
   applyPlan,
   requestMusicState,
   requestSuspensePhase,
-  jumpToSection,
+  cueSection,
+  cancelCue,
+  cueControlsBusy,
+  setFormHold,
+  advanceSection,
   toggleEngine,
   requestExperiment,
   nextLevelSeed,
@@ -54,6 +60,8 @@ function renderCurrentScore(): void {
     soloMode,
     labRecipe,
     currentPresets(),
+    suspenseArrangement,
+    phase,
   );
   requestMusicState();
 }
@@ -81,7 +89,7 @@ function applyGenerationRequest(request: Promise<boolean>, onApplied: () => void
 }
 
 function animate(): void {
-  renderFrame(audio, score, transport, auditionOverride, applyPlan, sectionById);
+  renderFrame(audio, score, transport, pendingCue(), applyPlan, sectionById, cueControlsBusy());
   window.requestAnimationFrame(animate);
 }
 
@@ -105,13 +113,14 @@ elements.centerPlay.addEventListener("click", () => {
   void togglePlayback();
 });
 document.addEventListener("keydown", (ev) => {
+  if (ev.repeat) return;
   if (ev.key !== " " && ev.key !== "Spacebar") {
     return;
   }
   const target = ev.target as HTMLElement | null;
   if (
     target !== null &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+    (target.closest("input, textarea, select, button, summary") !== null || target.matches("[data-scroll-panel]") || target.isContentEditable)
   ) {
     return;
   }
@@ -208,12 +217,17 @@ elements.compareTake.addEventListener("click", () => {
 
 elements.sectionList.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-    "button[data-jump-section]",
+    "button[data-cue-section]",
   );
-  if (button?.dataset.jumpSection !== undefined) {
-    jumpToSection(button.dataset.jumpSection as SectionId);
+  if (button?.dataset.cueSection !== undefined) {
+    cueSection(button.dataset.cueSection as SectionId);
   }
 });
+
+elements.sectionSelect.addEventListener("change", () => cueSection(elements.sectionSelect.value));
+elements.cancelCue.addEventListener("click", cancelCue);
+elements.holdForm.addEventListener("click", () => setFormHold(!transport.formHeld));
+elements.advanceForm.addEventListener("click", advanceSection);
 
 elements.genreIndex.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
@@ -230,6 +244,22 @@ elements.genreIndex.addEventListener("click", (event) => {
     renderCurrentScore();
     window.location.hash = "lab";
     announceAudition(`Generated ${score.title}`);
+  });
+});
+
+elements.arrangementButtons.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-arrangement]");
+  const value = button?.dataset.arrangement;
+  if (value !== "original" && value !== "extended") {
+    return;
+  }
+  applyGenerationRequest(setSuspenseArrangement(value), () => {
+    renderCurrentScore();
+    const messages = {
+      original: "Original arrangement restored",
+      extended: "Extended arrangement ready",
+    };
+    announceAudition(messages[value]);
   });
 });
 
@@ -276,18 +306,18 @@ elements.phaseButtons.addEventListener("click", (event) => {
   if (labRecipe === "suspense") {
     requestSuspensePhase();
   } else {
-    requestMusicState(true);
+    requestMusicState();
   }
 });
 
 elements.intensity.addEventListener("input", () => {
   elements.intensityValue.value = `${Math.round(Number(elements.intensity.value) * 100)}%`;
-  requestMusicState(true);
+  requestMusicState();
 });
 elements.pressure.addEventListener("input", () => {
   elements.pressureValue.value = `${Math.round(Number(elements.pressure.value) * 100)}%`;
-  requestMusicState(true);
+  requestMusicState();
 });
-elements.finalLap.addEventListener("change", () => requestMusicState(true));
+elements.finalLap.addEventListener("change", () => requestMusicState());
 
 window.addEventListener("hashchange", renderView);

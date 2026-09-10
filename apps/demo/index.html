@@ -29,24 +29,11 @@
       </header>
 
       <section class="workspace view" data-view="lab" aria-label="Adaptive music controls">
-        <aside class="race-state">
+        <aside class="race-state" tabindex="0" data-scroll-panel aria-label="Detailed music controls">
           <div class="section-heading">
             <span>01</span>
-            <h2>Race state</h2>
+            <h2>Music controls</h2>
           </div>
-
-          <fieldset class="sound-world-control">
-            <legend>Game type</legend>
-            <div class="score-buttons" id="recipe-buttons">
-              <button type="button" data-recipe="pocket-circuit" aria-pressed="true">Racing</button>
-              <button type="button" data-recipe="suspense" aria-pressed="false">Suspense</button>
-            </div>
-          </fieldset>
-
-          <fieldset class="sound-world-control">
-            <legend>Sound world</legend>
-            <div class="score-buttons" id="score-buttons"></div>
-          </fieldset>
 
           <fieldset class="generator-control">
             <legend>Procedural level</legend>
@@ -100,8 +87,23 @@
             <output class="sr-only" id="audition-status" aria-live="polite"></output>
           </fieldset>
 
+          <fieldset class="section-control" id="section-control" hidden>
+            <legend>Music section</legend>
+            <label for="section-select">Cue any section</label>
+            <select id="section-select" aria-describedby="section-help"></select>
+            <div class="form-controls">
+              <button type="button" id="hold-form" aria-pressed="false">Hold section</button>
+              <button type="button" id="advance-form">Next section</button>
+            </div>
+            <p id="section-help">While playing, selections wait for the next bar and blend. While stopped, choose where Play begins.</p>
+            <p>Hold repeats the current section. Next cues its development; resume automatic to leave at the end of the current loop.</p>
+          </fieldset>
+
+          <details class="game-signals" id="game-signals" open>
+            <summary>Game signals <span>(advanced)</span></summary>
+            <p class="signal-help">Game state is separate from the musical section. Use it to test adaptive rules.</p>
           <fieldset class="phase-control">
-            <legend>Phase</legend>
+            <legend>Game phase</legend>
             <div class="phase-buttons" id="phase-buttons">
               <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
               <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
@@ -130,13 +132,35 @@
             <input id="final-lap" type="checkbox" />
             <i aria-hidden="true"></i>
           </label>
+          </details>
         </aside>
 
-        <section class="music-stage" aria-live="polite">
+        <section class="music-stage">
           <div class="stage-grid" aria-hidden="true"></div>
+          <section class="stage-setup" aria-label="Sound setup">
+            <fieldset class="sound-world-control">
+              <div id="recipe-buttons">
+                <button type="button" data-recipe="pocket-circuit" aria-pressed="true">RACING<span>Speed, pressure, final lap, finish</span></button>
+                <button type="button" data-recipe="suspense" aria-pressed="false">SUSPENSE<span>Song form, hold &amp; cue</span></button>
+              </div>
+            </fieldset>
+            <fieldset class="sound-world-control">
+              <legend>Sound world</legend>
+              <div class="score-buttons" id="score-buttons"></div>
+            </fieldset>
+            <fieldset class="sound-world-control" id="arrangement-control" hidden>
+              <legend>Arrangement</legend>
+              <div class="score-buttons" id="arrangement-buttons">
+                <button type="button" data-arrangement="original" aria-pressed="false"><strong>Original</strong><span>Approved 8-bar version</span></button>
+                <button type="button" data-arrangement="extended" aria-pressed="true"><strong>Extended</strong><span>Atmosphere · continuous groove</span></button>
+              </div>
+            </fieldset>
+            <output class="generator-summary" id="arrangement-summary">Longer development with a continuous rhythm.</output>
+          </section>
+          <div class="player-surface">
           <div class="mood-readout">
             <em id="score-title">Countertop Velocity</em>
-            <strong id="mood-name">Garage</strong>
+            <strong id="mood-name" aria-live="polite">Garage</strong>
             <span id="mood-feeling">polished / unhurried</span>
             <p id="transition-label">Engine offline</p>
           </div>
@@ -154,17 +178,23 @@
             <span>BEAT <strong id="beat-value">01</strong></span>
             <span>TEMPO <strong id="tempo-value">126</strong></span>
           </div>
+          </div>
         </section>
 
-        <aside class="mix-state">
+        <aside class="mix-state" tabindex="0" data-scroll-panel aria-label="Musical crossover">
           <div class="section-heading">
             <span>02</span>
             <h2>Musical crossover</h2>
           </div>
           <p class="mix-explainer">
-            Changes wait for the next bar, then share two bars. Every section
-            keeps the same pulse and harmonic center.
+            Cue a section below. It enters on the next bar; an active blend
+            finishes first. Playback then follows the form from that section.
           </p>
+          <div class="cue-panel">
+            <strong id="cue-status" role="status">Ready</strong>
+            <p id="cue-detail"></p>
+            <button type="button" id="cancel-cue" disabled>Cancel cue</button>
+          </div>
           <ol class="section-list" id="section-list"></ol>
           <div class="signal-note">
             <span>Runtime signal</span>
