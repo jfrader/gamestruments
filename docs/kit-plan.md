@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-08
 **Tracked by:** GURI-485 under GURI-564
-**Target:** a cross-platform adaptive racing music kit at $12.99.
+**Target:** a cross-platform adaptive music kit for Godot 4 at $12.99.
 
 ## Gate Order
 

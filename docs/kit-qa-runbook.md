@@ -78,7 +78,7 @@ An unsupported voice must fail generation clearly instead of playing an invalid 
 
 Confirm directly from the extracted archive and demo:
 
-- [ ] Product is described as adaptive racing music, not a general adaptive music engine.
+- [ ] Product is described as Gamestruments with named recipes, not as a racing-only engine.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
 - [ ] `generate(seed) -> bool` and five-argument `set_race_state(...) -> bool` match runtime behavior.
 - [ ] The six documented sections are reachable.

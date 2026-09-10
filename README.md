@@ -1,7 +1,7 @@
 # Gamestruments
 
-**The first runtime product** is a seed-driven, sample-free adaptive racing
-music engine for Godot 4. Games generate a deterministic score at level load
+**The first runtime product** is Gamestruments, a seed-driven, sample-free
+adaptive music engine for Godot 4. Games generate a deterministic score at level load
 from a per-title namespace, instrument palette, and seed, then drive
 bar-quantized state changes at runtime. No samples, no Strudel, and no
 authoring UI cross the game boundary.
