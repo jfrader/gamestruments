@@ -20,7 +20,7 @@
   "18": "verify_kit_archive.sh",
   "19": "strudel.d.ts",
   "20": "playwright.config.ts",
-  "21": "createAuthoringScore",
+  "21": "generatePocketCircuitLevel",
   "22": "audio-lab.spec.ts",
   "23": "generation-cli-smoke.mjs",
   "24": "studio-import-smoke.mjs",
@@ -73,5 +73,10 @@
   "71": "Attribution",
   "72": "verify-native-libraries.d.mts",
   "73": "export-score.ts",
-  "74": "release-workflow.test.ts"
+  "74": "release-workflow.test.ts",
+  "75": "lantern-trail.test.ts",
+  "76": "Gamestruments v0.1.0 Release Packet",
+  "78": "studio/src/index.ts",
+  "80": "createDNA",
+  "83": "createSection"
 }

@@ -20,6 +20,6 @@ SHA512-SUMS.txt
 parity-*.json
 parity-*.wav
 
-# Graphify keeps the current graph in git; local query stamps and dated backups are transient.
-graphify-out/cache/last_query_stamp
+# Graphify keeps the current graph, visualization, query state, and cache metadata in git.
+# Dated backups are transient.
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/

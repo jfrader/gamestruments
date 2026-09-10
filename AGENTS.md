@@ -33,6 +33,13 @@ Requires Node.js 24. Final checks run in CI after push.
 
 Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.5.5 in the godot crate only; engine crate introduces no 1.94-only features and continues to build cleanly).
 
+## Graphify
+
+- `graphify-out/` is tracked repository state, not disposable local output.
+- Query `graphify-out/graph.json` before broad source searches.
+- After repository changes, run `graphify update .` and commit every resulting
+  `graphify-out/` change, including the HTML visualization and cache metadata.
+
 ## Changelog
 
 - User-visible changes go in root `CHANGELOG.md`.
