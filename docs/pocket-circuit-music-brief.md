@@ -41,10 +41,11 @@ melodic identity.
 Countertop Velocity adds 10 BPM to the shared generated tempo range so its
 fusion groove carries the extra pace expected from an arcade race.
 
-Audition mode can isolate the melody or backing, jump directly to a section,
+Audition mode can isolate the melody or backing, cue a section on the next bar,
 and toggle between adjacent seeded takes without changing the section under
-review. Direct jumps temporarily override game-state selection until a race
-control changes.
+review. An active blend finishes before a queued cue starts. While stopped,
+section selection chooses where Play begins. Section cues are separate from
+the game-state controls.
 
 ## Adaptive Arc
 

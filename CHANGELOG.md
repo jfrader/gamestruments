@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- Extended adds occasional seeded reverse-cymbal swells and filtered air impacts, short melodic spotlights in Decrypt/Other Hall, and an eight-bar Anomaly detour before Full Breach. Effects stay sparse and the kick/hat foundation continues; Original remains unchanged.
+- Suspense has two arrangements: the approved Original and a consolidated Extended, selected by default in the lab. Extended combines 16-bar main beds, uninterrupted kick/hat rhythm, low muted tones and filtered swells with quiet echoes. Sparse seeded tom details may appear or be absent without interrupting the beat; the separate Flow/Featured experiments are removed.
 - Added Suspense, a song-form recipe for long tense sessions (first consumer: Arkhos). Music moves through intro, verse, refrain, pre-chorus, chorus, post-chorus, interlude, bridge, solo, outro, and coda instead of looping one four-bar game-state bed. The Audio Lab can audition Racing or Suspense. Godot `GamestrumentsPlayer` accepts `recipe = "suspense"` and `set_trace_state`.
 - Buyer archives now include a root quickstart, machine-readable release provenance and native-library hashes, the catalog fixture needed by shipped Rust tests and examples, and exact third-party attribution metadata.
 - Cross-platform Godot release candidates now include Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries in one verified archive.
@@ -10,6 +12,11 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab polish: clearer control hierarchy, larger hit areas and readable labels, consistent spacing, reserved cue-feedback space, and visible queued/blending/held/loading states. Cue feedback and cancellation stay accessible while scrolling the crossover list.
+- Audio Lab: Game type, Sound world and Arrangement now sit above the central player. Detailed controls and crossover sections scroll independently on desktop; expanded Game signals remain reachable, with normal page scrolling on narrow screens.
+- Extended now has independent 16-bar Scan/Scan II and Breach/Breach II pairs, with developed variations rather than repeated eight-bar extensions. Lab and game APIs can hold, advance or resume the form to match gameplay. The drum grid stays continuous; Original, the base sections and Anomaly are unchanged.
+- Audio Lab: complete score-driven music-section selection replaces hard Jump actions. Cue/queued/blending states and cancellation are visible; Suspense's game signals are separated into an advanced panel. Waiting cues cannot cut an active blend, and canceled cues no longer leave stale release timers or future voices behind.
+- Removed the confirmed sustained glass-cell beep from Extended's Decrypt, Other Hall and Full Breach. Anomaly, the newer melody passages, effects, drums and Original are unchanged.
 - Suspense v2 is no longer a pop song: Santaolalla-style drone + 2–3 note cell, Mr. Robot pulse/clock, static minor harmony, no snare backbeat. Form now also passes through a drop (Break) and a second inverted bridge (Other Hall) without rewriting the v2 beds.
 - Kit repositioned as **Gamestruments — Adaptive Music for Godot 4**: Gamestruments is the product, Pocket Circuit is the racing recipe, and the demo remains Night Circuit. Storefront slug moves to `gamestruments-godot`.
 - Buyer archive `README.md` is rewritten in a friendlier, task-first voice and links the browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer).
@@ -23,7 +30,8 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
-- Suspense Approach/Breach/Other Hall kick on the downbeat. The Audio Lab now schedules that incoming kit from the fade origin and does not fade the kick with the pads, so the drop into the next phase actually hits.
+- Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.
+- Fixed the missing Suspense kick at Scan bar 9: form entrances are prepared by the audio scheduler at their exact boundary instead of rounding a late animation frame up to bar 10. The music and two-bar bed fades are unchanged.
 - Audio Lab: Suspense phase buttons now actually change beds. Boot/Scan/Exploit had no adaptive rule so clicks did nothing; Complete/Extract could pin the hold so later clicks never left.
 - Audio Lab: switching from Racing to Suspense no longer dies on a missing `garage` section and keeps playing the racing score.
 - Night Circuit now steers with a heading-based arcade handling model: A/D turns the car, grip straightens it when released, and the circuit wall contains it. The previous lane-strafe control read as sideways movement rather than driving.

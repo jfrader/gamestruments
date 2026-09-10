@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import {
   createTransitionCurve,
-  percussionBypassesTransition,
   schedulingStartTick,
   sectionSchedulingState,
   transitionCurveForEvent,
   transitionGainAt,
 } from "../apps/demo/src/audio-engine.ts";
-import type { MusicEvent, PortableScore } from "../packages/runtime/src/index.ts";
+import type { MusicEvent } from "../packages/runtime/src/index.ts";
 import { eventsInRange } from "../packages/runtime/src/index.ts";
 
 const harmony: MusicEvent = {
@@ -75,18 +74,6 @@ describe("audio transition curves", () => {
     assert.equal(curve.at(-1), 1);
   });
 
-  it("lets form-score kicks through the bed fade", () => {
-    assert.equal(
-      percussionBypassesTransition({ form: undefined } as unknown as PortableScore),
-      false,
-    );
-    assert.equal(
-      percussionBypassesTransition({
-        form: { steps: [{ section: "verse" }] },
-      } as unknown as PortableScore),
-      true,
-    );
-  });
 });
 
 describe("audio scheduling horizons", () => {
