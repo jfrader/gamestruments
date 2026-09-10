@@ -155,7 +155,8 @@ mkdir -p "$STAGING/kit"
 cp -a kit/demo "$STAGING/kit/demo"
 cp -a kit/docs "$STAGING/kit/docs"
 cp kit/README.md "$STAGING/README.md"
-cp kit/README.md "$STAGING/kit/README.md"
+# Same document inside kit/ with links rewritten for its deeper location.
+sed -e 's#kit/docs/#docs/#g' -e 's#kit/demo/#demo/#g' kit/README.md > "$STAGING/kit/README.md"
 
 # Self-contained demo: copy the built addon *into* the demo subtree so that
 # opening the extracted `kit/demo/` folder directly as a Godot project works
