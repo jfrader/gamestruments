@@ -86,16 +86,39 @@ The player routes to a Godot audio bus named `Music` when you have one, and fall
 back to `Master` when you don't — so a fresh project makes sound before you touch
 the audio panel.
 
+## Second Recipe: Suspense
+
+The same player ships **Suspense**, a song-form recipe for long tense sessions
+(infiltration, hacking, horror). Set `recipe = "suspense"` before `generate`,
+choose a suspense style, and drive it with `set_trace_state`:
+
+```gdscript
+music.recipe = "suspense"
+music.style = "terminal"        # terminal, cipher, or noir
+music.arrangement = "original"  # or "extended"
+music.generate("chapter-001")
+music.set_trace_state("scan", 0.3, 0.2, 0.1)  # phase, heat, focus, progress
+```
+
+The song form advances on its own between sections (Handshake, Scan, Breach,
+Decrypt, Closed Session, and more). Gameplay can hold or move it with
+`set_form_hold`, `advance_form`, `is_form_held`, and `cue_section`. The full
+section list, selection rules, and trait mapping are in `kit/docs/api.md`.
+
 ## API at a Glance
 
 | Member | What it does |
 |---|---|
 | `project_secret: String` | Stable name for your title. Required, not a credential. |
-| `style: String` | `neon`, `funk`, `fusion`, or `chip`. |
-| `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice` | Optional voice overrides. Leave empty for the style default. |
-| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. |
-| `generate(seed: String) -> bool` | Makes the score, resets playback, starts at `garage`. Check the result. |
-| `set_race_state(phase, intensity, pressure, final_lap, finish_result = "none") -> bool` | Requests a section. Commits on the next bar. |
+| `recipe: String` | `pocket-circuit` (default) or `suspense`. |
+| `arrangement: String` | Suspense only: `original` (default) or `extended`. |
+| `style: String` | Pocket Circuit: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. |
+| `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice` | Pocket Circuit only. Optional voice overrides; empty uses the style default. |
+| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse. |
+| `generate(seed: String) -> bool` | Makes the score, resets playback, starts at the recipe's first section. Check the result. |
+| `set_race_state(phase, intensity, pressure, final_lap, finish_result = "none") -> bool` | Pocket Circuit: requests a section. Commits on the next bar. |
+| `set_trace_state(phase, heat, focus, progress) -> bool` | Suspense: requests a section from trace state. Commits on the next bar. |
+| `cue_section`, `set_form_hold`, `advance_form`, `is_form_held`, `get_current_section` | Suspense form controls. See `kit/docs/api.md`. |
 
 Every member, supported voice, and error case is documented in
 `kit/docs/api.md`. A complete walkthrough is in `kit/docs/quickstart.md`.

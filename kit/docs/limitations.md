@@ -2,14 +2,14 @@
 
 ## Product Scope
 
-- This release is an adaptive **racing** music generator. Its fixed state model is garage, grid, cruise, attack, final lap, and victory.
+- This release ships two fixed state models: **Pocket Circuit** (racing: garage, grid, cruise, attack, final lap, victory) and **Suspense** (song-form: intro through coda, with an extended arrangement). Both use the same `GamestrumentsPlayer`.
 - It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game.
-- Four sound styles ship: fusion, neon, funk, and chip. Voice overrides select from the built-in synthesizer vocabulary; arbitrary samples and plugins are unsupported.
+- Pocket Circuit ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Voice overrides apply to Pocket Circuit; arbitrary samples and plugins are unsupported.
 
 ## Audio
 
 - The runtime synth renders mono at 22050 Hz and sends identical left/right frames through Godot. This favors a small, deterministic runtime over sample-library fidelity.
-- The browser Audio Lab uses a separate stereo Web Audio presentation layer. It can demonstrate composition and controls, but not the exact buyer sound.
+- The browser Audio Lab uses a separate stereo Web Audio presentation layer. It can demonstrate composition and controls, but not the exact buyer sound. The browser preview at <https://gamestruments.gurisitos.games> is the Audio Lab.
 - No WAV, OGG, MP3, MIDI, stem export, sample import, mastering, effects rack, spatial audio, or middleware bridge ships.
 
 ## Runtime and Platforms
