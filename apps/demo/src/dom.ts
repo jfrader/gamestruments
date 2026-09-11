@@ -8,6 +8,7 @@ export function requireElement<ElementType extends Element>(selector: string): E
 
 export const elements = {
   shell: requireElement<HTMLElement>(".console-shell"),
+  mastheadControls: requireElement<HTMLElement>(".masthead-controls"),
   masterVolume: requireElement<HTMLInputElement>("#master-volume"),
   volumeReadout: requireElement<HTMLElement>("#volume-readout"),
   start: requireElement<HTMLButtonElement>("#start-audio"),
