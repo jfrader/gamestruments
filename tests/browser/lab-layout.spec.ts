@@ -196,3 +196,31 @@ test("recipe switch keeps .stage-setup and .player-surface top positions identic
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-mobile.png" });
   });
 });
+
+test("game signals panel has exactly one visible legend and phase buttons spaced from helper", async ({ browser }) => {
+  await withIsolatedPage(browser, async (page) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/#lab");
+    const panel = page.locator("#game-signals");
+    await expect(panel).toBeVisible();
+    // exactly one visible legend/heading (removed redundant "Game phase")
+    await expect(panel.locator("legend")).toHaveCount(1);
+    await expect(panel.locator("legend")).toHaveText("Game signals");
+    // phase buttons have clear gap from the helper text
+    const gap = await page.evaluate(() => {
+      const help = document.querySelector<HTMLElement>("#game-signals .signal-help")!;
+      const phase = document.querySelector<HTMLElement>("#phase-buttons")!;
+      return Math.round(phase.getBoundingClientRect().top - help.getBoundingClientRect().bottom);
+    });
+    expect(gap).toBeGreaterThanOrEqual(8);
+    // verify spacing on mobile viewport too
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#lab");
+    const gapMobile = await page.evaluate(() => {
+      const help = document.querySelector<HTMLElement>("#game-signals .signal-help")!;
+      const phase = document.querySelector<HTMLElement>("#phase-buttons")!;
+      return Math.round(phase.getBoundingClientRect().top - help.getBoundingClientRect().bottom);
+    });
+    expect(gapMobile).toBeGreaterThanOrEqual(8);
+  });
+});

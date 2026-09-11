@@ -248,7 +248,7 @@ h2 {
 fieldset {
   border: 0;
   padding: 0;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
 }
 
 .sound-world-control {
@@ -313,7 +313,7 @@ fieldset {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px 12px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .generation-traits label {
@@ -342,6 +342,7 @@ fieldset {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
+  text-wrap: pretty;
 }
 
 legend {
@@ -541,7 +542,7 @@ legend {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 11px;
@@ -575,10 +576,9 @@ input[type="range"]::-webkit-slider-thumb {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 36px;
-  align-items: center;
+  align-items: start;
   gap: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
@@ -601,6 +601,7 @@ input[type="range"]::-webkit-slider-thumb {
   position: relative;
   width: 36px;
   height: 18px;
+  margin-top: 1px;
   border: 1px solid var(--line);
 }
 
@@ -1076,13 +1077,21 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .game-signals {
-  margin: 0 0 16px;
+  margin: 12px 0;
 }
 
 .game-signals legend {
   color: var(--signal);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.game-signals .signal-help {
+  margin: 0 0 12px;
+}
+
+.game-signals .phase-control {
+  margin-bottom: 8px;
 }
 
 select:focus-visible,

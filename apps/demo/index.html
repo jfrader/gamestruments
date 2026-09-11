@@ -43,7 +43,7 @@
           </div>
 
           <fieldset class="generator-control">
-            <legend>Procedural level</legend>
+            <legend>Procedural Level</legend>
             <label class="seed-control" for="level-seed">
               <span>Level seed</span>
               <span class="seed-editor">
@@ -83,15 +83,14 @@
           <fieldset class="game-signals" id="game-signals">
             <legend>Game signals</legend>
             <p class="signal-help">Change these and the music adapts on the next bar.</p>
-            <fieldset class="phase-control">
-              <legend>Game phase</legend>
+            <div class="phase-control" role="group" aria-label="Game phase">
               <div class="phase-buttons" id="phase-buttons">
                 <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
                 <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
                 <button type="button" data-phase="race" aria-pressed="false">Race</button>
                 <button type="button" data-phase="finish" aria-pressed="false">Finish</button>
               </div>
-            </fieldset>
+            </div>
 
             <label class="meter-control" for="intensity">
               <span id="meter-intensity-label">Speed intensity</span>
@@ -130,7 +129,7 @@
           </fieldset>
 
           <fieldset class="section-control" id="section-control" hidden>
-            <legend>Music section</legend>
+            <legend>Music Section</legend>
             <label for="section-select">Cue any section</label>
             <select id="section-select" aria-describedby="section-help"></select>
             <div class="form-controls">
@@ -153,7 +152,7 @@
               </div>
             </fieldset>
             <fieldset class="sound-world-control">
-              <legend>Sound world</legend>
+              <legend>Sound World</legend>
               <div class="score-buttons" id="score-buttons"></div>
             </fieldset>
             <fieldset class="sound-world-control" id="arrangement-control" hidden>
