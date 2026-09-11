@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- Suspense `theme` arrangement for title/menu music: same sections as Original, but the form builds (hats in the intro, drone carried forward) into a held drop instead of resetting at Break. Gameplay `original` / `extended` phases are unchanged.
+- Suspense `theme` arrangement for title/menu music: same sections as Original, but the form builds (hats in the intro, drone carried forward) into a held drop instead of resetting at Break. After the drop, Theme adds hi-hat breaks and reverse-cymbal/snare landings instead of looping linear synth beeps. Gameplay `original` / `extended` phases are unchanged.
 - Extended adds occasional seeded reverse-cymbal swells and filtered air impacts, short melodic spotlights in Decrypt/Other Hall, and an eight-bar Anomaly detour before Full Breach. Effects stay sparse and the kick/hat foundation continues; Original remains unchanged.
 - Suspense has two arrangements: the approved Original and a consolidated Extended, selected by default in the lab. Extended combines 16-bar main beds, uninterrupted kick/hat rhythm, low muted tones and filtered swells with quiet echoes. Sparse seeded tom details may appear or be absent without interrupting the beat; the separate Flow/Featured experiments are removed.
 - Added Suspense, a song-form recipe for long tense sessions (first consumer: Arkhos). Music moves through intro, verse, refrain, pre-chorus, chorus, post-chorus, interlude, bridge, solo, outro, and coda instead of looping one four-bar game-state bed. The Audio Lab can audition Racing or Suspense. Godot `GamestrumentsPlayer` accepts `recipe = "suspense"` and `set_trace_state`.

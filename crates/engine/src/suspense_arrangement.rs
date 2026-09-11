@@ -135,7 +135,7 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
     let root = arrangement_root(&score)?;
     let bar = score.bar_ticks();
     let seed = hash_text(&format!(
-        "{}\0{}\0suspense-theme-1",
+        "{}\0{}\0suspense-theme-2",
         input.secret, input.seed
     ));
     let intro = score
@@ -158,9 +158,10 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             .ok_or_else(|| format!("Theme arrangement requires {id}"))?;
         overlay_drone(section, &intro, bar);
         rhythm(section, bar);
-        if matches!(id, "chorus" | "chorus-final" | "solo") {
-            theme_atmosphere(section, root, bar, seed);
-            percussion_details(section, bar, seed);
+        if matches!(id, "chorus-final" | "solo") {
+            theme_figure(section, root, bar, seed);
+            theme_hat_break(section, bar);
+            theme_drop_snare(section, bar);
         }
     }
     if let Some(chorus) = score
@@ -176,14 +177,6 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             0.18,
         );
         chorus.events.sort_by_key(MusicEvent::start_tick);
-    }
-    if let Some(drop) = score
-        .sections
-        .iter_mut()
-        .find(|section| section.id == "chorus-final")
-    {
-        effect(drop, "air-impact", 0, bar / 4, 0.22);
-        drop.events.sort_by_key(MusicEvent::start_tick);
     }
     score.form = Some(SongForm {
         steps: vec![
@@ -252,27 +245,72 @@ fn densify_theme_intro(section: &mut PortableSection, bar: u32) {
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
-fn theme_atmosphere(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
+fn theme_figure(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
     let mut random =
-        DeterministicRandom::new(seed ^ hash_text(&format!("{}:theme-air", section.id)));
-    let beat = bar / 4;
-    for phrase_bar in [3u32, 5, 6] {
-        if random.integer(4) == 0 {
-            continue;
+        DeterministicRandom::new(seed ^ hash_text(&format!("{}:theme-figure", section.id)));
+    let late = section.id == "solo";
+    let first_bar = if late { 1 } else { 0 };
+    let answer_bar = if late { 5 } else { 4 };
+    texture(
+        section,
+        Texture {
+            lane: "ronroco",
+            voice: "dusk",
+            start: first_bar * bar + bar / 8,
+            duration: bar + bar / 2,
+            pitch: root,
+            velocity: 0.2,
+        },
+    );
+    texture(
+        section,
+        Texture {
+            lane: "ronroco",
+            voice: "felt",
+            start: answer_bar * bar + 3 * (bar / 8),
+            duration: bar / 2,
+            pitch: root.saturating_add(*random.pick(&[3u8, 5])),
+            velocity: 0.12,
+        },
+    );
+}
+
+fn theme_hat_break(section: &mut PortableSection, bar: u32) {
+    let sixteenth = bar / 16;
+    for bar_index in [2u32, 6] {
+        for step in 0..16u32 {
+            if step % 2 == 0 {
+                continue;
+            }
+            section.events.push(MusicEvent::Percussion {
+                id: format!("{}:theme:hat-break:{bar_index}:{step}", section.id),
+                section: section.id.clone(),
+                lane: format!("{}-kit", section.id),
+                start_tick: bar_index * bar + step * sixteenth,
+                duration_ticks: sixteenth / 2,
+                velocity: if step == 15 { 0.22 } else { 0.12 },
+                voice: "hat".into(),
+            });
         }
-        let interval = *random.pick(&[0, 3, 7]);
-        texture(
-            section,
-            Texture {
-                lane: "atmosphere",
-                voice: "felt",
-                start: phrase_bar * bar + beat,
-                duration: beat + beat / 2,
-                pitch: root + interval,
-                velocity: 0.18,
-            },
-        );
     }
+}
+
+fn theme_drop_snare(section: &mut PortableSection, bar: u32) {
+    let pulse = bar / 8;
+    effect(section, "reverse-cymbal", 3 * bar, bar, 0.16);
+    effect(section, "reverse-cymbal", 7 * bar, bar, 0.16);
+    for (index, tick) in [0u32, 4 * bar].into_iter().enumerate() {
+        section.events.push(MusicEvent::Percussion {
+            id: format!("{}:theme:snare:{index}", section.id),
+            section: section.id.clone(),
+            lane: format!("{}-kit", section.id),
+            start_tick: tick,
+            duration_ticks: pulse,
+            velocity: if index == 0 { 0.48 } else { 0.36 },
+            voice: "snare".into(),
+        });
+    }
+    section.events.sort_by_key(MusicEvent::start_tick);
 }
 
 fn overlay_drone(section: &mut PortableSection, intro: &PortableSection, bar: u32) {
@@ -850,6 +888,14 @@ mod tests {
         }));
         assert!(theme.section("chorus-final").unwrap().events.len() >= verse.events.len());
         assert!(theme.section("chorus-final").unwrap().events.len() > intro.events.len());
+        assert!(theme.section("chorus-final").unwrap().events.iter().any(
+            |event| matches!(event, MusicEvent::Percussion { voice, .. } if voice == "snare")
+        ));
+        assert!(original.sections.iter().all(|section| {
+            section.events.iter().all(
+                |event| !matches!(event, MusicEvent::Percussion { voice, .. } if voice == "snare"),
+            )
+        }));
     }
 
     #[test]
