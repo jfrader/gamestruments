@@ -37,6 +37,7 @@ button {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   padding: 28px 34px 20px;
   max-width: 100%;
 }
@@ -356,6 +357,11 @@ legend {
   border-left: 1px solid var(--line);
 }
 
+/* Racing has four phases; 2x2 avoids an orphaned fourth button. Suspense has six. */
+.phase-buttons:has(> button:nth-child(4):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .audition-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -452,7 +458,6 @@ legend {
   margin-top: 2px;
   opacity: 0.7;
   line-height: 1;
-  white-space: nowrap;
 }
 .stage-setup #recipe-buttons button[aria-pressed="true"] {
   background: var(--signal);
@@ -922,7 +927,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .section-list li {
   display: grid;
-  grid-template-columns: 100px minmax(16px, 1fr) 30px 58px;
+  grid-template-columns: 100px minmax(16px, 1fr) 30px minmax(58px, max-content);
   align-items: center;
   gap: 8px;
   padding: 8px 0;
@@ -1466,6 +1471,8 @@ footer p {
     border: 0;
     padding: 12px 8px 12px 0;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
   }
 
   .mix-state {
@@ -1537,13 +1544,17 @@ footer p {
   }
 
   .stage-setup #recipe-buttons button {
-    min-height: 48px;
-    font-size: 18px;
-    padding: 3px 8px;
+    min-height: 54px;
+    font-size: 17px;
+    padding: 4px 6px;
   }
   .stage-setup #recipe-buttons button span {
-    font-size: 7px;
-    margin-top: 1px;
+    font-size: 8px;
+    margin-top: 2px;
+    line-height: 1.05;
+  }
+  .stage-setup #recipe-buttons button[aria-pressed="true"] {
+    box-shadow: inset 3px 0 0 #11120f;
   }
 
   .player-surface {
@@ -1568,7 +1579,36 @@ footer p {
 
   .race-state,
   .mix-state {
-    padding: 28px 0;
+    padding: 12px 0;
+  }
+
+  .race-state > .section-heading { order: 1; }
+  .race-state > .generator-control { order: 2; }
+  .race-state > .game-signals { order: 3; }
+  .race-state > .audition-control { order: 4; }
+  .race-state > .section-control { order: 5; }
+
+  /* compact generator when before signals in mobile flow so signals reachable w/ less scroll */
+  .race-state .generator-control {
+    margin-bottom: 6px;
+  }
+  .race-state .generation-traits {
+    gap: 2px 8px;
+  }
+  .race-state .generation-traits label {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+  .race-state .generation-traits output {
+    font-size: 9px;
+  }
+  .race-state .generation-traits input[type="range"] {
+    height: 1px;
+  }
+  .race-state .seed-control span,
+  .race-state .new-take {
+    font-size: 10px;
   }
 
   .mix-state {
@@ -1630,6 +1670,28 @@ footer p {
     margin: 0;
     padding: 12px 0 8px;
     gap: 8px;
+  }
+  .stage-setup #recipe-buttons button {
+    min-height: 54px;
+    font-size: 16px;
+    padding: 3px 5px;
+  }
+  .stage-setup #recipe-buttons button span {
+    font-size: 8px;
+    margin-top: 1px;
+  }
+  .stage-setup #recipe-buttons button[aria-pressed="true"] {
+    box-shadow: inset 2px 0 0 #11120f;
+  }
+  .race-state .generator-control {
+    margin-bottom: 2px;
+  }
+  .race-state .generation-traits {
+    gap: 1px 4px;
+    margin-top: 6px;
+  }
+  .race-state .generation-traits label {
+    font-size: 8px;
   }
   .orbit {
     width: min(210px, 64vw);

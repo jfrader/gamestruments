@@ -107,6 +107,70 @@ test("narrow screens keep setup above the player and use normal page scrolling",
   });
 });
 
+const MOBILE_SIZES = [
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 414, height: 896 },
+];
+
+for (const size of MOBILE_SIZES) {
+  test(`mobile ${size.width}x${size.height}: recipe buttons do not overlap and key controls are reachable`, async ({ browser }) => {
+    await withIsolatedPage(browser, async (page) => {
+      await page.setViewportSize(size);
+      await page.goto("/#lab");
+      await expect(page.locator('#recipe-buttons button[data-recipe="racing"]')).toBeVisible();
+      const metrics = await page.evaluate(() => {
+        const r1 = document.querySelector<HTMLButtonElement>('#recipe-buttons button[data-recipe="racing"]')!;
+        const r2 = document.querySelector<HTMLButtonElement>('#recipe-buttons button[data-recipe="suspense"]')!;
+        const r1b = r1.getBoundingClientRect();
+        const r2b = r2.getBoundingClientRect();
+        const s1b = r1.querySelector("span")!.getBoundingClientRect();
+        const s2b = r2.querySelector("span")!.getBoundingClientRect();
+        const play = document.querySelector<HTMLElement>("#center-play")!.getBoundingClientRect();
+        const signals = document.querySelector<HTMLElement>("#game-signals")!.getBoundingClientRect();
+        const horizontalOverlap = !(r1b.right <= r2b.left + 1 || r2b.right <= r1b.left + 1);
+        const verticalOverlap = !(r1b.bottom <= r2b.top || r2b.bottom <= r1b.top);
+        return {
+          anyOverlap: horizontalOverlap && verticalOverlap,
+          sideBySide: r2b.left >= r1b.right - 2,
+          sameHeight: Math.abs(r1b.height - r2b.height) <= 1,
+          aligned: Math.abs(r1b.top - r2b.top) <= 1,
+          span1Fits: s1b.bottom <= r1b.bottom + 0.5 && s1b.top >= r1b.top - 0.5,
+          span2Fits: s2b.bottom <= r2b.bottom + 0.5 && s2b.top >= r2b.top - 0.5,
+          playTop: play.top,
+          signalsTop: signals.top,
+          noHorizontalOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+        };
+      });
+      expect(metrics.anyOverlap).toBe(false);
+      expect(metrics.sideBySide).toBe(true);
+      expect(metrics.sameHeight).toBe(true);
+      expect(metrics.aligned).toBe(true);
+      expect(metrics.span1Fits).toBe(true);
+      expect(metrics.span2Fits).toBe(true);
+      expect(metrics.playTop).toBeGreaterThan(10);
+      expect(metrics.signalsTop).toBeGreaterThanOrEqual(0);
+      expect(metrics.noHorizontalOverflow).toBe(true);
+    });
+  });
+}
+
+test("phase buttons use a 2x2 grid for Racing and a 3x2 grid for Suspense", async ({ browser }) => {
+  await withIsolatedPage(browser, async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#lab");
+    const readGrid = () => page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll("#phase-buttons button"));
+      const first = buttons[0]!.getBoundingClientRect();
+      const third = buttons[2]!.getBoundingClientRect();
+      return { count: buttons.length, columns: Math.abs(third.top - first.top) > 1 ? 2 : 3 };
+    });
+    expect(await readGrid()).toEqual({ count: 4, columns: 2 });
+    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    expect(await readGrid()).toEqual({ count: 6, columns: 3 });
+  });
+});
+
 test("recipe switch keeps .stage-setup and .player-surface top positions identical (regression)", async ({ browser }) => {
   await withIsolatedPage(browser, async (page) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
