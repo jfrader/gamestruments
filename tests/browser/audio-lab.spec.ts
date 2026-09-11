@@ -10,6 +10,17 @@ test("generation controls remain functional before and during playback", async (
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
 
   await page.goto("/#lab");
+
+  const volumeSlider = page.locator("#master-volume");
+  await expect(volumeSlider).toBeVisible();
+  await expect(page.locator("#volume-readout")).toHaveText("100%");
+
+  await volumeSlider.evaluate((input: HTMLInputElement) => {
+    input.value = "50";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(page.locator("#volume-readout")).toHaveText("50%");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
 
   const neon = page.locator("#score-buttons button", { hasText: "Neon" });

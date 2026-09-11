@@ -22,10 +22,17 @@
           <a href="#games" data-view-link="games">Game types</a>
           <a href="#genres" data-view-link="genres">Genres</a>
         </nav>
-        <button class="start-button" id="start-audio" type="button">
-          <span class="start-light" aria-hidden="true"></span>
-          Start engine
-        </button>
+        <div class="masthead-controls">
+          <label class="volume-control" for="master-volume">
+            <span class="volume-label">VOL</span>
+            <input type="range" id="master-volume" min="0" max="100" value="100" aria-label="Volume" />
+            <span id="volume-readout" class="volume-readout">100%</span>
+          </label>
+          <button class="start-button" id="start-audio" type="button">
+            <span class="start-light" aria-hidden="true"></span>
+            Start engine
+          </button>
+        </div>
       </header>
 
       <section class="workspace view" data-view="lab" aria-label="Adaptive music controls">

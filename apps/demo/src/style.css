@@ -129,7 +129,7 @@ h1 span {
   border: 1px solid var(--line);
   background: transparent;
   min-width: 172px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 8px 14px;
   display: flex;
   align-items: center;
@@ -139,8 +139,34 @@ h1 span {
   letter-spacing: 0.11em;
   font-size: 11px;
   cursor: pointer;
-  margin-left: 24px;
   transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.masthead-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 24px;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+}
+
+.volume-control input[type="range"] {
+  width: 80px;
+  height: 44px;
+  accent-color: var(--signal);
+  cursor: pointer;
+}
+
+.volume-readout {
+  min-width: 3ch;
 }
 
 .start-button:hover,
@@ -1248,7 +1274,7 @@ footer p {
 
   .start-button {
     min-width: 148px;
-    min-height: 32px;
+    min-height: 44px;
     padding: 6px 12px;
     margin-left: 12px;
   }
@@ -1415,6 +1441,17 @@ footer p {
     flex-wrap: wrap;
   }
 
+  .masthead-controls {
+    margin-left: 12px;
+  }
+
+  .start-button {
+    min-width: 148px;
+    min-height: 44px;
+    padding: 6px 12px;
+    margin-left: 0;
+  }
+
   .music-stage {
     grid-column: 1 / -1;
     grid-row: 1;
@@ -1458,8 +1495,14 @@ footer p {
     gap: 16px;
   }
 
-  .start-button {
+  .masthead-controls {
     width: 100%;
+    margin-left: 0;
+    gap: 12px;
+  }
+
+  .start-button {
+    flex: 1;
     margin-left: 0;
   }
 

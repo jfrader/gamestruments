@@ -106,6 +106,15 @@ renderView();
 setStartButton(false);
 window.requestAnimationFrame(animate);
 
+elements.masterVolume.value = String(Math.round(audio.volume * 100));
+elements.volumeReadout.textContent = `${elements.masterVolume.value}%`;
+
+elements.masterVolume.addEventListener("input", () => {
+  const vol = parseInt(elements.masterVolume.value, 10) / 100;
+  audio.volume = vol;
+  elements.volumeReadout.textContent = `${elements.masterVolume.value}%`;
+});
+
 elements.start.addEventListener("click", () => {
   void togglePlayback();
 });
