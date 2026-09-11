@@ -10,7 +10,7 @@ async function ensureLoaded(): Promise<void> {
   if (exportsRef) {
     return;
   }
-  const response = await fetch("/engine/gamestruments_engine.wasm");
+  const response = await fetch(`${import.meta.env.BASE_URL}engine/gamestruments_engine.wasm`);
   if (!response.ok) {
     throw new Error(`Failed to load WASM engine: ${response.status}`);
   }

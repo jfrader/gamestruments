@@ -11,6 +11,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "npm run typecheck && npm run build:packages && vite build && npm run smoke",
     "build:runtime": "npm run build --workspace @gamestruments/runtime",
+    "build:itch": "bash tools/package-itch-demo.sh",
     "build:studio": "npm run build:runtime && vite build --config vite.studio.config.ts && npm run build:types --workspace @gamestruments/studio",
     "build:packages": "npm run build:studio",
     "test": "vitest run",
