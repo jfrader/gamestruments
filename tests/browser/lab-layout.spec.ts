@@ -120,13 +120,13 @@ test("recipe switch keeps .stage-setup and .player-surface top positions identic
       const p = document.querySelector(".player-surface")!.getBoundingClientRect().top;
       return { s: Math.round(s), p: Math.round(p) };
     });
-    await page.locator('#recipe-buttons button[data-recipe="pocket-circuit"]').click();
+    await page.locator('#recipe-buttons button[data-recipe="racing"]').click();
     const t1 = await getTops();
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
     await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
     await getTops();
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
-    await page.locator('#recipe-buttons button[data-recipe="pocket-circuit"]').click();
+    await page.locator('#recipe-buttons button[data-recipe="racing"]').click();
     const t3 = await getTops();
     expect(Math.abs(t3.s - t1.s)).toBeLessThanOrEqual(1);
     expect(Math.abs(t3.p - t1.p)).toBeLessThanOrEqual(1);

@@ -46,7 +46,7 @@ if (manifest.workflowUrl !== null) {
 }
 
 const engineSource = await readFile(
-  path.join(root, "crates", "engine", "src", "pocket_circuit.rs"),
+  path.join(root, "crates", "engine", "src", "racing.rs"),
   "utf8",
 );
 const generatorMatch = engineSource.match(/pub const GENERATOR_VERSION: &str = "([^"]+)";/);
