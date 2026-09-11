@@ -80,6 +80,41 @@
             <output class="generator-summary" id="generator-summary">Seeded musical DNA ready</output>
           </fieldset>
 
+          <fieldset class="game-signals" id="game-signals">
+            <legend>Game signals</legend>
+            <p class="signal-help">Change these and the music adapts on the next bar.</p>
+            <fieldset class="phase-control">
+              <legend>Game phase</legend>
+              <div class="phase-buttons" id="phase-buttons">
+                <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
+                <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
+                <button type="button" data-phase="race" aria-pressed="false">Race</button>
+                <button type="button" data-phase="finish" aria-pressed="false">Finish</button>
+              </div>
+            </fieldset>
+
+            <label class="meter-control" for="intensity">
+              <span id="meter-intensity-label">Speed intensity</span>
+              <output id="intensity-value">35%</output>
+              <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
+            </label>
+
+            <label class="meter-control" for="pressure">
+              <span id="meter-pressure-label">Position pressure</span>
+              <output id="pressure-value">20%</output>
+              <input id="pressure" type="range" min="0" max="1" step="0.01" value="0.2" />
+            </label>
+
+            <label class="toggle-control" for="final-lap">
+              <span>
+                <strong id="meter-final-label">Final lap</strong>
+                <span id="meter-final-copy">Add the maximum-commitment layer</span>
+              </span>
+              <input id="final-lap" type="checkbox" />
+              <i aria-hidden="true"></i>
+            </label>
+          </fieldset>
+
           <fieldset class="audition-control">
             <legend>Audition</legend>
             <div class="audition-buttons" id="solo-buttons">
@@ -106,40 +141,6 @@
             <p>Hold repeats the current section. Next cues its development; resume automatic to leave at the end of the current loop.</p>
           </fieldset>
 
-          <details class="game-signals" id="game-signals" open>
-            <summary>Game signals <span>(advanced)</span></summary>
-            <p class="signal-help">Game state is separate from the musical section. Use it to test adaptive rules.</p>
-          <fieldset class="phase-control">
-            <legend>Game phase</legend>
-            <div class="phase-buttons" id="phase-buttons">
-              <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
-              <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
-              <button type="button" data-phase="race" aria-pressed="false">Race</button>
-              <button type="button" data-phase="finish" aria-pressed="false">Finish</button>
-            </div>
-          </fieldset>
-
-          <label class="meter-control" for="intensity">
-            <span id="meter-intensity-label">Speed intensity</span>
-            <output id="intensity-value">35%</output>
-            <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
-          </label>
-
-          <label class="meter-control" for="pressure">
-            <span id="meter-pressure-label">Position pressure</span>
-            <output id="pressure-value">20%</output>
-            <input id="pressure" type="range" min="0" max="1" step="0.01" value="0.2" />
-          </label>
-
-          <label class="toggle-control" for="final-lap">
-            <span>
-              <strong id="meter-final-label">Final lap</strong>
-              <span id="meter-final-copy">Add the maximum-commitment layer</span>
-            </span>
-            <input id="final-lap" type="checkbox" />
-            <i aria-hidden="true"></i>
-          </label>
-          </details>
         </aside>
 
         <section class="music-stage">

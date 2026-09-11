@@ -11,7 +11,7 @@ async function withIsolatedPage<T>(browser: any, fn: (page: import('@playwright/
 }
 
 for (const height of [768, 600]) {
-  test(`expanded game signals can be wheel-scrolled and used at desktop height ${height}`, async ({ browser }) => {
+  test(`game signals are visible and usable at desktop height ${height}`, async ({ browser }) => {
     await withIsolatedPage(browser, async (page) => {
       await page.setViewportSize({ width: 1366, height });
       await page.goto("/#lab");
@@ -21,18 +21,10 @@ for (const height of [768, 600]) {
       await expect(page.locator(".stage-setup #score-buttons")).toHaveCount(1);
       await expect(page.locator(".stage-setup #arrangement-control")).toHaveCount(1);
       expect(await panel.evaluate((element) => getComputedStyle(element).overflowY)).toBe("auto");
-      await panel.hover({ position: { x: 40, y: 80 } });
-      await page.mouse.wheel(0, 2000);
-      await expect.poll(() => panel.evaluate((element) => {
-        const summary = element.querySelector("summary")!.getBoundingClientRect();
-        const bounds = element.getBoundingClientRect();
-        return summary.top >= bounds.top && summary.bottom <= bounds.bottom;
-      })).toBe(true);
-      await page.locator("#game-signals summary").click();
-      const before = await panel.evaluate((element) => element.scrollTop);
-      await panel.hover({ position: { x: 40, y: 80 } });
-      await page.mouse.wheel(0, 4000);
-      await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(before);
+      // Game signals are prominent and always visible: no expander to open.
+      await expect(page.locator("#game-signals")).toBeVisible();
+      await expect(page.locator("#game-signals summary")).toHaveCount(0);
+      await page.locator("#game-signals .toggle-control").scrollIntoViewIfNeeded();
       const usable = await panel.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
         const control = element.querySelector(".toggle-control")!.getBoundingClientRect();
@@ -44,7 +36,12 @@ for (const height of [768, 600]) {
       await page.mouse.click(knob!.x + knob!.width / 2, knob!.y + knob!.height / 2);
       await expect(page.locator("#final-lap")).toBeChecked();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+      // Panels scroll internally; wheel over the page must not scroll the document.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.mouse.move(700, 590);
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(250);
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
     });
   });
 }
@@ -95,7 +92,6 @@ test("narrow screens keep setup above the player and use normal page scrolling",
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#lab");
     await page.locator('.stage-setup button[data-recipe="suspense"]').click();
-    await page.locator("#game-signals summary").click();
     const layout = await page.evaluate(() => {
       const panel = document.querySelector(".race-state")!;
       return { setupBottom: document.querySelector(".stage-setup")!.getBoundingClientRect().bottom,
