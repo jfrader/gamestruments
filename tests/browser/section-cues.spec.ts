@@ -11,7 +11,7 @@ test("Suspense exposes every music section separately from game signals", async 
   expect(sectionIds).toEqual(rowIds);
   expect(sectionIds).toHaveLength(17);
   for (const id of ["scan-ii", "breach-ii", "pre-chorus", "break", "bridge-b", "solo", "anomaly", "outro", "coda"]) expect(sectionIds).toContain(id);
-  await expect(page.locator("#game-signals")).not.toHaveAttribute("open");
+  await expect(page.locator("#game-signals")).toBeVisible();
   await page.locator("#section-select").selectOption("anomaly");
   await expect(page.locator("#cue-status")).toHaveText("Start with Anomaly");
   await expect(page.locator("#start-audio")).toContainText("Start engine");

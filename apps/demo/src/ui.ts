@@ -129,7 +129,6 @@ export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string)
   const suspense = recipe === "suspense";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
-  if (elements.gameSignals.dataset.recipe !== recipe) elements.gameSignals.open = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
   for (const button of elements.recipeButtons.querySelectorAll<HTMLButtonElement>(
     "button[data-recipe]",

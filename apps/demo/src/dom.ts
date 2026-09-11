@@ -48,7 +48,7 @@ export const elements = {
   sectionSelect: requireElement<HTMLSelectElement>("#section-select"),
   holdForm: requireElement<HTMLButtonElement>("#hold-form"),
   advanceForm: requireElement<HTMLButtonElement>("#advance-form"),
-  gameSignals: requireElement<HTMLDetailsElement>("#game-signals"),
+  gameSignals: requireElement<HTMLElement>("#game-signals"),
   cueStatus: requireElement<HTMLElement>("#cue-status"),
   cueDetail: requireElement<HTMLElement>("#cue-detail"),
   cancelCue: requireElement<HTMLButtonElement>("#cancel-cue"),

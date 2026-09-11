@@ -12,6 +12,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab: moved the game signal controls (phase, intensity, pressure, final lap) out of the collapsed advanced panel to the top of Music controls, right after the level seed, so the adaptive behavior is immediately visible.
 - Audio Lab: published a live HTML5 demo on itch.io at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and linked it from the kit page.
 - Audio Lab: added `npm run build:itch`, which builds the lab with relative asset paths and packages `dist/gamestruments-lab-itch.zip` for itch.io HTML5 uploads.
 - Audio Lab: added a master volume control (defaults to 100%, persisted in the browser) and improved the mobile layout with 44px touch targets and stacked header controls.

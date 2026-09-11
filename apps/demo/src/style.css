@@ -1071,22 +1071,17 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .game-signals {
-  margin-top: 20px;
+  margin: 0 0 16px;
 }
 
-.game-signals summary {
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.game-signals summary span {
-  color: var(--muted);
-  font-size: 10px;
+.game-signals legend {
+  color: var(--signal);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 select:focus-visible,
-.cue-panel button:focus-visible,
-.game-signals summary:focus-visible {
+.cue-panel button:focus-visible {
   outline: 2px solid #d7ff3f;
   outline-offset: 3px;
 }
