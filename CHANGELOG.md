@@ -12,6 +12,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab: added a master volume control (defaults to 100%, persisted in the browser) and improved the mobile layout with 44px touch targets and stacked header controls.
 - Audio Lab polish: clearer control hierarchy, larger hit areas and readable labels, consistent spacing, reserved cue-feedback space, and visible queued/blending/held/loading states. Cue feedback and cancellation stay accessible while scrolling the crossover list.
 - Audio Lab: Game type, Sound world and Arrangement now sit above the central player. Detailed controls and crossover sections scroll independently on desktop; expanded Game signals remain reachable, with normal page scrolling on narrow screens.
 - Extended now has independent 16-bar Scan/Scan II and Breach/Breach II pairs, with developed variations rather than repeated eight-bar extensions. Lab and game APIs can hold, advance or resume the form to match gameplay. The drum grid stays continuous; Original, the base sections and Anomaly are unchanged.

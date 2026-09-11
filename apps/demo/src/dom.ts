@@ -8,6 +8,8 @@ export function requireElement<ElementType extends Element>(selector: string): E
 
 export const elements = {
   shell: requireElement<HTMLElement>(".console-shell"),
+  masterVolume: requireElement<HTMLInputElement>("#master-volume"),
+  volumeReadout: requireElement<HTMLElement>("#volume-readout"),
   start: requireElement<HTMLButtonElement>("#start-audio"),
   recipeButtons: requireElement<HTMLDivElement>("#recipe-buttons"),
   scoreButtons: requireElement<HTMLDivElement>("#score-buttons"),

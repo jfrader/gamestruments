@@ -256,14 +256,46 @@ export class DemoAudioEngine {
   #schedulingSection: SectionId | null = null;
   #sourcesBySection = new Map<SectionId, Set<() => void>>();
   #advanceTransport: ((atTick: number, lookaheadTicks: number) => TransitionPlan | null) | undefined;
+  #volume = 1.0;
+  #masterGain: GainNode | null = null;
 
   constructor(score: PortableScore) {
     this.#score = score;
     this.#secondsPerTick = 60 / score.bpm / score.ticksPerBeat;
+
+    try {
+      const savedVolume = localStorage.getItem("gamestruments-volume");
+      if (savedVolume !== null) {
+        const parsed = parseFloat(savedVolume);
+        if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+          this.#volume = parsed;
+        }
+      }
+    } catch {
+      // Ignore errors in environments without localStorage
+    }
   }
 
   get running(): boolean {
     return this.#context?.state === "running";
+  }
+
+  get volume(): number {
+    return this.#volume;
+  }
+
+  set volume(value: number) {
+    const clamped = Math.max(0, Math.min(1, value));
+    this.#volume = clamped;
+    try {
+      localStorage.setItem("gamestruments-volume", clamped.toString());
+    } catch {
+      // Ignore
+    }
+
+    if (this.#masterGain && this.#context) {
+      this.#masterGain.gain.setTargetAtTime(clamped, this.#context.currentTime, 0.05);
+    }
   }
 
   get soloMode(): SoloMode {
@@ -287,11 +319,12 @@ export class DemoAudioEngine {
 
     const context = new AudioContext({ latencyHint: "interactive" });
     const master = context.createGain();
+    this.#masterGain = master;
     const highpass = context.createBiquadFilter();
     const compressor = context.createDynamicsCompressor();
     const limiter = context.createDynamicsCompressor();
     const roomImpulse = this.#createRoomImpulse(context);
-    master.gain.value = 0.64;
+    master.gain.value = this.#volume;
     highpass.type = "highpass";
     highpass.frequency.value = 28;
     highpass.Q.value = 0.55;
