@@ -121,7 +121,7 @@ GDExtension contract.
 ## Catalog level-004 (parity test)
 
 The frozen Tiny Torque take `level-004` (Grid section) under
-`catalog/pocket-circuit/tiny-torque-level-004/` is the reference for engine
+`catalog/racing/tiny-torque-level-004/` is the reference for engine
 parity. Empty secret + seed "level-004" + funk style + the recorded traits
 reproduces exactly `pocket-circuit-generated-v1-9-0-7864ec71` (see the golden
 render test and `render_listen` example in `crates/engine`).

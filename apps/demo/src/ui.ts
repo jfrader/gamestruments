@@ -104,7 +104,7 @@ export function renderSections(
 export function renderScoreButtons(
   activeExperimentIndex: number,
   presets: readonly { style: string }[],
-  recipe: "pocket-circuit" | "suspense",
+  recipe: "racing" | "suspense",
 ): void {
   const racingLabels = ["Tiny Torque", "Neon Drift", "Countertop", "8-Bit"];
   const buttons = presets.map((preset, index) => {
@@ -125,7 +125,7 @@ export function renderScoreButtons(
   elements.scoreButtons.replaceChildren(...buttons);
 }
 
-export function renderRecipeChrome(recipe: "pocket-circuit" | "suspense", phase: string): void {
+export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string): void {
   const suspense = recipe === "suspense";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
@@ -196,7 +196,7 @@ export function renderScoreIdentity(
   generationTraits: NormalizedMusicTraits,
   comparisonBaseSeed: string,
   soloMode: SoloMode,
-  recipe: "pocket-circuit" | "suspense",
+  recipe: "racing" | "suspense",
   presets: readonly { style: string }[],
   arrangement: SuspenseArrangement,
   phase: string,

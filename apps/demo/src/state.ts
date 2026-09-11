@@ -16,7 +16,7 @@ import {
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 
-export type LabRecipe = "pocket-circuit" | "suspense";
+export type LabRecipe = "racing" | "suspense";
 
 export interface GenerationPreset {
   style: string;
@@ -57,7 +57,7 @@ export const SUSPENSE_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
-export let labRecipe: LabRecipe = "pocket-circuit";
+export let labRecipe: LabRecipe = "racing";
 export let suspenseArrangement: SuspenseArrangement = "extended";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";

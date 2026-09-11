@@ -65,7 +65,7 @@ mod tests {
         assert_eq!(hash_text("string:level-004"), hash_text("string:level-004"));
         assert_ne!(
             hash_text("string:level-004"),
-            hash_text("pocket-circuit\0string:level-004")
+            hash_text("racing\0string:level-004")
         );
     }
 

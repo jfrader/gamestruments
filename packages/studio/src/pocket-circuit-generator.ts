@@ -1359,7 +1359,7 @@ export function generatePocketCircuitAuthoringScore(
   return createAuthoringScore(createDNA(input));
 }
 
-export function generatePocketCircuitLevel(
+export function generateRacingLevel(
   input: PocketCircuitGeneratorInput,
 ): GeneratedPocketCircuitLevel {
   const dna = createDNA(input);

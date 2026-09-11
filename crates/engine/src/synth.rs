@@ -880,7 +880,7 @@ use crate::score::PortableScore;
 #[cfg(test)]
 mod tests {
     use super::Synth;
-    use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::MusicEvent;
 
     #[test]
@@ -958,7 +958,7 @@ mod tests {
 
     #[test]
     fn cruise_events_render_audible_samples() {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "qa-secret".into(),
             seed: "qa-race".into(),
             style: Style::Funk,

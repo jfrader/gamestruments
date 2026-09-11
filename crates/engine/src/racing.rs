@@ -490,7 +490,7 @@ fn compute_score_id(
             secret, seed, style_str, palette_key, gen_ver
         ))
     };
-    format!("pocket-circuit-generated-v{}-{:08x}", vstr, identity)
+    format!("racing-generated-v{}-{:08x}", vstr, identity)
 }
 
 fn subseed(secret: &str, seed: &str, domain: &str, palette: &str) -> u32 {
@@ -505,7 +505,7 @@ fn subseed(secret: &str, seed: &str, domain: &str, palette: &str) -> u32 {
     hash_text(&s)
 }
 
-pub fn generate_pocket_circuit(input: &GenerateInput) -> Result<PortableScore, String> {
+pub fn generate_racing(input: &GenerateInput) -> Result<PortableScore, String> {
     let traits = normalize_traits(
         input.energy,
         input.complexity,
@@ -1472,7 +1472,7 @@ mod tests {
     use std::collections::HashSet;
 
     use super::{
-        generate_pocket_circuit, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION,
+        generate_racing, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION,
     };
 
     fn sample(secret: &str, palette: InstrumentPalette) -> GenerateInput {
@@ -1499,9 +1499,9 @@ mod tests {
     #[test]
     fn secret_changes_the_piece() {
         let pocket =
-            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()))
+            generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
                 .expect("pocket score must validate");
-        let other = generate_pocket_circuit(&sample("other-secret", InstrumentPalette::default()))
+        let other = generate_racing(&sample("other-secret", InstrumentPalette::default()))
             .expect("other score must validate");
         assert_ne!(pocket.id, other.id);
         assert_ne!(pitches(&pocket), pitches(&other));
@@ -1510,9 +1510,9 @@ mod tests {
     #[test]
     fn palette_changes_the_piece() {
         let default_palette =
-            generate_pocket_circuit(&sample("pocket-secret", InstrumentPalette::default()))
+            generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
                 .expect("default palette score must validate");
-        let custom = generate_pocket_circuit(&sample(
+        let custom = generate_racing(&sample(
             "pocket-secret",
             InstrumentPalette {
                 melody: "chip".into(),
@@ -1535,7 +1535,7 @@ mod tests {
 
     #[test]
     fn generates_six_sections() {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "pocket-secret".into(),
             seed: "race-12".into(),
             style: Style::Funk,
@@ -1567,7 +1567,7 @@ mod tests {
                 brightness: f64::from((index % 13) as u32) / 12.0,
                 syncopation: f64::from((index % 19) as u32) / 18.0,
             };
-            let score = generate_pocket_circuit(&input).expect("stress score must validate");
+            let score = generate_racing(&input).expect("stress score must validate");
             assert!(
                 ids.insert(score.id.clone()),
                 "duplicate score id {}",
@@ -1575,7 +1575,7 @@ mod tests {
             );
             if index % 31 == 0 {
                 let repeated =
-                    generate_pocket_circuit(&input).expect("repeated stress score must validate");
+                    generate_racing(&input).expect("repeated stress score must validate");
                 assert_eq!(
                     serde_json::to_vec(&score).expect("stress score serializes"),
                     serde_json::to_vec(&repeated).expect("repeated stress score serializes")
@@ -1597,14 +1597,14 @@ mod tests {
             brightness: 0.55,
             syncopation: 0.9,
         };
-        let generated = generate_pocket_circuit(&input).expect("reserved score must validate");
+        let generated = generate_racing(&input).expect("reserved score must validate");
         let catalog_str =
-            include_str!("../../../catalog/pocket-circuit/tiny-torque-level-004/score.json");
+            include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let catalog: super::PortableScore =
             serde_json::from_str(catalog_str).expect("catalog parses");
         assert_eq!(generated.bpm, catalog.bpm);
         assert_eq!(generated.title, catalog.title);
-        assert_eq!(generated.id, "pocket-circuit-generated-v1-9-0-7864ec71");
+        assert_eq!(generated.id, "racing-generated-v1-9-0-7864ec71");
         assert_eq!(generated.sections.len(), catalog.sections.len());
         let mut mismatches = 0usize;
         let mut first_diff = None;

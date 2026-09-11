@@ -268,7 +268,7 @@ elements.recipeButtons.addEventListener("click", (event) => {
     "button[data-recipe]",
   );
   const recipe = button?.dataset.recipe;
-  if (recipe !== "pocket-circuit" && recipe !== "suspense") {
+  if (recipe !== "racing" && recipe !== "suspense") {
     return;
   }
   applyGenerationRequest(setLabRecipe(recipe), () => {
@@ -282,7 +282,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-la
   button.addEventListener("click", () => {
     const recipe = button.dataset.recipe;
     window.location.hash = "lab";
-    if (recipe === "pocket-circuit" || recipe === "suspense") {
+    if (recipe === "racing" || recipe === "suspense") {
       applyGenerationRequest(setLabRecipe(recipe), () => {
         renderCurrentScore();
         renderRuntimeSignal();

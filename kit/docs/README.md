@@ -1,6 +1,6 @@
 # Gamestruments — Adaptive Music for Godot 4
 
-Gamestruments generates deterministic, sample-free adaptive music inside a Godot game. Configure one `GamestrumentsPlayer`, call `generate(seed)` at level load, then drive bar-quantized changes through the sections your recipe defines — the Pocket Circuit racing recipe covers garage, grid, cruise, attack, final lap, and victory.
+Gamestruments generates deterministic, sample-free adaptive music inside a Godot game. Configure one `GamestrumentsPlayer`, call `generate(seed)` at level load, then drive bar-quantized changes through the sections your recipe defines — the Racing racing recipe covers garage, grid, cruise, attack, final lap, and victory.
 
 New to the kit? The archive root `README.md` has a copy-paste integration with the exact properties and calls. This folder is the reference set. Prefer to hear it first? Try the browser preview at <https://gamestruments.gurisitos.games>.
 

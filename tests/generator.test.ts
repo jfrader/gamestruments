@@ -7,7 +7,7 @@ import {
   derivePocketCircuitSubSeed,
   exportScore,
   arrangementGroove,
-  generatePocketCircuitLevel,
+  generateRacingLevel,
   melodyDegreesForBar,
   POCKET_CIRCUIT_DNA_SEED_VERSION,
   POCKET_CIRCUIT_GENERATOR_DOMAINS,
@@ -133,14 +133,14 @@ function hasThreeConsecutiveSteps(steps: readonly number[]): boolean {
 describe("Pocket Circuit deterministic generator", () => {
   it("provides stable defaults while accepting partial generation parameters", () => {
     assert.deepEqual(
-      generatePocketCircuitLevel({ seed: "default-traits" }),
-      generatePocketCircuitLevel({
+      generateRacingLevel({ seed: "default-traits" }),
+      generateRacingLevel({
         seed: "default-traits",
         traits: DEFAULT_POCKET_CIRCUIT_TRAITS,
       }),
     );
     assert.equal(
-      generatePocketCircuitLevel({
+      generateRacingLevel({
         seed: "partial-traits",
         traits: { energy: 0.91 },
       }).traits.energy,
@@ -149,8 +149,8 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("reproduces the complete authoring and portable result for the same seed", () => {
-    const first = generatePocketCircuitLevel(input("kitchen-track-17"));
-    const second = generatePocketCircuitLevel(input("kitchen-track-17"));
+    const first = generateRacingLevel(input("kitchen-track-17"));
+    const second = generateRacingLevel(input("kitchen-track-17"));
 
     assert.deepEqual(first, second);
     assert.equal(first.generatorVersion, POCKET_CIRCUIT_GENERATOR_VERSION);
@@ -259,7 +259,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("materially varies every musical domain across level seeds", () => {
     const generated = Array.from({ length: 18 }, (_, index) =>
-      generatePocketCircuitLevel(input(`diversity-${index}`)),
+      generateRacingLevel(input(`diversity-${index}`)),
     );
     const signatures = {
       harmony: generated.map(({ dna }) =>
@@ -305,7 +305,7 @@ describe("Pocket Circuit deterministic generator", () => {
   it("uses style recipes as categorical generation parameters", () => {
     const styles = ["fusion", "neon", "funk", "chip"] as const;
     const generated = styles.map((style) =>
-      generatePocketCircuitLevel({
+      generateRacingLevel({
         seed: "style-contract",
         style,
         traits: BALANCED_TRAITS,
@@ -332,7 +332,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const styles: readonly PocketCircuitStyle[] = ["fusion", "neon", "funk", "chip"];
 
     for (const style of styles) {
-      const { dna, portableScore } = generatePocketCircuitLevel({
+      const { dna, portableScore } = generateRacingLevel({
         ...input(`pulse-grid-${style}`),
         style,
       });
@@ -349,7 +349,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("uses fusion seventh chords from Grid onward while Garage stays a triad", () => {
-    const { portableScore } = generatePocketCircuitLevel({
+    const { portableScore } = generateRacingLevel({
       ...input("fusion-seventh-contract", {
         ...BALANCED_TRAITS,
         complexity: 0.2,
@@ -404,7 +404,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const styles: readonly PocketCircuitStyle[] = ["fusion", "neon", "chip"];
 
     for (const style of styles) {
-      const { dna, portableScore } = generatePocketCircuitLevel({
+      const { dna, portableScore } = generateRacingLevel({
         ...input("race-groove-contract"),
         style,
       });
@@ -446,7 +446,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("moves the denser funk groove onto Race Flow", () => {
-    const { portableScore } = generatePocketCircuitLevel({
+    const { portableScore } = generateRacingLevel({
       ...input("funk-race-groove-contract"),
       style: "funk",
     });
@@ -463,7 +463,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const styles: readonly PocketCircuitStyle[] = ["fusion", "neon", "funk", "chip"];
 
     for (const style of styles) {
-      const { dna, portableScore } = generatePocketCircuitLevel({
+      const { dna, portableScore } = generateRacingLevel({
         ...input("pressure-final-groove-contract"),
         style,
       });
@@ -504,7 +504,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     for (const style of styles) {
       for (const seed of seeds) {
-        const { portableScore } = generatePocketCircuitLevel({
+        const { portableScore } = generateRacingLevel({
           ...input(seed),
           style,
         });
@@ -548,7 +548,7 @@ describe("Pocket Circuit deterministic generator", () => {
     for (const style of styles) {
       for (const seed of seeds) {
         for (const traits of traitSets) {
-          const generated = generatePocketCircuitLevel({
+          const generated = generateRacingLevel({
             seed,
             style,
             traits,
@@ -592,7 +592,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("keeps Grid snares on steps 2 and 6 even when DNA wants a step-6 kick", () => {
     for (const seed of ["grid-snare-a", "grid-snare-b", 8042, "level-001"]) {
-      const { dna, portableScore } = generatePocketCircuitLevel(input(seed));
+      const { dna, portableScore } = generateRacingLevel(input(seed));
       const grid = portableScore.sections.find((section) => section.id === "grid");
       assert.ok(grid);
       const barTicks = portableScore.beatsPerBar * portableScore.ticksPerBeat;
@@ -617,7 +617,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("keeps version strings from altering non-fusion events beyond the score id", () => {
     for (const style of ["neon", "funk", "chip"] as const) {
-      const generated = generatePocketCircuitLevel({
+      const generated = generateRacingLevel({
         ...input(`v1-8-non-fusion-${style}`),
         style,
       });
@@ -644,7 +644,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("adds a fusion-only four-bar victory sparkle lane", () => {
     for (const style of ["fusion", "neon", "funk", "chip"] as const) {
-      const { dna, portableScore } = generatePocketCircuitLevel({
+      const { dna, portableScore } = generateRacingLevel({
         ...input("victory-sparkle-contract"),
         style,
       });
@@ -688,11 +688,11 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("raises only the fusion victory melody by one effective register", () => {
     const sharedInput = input("fusion-victory-register-contract");
-    const fusion = generatePocketCircuitLevel({
+    const fusion = generateRacingLevel({
       ...sharedInput,
       style: "fusion",
     }).portableScore;
-    const neon = generatePocketCircuitLevel({
+    const neon = generateRacingLevel({
       ...sharedInput,
       style: "neon",
     }).portableScore;
@@ -729,7 +729,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     for (const style of styles) {
       for (const seed of ["phase-a", "phase-b", 8042]) {
-        const { portableScore } = generatePocketCircuitLevel({
+        const { portableScore } = generateRacingLevel({
           ...input(seed),
           style,
         });
@@ -746,7 +746,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     for (const style of styles) {
       for (const seed of ["level-001", "grid-opening-a", "grid-opening-b", 8042]) {
-        const { portableScore } = generatePocketCircuitLevel({
+        const { portableScore } = generateRacingLevel({
           ...input(seed),
           style,
         });
@@ -837,7 +837,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     for (const style of styles) {
       for (const seed of ["phase-arc-a", "phase-arc-b"]) {
-        const { portableScore } = generatePocketCircuitLevel({
+        const { portableScore } = generateRacingLevel({
           ...input(seed),
           style,
         });
@@ -875,7 +875,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const sectionIds = ["garage", "grid", "cruise", "attack", "final-lap", "victory"];
 
     for (const style of styles) {
-      const { portableScore } = generatePocketCircuitLevel({
+      const { portableScore } = generateRacingLevel({
         ...input("phase-rhythm-contract"),
         style,
       });
@@ -901,7 +901,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const structures = styles.map((style) =>
       JSON.stringify(
         stripPresentation(
-          generatePocketCircuitLevel({
+          generateRacingLevel({
             ...input("style-structure-contract"),
             style,
           }).portableScore,
@@ -917,7 +917,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
     for (const style of styles) {
       for (const seed of ["transformation-harmony-a", "transformation-harmony-b"]) {
-        const { dna, portableScore } = generatePocketCircuitLevel({
+        const { dna, portableScore } = generateRacingLevel({
           ...input(seed),
           style,
         });
@@ -961,7 +961,7 @@ describe("Pocket Circuit deterministic generator", () => {
     const signatures: string[] = [];
 
     for (const style of ["fusion", "neon", "funk", "chip"] as const) {
-      const { portableScore } = generatePocketCircuitLevel({
+      const { portableScore } = generateRacingLevel({
         ...input("style-lift-contract"),
         style,
       });
@@ -984,10 +984,10 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("gives each normalized trait an observable deterministic effect", () => {
     const base = { ...BALANCED_TRAITS };
-    const energyLow = generatePocketCircuitLevel(
+    const energyLow = generateRacingLevel(
       input("trait-contract", { ...base, energy: 0.1 }),
     );
-    const energyHigh = generatePocketCircuitLevel(
+    const energyHigh = generateRacingLevel(
       input("trait-contract", { ...base, energy: 0.9 }),
     );
     assert.ok(energyHigh.portableScore.bpm > energyLow.portableScore.bpm);
@@ -996,10 +996,10 @@ describe("Pocket Circuit deterministic generator", () => {
         average(energyLow.portableScore.sections.flatMap((section) => section.events.map((event) => event.velocity))),
     );
 
-    const complexityLow = generatePocketCircuitLevel(
+    const complexityLow = generateRacingLevel(
       input("trait-contract", { ...base, complexity: 0.1 }),
     );
-    const complexityHigh = generatePocketCircuitLevel(
+    const complexityHigh = generateRacingLevel(
       input("trait-contract", { ...base, complexity: 0.9 }),
     );
     assert.ok(
@@ -1009,10 +1009,10 @@ describe("Pocket Circuit deterministic generator", () => {
     assert.equal(complexityLow.dna.harmony.chordSize, 3);
     assert.equal(complexityHigh.dna.harmony.chordSize, 4);
 
-    const brightnessLow = generatePocketCircuitLevel(
+    const brightnessLow = generateRacingLevel(
       input("trait-contract", { ...base, brightness: 0.1 }),
     );
-    const brightnessHigh = generatePocketCircuitLevel(
+    const brightnessHigh = generateRacingLevel(
       input("trait-contract", { ...base, brightness: 0.9 }),
     );
     assert.ok(
@@ -1095,7 +1095,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("exports six non-empty sections with bounded sorted integer events", () => {
-    const { portableScore } = generatePocketCircuitLevel(
+    const { portableScore } = generateRacingLevel(
       input(8042, {
         energy: 0.82,
         complexity: 0.76,
@@ -1134,7 +1134,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("develops the recognizable shared motif through every phase without losing harmony or pulse", () => {
-    const { dna, portableScore } = generatePocketCircuitLevel(
+    const { dna, portableScore } = generateRacingLevel(
       input("shared-musical-dna"),
     );
     const barTicks = portableScore.beatsPerBar * portableScore.ticksPerBeat;
@@ -1191,7 +1191,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("applies section-specific harmony treatments while preserving tonic", () => {
-    const { dna, portableScore } = generatePocketCircuitLevel(
+    const { dna, portableScore } = generateRacingLevel(
       input("section-harmony", {
         ...BALANCED_TRAITS,
         brightness: 0.1,
@@ -1296,7 +1296,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("keeps bass and chord roots on the same resolved progression", () => {
-    const { portableScore } = generatePocketCircuitLevel(input("root-agreement"));
+    const { portableScore } = generateRacingLevel(input("root-agreement"));
     const barTicks = portableScore.beatsPerBar * portableScore.ticksPerBeat;
 
     for (const section of portableScore.sections) {
@@ -1327,7 +1327,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("replaces climactic placeholder stems with a synthesized lift lane", () => {
-    const { portableScore } = generatePocketCircuitLevel(input("lift-contract"));
+    const { portableScore } = generateRacingLevel(input("lift-contract"));
     const finalLap = portableScore.sections.find((section) => section.id === "final-lap");
     assert.ok(finalLap);
     const lift = finalLap.events.filter((event) => event.lane === "final-lap-lift");
@@ -1338,7 +1338,7 @@ describe("Pocket Circuit deterministic generator", () => {
 
   it("emits no placeholder stem events in generated portable scores", () => {
     for (const seed of ["no-stems-a", "no-stems-b", 42]) {
-      const { portableScore } = generatePocketCircuitLevel(input(seed));
+      const { portableScore } = generateRacingLevel(input(seed));
       for (const section of portableScore.sections) {
         assert.ok(
           section.events.every((event) => event.kind !== "stem"),
@@ -1349,7 +1349,7 @@ describe("Pocket Circuit deterministic generator", () => {
   });
 
   it("produces a plain portable score accepted by the RNG-free runtime transport", () => {
-    const generated = generatePocketCircuitLevel(input("runtime-boundary"));
+    const generated = generateRacingLevel(input("runtime-boundary"));
     const serialized = JSON.stringify(generated.portableScore);
     const portable = JSON.parse(serialized) as PortableScore;
 

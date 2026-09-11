@@ -12,7 +12,7 @@ use std::fs;
 
 use gamestruments_engine::render::render_wav;
 use gamestruments_engine::score::PortableScore;
-use gamestruments_engine::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+use gamestruments_engine::{generate_racing, GenerateInput, InstrumentPalette, Style};
 
 fn main() {
     println!("gamestruments-engine parity_ref: producing native references...");
@@ -41,7 +41,7 @@ fn main() {
 
     // Determinism: native must be stable (run twice, byte compare)
     let score1: PortableScore = serde_json::from_slice(&score_funk).unwrap();
-    let score2 = generate_pocket_circuit(&GenerateInput {
+    let score2 = generate_racing(&GenerateInput {
         secret: "parity-secret".into(),
         seed: "parity-001".into(),
         style: Style::Funk,
@@ -99,7 +99,7 @@ fn produce(input_json: &str, section: &str, phrases: usize) -> (Vec<u8>, Vec<u8>
         syncopation: inp.syncopation,
     };
 
-    let score = generate_pocket_circuit(&gen).expect("native parity score must validate");
+    let score = generate_racing(&gen).expect("native parity score must validate");
     let score_bytes = serde_json::to_vec(&score).expect("serialize score");
 
     // parse the score JSON then render (exactly mirrors WASM render path)

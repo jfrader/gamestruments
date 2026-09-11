@@ -139,9 +139,9 @@ cp -a crates/godot "$STAGING/crates/godot"
 cp crates/README.md "$STAGING/crates/README.md"
 cp crates/LICENSE.md "$STAGING/crates/LICENSE.md"
 cp Cargo.toml Cargo.lock rust-toolchain.toml CHANGELOG.md "$STAGING/"
-mkdir -p "$STAGING/catalog/pocket-circuit/tiny-torque-level-004"
-cp catalog/pocket-circuit/tiny-torque-level-004/score.json \
-  "$STAGING/catalog/pocket-circuit/tiny-torque-level-004/score.json"
+mkdir -p "$STAGING/catalog/racing/tiny-torque-level-004"
+cp catalog/racing/tiny-torque-level-004/score.json \
+  "$STAGING/catalog/racing/tiny-torque-level-004/score.json"
 
 # addon layout (buyer drop-in; .gdextension paths are already res://addons/gamestruments/...)
 mkdir -p "$STAGING/addons/gamestruments/bin"

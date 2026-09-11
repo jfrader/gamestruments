@@ -10,7 +10,7 @@ import {
 } from "../packages/studio/src/generation-manifest.ts";
 import {
   generateLanternTrailAdventure,
-  generatePocketCircuitLevel,
+  generateRacingLevel,
 } from "../packages/studio/src/index.ts";
 
 async function readFixture<T>(directory: string, name: string): Promise<T> {
@@ -24,7 +24,7 @@ async function readFixture<T>(directory: string, name: string): Promise<T> {
 
 describe("Pocket Circuit golden generation fixtures", () => {
   it("matches the checked-in score and versioned manifest", async () => {
-    const generated = generatePocketCircuitLevel({
+    const generated = generateRacingLevel({
       seed: "golden-v1",
       style: "neon",
       traits: {

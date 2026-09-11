@@ -79,7 +79,7 @@ Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
 The in-game engine lives in Rust:
 
 - `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
-  from namespace + seed + palette + traits. Pocket Circuit racing and Suspense
+  from namespace + seed + palette + traits. Racing and Suspense
   song-form recipes.
 - `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
 
@@ -95,8 +95,8 @@ and catalog research; Rust is the sole runtime generation authority.
 
 `apps/demo` is the browser playground and validation harness.
 
-The first collection follows Pocket Circuit's audio brief (see
-[`docs/pocket-circuit-music-brief.md`](docs/pocket-circuit-music-brief.md)).
+The first collection follows the racing music brief (see
+[`docs/racing-music-brief.md`](docs/racing-music-brief.md)).
 
 ## Procedural API (authoring / research path)
 
@@ -105,7 +105,7 @@ catalog work only. They are AGPL and do not ship in games. The Audio Lab itself
 now drives generation through the shared WASM engine (see `docs/engine-boundary.md`).
 
 ```ts
-import { generatePocketCircuitLevel } from "@gamestruments/studio";
+import { generateRacingLevel } from "@gamestruments/studio";
 ```
 
 See the **How Games Use It** section above and `docs/kit-contract.md` for the

@@ -1,6 +1,6 @@
 use gamestruments_engine::render::render_wav;
 use gamestruments_engine::score::PortableScore;
-use gamestruments_engine::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+use gamestruments_engine::{generate_racing, GenerateInput, InstrumentPalette, Style};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -20,7 +20,7 @@ fn main() {
 
     // 1. menu-grid: catalog level-004 funk grid x3, empty secret (reserved)
     {
-        let json = include_str!("../../../catalog/pocket-circuit/tiny-torque-level-004/score.json");
+        let json = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let score: PortableScore = serde_json::from_str(json).expect("catalog json");
         let wav = render_wav(&score, "grid", 3, 22050);
         entries.push(("menu-grid.wav".into(), wav));
@@ -28,7 +28,7 @@ fn main() {
 
     // 2. race-cruise x4 (phrases=4)
     {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "guri-pc-dev-salt".into(),
             seed: "race-12".into(),
             style: Style::Funk,
@@ -51,7 +51,7 @@ fn main() {
         (Style::Chip, "chip"),
     ];
     for (sty, name) in &styles {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "guri-pc-dev-salt".into(),
             seed: "level-004".into(),
             style: *sty,
@@ -69,7 +69,7 @@ fn main() {
     // 4. one per section for funk, x2, seed "race-12", pocket secret
     let sections = ["garage", "grid", "cruise", "attack", "final-lap", "victory"];
     for sec in &sections {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "guri-pc-dev-salt".into(),
             seed: "race-12".into(),
             style: Style::Funk,

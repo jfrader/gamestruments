@@ -13,7 +13,7 @@ import {
   type NormalizedTrailTraits,
 } from "./lantern-trail-generator.js";
 import {
-  generatePocketCircuitLevel,
+  generateRacingLevel,
   type NormalizedMusicTraits,
   type PocketCircuitGeneratorInput,
   type PocketCircuitStyle,
@@ -304,7 +304,7 @@ export async function runGenerateCli(
       ? {}
       : { traits: options.traits }),
   };
-  const generated = generatePocketCircuitLevel(input);
+  const generated = generateRacingLevel(input);
   await emit(
     options.output,
     serializeJson(generated.portableScore, options.pretty),
