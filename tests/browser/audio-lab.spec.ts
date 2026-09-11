@@ -47,16 +47,19 @@ test("generation controls remain functional before and during playback", async (
   await expect(page.locator("#compare-take")).toHaveAttribute("aria-pressed", "true");
 
   await page.locator("#center-play").click();
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
 
   const chip = page.locator("#score-buttons button", { hasText: "Chip" });
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await expect(page.locator("#audition-status")).toContainText("Generated");
 
   await page.locator("#start-audio").click();
-  await expect(page.locator("#start-audio")).toContainText("Start engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "offline");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", "Start engine");
   expect(runtimeErrors).toEqual([]);
 });
 
@@ -81,7 +84,8 @@ test("switching to Suspense generates song-form music instead of racing", async 
   await expect(page.locator("#runtime-signal")).toContainText("recipe: suspense");
 
   await page.locator("#center-play").click();
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await expect(page.locator("#transition-label")).toContainText("Form playing");
   expect(runtimeErrors).toEqual([]);
 });
@@ -107,13 +111,15 @@ test("Extended adds longer beds and Original restores the same seed and score", 
     await expect(page.locator("#section-list li").filter({ has: page.getByRole("button", { name: "Cue Scan", exact: true }) })).toContainText("16 bars");
   await expect(page.locator("#section-list li").first()).toContainText("Handshake · 8 bars");
   await page.locator("#center-play").click();
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await original.click();
   await expect(original).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
   await expect(page.locator("#generator-summary")).toHaveText(summary!);
   await expect(page.locator("#level-seed")).toHaveValue(seed);
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await page.locator("#start-audio").click();
   expect(errors).toEqual([]);
 });
@@ -129,7 +135,8 @@ test("Anomaly can be auditioned directly and safely rolled back to Original", as
   await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
   await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
   await expect(page.locator("#mood-name")).toHaveText("Handshake");
-  await expect(page.locator("#start-audio")).toContainText("Stop engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await page.locator("#start-audio").click();
   expect(errors).toEqual([]);
 });

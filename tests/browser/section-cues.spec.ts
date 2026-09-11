@@ -14,11 +14,13 @@ test("Suspense exposes every music section separately from game signals", async 
   await expect(page.locator("#game-signals")).toBeVisible();
   await page.locator("#section-select").selectOption("anomaly");
   await expect(page.locator("#cue-status")).toHaveText("Start with Anomaly");
-  await expect(page.locator("#start-audio")).toContainText("Start engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "offline");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", "Start engine");
   await page.getByRole("button", { name: "Cue Other Hall", exact: true }).focus();
   await page.keyboard.press("Space");
   await expect(page.locator("#cue-status")).toHaveText("Start with Other Hall");
-  await expect(page.locator("#start-audio")).toContainText("Start engine");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "offline");
+  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", "Start engine");
   await page.locator("#section-select").selectOption("anomaly");
   await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
   await expect(page.locator("#section-select option")).toHaveCount(14);
@@ -162,4 +164,53 @@ test("the complete section selector and cue status fit a compact viewport", asyn
   await expect(page.locator("#section-select option")).toHaveCount(17);
   const width = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
   expect(width.page).toBeLessThanOrEqual(width.viewport);
+});
+
+test("engine button reflects playing/waiting/crossing states and mobile controls are sticky", async ({ page }) => {
+  test.setTimeout(30000);
+  await page.goto("/#lab");
+  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+
+  // start playback
+  await page.locator("#center-play").click();
+  const startBtn = page.locator("#start-audio");
+  await expect(startBtn).toHaveAttribute("data-engine-state", "playing");
+  const moodLabel = (await page.locator("#mood-name").textContent()) || "";
+  await expect(startBtn.locator(".engine-label--from")).toHaveText(moodLabel);
+  await expect(startBtn).toHaveAttribute("aria-label", new RegExp(`Stop engine — playing ${moodLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+
+  // wait for a bar to pass so cue waits
+  await page.waitForFunction(() => Number(document.querySelector("#beat-value")!.textContent) >= 2);
+  await page.getByRole("button", { name: "Cue Scan", exact: true }).click();
+
+  // should go to waiting then crossing
+  await expect(startBtn).toHaveAttribute("data-engine-state", "waiting", { timeout: 4000 });
+  await expect(startBtn).toHaveAttribute("data-engine-state", "crossing", { timeout: 8000 });
+
+  // --cross-progress increases over frames
+  let last = -1;
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(80);
+    const prog = await startBtn.evaluate((el) => parseFloat((el as HTMLElement).style.getPropertyValue("--cross-progress") || "0"));
+    expect(prog).toBeGreaterThan(last);
+    last = prog;
+  }
+
+  // stop for clean
+  await startBtn.click();
+
+  // mobile sticky controls
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/#lab"); // reset for clean layout
+  const controls = page.locator(".masthead-controls");
+  await expect(controls).toBeVisible();
+  const before = await controls.boundingBox();
+  expect(before && before.y).toBeLessThanOrEqual(12);
+  await page.evaluate(() => window.scrollBy(0, 400));
+  await page.waitForTimeout(50);
+  const after = await controls.boundingBox();
+  expect(after && after.y).toBeLessThanOrEqual(12); // still at viewport top
+  // shell has top padding so content not hidden
+  const shellPad = await page.locator(".console-shell").evaluate((el) => parseInt(getComputedStyle(el).paddingTop, 10));
+  expect(shellPad).toBeGreaterThan(40);
 });

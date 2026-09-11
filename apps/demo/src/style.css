@@ -195,6 +195,165 @@ h1 span {
   box-shadow: none;
 }
 
+/* Stateful engine button — stable children, crossfade/sweep, reduced-motion aware */
+.start-button {
+  position: relative;
+  overflow: hidden;
+  max-width: 320px;
+}
+.engine-copy {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 1.1em;
+  line-height: 1;
+}
+.engine-label {
+  position: absolute;
+  inset: 0;
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), opacity 160ms ease;
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+.engine-label--from {
+  transform: translateY(0);
+  opacity: 1;
+}
+.engine-label--to {
+  transform: translateY(3px);
+  opacity: 0;
+}
+.start-button:not([data-engine-state="crossing"]) .engine-label {
+  position: static;
+  transform: none;
+  opacity: 1;
+  display: inline;
+  text-align: left;
+}
+.start-button:not([data-engine-state="crossing"]) .engine-label--to {
+  display: none;
+}
+.start-button[data-engine-state="waiting"] .engine-label--to {
+  display: inline;
+  opacity: 0.6;
+  margin-left: 6px;
+  font-size: 0.78em;
+  white-space: nowrap;
+}
+.start-button[data-engine-state="waiting"] .engine-copy {
+  justify-content: flex-start;
+}
+.engine-stop {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+.stop-glyph {
+  font-size: 7px;
+  line-height: 1;
+}
+.engine-progress {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.start-button[data-engine-state="offline"] .engine-stop,
+.start-button[data-engine-state="offline"] .engine-progress {
+  display: none;
+}
+.start-button[data-engine-state="offline"] .engine-label--to {
+  display: none;
+}
+
+.start-button.is-running .engine-label {
+  color: #11120f;
+}
+
+.start-button[data-engine-state="playing"] .engine-stop {
+  color: #11120f;
+}
+
+.start-button[data-engine-state="waiting"] {
+  /* gentle pulse on the copy area */
+}
+.start-button[data-engine-state="waiting"] .engine-copy {
+  animation: engine-wait-pulse 1400ms ease-in-out infinite;
+}
+@keyframes engine-wait-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.start-button[data-engine-state="crossing"] {
+  background: linear-gradient(
+    90deg,
+    var(--from-color, var(--signal)) 0%,
+    var(--from-color, var(--signal)) calc(var(--cross-progress, 0) * 100%),
+    var(--to-color, var(--signal)) calc(var(--cross-progress, 0) * 100%),
+    var(--to-color, var(--signal)) 100%
+  );
+  border-color: color-mix(in srgb, var(--from-color, #d7ff3f), var(--to-color, #d7ff3f) 50%);
+  color: #11120f;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--from-color, var(--signal)), transparent 60%);
+  transition: background 80ms linear, border-color 80ms linear, box-shadow 120ms ease;
+}
+.engine-arrow {
+  position: relative;
+  top: -0.07em;
+  font-size: 0.95em;
+}
+
+.start-button[data-engine-state="crossing"] .engine-label {
+  color: #f1eee5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+.start-button[data-engine-state="crossing"] .engine-label--from {
+  opacity: 1;
+  transform: none;
+}
+.start-button[data-engine-state="crossing"] .engine-label--to {
+  display: none;
+}
+.start-button[data-engine-state="crossing"] .engine-stop {
+  color: #f1eee5;
+  opacity: 0.95;
+}
+
+@media (min-width: 641px) {
+  .start-button[data-engine-state="playing"],
+  .start-button[data-engine-state="waiting"],
+  .start-button[data-engine-state="crossing"] {
+    min-width: 260px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-button .engine-label,
+  .start-button[data-engine-state="waiting"] .engine-copy {
+    transition: none;
+    animation: none;
+  }
+  .start-button[data-engine-state="crossing"] {
+    transition: none;
+  }
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(210px, .72fr) minmax(420px, 1.55fr) minmax(270px, .83fr);
@@ -1492,7 +1651,8 @@ footer p {
 
 @media (max-width: 640px) {
   .console-shell {
-    padding: 18px 16px;
+    /* top padding reserves space for sticky .masthead-controls */
+    padding: 58px 16px 18px;
   }
 
   .masthead {
@@ -1507,14 +1667,32 @@ footer p {
   }
 
   .masthead-controls {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
     width: 100%;
     margin-left: 0;
     gap: 12px;
+    background: #11120f;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
+    padding: 8px 16px;
+    /* keep volume+button in one row; button flex-grows */
+    display: flex;
+    align-items: center;
   }
 
   .start-button {
     flex: 1;
     margin-left: 0;
+  }
+
+  /* long "FROM -> TO" crossing labels need tighter type on phones */
+  .start-button[data-engine-state="crossing"] .engine-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
   }
 
   .workspace {
@@ -1672,7 +1850,11 @@ footer p {
 
 @media (max-width: 420px) {
   .console-shell {
-    padding: 4px 2px;
+    /* preserve top space for the sticky masthead-controls from the 640px rule */
+    padding: 52px 2px 4px;
+  }
+  .masthead-controls {
+    padding: 6px 2px;
   }
   .music-stage {
     min-height: 380px;

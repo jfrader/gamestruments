@@ -268,15 +268,9 @@ export function renderAuditionControls(levelSeed: string, comparisonBaseSeed: st
 }
 
 export function setStartButton(running: boolean): void {
-  const light = document.createElement("span");
-  light.className = "start-light";
-  light.setAttribute("aria-hidden", "true");
   elements.start.classList.toggle("is-running", running);
   elements.start.setAttribute("aria-pressed", String(running));
-  elements.start.replaceChildren(
-    light,
-    document.createTextNode(running ? "Stop engine" : "Start engine"),
-  );
+  // rich label/state owned by renderFrame / renderEngineButton (stable children)
   elements.centerPlay.classList.toggle("is-running", running);
   elements.centerPlay.setAttribute("aria-pressed", String(running));
   const glyph = elements.centerPlay.querySelector<HTMLElement>(".center-glyph");
@@ -286,6 +280,113 @@ export function setStartButton(running: boolean): void {
   }
   if (label !== null) {
     label.textContent = running ? "PAUSE" : "PLAY";
+  }
+}
+
+export function renderEngineButton(
+  button: HTMLButtonElement,
+  running: boolean,
+  tick: number,
+  activeTransition: TransitionPlan | null,
+  section: PortableSection,
+  sectionById: (id: string) => PortableSection,
+): void {
+  let state: "offline" | "playing" | "waiting" | "crossing" = "offline";
+  let fromText = "Start engine";
+  let toText = "";
+  let crossProgress = 0;
+  let fromColor = "";
+  let toColor = "";
+  let ariaLabel = "Start engine";
+
+  if (running) {
+    const currentLabel = section.label;
+    if (activeTransition === null) {
+      state = "playing";
+      fromText = currentLabel;
+      ariaLabel = `Stop engine — playing ${currentLabel}`;
+    } else if (tick < activeTransition.startTick) {
+      state = "waiting";
+      fromText = currentLabel;
+      const toSec = sectionById(activeTransition.to);
+      toText = `→ ${toSec.label}`;
+      ariaLabel = `Stop engine — waiting for ${toSec.label}`;
+    } else {
+      state = "crossing";
+      const fromSec = sectionById(activeTransition.from);
+      const toSec = sectionById(activeTransition.to);
+      fromText = `${fromSec.label} → ${toSec.label}`;
+      toText = "";
+      const dur = Math.max(1, activeTransition.endTick - activeTransition.startTick);
+      crossProgress = Math.max(0, Math.min(1, (tick - activeTransition.startTick) / dur));
+      fromColor = fromSec.color;
+      toColor = toSec.color;
+      ariaLabel = `Stop engine — crossing from ${fromSec.label} to ${toSec.label}`;
+    }
+  }
+
+  button.setAttribute("data-engine-state", state);
+  button.setAttribute("aria-label", ariaLabel);
+  // aria-pressed kept by setStartButton
+
+  const fromEl = button.querySelector<HTMLElement>(".engine-label--from");
+  const toEl = button.querySelector<HTMLElement>(".engine-label--to");
+  const stopEl = button.querySelector<HTMLElement>(".engine-stop");
+  const progEl = button.querySelector<HTMLElement>(".engine-progress");
+
+  if (fromEl) {
+    const crossing = state === "crossing";
+    const fromSec = crossing ? sectionById(activeTransition!.from) : null;
+    const toSec = crossing ? sectionById(activeTransition!.to) : null;
+    const plain = fromText;
+    if (crossing && fromSec !== null && toSec !== null) {
+      if (fromEl.textContent !== plain) {
+        const arrow = document.createElement("span");
+        arrow.className = "engine-arrow";
+        arrow.textContent = "→";
+        fromEl.replaceChildren(
+          document.createTextNode(`${fromSec.label} `),
+          arrow,
+          document.createTextNode(` ${toSec.label}`),
+        );
+        fromEl.setAttribute("title", plain);
+      }
+    } else {
+      if (fromEl.textContent !== plain) {
+        fromEl.textContent = plain;
+      }
+      fromEl.setAttribute("title", plain.length > 12 ? plain : "");
+    }
+  }
+  if (toEl) {
+    if (toEl.textContent !== toText) {
+      toEl.textContent = toText;
+    }
+    toEl.setAttribute("title", toText.length > 12 ? toText : "");
+  }
+  if (stopEl) {
+    stopEl.style.display = state === "offline" ? "none" : "";
+  }
+  if (progEl) {
+    if (state === "crossing") {
+      progEl.style.setProperty("--cross-progress", crossProgress.toFixed(4));
+      progEl.style.setProperty("--from-color", fromColor);
+      progEl.style.setProperty("--to-color", toColor);
+    } else {
+      progEl.style.removeProperty("--cross-progress");
+      progEl.style.removeProperty("--from-color");
+      progEl.style.removeProperty("--to-color");
+    }
+  }
+  // also expose on button for gradient targeting
+  if (state === "crossing") {
+    button.style.setProperty("--cross-progress", crossProgress.toFixed(4));
+    button.style.setProperty("--from-color", fromColor);
+    button.style.setProperty("--to-color", toColor);
+  } else {
+    button.style.removeProperty("--cross-progress");
+    button.style.removeProperty("--from-color");
+    button.style.removeProperty("--to-color");
   }
 }
 
@@ -381,4 +482,13 @@ export function renderFrame(
     elements.orbit.style.setProperty(property, value);
   }
   renderSections(score, transport, audio, requested, busy);
+
+  renderEngineButton(
+    elements.start,
+    audio.running,
+    tick,
+    activeTransition,
+    section,
+    sectionById,
+  );
 }
