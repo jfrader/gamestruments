@@ -396,12 +396,12 @@ pub fn select_section(score: &PortableScore, state: &GameState) -> String {
 #[cfg(test)]
 mod tests {
     use super::AdaptiveTransport;
-    use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::{GameState, TraceState};
     use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
     fn score() -> crate::score::PortableScore {
-        generate_pocket_circuit(&GenerateInput {
+        generate_racing(&GenerateInput {
             secret: "qa-secret".into(),
             seed: "qa-race".into(),
             style: Style::Funk,

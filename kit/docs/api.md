@@ -8,7 +8,7 @@ The player ships two recipes. Set `recipe` before calling `generate`; a generate
 
 | Recipe | `recipe` | Drive it with | Styles |
 |---|---|---|---|
-| Pocket Circuit (racing) | `"pocket-circuit"` (default) | `set_race_state` | `fusion`, `neon`, `funk`, `chip` |
+| Racing | `"racing"` (default) | `set_race_state` | `fusion`, `neon`, `funk`, `chip` |
 | Suspense (song-form) | `"suspense"` | `set_trace_state` plus form controls | `terminal`, `cipher`, `noir` |
 
 ## Exported Properties
@@ -16,18 +16,18 @@ The player ships two recipes. Set `recipe` before calling `generate`; a generate
 Set these before calling `generate`. Later changes apply to the next generation call.
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
-- `recipe: String` — `pocket-circuit` (default) or `suspense`.
-- `arrangement: String` — Suspense only: `original` (default) or `extended`. Ignored by Pocket Circuit.
+- `recipe: String` — `racing` (default) or `suspense`.
+- `arrangement: String` — Suspense only: `original` (default) or `extended`. Ignored by Racing.
 - `style: String` — per recipe:
-  - Pocket Circuit: `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
+  - Racing: `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
   - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
-- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Pocket Circuit only. Empty uses the selected style's default. Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`. Suspense ignores these and uses its own per-style timbres.
+- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`. Suspense ignores these and uses its own per-style timbres.
 - `energy: float` — defaults to `0.62`.
 - `complexity: float` — defaults to `0.60`.
 - `brightness: float` — defaults to `0.52`.
 - `syncopation: float` — defaults to `0.70`.
   - Finite trait values are clamped to `0.0..1.0` during generation.
-  - Trait meaning depends on the recipe: Pocket Circuit reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse.
+  - Trait meaning depends on the recipe: Racing reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse.
 
 ## `generate`
 
@@ -35,11 +35,11 @@ Set these before calling `generate`. Later changes apply to the next generation 
 var generated: bool = player.generate("level-001")
 ```
 
-Generates and validates the deterministic score for the current property values, resets transport and synthesis, and starts at the recipe's first section — `garage` for Pocket Circuit, `intro` (Handshake) for Suspense.
+Generates and validates the deterministic score for the current property values, resets transport and synthesis, and starts at the recipe's first section — `garage` for Racing, `intro` (Handshake) for Suspense.
 
 Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style, arrangement, or voice, non-finite data, or an invalid generated score. Do not request state changes after a failed generation.
 
-## Pocket Circuit — `set_race_state`
+## Racing — `set_race_state`
 
 ```gdscript
 var accepted: bool = player.set_race_state(
@@ -121,7 +121,7 @@ var section: String = player.get_current_section()
 ```
 
 - `cue_section(section: String) -> bool` — requests any section id in the score. Returns `false` with a Godot error for an unknown section or before a successful `generate`.
-- `set_form_hold(held: bool) -> bool` — freezes or resumes the automatic song form. Returns `false` when the score has no form (Pocket Circuit).
+- `set_form_hold(held: bool) -> bool` — freezes or resumes the automatic song form. Returns `false` when the score has no form (Racing).
 - `advance_form() -> bool` — moves to the next form step; returns `false` at the end of the form or when there is no form.
 - `is_form_held() -> bool` — whether the form is currently frozen.
 - `get_current_section() -> String` — the section currently playing, or an empty string before generation.
@@ -152,7 +152,7 @@ Base sections (`original`):
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
-- Pocket Circuit scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
+- Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
 - Suspense scores contain the base sections above; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
 - State changes are quantized to bar boundaries and new sections start at phrase bar zero.
 - Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.

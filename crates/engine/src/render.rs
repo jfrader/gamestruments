@@ -90,7 +90,7 @@ fn encode_16bit_mono_wav(samples: &[f32], sr: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+    use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 
     fn parse_wav_header(wav: &[u8]) -> (u32, u16, usize) {
         assert_eq!(&wav[0..4], b"RIFF");
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn render_header_sample_count_peak_seam_rms() {
-        let score = generate_pocket_circuit(&GenerateInput {
+        let score = generate_racing(&GenerateInput {
             secret: "qa-secret".into(),
             seed: "qa-race".into(),
             style: Style::Funk,
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn golden_catalog_grid_3phrases_22050() {
-        let json = include_str!("../../../catalog/pocket-circuit/tiny-torque-level-004/score.json");
+        let json = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let score: PortableScore =
             serde_json::from_str(json).expect("catalog JSON must parse with existing derives");
         let wav = render_wav(&score, "grid", 3, 22050);

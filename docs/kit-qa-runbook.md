@@ -72,7 +72,7 @@ Perform the following on every supported OS family:
   complete, and confirm sections change on bar boundaries without errors.
 - Confirm Suspense form controls: `set_form_hold`, `advance_form`,
   `is_form_held`, `cue_section`, and `get_current_section` behave as documented;
-  Pocket Circuit returns `false` for form controls.
+  Racing returns `false` for form controls.
 - Confirm an empty Suspense style defaults to terminal and an unknown style
   fails with a clear error.
 - Confirm transitions wait for musical boundaries rather than cutting immediately.
@@ -90,7 +90,7 @@ Confirm directly from the extracted archive and demo:
 - [ ] Product is described as Gamestruments with named recipes, not as a racing-only engine.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
 - [ ] `generate(seed) -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, and the Suspense form methods match runtime behavior.
-- [ ] The six Pocket Circuit sections and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
+- [ ] The six Racing sections and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
 - [ ] The exact-runtime sound is accurately represented by proposed storefront media.
 - [ ] Complete Rust rebuild inputs, changelog, licenses, and third-party notices are present.

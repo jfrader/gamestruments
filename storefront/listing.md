@@ -42,7 +42,7 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 ### Gamestruments — Adaptive Music for Godot 4
 
-Gamestruments is a seed-driven, sample-free adaptive music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. The shipped Pocket Circuit recipe scores racing from garage through victory; no samples, no web authoring UI, and no external runtime services.
+Gamestruments is a seed-driven, sample-free adaptive music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. The shipped Racing recipe scores races from garage through victory; no samples, no web authoring UI, and no external runtime services.
 
 **Try it in your browser:** https://gamestruments.gurisitos.games — the Audio Lab preview uses the same generator with a browser audio layer; the included Godot demo is the exact in-game sound.
 
@@ -56,7 +56,7 @@ The archive root `README.md` and `kit/docs/quickstart.md` contain copy-paste GDS
 
 ### Included Files
 The buyer archive contains:
-- `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor. Ships two recipes: Pocket Circuit (racing) and Suspense (song-form, original and extended arrangements).
+- `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor. Ships two recipes: Racing and Suspense (song-form, original and extended arrangements).
 - `kit/demo/` — four circuits (Night Circuit, Harbor Sprint, Canyon Run, Micro Mile), a playable three-lap race with grip-assisted steering, boost, one rival, gameplay-driven music, and a readable integration adapter; each circuit regenerates a different shipped style (neon, pocket funk, fusion, micro motor) with its own seed. Includes an identical addon copy.
 - `kit/docs/` — quickstart, API, limitations, and troubleshooting documentation.
 - Source crates, the required catalog fixture, `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` — complete pinned Rust rebuild inputs.
@@ -65,8 +65,8 @@ The buyer archive contains:
 
 ### Literal Claims
 - Generates a deterministic score based on seed, style, palette, traits, and version.
-- Two shipped recipes: Pocket Circuit (racing) and Suspense (song-form), the latter with original and extended arrangements and gameplay-holdable form.
-- Four Pocket Circuit styles (neon, pocket funk, fusion, micro motor), demonstrated by four demo circuits that regenerate live in the garage.
+- Two shipped recipes: Racing and Suspense (song-form), the latter with original and extended arrangements and gameplay-holdable form.
+- Four Racing styles (neon, pocket funk, fusion, micro motor), demonstrated by four demo circuits that regenerate live in the garage.
 - Six adaptive racing sections (garage, grid, cruise, attack, final-lap, victory) with bar-quantized crossovers.
 - Fully offline runtime generation; no network requests or external services.
 - Synthesized in-process audio; zero samples or pre-baked tracks required.

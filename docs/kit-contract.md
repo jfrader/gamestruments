@@ -33,7 +33,7 @@ The archive contains no Strudel code, TypeScript authoring packages, browser Aud
 
 The kit generates deterministic scores from two shipped recipes, each from a per-title namespace, level seed, style, voice palette, traits, and generator version:
 
-- **Pocket Circuit (racing):** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` — driven by `set_race_state`.
+- **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` — driven by `set_race_state`.
 - **Suspense (song-form):** fourteen base sections from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`; the `extended` arrangement adds `scan-ii`, `breach-ii`, and `anomaly`. Gameplay can hold, advance, or cue the form.
 
 The included four-circuit demo is a playable three-lap race series against one
@@ -55,16 +55,16 @@ runtime. See `kit/demo/README.md` for controls.
 Exported properties:
 
 - `project_secret: String`
-- `recipe: String` — `pocket-circuit` (default) or `suspense`
+- `recipe: String` — `racing` (default) or `suspense`
 - `arrangement: String` — Suspense only: `original` (default) or `extended`
-- `style: String` — per recipe: Pocket Circuit `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`
-- `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Pocket Circuit only
-- `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Pocket Circuit and as tension/heat/mystery/pulse by Suspense
+- `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`
+- `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only
+- `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Racing and as tension/heat/mystery/pulse by Suspense
 
 Methods:
 
 - `generate(seed: String) -> bool`
-- `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> bool` — Pocket Circuit
+- `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> bool` — Racing
 - `set_trace_state(phase: String, heat: float, focus: float, progress: float) -> bool` — Suspense
 - `cue_section(section: String) -> bool`
 - `set_form_hold(held: bool) -> bool`
@@ -87,7 +87,7 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 ## Explicit Non-Goals
 
 - No general-purpose adaptive music graph or arbitrary game-state authoring.
-- No game genres beyond the shipped Pocket Circuit and Suspense state models in this release.
+- No game genres beyond the shipped Racing and Suspense state models in this release.
 - No editor plugin, pattern editor, sample import, MIDI/WAV export, FMOD, or Wwise integration.
 - No web, mobile, console, or Godot versions other than 4.7.x.
 - No claim that the browser Audio Lab sounds identical to the Godot runtime.

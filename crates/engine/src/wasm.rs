@@ -64,7 +64,7 @@
 
 use core::slice;
 
-use crate::pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 use crate::render::render_wav;
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn gamestruments_score_json(
             drive: inp.palette.drive,
             bass: inp.palette.bass,
         };
-        generate_pocket_circuit(&GenerateInput {
+        generate_racing(&GenerateInput {
             secret: inp.secret,
             seed: inp.seed,
             style,

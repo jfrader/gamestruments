@@ -74,7 +74,7 @@ if (dirtyValue !== "true" && dirtyValue !== "false") {
 }
 
 const engineSource = await readFile(
-  path.join(repoRoot, "crates", "engine", "src", "pocket_circuit.rs"),
+  path.join(repoRoot, "crates", "engine", "src", "racing.rs"),
   "utf8",
 );
 const toolchainSource = await readFile(

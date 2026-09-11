@@ -6,7 +6,7 @@ The Gamestruments runtime components are licensed under the MIT License:
 - `crates/godot`
 - `packages/runtime`
 - `crates/godot/gamestruments.gdextension`
-- `catalog/pocket-circuit/tiny-torque-level-004/score.json`
+- `catalog/racing/tiny-torque-level-004/score.json`
 - `kit/README.md` and its `README.md` copy at the buyer archive root
 - `kit/demo`
 - `kit/docs`

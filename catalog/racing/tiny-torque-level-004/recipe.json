@@ -1,8 +1,8 @@
 {
   "name": "Tiny Torque level-004",
-  "use": "Pocket Circuit main-menu loop",
+  "use": "Racing main-menu loop",
   "auditionSection": "grid",
-  "recipe": "pocket-circuit",
+  "recipe": "racing",
   "seed": "level-004",
   "style": "funk",
   "traits": {
@@ -12,7 +12,7 @@
     "syncopation": 0.9
   },
   "generatorVersion": "1.9.0",
-  "scoreId": "pocket-circuit-generated-v1-9-0-7864ec71",
+  "scoreId": "racing-generated-v1-9-0-7864ec71",
   "files": {
     "score": "score.json",
     "manifest": "manifest.json"

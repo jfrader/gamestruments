@@ -95,7 +95,7 @@ player.cue_section("chorus")    # jump to a section on the next bar
 var section := player.get_current_section()
 ```
 
-Suspense ignores the Pocket Circuit voice overrides and reads `energy`,
+Suspense ignores the Racing voice overrides and reads `energy`,
 `complexity`, `brightness`, and `syncopation` as tension, heat, mystery, and
 pulse. Exact selection rules and the section list are in `api.md`.
 

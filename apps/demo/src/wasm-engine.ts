@@ -68,7 +68,7 @@ export interface GenerateScoreParams {
   complexity: number;
   brightness: number;
   syncopation: number;
-  recipe?: "pocket-circuit" | "suspense";
+  recipe?: "racing" | "suspense";
   arrangement?: SuspenseArrangement;
   tension?: number;
   heat?: number;
@@ -85,7 +85,7 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     secret: "",
     seed: params.seed,
     style: params.style,
-    recipe: params.recipe ?? "pocket-circuit",
+    recipe: params.recipe ?? "racing",
     arrangement: params.arrangement ?? "original",
     palette: { melody: "", harmony: "", drive: "", bass: "" },
     energy: params.energy,

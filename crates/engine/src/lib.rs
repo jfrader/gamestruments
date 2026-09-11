@@ -1,4 +1,4 @@
-pub mod pocket_circuit;
+pub mod racing;
 pub mod form_audio;
 pub mod render;
 pub mod rng;
@@ -11,7 +11,7 @@ pub mod transport;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use pocket_circuit::{generate_pocket_circuit, GenerateInput, InstrumentPalette, Style};
+pub use racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 pub use render::render_wav;
 pub use score::{GameState, PortableScore, TraceState};
 pub use suspense::{generate_suspense, SuspenseInput, SuspenseStyle};

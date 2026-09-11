@@ -1,5 +1,5 @@
 use gamestruments_engine::{
-    generate_pocket_circuit, generate_suspense_arrangement, AdaptiveTransport, FormAudio,
+    generate_racing, generate_suspense_arrangement, AdaptiveTransport, FormAudio,
     GameState, GenerateInput, InstrumentPalette, PortableScore, Style, SuspenseArrangement,
     SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
@@ -57,7 +57,7 @@ impl INode for GamestrumentsPlayer {
     fn init(base: Base<Node>) -> Self {
         Self {
             project_secret: GString::new(),
-            recipe: "pocket-circuit".into(),
+            recipe: "racing".into(),
             arrangement: "original".into(),
             style: "funk".into(),
             melody_voice: GString::new(),
@@ -222,7 +222,7 @@ impl GamestrumentsPlayer {
                 godot_error!("Unknown Gamestruments style");
                 return false;
             };
-            generate_pocket_circuit(&GenerateInput {
+            generate_racing(&GenerateInput {
                 secret: self.project_secret.to_string(),
                 seed: seed.to_string(),
                 style,

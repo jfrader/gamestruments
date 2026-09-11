@@ -6,7 +6,7 @@ import {
   createPocketCircuitGenerationManifest,
 } from "../packages/studio/src/generation-manifest.ts";
 import {
-  generatePocketCircuitLevel,
+  generateRacingLevel,
   type PocketCircuitStyle,
 } from "../packages/studio/src/index.ts";
 
@@ -37,7 +37,7 @@ describe("Pocket Circuit many-seed stress generation", () => {
             syncopation: (index % 19) / 18,
           },
         } as const;
-        const generated = generatePocketCircuitLevel(input);
+        const generated = generateRacingLevel(input);
         validatePortableScore(generated.portableScore);
 
         const manifest = createPocketCircuitGenerationManifest(generated);
@@ -50,7 +50,7 @@ describe("Pocket Circuit many-seed stress generation", () => {
         checksums.add(manifest.checksum.value);
 
         if (index % 31 === 0) {
-          assert.deepEqual(generatePocketCircuitLevel(input), generated);
+          assert.deepEqual(generateRacingLevel(input), generated);
         }
       }
 

@@ -34,7 +34,7 @@ required=(
   "licenses/cargo-dependencies.json"
   "licenses/glam-0.32.1-ATTRIBUTION.md"
   "licenses/rust-1.94.0-COPYRIGHT-library.html"
-  "catalog/pocket-circuit/tiny-torque-level-004/score.json"
+  "catalog/racing/tiny-torque-level-004/score.json"
   "addons/gamestruments/gamestruments.gdextension"
   "addons/gamestruments/bin/libgamestruments_godot.so"
   "addons/gamestruments/bin/gamestruments_godot.dll"

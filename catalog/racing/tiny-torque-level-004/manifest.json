@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "recipe": "pocket-circuit",
+  "recipe": "racing",
   "generatorVersion": "1.9.0",
   "seed": "string:level-004",
   "style": "funk",
@@ -20,7 +20,7 @@
   },
   "score": {
     "schemaVersion": 1,
-    "id": "pocket-circuit-generated-v1-9-0-7864ec71"
+    "id": "racing-generated-v1-9-0-7864ec71"
   },
   "checksum": {
     "algorithm": "sha256",

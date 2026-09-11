@@ -2,9 +2,9 @@
 
 ## Product Scope
 
-- This release ships two fixed state models: **Pocket Circuit** (racing: garage, grid, cruise, attack, final lap, victory) and **Suspense** (song-form: intro through coda, with an extended arrangement). Both use the same `GamestrumentsPlayer`.
+- This release ships two fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory) and **Suspense** (song-form: intro through coda, with an extended arrangement). Both use the same `GamestrumentsPlayer`.
 - It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game.
-- Pocket Circuit ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Voice overrides apply to Pocket Circuit; arbitrary samples and plugins are unsupported.
+- Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported.
 
 ## Audio
 
