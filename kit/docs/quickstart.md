@@ -61,6 +61,44 @@ func race_finished(won: bool) -> void:
 
 Run the scene. The initial `garage` score starts immediately; accepted state requests commit on upcoming bar boundaries rather than cutting instantly.
 
+## Suspense Recipe
+
+The same player runs the song-form Suspense recipe. Set the recipe before
+generating, then drive it with trace state instead of race state:
+
+```gdscript
+func _ready() -> void:
+    player.recipe = "suspense"
+    player.style = "terminal"        # terminal, cipher, or noir
+    player.arrangement = "original"  # or "extended"
+    music_ready = player.generate("chapter-001")
+
+func scan_started() -> void:
+    if music_ready:
+        player.set_trace_state("scan", 0.3, 0.2, 0.1)
+
+func alarm_raised() -> void:
+    if music_ready:
+        player.set_trace_state("alert", 0.9, 0.5, 0.4)
+
+func chapter_finished() -> void:
+    if music_ready:
+        player.set_trace_state("complete", 0.2, 0.3, 1.0)
+```
+
+The form advances on its own between sections. Gameplay can freeze or move it:
+
+```gdscript
+player.set_form_hold(true)      # hold the current form step
+player.advance_form()           # move to the next step
+player.cue_section("chorus")    # jump to a section on the next bar
+var section := player.get_current_section()
+```
+
+Suspense ignores the Pocket Circuit voice overrides and reads `energy`,
+`complexity`, `brightness`, and `syncopation` as tension, heat, mystery, and
+pulse. Exact selection rules and the section list are in `api.md`.
+
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.
 The demo ships four circuits, one per engine style (neon, pocket funk, fusion,

@@ -56,7 +56,7 @@ The archive root `README.md` and `kit/docs/quickstart.md` contain copy-paste GDS
 
 ### Included Files
 The buyer archive contains:
-- `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor.
+- `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor. Ships two recipes: Pocket Circuit (racing) and Suspense (song-form, original and extended arrangements).
 - `kit/demo/` — four circuits (Night Circuit, Harbor Sprint, Canyon Run, Micro Mile), a playable three-lap race with grip-assisted steering, boost, one rival, gameplay-driven music, and a readable integration adapter; each circuit regenerates a different shipped style (neon, pocket funk, fusion, micro motor) with its own seed. Includes an identical addon copy.
 - `kit/docs/` — quickstart, API, limitations, and troubleshooting documentation.
 - Source crates, the required catalog fixture, `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` — complete pinned Rust rebuild inputs.
@@ -65,7 +65,8 @@ The buyer archive contains:
 
 ### Literal Claims
 - Generates a deterministic score based on seed, style, palette, traits, and version.
-- Four shipped styles (neon, pocket funk, fusion, micro motor), demonstrated by four demo circuits that regenerate live in the garage.
+- Two shipped recipes: Pocket Circuit (racing) and Suspense (song-form), the latter with original and extended arrangements and gameplay-holdable form.
+- Four Pocket Circuit styles (neon, pocket funk, fusion, micro motor), demonstrated by four demo circuits that regenerate live in the garage.
 - Six adaptive racing sections (garage, grid, cruise, attack, final-lap, victory) with bar-quantized crossovers.
 - Fully offline runtime generation; no network requests or external services.
 - Synthesized in-process audio; zero samples or pre-baked tracks required.
@@ -76,7 +77,7 @@ The buyer archive contains:
 - **Playback:** Godot `AudioStreamGenerator` routed to a 22050 Hz mono internal synth.
 
 ### Limitations
-- Racing-specific game state model; this is not a general-purpose adaptive music graph.
+- Racing and song-form state models; this is not a general-purpose adaptive music graph.
 - Voices are synthesized; there is no sample import or MIDI export.
 - Mono internal synth designed for lean in-game playback.
 - No broad compatibility or certification guarantees.

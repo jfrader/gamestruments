@@ -61,11 +61,20 @@ Perform the following on every supported OS family:
 - Observe garage before starting, grid at countdown, cruise away from the
   rival, attack under pressure/boost, final lap on lap three, and the finish
   outro. The HUD is a requested-section indicator, not audible-bar telemetry.
-- Change `music_style` in `race_music.gd` and reload for all four styles;
-  confirm each is audible and materially distinct. Reload twice with the same
-  `level_seed`, then change it and verify stable/different music respectively.
+- Switch circuits in the garage and confirm each style is audible and materially
+  distinct. Reload twice on the same circuit, then switch and verify
+  stable/different music respectively.
 - In a fresh-project API integration, try supported voice overrides such as
   `pluck`, `organ`, `supersaw`, and `chip`.
+- In the fresh-project API integration, generate the Suspense recipe
+  (`recipe = "suspense"`, styles terminal/cipher/noir, arrangements original and
+  extended), drive `set_trace_state` through boot/scan/exploit/alert/extract/
+  complete, and confirm sections change on bar boundaries without errors.
+- Confirm Suspense form controls: `set_form_hold`, `advance_form`,
+  `is_form_held`, `cue_section`, and `get_current_section` behave as documented;
+  Pocket Circuit returns `false` for form controls.
+- Confirm an empty Suspense style defaults to terminal and an unknown style
+  fails with a clear error.
 - Confirm transitions wait for musical boundaries rather than cutting immediately.
 - Let at least one section loop for 30 seconds and listen for clicks, silence, or discontinuity.
 - Test Music and Master bus gain/mute behavior.
@@ -80,8 +89,8 @@ Confirm directly from the extracted archive and demo:
 
 - [ ] Product is described as Gamestruments with named recipes, not as a racing-only engine.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
-- [ ] `generate(seed) -> bool` and five-argument `set_race_state(...) -> bool` match runtime behavior.
-- [ ] The six documented sections are reachable.
+- [ ] `generate(seed) -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, and the Suspense form methods match runtime behavior.
+- [ ] The six Pocket Circuit sections and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
 - [ ] The exact-runtime sound is accurately represented by proposed storefront media.
 - [ ] Complete Rust rebuild inputs, changelog, licenses, and third-party notices are present.
@@ -99,6 +108,7 @@ Confirm directly from the extracted archive and demo:
 | Four styles and seed behavior | | |
 | Voice validation | | |
 | Six adaptive sections | | |
+| Suspense recipe, trace states, and form controls | | |
 | Loop and bus behavior | | |
 | Regeneration during playback | | |
 | Clean repeated shutdown | | |
