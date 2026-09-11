@@ -106,6 +106,17 @@ renderView();
 setStartButton(false);
 window.requestAnimationFrame(animate);
 
+// Reserve exactly the fixed controls bar's height on mobile so it never covers
+// the masthead at rest, and keep it correct across font/zoom changes.
+function syncStickyBarHeight(): void {
+  const fixed = window.getComputedStyle(elements.mastheadControls).position === "fixed";
+  const height = fixed ? Math.ceil(elements.mastheadControls.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty("--sticky-bar-h", `${height}px`);
+}
+syncStickyBarHeight();
+window.addEventListener("resize", syncStickyBarHeight);
+window.addEventListener("load", syncStickyBarHeight);
+
 elements.masterVolume.value = String(Math.round(audio.volume * 100));
 elements.volumeReadout.textContent = `${elements.masterVolume.value}%`;
 

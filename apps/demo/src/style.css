@@ -1651,8 +1651,8 @@ footer p {
 
 @media (max-width: 640px) {
   .console-shell {
-    /* top padding reserves space for sticky .masthead-controls */
-    padding: 58px 16px 18px;
+    /* top padding reserves the fixed controls bar's measured height */
+    padding: calc(var(--sticky-bar-h, 61px) + 10px) 16px 18px;
   }
 
   .masthead {
@@ -1693,6 +1693,22 @@ footer p {
   .start-button[data-engine-state="crossing"] .engine-label {
     font-size: 10px;
     letter-spacing: 0.04em;
+  }
+
+  /* each game type / sound world option gets its own full-width row on phones */
+  .stage-setup #recipe-buttons {
+    grid-template-columns: 1fr;
+  }
+  .stage-setup #recipe-buttons button {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .stage-setup #recipe-buttons button:last-child {
+    border-bottom: 0;
+  }
+  .stage-setup #score-buttons,
+  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons {
+    grid-template-columns: 1fr;
   }
 
   .workspace {
@@ -1850,8 +1866,8 @@ footer p {
 
 @media (max-width: 420px) {
   .console-shell {
-    /* preserve top space for the sticky masthead-controls from the 640px rule */
-    padding: 52px 2px 4px;
+    /* keep the measured sticky-bar reserve from the 640px rule */
+    padding: calc(var(--sticky-bar-h, 61px) + 10px) 2px 4px;
   }
   .masthead-controls {
     padding: 6px 2px;
