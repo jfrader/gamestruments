@@ -150,8 +150,13 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             .ok_or("Theme arrangement requires intro")?,
         bar,
     );
-    if let Some(intro_section) = score.sections.iter_mut().find(|section| section.id == "intro") {
+    if let Some(intro_section) = score
+        .sections
+        .iter_mut()
+        .find(|section| section.id == "intro")
+    {
         strip_cells(intro_section);
+        theme_melody(intro_section, root, bar, seed);
     }
     for id in ["verse", "pre-chorus", "chorus", "chorus-final", "solo"] {
         let section = score
@@ -162,13 +167,10 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
         overlay_drone(section, &intro, bar);
         rhythm(section, bar);
         strip_cells(section);
+        theme_melody(section, root, bar, seed);
         if id == "chorus-final" {
-            theme_figure(section, root, bar, seed);
             theme_hat_break(section, bar);
             theme_drop_snare(section, bar);
-        }
-        if id == "solo" {
-            theme_figure(section, root, bar, seed);
         }
     }
     if let Some(chorus) = score
@@ -262,36 +264,41 @@ fn densify_theme_intro(section: &mut PortableSection, bar: u32) {
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
-fn theme_figure(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
-    let mut random =
-        DeterministicRandom::new(seed ^ hash_text(&format!("{}:theme-figure", section.id)));
-    let late = section.id == "solo";
-    let first_bar = if late { 1 } else { 0 };
-    let answer_bar = if late { 5 } else { 4 };
-    texture(
-        section,
-        Texture {
-            lane: "ronroco",
-            voice: "dusk",
-            start: first_bar * bar + bar / 8,
-            duration: bar + bar / 2,
-            pitch: root.saturating_sub(12),
-            velocity: 0.12,
-        },
-    );
-    texture(
-        section,
-        Texture {
-            lane: "ronroco",
-            voice: "felt",
-            start: answer_bar * bar + 3 * (bar / 8),
-            duration: bar / 2,
-            pitch: root
-                .saturating_sub(12)
-                .saturating_add(*random.pick(&[3u8, 5])),
-            velocity: 0.07,
-        },
-    );
+fn theme_melody(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
+    let pulse = bar / 8;
+    let late = matches!(section.id.as_str(), "chorus-final" | "solo" | "theme-ride");
+    let hits: &[(u32, u32, i32)] = if section.id == "intro" {
+        &[(0, 0, 0), (4, 4, 3)]
+    } else if late {
+        &[(0, 0, 0), (1, 6, 3), (3, 0, 4), (4, 4, 2), (6, 0, 0)]
+    } else {
+        &[(0, 0, 0), (1, 6, 3), (4, 0, 4), (6, 4, 0)]
+    };
+    let register = if seed % 2 == 0 { 0 } else { -7 };
+    for (bar_index, step, degree) in hits {
+        let start = bar_index * bar + step * pulse;
+        if start >= section.length_ticks {
+            continue;
+        }
+        texture(
+            section,
+            Texture {
+                lane: "theme-melody",
+                voice: "dusk",
+                start,
+                duration: pulse * 2,
+                pitch: aeolian(root, *degree + register),
+                velocity: 0.15,
+            },
+        );
+    }
+}
+
+fn aeolian(root: u8, degree: i32) -> u8 {
+    const STEPS: [i32; 7] = [0, 2, 3, 5, 7, 8, 10];
+    let index = degree.rem_euclid(7) as usize;
+    let octave = degree.div_euclid(7);
+    (i32::from(root) + STEPS[index] + octave * 12).clamp(0, 127) as u8
 }
 
 fn theme_hat_break(section: &mut PortableSection, bar: u32) {
