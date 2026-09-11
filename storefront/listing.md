@@ -77,3 +77,21 @@ Copy-paste GDScript is in the archive `README.md` and `kit/docs/quickstart.md`.
 ### Updates and support
 
 All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments with your OS, Godot version, and Output text. Refunds follow itch.io's standard terms.
+
+## Launch Devlog (2026-09-11)
+
+**Title:** Now live: music your game writes as it plays
+
+Gamestruments is out! It's an adaptive music engine for Godot 4 — your game generates its own soundtrack at runtime, with no audio files, no authoring tool, and no external services.
+
+The first release ships two recipes:
+
+- **Racing** — six sections from the garage to the finish line, driven by speed, rival pressure, and lap state.
+- **Suspense** — song-form tension for infiltration, hacking, and horror, with a form your gameplay can hold or advance.
+
+It runs on Linux, Windows, and macOS, includes the full MIT Rust source, and comes with a playable four-circuit demo so you can hear it before writing any code.
+
+Try it in your browser: https://gamestruments.gurisitos.games
+Get the kit: https://gurisitosgames.itch.io/gamestruments-godot
+
+All future updates are included. Building something with it? I'd love to see it — questions and bug reports are welcome in the comments.
