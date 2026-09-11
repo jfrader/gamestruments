@@ -4,7 +4,7 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 - Owned by the shared Rust engine in `crates/engine` (`pocket_circuit`,
   `suspense`, and score). WASM `gamestruments_score_json` accepts
   `"recipe": "pocket-circuit" | "suspense"` (default pocket-circuit).
-- Suspense additionally accepts `"arrangement": "original" | "extended"`.
+- Suspense additionally accepts `"arrangement": "original" | "extended" | "theme"`.
   The lab defaults to Extended; omitting the field in the engine API retains
   Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
   subdued felt/dusk textures, a continuous rhythm and occasional seeded tom

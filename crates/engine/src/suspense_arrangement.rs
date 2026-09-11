@@ -1,5 +1,7 @@
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{FormOrigin, MusicEvent, PortableScore, PortableSection, SongFormStep};
+use crate::score::{
+    FormOrigin, MusicEvent, PortableScore, PortableSection, SongForm, SongFormStep,
+};
 use crate::suspense::{extended_trace_rules, generate_suspense, SuspenseInput, GENERATOR_VERSION};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -7,6 +9,7 @@ pub enum SuspenseArrangement {
     #[default]
     Original,
     Extended,
+    Theme,
 }
 
 impl SuspenseArrangement {
@@ -14,6 +17,7 @@ impl SuspenseArrangement {
         match value {
             "" | "original" => Ok(Self::Original),
             "extended" => Ok(Self::Extended),
+            "theme" => Ok(Self::Theme),
             other => Err(format!("Unknown suspense arrangement: {other}")),
         }
     }
@@ -23,10 +27,15 @@ pub fn generate_suspense_arrangement(
     input: &SuspenseInput,
     arrangement: SuspenseArrangement,
 ) -> Result<PortableScore, String> {
-    let mut score = generate_suspense(input)?;
-    if arrangement == SuspenseArrangement::Original {
-        return Ok(score);
+    match arrangement {
+        SuspenseArrangement::Original => generate_suspense(input),
+        SuspenseArrangement::Extended => generate_extended(input),
+        SuspenseArrangement::Theme => generate_theme(input),
     }
+}
+
+fn generate_extended(input: &SuspenseInput) -> Result<PortableScore, String> {
+    let mut score = generate_suspense(input)?;
     let root = score
         .section("intro")
         .and_then(|section| {
@@ -119,6 +128,180 @@ pub fn generate_suspense_arrangement(
     score.title.push_str(" — Extended");
     score.validate()?;
     Ok(score)
+}
+
+fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
+    let mut score = generate_suspense(input)?;
+    let root = arrangement_root(&score)?;
+    let bar = score.bar_ticks();
+    let seed = hash_text(&format!(
+        "{}\0{}\0suspense-theme-1",
+        input.secret, input.seed
+    ));
+    let intro = score
+        .section("intro")
+        .cloned()
+        .ok_or("Theme arrangement requires intro")?;
+    densify_theme_intro(
+        score
+            .sections
+            .iter_mut()
+            .find(|section| section.id == "intro")
+            .ok_or("Theme arrangement requires intro")?,
+        bar,
+    );
+    for id in ["verse", "pre-chorus", "chorus", "chorus-final", "solo"] {
+        let section = score
+            .sections
+            .iter_mut()
+            .find(|section| section.id == id)
+            .ok_or_else(|| format!("Theme arrangement requires {id}"))?;
+        overlay_drone(section, &intro, bar);
+        rhythm(section, bar);
+        if matches!(id, "chorus" | "chorus-final" | "solo") {
+            theme_atmosphere(section, root, bar, seed);
+            percussion_details(section, bar, seed);
+        }
+    }
+    if let Some(chorus) = score
+        .sections
+        .iter_mut()
+        .find(|section| section.id == "chorus")
+    {
+        effect(
+            chorus,
+            "reverse-cymbal",
+            chorus.length_ticks.saturating_sub(bar),
+            bar,
+            0.18,
+        );
+        chorus.events.sort_by_key(MusicEvent::start_tick);
+    }
+    if let Some(drop) = score
+        .sections
+        .iter_mut()
+        .find(|section| section.id == "chorus-final")
+    {
+        effect(drop, "air-impact", 0, bar / 4, 0.22);
+        drop.events.sort_by_key(MusicEvent::start_tick);
+    }
+    score.form = Some(SongForm {
+        steps: vec![
+            theme_step("intro", 1),
+            theme_step("verse", 1),
+            theme_step("pre-chorus", 1),
+            theme_step("chorus", 1),
+            theme_step("chorus-final", 2),
+            theme_step("solo", 2),
+        ],
+        loop_from: Some(4),
+        origin: Some(FormOrigin::TransitionStart),
+    });
+    score.id.push_str("-theme");
+    score.title.push_str(" — Theme");
+    score.validate()?;
+    Ok(score)
+}
+
+fn theme_step(section: &str, repeats: u32) -> SongFormStep {
+    SongFormStep {
+        section: section.into(),
+        repeats,
+    }
+}
+
+fn arrangement_root(score: &PortableScore) -> Result<u8, String> {
+    score
+        .section("intro")
+        .and_then(|section| {
+            section.events.iter().find_map(|event| match event {
+                MusicEvent::Note { lane, pitch, .. } if lane == "intro-drone" => Some(*pitch + 12),
+                _ => None,
+            })
+        })
+        .ok_or_else(|| "Suspense arrangement requires the opening drone".into())
+}
+
+fn densify_theme_intro(section: &mut PortableSection, bar: u32) {
+    let pulse = bar / 8;
+    let bars = section.length_ticks / bar;
+    for index in 0..bars {
+        for step in [1u32, 3, 5, 7] {
+            section.events.push(MusicEvent::Percussion {
+                id: format!("intro:theme:hat:{index}:{step}"),
+                section: "intro".into(),
+                lane: "intro-kit".into(),
+                start_tick: index * bar + step * pulse,
+                duration_ticks: pulse / 3,
+                velocity: 0.14,
+                voice: "hat".into(),
+            });
+        }
+        if index >= 2 {
+            section.events.push(MusicEvent::Percussion {
+                id: format!("intro:theme:kick:{index}"),
+                section: "intro".into(),
+                lane: "intro-kit".into(),
+                start_tick: index * bar,
+                duration_ticks: pulse,
+                velocity: if index == 2 { 0.34 } else { 0.24 },
+                voice: "kick".into(),
+            });
+        }
+    }
+    section.events.sort_by_key(MusicEvent::start_tick);
+}
+
+fn theme_atmosphere(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
+    let mut random =
+        DeterministicRandom::new(seed ^ hash_text(&format!("{}:theme-air", section.id)));
+    let beat = bar / 4;
+    for phrase_bar in [3u32, 5, 6] {
+        if random.integer(4) == 0 {
+            continue;
+        }
+        let interval = *random.pick(&[0, 3, 7]);
+        texture(
+            section,
+            Texture {
+                lane: "atmosphere",
+                voice: "felt",
+                start: phrase_bar * bar + beat,
+                duration: beat + beat / 2,
+                pitch: root + interval,
+                velocity: 0.18,
+            },
+        );
+    }
+}
+
+fn overlay_drone(section: &mut PortableSection, intro: &PortableSection, bar: u32) {
+    for event in &intro.events {
+        let MusicEvent::Note {
+            lane,
+            velocity,
+            pitch,
+            voice,
+            ..
+        } = event
+        else {
+            continue;
+        };
+        if !lane.ends_with("-drone") {
+            continue;
+        }
+        section.events.push(MusicEvent::Note {
+            id: format!("{}:theme-drone:{lane}", section.id),
+            section: section.id.clone(),
+            lane: format!("{}-theme-drone", section.id),
+            start_tick: 0,
+            duration_ticks: section.length_ticks.saturating_sub(bar / 4).max(bar),
+            velocity: *velocity * 0.85,
+            pitch: *pitch,
+            voice: voice.clone(),
+            role: None,
+        });
+    }
 }
 
 fn anomaly_extension(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
@@ -629,7 +812,49 @@ mod tests {
     }
 
     #[test]
+    fn theme_keeps_game_sections_but_plays_an_additive_form() {
+        let original = generate_suspense(&input("theme-bed")).unwrap();
+        let theme =
+            generate_suspense_arrangement(&input("theme-bed"), SuspenseArrangement::Theme).unwrap();
+        assert!(theme.section("break").is_some());
+        assert_eq!(
+            serde_json::to_value(original.section("break")).unwrap(),
+            serde_json::to_value(theme.section("break")).unwrap()
+        );
+        let form = theme.form.as_ref().unwrap();
+        let played: Vec<&str> = form
+            .steps
+            .iter()
+            .map(|step| step.section.as_str())
+            .collect();
+        assert_eq!(
+            played,
+            [
+                "intro",
+                "verse",
+                "pre-chorus",
+                "chorus",
+                "chorus-final",
+                "solo"
+            ]
+        );
+        assert!(!played.contains(&"break"));
+        assert_eq!(form.loop_from, Some(4));
+        let intro = theme.section("intro").unwrap();
+        assert!(intro.events.iter().any(|event| {
+            matches!(event, MusicEvent::Percussion { voice, .. } if voice == "hat")
+        }));
+        let verse = theme.section("verse").unwrap();
+        assert!(verse.events.iter().any(|event| {
+            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-theme-drone"))
+        }));
+        assert!(theme.section("chorus-final").unwrap().events.len() >= verse.events.len());
+        assert!(theme.section("chorus-final").unwrap().events.len() > intro.events.len());
+    }
+
+    #[test]
     fn only_two_arrangements_and_original_is_unchanged() {
+        assert!(SuspenseArrangement::parse("theme").is_ok());
         assert!(SuspenseArrangement::parse("flow").is_err());
         assert!(SuspenseArrangement::parse("featured").is_err());
         let input = input("level-001");

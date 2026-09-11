@@ -95,7 +95,7 @@ choose a suspense style, and drive it with `set_trace_state`:
 ```gdscript
 music.recipe = "suspense"
 music.style = "terminal"        # terminal, cipher, or noir
-music.arrangement = "original"  # or "extended"
+music.arrangement = "original"  # or "extended" / "theme"
 music.generate("chapter-001")
 music.set_trace_state("scan", 0.3, 0.2, 0.1)  # phase, heat, focus, progress
 ```
@@ -111,7 +111,7 @@ section list, selection rules, and trait mapping are in `kit/docs/api.md`.
 |---|---|
 | `project_secret: String` | Stable name for your title. Required, not a credential. |
 | `recipe: String` | `racing` (default) or `suspense`. |
-| `arrangement: String` | Suspense only: `original` (default) or `extended`. |
+| `arrangement: String` | Suspense only: `original` (default), `extended`, or `theme`. |
 | `style: String` | Racing: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. |
 | `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice` | Racing only. Optional voice overrides; empty uses the style default. |
 | `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse. |
