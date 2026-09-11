@@ -236,8 +236,28 @@ fn arrangement_root(score: &PortableScore) -> Result<u8, String> {
 
 fn densify_theme_intro(section: &mut PortableSection, bar: u32) {
     let pulse = bar / 8;
+    for (voice, step, velocity) in [
+        ("kick", 0u32, 0.5),
+        ("hat", 1, 0.22),
+        ("snare", 2, 0.46),
+        ("hat", 3, 0.2),
+        ("kick", 4, 0.36),
+        ("hat", 5, 0.22),
+        ("snare", 6, 0.4),
+        ("hat", 7, 0.2),
+    ] {
+        section.events.push(MusicEvent::Percussion {
+            id: format!("intro:theme:hook:{voice}:{step}"),
+            section: "intro".into(),
+            lane: "intro-kit".into(),
+            start_tick: step * pulse,
+            duration_ticks: if voice == "hat" { pulse / 3 } else { pulse },
+            velocity,
+            voice: voice.into(),
+        });
+    }
     let bars = section.length_ticks / bar;
-    for index in 0..bars {
+    for index in 1..bars {
         for step in [1u32, 3, 5, 7] {
             section.events.push(MusicEvent::Percussion {
                 id: format!("intro:theme:hat:{index}:{step}"),
@@ -956,6 +976,13 @@ mod tests {
         assert!(!played.contains(&"break"));
         assert_eq!(form.loop_from, Some(6));
         let intro = theme.section("intro").unwrap();
+        let bar = theme.bar_ticks();
+        assert!(intro.events.iter().any(|event| {
+            matches!(event, MusicEvent::Percussion { voice, start_tick, .. } if voice == "snare" && *start_tick < bar)
+        }));
+        assert!(!intro.events.iter().any(|event| {
+            matches!(event, MusicEvent::Percussion { voice, start_tick, .. } if voice == "snare" && *start_tick >= bar)
+        }));
         assert!(intro.events.iter().any(|event| {
             matches!(event, MusicEvent::Percussion { voice, .. } if voice == "hat")
         }));
