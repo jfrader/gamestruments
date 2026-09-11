@@ -42,54 +42,38 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 ### Gamestruments — Adaptive Music for Godot 4
 
-Gamestruments is a seed-driven, sample-free adaptive music engine built specifically for Godot 4. Generate a deterministic score at level load from a per-title namespace, instrument palette, and seed, then drive bar-quantized state changes at runtime. The shipped Racing recipe scores races from garage through victory; no samples, no web authoring UI, and no external runtime services.
+Your game generates its own soundtrack. Gamestruments writes deterministic, sample-free adaptive music right inside Godot — no audio files to ship, no authoring tool, no external services. Add one node, generate a score at level load, and tell it what's happening; it moves between musical sections on bar boundaries.
 
-**Try it in your browser:** https://gamestruments.gurisitos.games — the Audio Lab preview uses the same generator with a browser audio layer; the included Godot demo is the exact in-game sound.
+**Try it in your browser:** https://gamestruments.gurisitos.games
 
-### Use It in Your Game
-1. Copy the `addons/gamestruments/` directory into your Godot 4 project at `res://addons/gamestruments/`.
+### Two recipes, one player
+
+- **Racing** — six sections from garage to victory, driven by speed, rival pressure, and lap state.
+- **Suspense** — song-form tension for infiltration, hacking, and horror, with a form gameplay can hold or advance.
+
+### Up and running in a minute
+
+1. Copy `addons/gamestruments/` into your project.
 2. Add a `GamestrumentsPlayer` node.
-3. Set a stable non-empty `project_secret` namespace, choose a style, call `generate(seed)` at level load, and check its result.
-4. Drive states via `set_race_state(...)`; changes commit on musical bar boundaries.
+3. Set `project_secret` and a style, then call `generate(seed)`.
+4. Drive it with `set_race_state(...)` for Racing or `set_trace_state(...)` for Suspense.
 
-The archive root `README.md` and `kit/docs/quickstart.md` contain copy-paste GDScript examples. The player uses a `Music` bus when present and otherwise routes to `Master`.
+Copy-paste GDScript is in the archive `README.md` and `kit/docs/quickstart.md`.
 
-### Included Files
-The buyer archive contains:
-- `addons/gamestruments/` — Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries plus the GDExtension descriptor. Ships two recipes: Racing and Suspense (song-form, original and extended arrangements).
-- `kit/demo/` — four circuits (Night Circuit, Harbor Sprint, Canyon Run, Micro Mile), a playable three-lap race with grip-assisted steering, boost, one rival, gameplay-driven music, and a readable integration adapter; each circuit regenerates a different shipped style (neon, pocket funk, fusion, micro motor) with its own seed. Includes an identical addon copy.
-- `kit/docs/` — quickstart, API, limitations, and troubleshooting documentation.
-- Source crates, the required catalog fixture, `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` — complete pinned Rust rebuild inputs.
-- First-party and third-party license terms.
-- A machine-readable release manifest with source identity, workflow provenance, tool versions, and native-library hashes.
+### What you get
 
-### Literal Claims
-- Generates a deterministic score based on seed, style, palette, traits, and version.
-- Two shipped recipes: Racing and Suspense (song-form), the latter with original and extended arrangements and gameplay-holdable form.
-- Four Racing styles (neon, pocket funk, fusion, micro motor), demonstrated by four demo circuits that regenerate live in the garage.
-- Six adaptive racing sections (garage, grid, cruise, attack, final-lap, victory) with bar-quantized crossovers.
-- Fully offline runtime generation; no network requests or external services.
-- Synthesized in-process audio; zero samples or pre-baked tracks required.
+- Linux, Windows, and universal macOS libraries with the GDExtension descriptor.
+- Full MIT Rust source, lockfile, and pinned toolchain.
+- A playable four-circuit Godot demo (Night Circuit, Harbor Sprint, Canyon Run, Micro Mile), one style each.
+- Quickstart, API, limitations, troubleshooting, changelog, licenses, and a release manifest with hashes.
 
-### Requirements
-- **Godot Version:** Godot 4.7.x via GDExtension. Future Godot minor releases are not implied. Tested exactly against CI version 4.7.2.
-- **Operating Systems:** Linux x86_64 (built on Ubuntu 24.04), Windows x86_64, and macOS arm64/x86_64. No mobile or web targets.
-- **Playback:** Godot `AudioStreamGenerator` routed to a 22050 Hz mono internal synth.
+### Good to know
 
-### Limitations
-- Racing and song-form state models; this is not a general-purpose adaptive music graph.
-- Voices are synthesized; there is no sample import or MIDI export.
-- Mono internal synth designed for lean in-game playback.
-- No broad compatibility or certification guarantees.
-- The macOS library is ad-hoc signed but not Developer ID-signed or notarized. Linux and Windows libraries are not publisher-signed.
+- Godot 4.7.x on Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
+- Fully offline: no network, no samples, no telemetry. 22050 Hz mono synth routed through Godot's audio buses.
+- Not a general-purpose music graph or DAW. Voices are synthesized; no sample import or MIDI export.
+- First-party code is MIT (closed-source commercial games welcome); gdext is MPL-2.0.
 
-### License and Disclosures
-- Gamestruments first-party Rust crates, addon descriptor, buyer documentation, and demo integration are provided under the MIT license, permitting use in closed-source commercial games.
-- gdext and related binding crates are MPL-2.0. Complete attribution and dependency disclosures are provided in `THIRD_PARTY_NOTICES.md` inside the archive.
+### Updates and support
 
-### Updates
-All future updates to this kit are included with your purchase. itch.io automatically delivers new files uploaded to this page to existing owners, and major releases are announced through the page's devlog.
-
-### Support
-Support is provided best-effort for reproducible defects within the advertised environment. Use the public comments section on this page and include the kit version, OS, architecture, exact Godot version, reproduction steps, and complete Godot Output text. Use itch.io's purchase-support flow for purchase-specific or private matters.
-Refunds follow the standard itch.io terms presented at purchase time.
+All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments with your OS, Godot version, and Output text. Refunds follow itch.io's standard terms.
