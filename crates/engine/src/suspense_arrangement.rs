@@ -158,10 +158,13 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             .ok_or_else(|| format!("Theme arrangement requires {id}"))?;
         overlay_drone(section, &intro, bar);
         rhythm(section, bar);
-        if matches!(id, "chorus-final" | "solo") {
+        if id == "chorus-final" {
             theme_figure(section, root, bar, seed);
             theme_hat_break(section, bar);
             theme_drop_snare(section, bar);
+        }
+        if id == "solo" {
+            theme_figure(section, root, bar, seed);
         }
     }
     if let Some(chorus) = score
@@ -184,7 +187,7 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             theme_step("verse", 1),
             theme_step("pre-chorus", 1),
             theme_step("chorus", 1),
-            theme_step("chorus-final", 2),
+            theme_step("chorus-final", 1),
             theme_step("solo", 2),
         ],
         loop_from: Some(4),
@@ -277,39 +280,34 @@ fn theme_figure(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
 
 fn theme_hat_break(section: &mut PortableSection, bar: u32) {
     let sixteenth = bar / 16;
-    for bar_index in [2u32, 6] {
-        for step in 0..16u32 {
-            if step % 2 == 0 {
-                continue;
-            }
-            section.events.push(MusicEvent::Percussion {
-                id: format!("{}:theme:hat-break:{bar_index}:{step}", section.id),
-                section: section.id.clone(),
-                lane: format!("{}-kit", section.id),
-                start_tick: bar_index * bar + step * sixteenth,
-                duration_ticks: sixteenth / 2,
-                velocity: if step == 15 { 0.22 } else { 0.12 },
-                voice: "hat".into(),
-            });
+    let bar_index = 6u32;
+    for step in 0..16u32 {
+        if step % 2 == 0 {
+            continue;
         }
+        section.events.push(MusicEvent::Percussion {
+            id: format!("{}:theme:hat-break:{bar_index}:{step}", section.id),
+            section: section.id.clone(),
+            lane: format!("{}-kit", section.id),
+            start_tick: bar_index * bar + step * sixteenth,
+            duration_ticks: sixteenth / 2,
+            velocity: if step == 15 { 0.2 } else { 0.11 },
+            voice: "hat".into(),
+        });
     }
 }
 
 fn theme_drop_snare(section: &mut PortableSection, bar: u32) {
     let pulse = bar / 8;
-    effect(section, "reverse-cymbal", 3 * bar, bar, 0.16);
-    effect(section, "reverse-cymbal", 7 * bar, bar, 0.16);
-    for (index, tick) in [0u32, 4 * bar].into_iter().enumerate() {
-        section.events.push(MusicEvent::Percussion {
-            id: format!("{}:theme:snare:{index}", section.id),
-            section: section.id.clone(),
-            lane: format!("{}-kit", section.id),
-            start_tick: tick,
-            duration_ticks: pulse,
-            velocity: if index == 0 { 0.48 } else { 0.36 },
-            voice: "snare".into(),
-        });
-    }
+    section.events.push(MusicEvent::Percussion {
+        id: format!("{}:theme:snare:land", section.id),
+        section: section.id.clone(),
+        lane: format!("{}-kit", section.id),
+        start_tick: 0,
+        duration_ticks: pulse,
+        velocity: 0.46,
+        voice: "snare".into(),
+    });
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
