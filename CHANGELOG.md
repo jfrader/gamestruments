@@ -18,7 +18,7 @@
 - Audio Lab: complete score-driven music-section selection replaces hard Jump actions. Cue/queued/blending states and cancellation are visible; Suspense's game signals are separated into an advanced panel. Waiting cues cannot cut an active blend, and canceled cues no longer leave stale release timers or future voices behind.
 - Removed the confirmed sustained glass-cell beep from Extended's Decrypt, Other Hall and Full Breach. Anomaly, the newer melody passages, effects, drums and Original are unchanged.
 - Suspense v2 is no longer a pop song: Santaolalla-style drone + 2–3 note cell, Mr. Robot pulse/clock, static minor harmony, no snare backbeat. Form now also passes through a drop (Break) and a second inverted bridge (Other Hall) without rewriting the v2 beds.
-- Removed the internal "Pocket Circuit" name from buyer-visible artifacts: the racing recipe is now **Racing** (`recipe = "racing"`), and the engine module, score ids, catalog path, buyer docs, listing, and Audio Lab no longer reference the internal game.
+- Removed an internal project name from buyer-visible artifacts: the racing recipe is now **Racing** (`recipe = "racing"`), and the engine module, score ids, catalog path, buyer docs, listing, and Audio Lab use that public name.
 - Buyer docs now cover both recipes: `kit/docs/api.md` documents Racing and Suspense (styles, trace states, selection priority, form controls, and sections), the buyer README and quickstart add Suspense examples, and the contract, QA runbook, and listing reflect both recipes.
 - Kit repositioned as **Gamestruments — Adaptive Music for Godot 4**: Gamestruments is the product; the racing recipe is simply Racing, and the demo remains Night Circuit. Storefront slug moves to `gamestruments-godot`.
 - Buyer archive `README.md` is rewritten in a friendlier, task-first voice and links the browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer).
@@ -79,10 +79,10 @@
   (`crates/godot`) so games generate and play music at level load from a
   project secret, instrument palette, and seed, without Strudel or a WAV
   library.
-- Frozen Tiny Torque `level-004` (Grid) as a catalog take for Pocket Circuit
+- Frozen Tiny Torque `level-004` (Grid) as a catalog take for the racing recipe
   main-menu music.
 
-- Added the first playable adaptive racing score for Pocket Circuit, with
+- Added the first playable adaptive racing score for the racing recipe, with
   bar-quantized crossovers between garage, grid, race flow, position pressure,
   final lap, and victory states.
 - Added a Strudel-backed authoring exporter and an independent portable runtime
@@ -111,7 +111,7 @@
   `crates/engine` (no Godot dep): renders a PortableScore section looped N
   phrases through the Synth with lab-matching outer seam fade, emitting valid
   16-bit mono PCM RIFF WAV.
-- Added golden test for the signed-off Pocket Circuit catalog take (tiny-torque
+- Added golden test for the signed-off racing catalog take (tiny-torque
   level-004 "grid" section, 3 phrases @ 22050 Hz).
 
 ### Fixed
@@ -123,7 +123,7 @@
 
 ### Improved
 
-- Each Pocket Circuit style now uses its own instrument kit: fusion electric
+- Each racing style now uses its own instrument kit: fusion electric
   piano and organ, neon supersaw with echo, funk pluck, and bitcrushed chip
   squares with triangle bass.
 - Tiny Torque Race Flow now uses the denser former Grid groove; Grid uses the
