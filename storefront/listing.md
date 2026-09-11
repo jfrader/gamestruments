@@ -17,7 +17,7 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 - **Release Status:** Released
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
-- **External Links:** Browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer). The source repository is private.
+- **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer). The source repository is private.
 
 ## Visual Thesis and Media Capture Checklist
 
@@ -44,7 +44,7 @@ For official itch creator documentation, see: https://itch.io/docs/creators/
 
 Your game generates its own soundtrack. Gamestruments writes deterministic, sample-free adaptive music right inside Godot — no audio files to ship, no authoring tool, no external services. Add one node, generate a score at level load, and tell it what's happening; it moves between musical sections on bar boundaries.
 
-**Try it in your browser:** https://gamestruments.gurisitos.games
+**Try it in your browser:** [play the live demo](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo) — or open the standalone lab at https://gamestruments.gurisitos.games.
 
 ### Two recipes, one player
 
