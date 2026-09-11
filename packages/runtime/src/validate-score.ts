@@ -11,8 +11,10 @@ const NOTE_VOICES = new Set([
   "organ",
   "supersaw",
   "triangle",
+  "felt",
+  "dusk",
 ]);
-const PERCUSSION_VOICES = new Set(["kick", "snare", "hat", "tom"]);
+const PERCUSSION_VOICES = new Set(["kick", "snare", "hat", "tom", "reverse-cymbal", "air-impact"]);
 
 function requireValid(condition: boolean, message: string): asserts condition {
   if (!condition) {
@@ -99,6 +101,31 @@ export function validatePortableScore(score: PortableScore): void {
   }
 
   requireValid(sectionIds.has(score.defaultSection), `unknown default section ${score.defaultSection}`);
+  if (score.form !== undefined) {
+    requireValid(
+      score.form.origin === undefined || score.form.origin === "transitionStart" || score.form.origin === "transitionEnd",
+      "song form origin must be transitionStart or transitionEnd",
+    );
+    requireValid(score.form.steps.length > 0, "song form must contain at least one step");
+    for (const [index, step] of score.form.steps.entries()) {
+      requireValid(step.section.length > 0, `song form step ${index} has an empty section`);
+      requireValid(
+        sectionIds.has(step.section),
+        `song form step ${index} targets unknown section ${step.section}`,
+      );
+      requireValid(
+        step.repeats === undefined || (Number.isSafeInteger(step.repeats) && step.repeats > 0),
+        `song form step ${index} repeats must be positive`,
+      );
+    }
+    requireValid(
+      score.form.loopFrom === undefined ||
+        (Number.isSafeInteger(score.form.loopFrom) &&
+          score.form.loopFrom >= 0 &&
+          score.form.loopFrom < score.form.steps.length),
+      `song form loopFrom ${score.form.loopFrom} is out of range`,
+    );
+  }
   for (const rule of score.rules) {
     requireValid(sectionIds.has(rule.target), `rule targets unknown section ${rule.target}`);
     requireValid(Number.isFinite(rule.priority), `rule for ${rule.target} has invalid priority`);

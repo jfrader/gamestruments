@@ -20,7 +20,8 @@ Lantern Trail independently uses wonder, danger, mystery, and motion.
 - four original racing scores covering garage through victory;
 - seeded alternate takes for procedural phrases;
 - deterministic level generation with independent musical sub-seeds;
-- Pocket Circuit racing and Lantern Trail adventure generation recipes;
+- Pocket Circuit racing, Lantern Trail adventure, and Suspense song-form
+  generation recipes;
 - a Node CLI with recipe-specific traits, versioned manifests, and SHA-256 score
   checksums;
 - publishable runtime and Studio ESM packages with TypeScript declarations;

@@ -5,18 +5,21 @@ import {
   type PortableSection,
   type SectionId,
   type TransitionPlan,
+  type TransitionRequest,
 } from "../../../packages/runtime/src/index.ts";
-import {
-  pocketCircuitExperiments,
-  type NormalizedMusicTraits,
-  type PocketCircuitStyle,
-} from "../../../packages/studio/src/index.ts";
-import { generateScore } from "./wasm-engine.ts";
+import { type NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
+import { generateScore, type SuspenseArrangement } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
+import {
+  playbackSectionOnScore,
+  SUSPENSE_PHASE_SECTIONS,
+} from "./playback-section.ts";
+
+export type LabRecipe = "pocket-circuit" | "suspense";
 
 export interface GenerationPreset {
-  style: PocketCircuitStyle;
+  style: string;
   traits: NormalizedMusicTraits;
 }
 
@@ -39,6 +42,23 @@ export const GENERATION_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
+export const SUSPENSE_PRESETS = [
+  {
+    style: "terminal",
+    traits: { energy: 0.62, complexity: 0.48, brightness: 0.72, syncopation: 0.55 },
+  },
+  {
+    style: "cipher",
+    traits: { energy: 0.58, complexity: 0.66, brightness: 0.6, syncopation: 0.7 },
+  },
+  {
+    style: "noir",
+    traits: { energy: 0.7, complexity: 0.4, brightness: 0.78, syncopation: 0.42 },
+  },
+] as const satisfies readonly GenerationPreset[];
+
+export let labRecipe: LabRecipe = "pocket-circuit";
+export let suspenseArrangement: SuspenseArrangement = "extended";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
@@ -48,15 +68,19 @@ export let transport!: AdaptiveTransport;
 export let audio!: DemoAudioEngine;
 export let soloMode: SoloMode = "full";
 export let comparisonBaseSeed = levelSeed;
-export let auditionOverride: SectionId | null = null;
+let manualCue: SectionId | null = null;
 
 let switchingScore = false;
 let switchingAudio = false;
 let generationQueue: Promise<void> = Promise.resolve();
 let latestGenerationRequest = 0;
 
+export function currentPresets(): readonly GenerationPreset[] {
+  return labRecipe === "suspense" ? SUSPENSE_PRESETS : GENERATION_PRESETS;
+}
+
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
-  const preset = GENERATION_PRESETS[index];
+  const preset = currentPresets()[index];
   if (preset === undefined) {
     throw new Error(`Missing generation preset: ${index}`);
   }
@@ -71,15 +95,22 @@ async function generateRequestedScore(
   index: number,
   requestedSeed: string,
   requestedTraits: NormalizedMusicTraits,
+  arrangement: SuspenseArrangement = suspenseArrangement,
 ): Promise<PortableScore> {
   const preset = generationPreset(index);
   return generateScore({
     seed: requestedSeed,
     style: preset.style,
+    recipe: labRecipe,
+    arrangement,
     energy: requestedTraits.energy,
     complexity: requestedTraits.complexity,
     brightness: requestedTraits.brightness,
     syncopation: requestedTraits.syncopation,
+    tension: requestedTraits.energy,
+    heat: requestedTraits.complexity,
+    mystery: requestedTraits.brightness,
+    pulse: requestedTraits.syncopation,
   });
 }
 
@@ -90,6 +121,18 @@ export async function initializeLab(): Promise<void> {
 }
 
 export function currentState(): GameState {
+  if (labRecipe === "suspense") {
+    return {
+      numeric: {
+        heat: Number(elements.intensity.value),
+        focus: Number(elements.pressure.value),
+        progress: elements.finalLap.checked ? 1 : 0,
+      },
+      categorical: {
+        tracePhase: phase,
+      },
+    };
+  }
   return {
     numeric: {
       intensity: Number(elements.intensity.value),
@@ -116,45 +159,92 @@ export function applyPlan(plan: TransitionPlan): void {
   elements.orbit.style.setProperty("--mood-color", sectionById(plan.to).color);
 }
 
-export function requestMusicState(clearAuditionOverride = false): void {
-  const state = currentState();
-  if (clearAuditionOverride) {
-    auditionOverride = null;
-  }
-  if (auditionOverride !== null) {
-    // render via ui
-    return;
-  }
-  if (audio.running) {
-    const request = transport.requestState(state, audio.currentTick());
-    if (request.status === "scheduled") {
-      if (request.replacedPlan !== undefined) {
-        audio.cancelTransition(request.replacedPlan);
-      }
-      applyPlan(request.plan);
-    } else if (request.status === "cancelled") {
-      audio.cancelTransition(request.plan);
-    }
+function applyRequest(request: TransitionRequest): void {
+  if (request.status === "scheduled") {
+    if (request.replacedPlan !== undefined) audio.cancelTransition(request.replacedPlan);
+    manualCue = request.plan.to;
+    applyPlan(request.plan);
+  } else if (request.status === "queued") {
+    manualCue = request.target;
+  } else if (request.status === "cancelled") {
+    manualCue = null;
+    audio.cancelTransition(request.plan);
   }
 }
 
-export function jumpToSection(target: SectionId): void {
+export function pendingCue(): SectionId | null {
+  const snapshot = transport.snapshot();
+  const target = snapshot.pendingSection ?? (snapshot.transition !== null && audio.currentTick() < snapshot.transition.startTick ? snapshot.transition.to : null);
+  if (target !== manualCue) manualCue = null;
+  return manualCue;
+}
+
+export function requestMusicState(): void {
+  if (cueControlsBusy() || !audio.running) return;
   const tick = audio.currentTick();
-  auditionOverride = target;
-  transport.jumpSection(target, tick);
-  audio.jumpSection(target, tick);
+  const automatic = transport.advance(tick);
+  if (automatic !== null) applyPlan(automatic);
+  applyRequest(transport.requestState(currentState(), tick));
+}
+
+export function cueSection(target: SectionId): void {
+  if (cueControlsBusy()) return;
+  sectionById(target);
+  if (!audio.running) {
+    manualCue = null;
+    const held = transport.formHeld;
+    transport = new AdaptiveTransport(score, target);
+    transport.setFormHeld(held, 0);
+    return;
+  }
+  const tick = audio.currentTick();
+  const automatic = transport.advance(tick);
+  if (automatic !== null) applyPlan(automatic);
+  applyRequest(transport.requestSection(target, tick));
+  const snapshot = transport.snapshot();
+  if (snapshot.transition?.to === target && tick < snapshot.transition.startTick) manualCue = target;
+}
+
+export function setFormHold(held: boolean): void {
+  if (cueControlsBusy()) return;
+  const cancelled = transport.setFormHeld(held, audio.currentTick());
+  if (cancelled !== null && audio.running) audio.cancelTransition(cancelled);
+}
+
+export function advanceSection(): void {
+  if (cueControlsBusy() || transport.snapshot().transition !== null) return;
+  const target = transport.nextFormSection(audio.currentTick());
+  if (target !== null) cueSection(target);
+}
+
+export function cancelCue(): void {
+  if (cueControlsBusy()) return;
+  if (pendingCue() === null) return;
+  const plan = transport.cancelPending(audio.currentTick());
+  if (plan !== null) audio.cancelTransition(plan);
+  manualCue = null;
+}
+
+export function cueControlsBusy(): boolean {
+  return switchingAudio || switchingScore;
+}
+
+export function requestSuspensePhase(): void {
+  const target = SUSPENSE_PHASE_SECTIONS[phase];
+  if (target === undefined) requestMusicState();
+  else cueSection(target);
 }
 
 export async function activateExperiment(
   index: number,
   nextSeed = levelSeed,
   nextTraits: NormalizedMusicTraits = generationTraits,
+  nextArrangement: SuspenseArrangement = suspenseArrangement,
 ): Promise<boolean> {
   if (
     switchingScore ||
     switchingAudio ||
-    pocketCircuitExperiments[index] === undefined ||
-    GENERATION_PRESETS[index] === undefined
+    currentPresets()[index] === undefined
   ) {
     return false;
   }
@@ -163,27 +253,33 @@ export async function activateExperiment(
   const wasRunning = previousAudio.running;
   const currentTick = previousAudio.currentTick();
   const previousSnapshot = transport.snapshot();
-  const initialSection =
-    auditionOverride ??
+  const requestedSection =
     (previousSnapshot.transition !== null &&
     currentTick >= previousSnapshot.transition.startTick
       ? previousSnapshot.transition.to
       : previousSnapshot.currentSection);
   try {
-    const nextScore = await generateRequestedScore(index, nextSeed, nextTraits);
+    const nextScore = await generateRequestedScore(index, nextSeed, nextTraits, nextArrangement);
+    const initialSection = playbackSectionOnScore(nextScore, requestedSection);
     const nextTransport = new AdaptiveTransport(nextScore, initialSection);
+    nextTransport.setFormHeld(transport.formHeld, 0);
     const nextAudio = new DemoAudioEngine(nextScore);
     nextAudio.soloMode = soloMode;
     const startNext = wasRunning
-      ? nextAudio.start(initialSection)
+      ? nextAudio.start(
+          initialSection,
+          nextScore.form === undefined ? undefined : nextTransport.advance.bind(nextTransport),
+        )
       : Promise.resolve();
     await Promise.all([startNext, previousAudio.stop()]);
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
+    suspenseArrangement = nextArrangement;
     score = nextScore;
     transport = nextTransport;
     audio = nextAudio;
+    manualCue = null;
     return true;
   } finally {
     switchingScore = false;
@@ -194,11 +290,12 @@ export function requestExperiment(
   index: number,
   nextSeed = levelSeed,
   nextTraits: NormalizedMusicTraits = generationTraits,
+  nextArrangement: SuspenseArrangement = suspenseArrangement,
 ): Promise<boolean> {
   const request = ++latestGenerationRequest;
   const pending = generationQueue.then(() =>
     request === latestGenerationRequest
-      ? activateExperiment(index, nextSeed, nextTraits)
+      ? activateExperiment(index, nextSeed, nextTraits, nextArrangement)
       : false,
   );
   generationQueue = pending.then(
@@ -235,15 +332,21 @@ export async function toggleEngine(): Promise<boolean> {
     if (audio.running) {
       const tick = audio.currentTick();
       const snapshot = transport.snapshot();
-      const currentSection = auditionOverride ??
+      const currentSection =
         (snapshot.transition !== null && tick >= snapshot.transition.startTick
           ? snapshot.transition.to
           : snapshot.currentSection);
+      const held = transport.formHeld;
       transport = new AdaptiveTransport(score, currentSection);
+      transport.setFormHeld(held, 0);
+      manualCue = null;
       await audio.stop();
       return false;
     }
-    await audio.start(transport.snapshot().currentSection);
+    await audio.start(
+      transport.snapshot().currentSection,
+      score.form === undefined ? undefined : transport.advance.bind(transport),
+    );
     return true;
   } finally {
     switchingAudio = false;
@@ -256,6 +359,25 @@ export function setComparisonBaseSeed(value: string): void {
 
 export function setPhase(value: string): void {
   phase = value;
+}
+
+export function setSuspenseArrangement(value: SuspenseArrangement): Promise<boolean> {
+  if (labRecipe !== "suspense") {
+    return Promise.resolve(false);
+  }
+  return requestExperiment(activeExperimentIndex, levelSeed, generationTraits, value);
+}
+
+export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
+  if (recipe === labRecipe) {
+    return true;
+  }
+  labRecipe = recipe;
+  activeExperimentIndex = 0;
+  manualCue = null;
+  phase = recipe === "suspense" ? "scan" : "garage";
+  generationTraits = { ...generationPreset(0).traits };
+  return requestExperiment(0, levelSeed, generationTraits);
 }
 
 export function setSoloMode(value: SoloMode): void {

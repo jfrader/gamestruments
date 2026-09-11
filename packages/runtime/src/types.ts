@@ -16,6 +16,18 @@ export interface AdaptiveRule {
   target: SectionId;
   priority: number;
   when: AdaptiveCondition;
+  hold?: boolean;
+}
+
+export interface SongFormStep {
+  section: SectionId;
+  repeats?: number;
+}
+
+export interface SongForm {
+  steps: readonly SongFormStep[];
+  loopFrom?: number;
+  origin?: "transitionStart" | "transitionEnd";
 }
 
 export interface GameState {
@@ -45,13 +57,15 @@ export interface NoteEvent extends EventBase {
     | "epiano"
     | "organ"
     | "supersaw"
-    | "triangle";
+    | "triangle"
+    | "felt"
+    | "dusk";
   role?: "melody";
 }
 
 export interface PercussionEvent extends EventBase {
   kind: "percussion";
-  voice: "kick" | "snare" | "hat" | "tom";
+  voice: "kick" | "snare" | "hat" | "tom" | "reverse-cymbal" | "air-impact";
 }
 
 export interface StemEvent extends EventBase {
@@ -82,6 +96,7 @@ export interface PortableScore {
   defaultSection: SectionId;
   sections: readonly PortableSection[];
   rules: readonly AdaptiveRule[];
+  form?: SongForm;
 }
 
 export interface TransitionPlan {

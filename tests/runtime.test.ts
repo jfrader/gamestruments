@@ -255,6 +255,77 @@ describe("adaptive transport", () => {
       /Unknown target section/,
     );
   });
+
+  it("does not postpone a form boundary when the browser clock is a few ticks late", () => {
+    const formed: PortableScore = {
+      ...score,
+      sections: score.sections.map((section) => ({ ...section, lengthTicks: 8 * 3840 })),
+      form: { steps: [{ section: "garage" }, { section: "race" }] },
+    };
+    const transport = new AdaptiveTransport(formed);
+    assert.equal(transport.advance(30719), null);
+    const plan = transport.advance(30726);
+    assert.equal(plan?.startTick, 30720);
+    assert.equal(plan?.endTick, 38400);
+  });
+
+  it("prepares the form entrance within audio lookahead without starting the fade early", () => {
+    const formed: PortableScore = {
+      ...score,
+      sections: score.sections.map((section) => ({ ...section, lengthTicks: 8 * 3840 })),
+      form: { steps: [{ section: "garage" }, { section: "race" }, { section: "final" }] },
+    };
+    const transport = new AdaptiveTransport(formed);
+    assert.equal(transport.advance(30000, 300), null);
+    const plan = transport.advance(30420, 400);
+    assert.equal(plan?.startTick, 30720);
+    assert.equal(plan?.endTick, 38400);
+    assert.deepEqual(transport.mixAt(30719), [{ section: "garage", gain: 1 }]);
+    assert.equal(transport.advance(30500, 400), null);
+    transport.advance(38406);
+    assert.equal(transport.snapshot().currentSection, "race");
+    const next = transport.advance(69126);
+    assert.equal(next?.startTick, 69120);
+  });
+
+  it("auto-advances a song form and only cues hold:false once", () => {
+    const formed: PortableScore = {
+      ...score,
+      defaultSection: "garage",
+      form: {
+        steps: [
+          { section: "garage" },
+          { section: "race" },
+          { section: "final" },
+        ],
+        loopFrom: 1,
+      },
+      rules: [
+        {
+          target: "final",
+          priority: 80,
+          hold: false,
+          when: { numeric: { heat: { min: 0.75 } } },
+        },
+      ],
+    };
+    const transport = new AdaptiveTransport(formed);
+    const first = transport.advance(3840);
+    assert.equal(first?.to, "race");
+    transport.advance(3840 + 7680);
+    assert.equal(transport.snapshot().currentSection, "race");
+
+    const cue = transport.requestState(
+      { numeric: { heat: 0.8 }, categorical: {} },
+      3840 + 7680,
+    );
+    assert.equal(cue.status, "scheduled");
+    const again = transport.requestState(
+      { numeric: { heat: 0.8 }, categorical: {} },
+      3840 + 7680,
+    );
+    assert.equal(again.status, "unchanged");
+  });
 });
 
 describe("event query", () => {

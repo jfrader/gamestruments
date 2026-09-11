@@ -17,6 +17,41 @@ pub struct PortableScore {
     pub default_section: String,
     pub sections: Vec<PortableSection>,
     pub rules: Vec<AdaptiveRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<SongForm>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SongFormStep {
+    pub section: String,
+    #[serde(default = "one_repeat", skip_serializing_if = "is_one_repeat")]
+    pub repeats: u32,
+}
+
+fn one_repeat() -> u32 {
+    1
+}
+
+fn is_one_repeat(value: &u32) -> bool {
+    *value == 1
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SongForm {
+    pub steps: Vec<SongFormStep>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loop_from: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<FormOrigin>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FormOrigin {
+    TransitionStart,
+    TransitionEnd,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -108,6 +143,8 @@ pub struct AdaptiveRule {
     pub target: String,
     pub priority: i32,
     pub when: AdaptiveCondition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -127,9 +164,17 @@ pub struct GameState {
     pub finish_result: String,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct TraceState {
+    pub phase: String,
+    pub heat: f64,
+    pub focus: f64,
+    pub progress: f64,
+}
+
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
-        self.beats_per_bar * self.ticks_per_beat
+        self.beats_per_bar.saturating_mul(self.ticks_per_beat)
     }
 
     pub fn ticks_per_second(&self) -> f64 {
@@ -217,8 +262,37 @@ impl PortableScore {
                 ));
             }
         }
+        if let Some(form) = &self.form {
+            validate_song_form(form, &section_ids)?;
+        }
         Ok(())
     }
+}
+
+fn validate_song_form(form: &SongForm, section_ids: &HashSet<&str>) -> Result<(), String> {
+    if form.steps.is_empty() {
+        return Err("song form must contain at least one step".into());
+    }
+    for (index, step) in form.steps.iter().enumerate() {
+        if step.section.is_empty() {
+            return Err(format!("song form step {index} has an empty section"));
+        }
+        if !section_ids.contains(step.section.as_str()) {
+            return Err(format!(
+                "song form step {index} targets unknown section {}",
+                step.section
+            ));
+        }
+        if step.repeats == 0 {
+            return Err(format!("song form step {index} repeats must be positive"));
+        }
+    }
+    if let Some(loop_from) = form.loop_from {
+        if (loop_from as usize) >= form.steps.len() {
+            return Err(format!("song form loopFrom {loop_from} is out of range"));
+        }
+    }
+    Ok(())
 }
 
 fn validate_event<'a>(
@@ -276,9 +350,9 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 10] = [
+            const NOTE_VOICES: [&str; 12] = [
                 "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle",
+                "triangle", "felt", "dusk",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -291,7 +365,14 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 4] = ["kick", "snare", "hat", "tom"];
+            const PERCUSSION_VOICES: [&str; 6] = [
+                "kick",
+                "snare",
+                "hat",
+                "tom",
+                "reverse-cymbal",
+                "air-impact",
+            ];
             if !PERCUSSION_VOICES.contains(&voice.as_str()) {
                 return Err(format!("percussion {id} has unsupported voice {voice}"));
             }
@@ -356,6 +437,7 @@ mod tests {
                 }],
             }],
             rules: Vec::new(),
+            form: None,
         }
     }
 

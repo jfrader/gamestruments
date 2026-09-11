@@ -14,13 +14,17 @@ import {
 } from "./ui";
 import {
   activeExperimentIndex,
-  auditionOverride,
+  pendingCue,
   audio,
   comparisonBaseSeed,
   generationTraits,
   generationPreset,
   initializeLab,
   levelSeed,
+  labRecipe,
+  suspenseArrangement,
+  setSuspenseArrangement,
+  currentPresets,
   phase,
   score,
   sectionById,
@@ -28,13 +32,19 @@ import {
   transport,
   applyPlan,
   requestMusicState,
-  jumpToSection,
+  requestSuspensePhase,
+  cueSection,
+  cancelCue,
+  cueControlsBusy,
+  setFormHold,
+  advanceSection,
   toggleEngine,
   requestExperiment,
   nextLevelSeed,
   traitsFromControls,
   setComparisonBaseSeed,
   setPhase,
+  setLabRecipe,
   setSoloMode,
 } from "./state";
 
@@ -48,6 +58,10 @@ function renderCurrentScore(): void {
     generationTraits,
     comparisonBaseSeed,
     soloMode,
+    labRecipe,
+    currentPresets(),
+    suspenseArrangement,
+    phase,
   );
   requestMusicState();
 }
@@ -75,12 +89,15 @@ function applyGenerationRequest(request: Promise<boolean>, onApplied: () => void
 }
 
 function animate(): void {
-  renderFrame(audio, score, transport, auditionOverride, applyPlan, sectionById);
+  renderFrame(audio, score, transport, pendingCue(), applyPlan, sectionById, cueControlsBusy());
   window.requestAnimationFrame(animate);
 }
 
 function renderRuntimeSignal(): void {
-  elements.runtimeSignal.textContent = `racePhase: ${phase}`;
+  elements.runtimeSignal.textContent =
+    labRecipe === "suspense"
+      ? `recipe: suspense  /  tracePhase: ${phase}`
+      : `racePhase: ${phase}`;
 }
 
 renderGenreIndex();
@@ -96,13 +113,14 @@ elements.centerPlay.addEventListener("click", () => {
   void togglePlayback();
 });
 document.addEventListener("keydown", (ev) => {
+  if (ev.repeat) return;
   if (ev.key !== " " && ev.key !== "Spacebar") {
     return;
   }
   const target = ev.target as HTMLElement | null;
   if (
     target !== null &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+    (target.closest("input, textarea, select, button, summary") !== null || target.matches("[data-scroll-panel]") || target.isContentEditable)
   ) {
     return;
   }
@@ -199,12 +217,17 @@ elements.compareTake.addEventListener("click", () => {
 
 elements.sectionList.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-    "button[data-jump-section]",
+    "button[data-cue-section]",
   );
-  if (button?.dataset.jumpSection !== undefined) {
-    jumpToSection(button.dataset.jumpSection as SectionId);
+  if (button?.dataset.cueSection !== undefined) {
+    cueSection(button.dataset.cueSection as SectionId);
   }
 });
+
+elements.sectionSelect.addEventListener("change", () => cueSection(elements.sectionSelect.value));
+elements.cancelCue.addEventListener("click", cancelCue);
+elements.holdForm.addEventListener("click", () => setFormHold(!transport.formHeld));
+elements.advanceForm.addEventListener("click", advanceSection);
 
 elements.genreIndex.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
@@ -224,9 +247,47 @@ elements.genreIndex.addEventListener("click", (event) => {
   });
 });
 
+elements.arrangementButtons.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-arrangement]");
+  const value = button?.dataset.arrangement;
+  if (value !== "original" && value !== "extended") {
+    return;
+  }
+  applyGenerationRequest(setSuspenseArrangement(value), () => {
+    renderCurrentScore();
+    const messages = {
+      original: "Original arrangement restored",
+      extended: "Extended arrangement ready",
+    };
+    announceAudition(messages[value]);
+  });
+});
+
+elements.recipeButtons.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "button[data-recipe]",
+  );
+  const recipe = button?.dataset.recipe;
+  if (recipe !== "pocket-circuit" && recipe !== "suspense") {
+    return;
+  }
+  applyGenerationRequest(setLabRecipe(recipe), () => {
+    renderCurrentScore();
+    renderRuntimeSignal();
+    announceAudition(`Opened ${recipe === "suspense" ? "Suspense" : "Racing"}`);
+  });
+});
+
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-lab]")) {
   button.addEventListener("click", () => {
+    const recipe = button.dataset.recipe;
     window.location.hash = "lab";
+    if (recipe === "pocket-circuit" || recipe === "suspense") {
+      applyGenerationRequest(setLabRecipe(recipe), () => {
+        renderCurrentScore();
+        renderRuntimeSignal();
+      });
+    }
   });
 }
 
@@ -242,17 +303,21 @@ elements.phaseButtons.addEventListener("click", (event) => {
     candidate.setAttribute("aria-pressed", String(candidate === button));
   }
   renderRuntimeSignal();
-  requestMusicState(true);
+  if (labRecipe === "suspense") {
+    requestSuspensePhase();
+  } else {
+    requestMusicState();
+  }
 });
 
 elements.intensity.addEventListener("input", () => {
   elements.intensityValue.value = `${Math.round(Number(elements.intensity.value) * 100)}%`;
-  requestMusicState(true);
+  requestMusicState();
 });
 elements.pressure.addEventListener("input", () => {
   elements.pressureValue.value = `${Math.round(Number(elements.pressure.value) * 100)}%`;
-  requestMusicState(true);
+  requestMusicState();
 });
-elements.finalLap.addEventListener("change", () => requestMusicState(true));
+elements.finalLap.addEventListener("change", () => requestMusicState());
 
 window.addEventListener("hashchange", renderView);

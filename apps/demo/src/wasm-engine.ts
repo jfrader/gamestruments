@@ -59,6 +59,8 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
+export type SuspenseArrangement = "original" | "extended";
+
 export interface GenerateScoreParams {
   seed: string;
   style: string;
@@ -66,6 +68,12 @@ export interface GenerateScoreParams {
   complexity: number;
   brightness: number;
   syncopation: number;
+  recipe?: "pocket-circuit" | "suspense";
+  arrangement?: SuspenseArrangement;
+  tension?: number;
+  heat?: number;
+  mystery?: number;
+  pulse?: number;
 }
 
 export async function generateScore(params: GenerateScoreParams): Promise<PortableScore> {
@@ -77,11 +85,17 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     secret: "",
     seed: params.seed,
     style: params.style,
+    recipe: params.recipe ?? "pocket-circuit",
+    arrangement: params.arrangement ?? "original",
     palette: { melody: "", harmony: "", drive: "", bass: "" },
     energy: params.energy,
     complexity: params.complexity,
     brightness: params.brightness,
     syncopation: params.syncopation,
+    tension: params.tension ?? params.energy,
+    heat: params.heat ?? params.complexity,
+    mystery: params.mystery ?? params.brightness,
+    pulse: params.pulse ?? params.syncopation,
   };
   const { ptr, len } = allocAndWrite(JSON.stringify(input));
   const outPtr = (exp.gamestruments_score_json as (p: number, l: number) => number)(ptr, len);
