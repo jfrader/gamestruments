@@ -150,6 +150,9 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             .ok_or("Theme arrangement requires intro")?,
         bar,
     );
+    if let Some(intro_section) = score.sections.iter_mut().find(|section| section.id == "intro") {
+        strip_cells(intro_section);
+    }
     for id in ["verse", "pre-chorus", "chorus", "chorus-final", "solo"] {
         let section = score
             .sections
@@ -158,15 +161,14 @@ fn generate_theme(input: &SuspenseInput) -> Result<PortableScore, String> {
             .ok_or_else(|| format!("Theme arrangement requires {id}"))?;
         overlay_drone(section, &intro, bar);
         rhythm(section, bar);
+        strip_cells(section);
         if id == "chorus-final" {
             theme_figure(section, root, bar, seed);
-            theme_soften_cells(section, bar);
             theme_hat_break(section, bar);
             theme_drop_snare(section, bar);
         }
         if id == "solo" {
             theme_figure(section, root, bar, seed);
-            theme_soften_cells(section, bar);
         }
     }
     if let Some(chorus) = score
@@ -325,36 +327,13 @@ fn theme_drop_snare(section: &mut PortableSection, bar: u32) {
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
-fn theme_soften_cells(section: &mut PortableSection, bar: u32) {
-    let mut echoes = Vec::new();
-    for event in &section.events {
-        let MusicEvent::Note {
-            lane,
-            start_tick,
-            duration_ticks,
-            velocity,
-            pitch,
-            ..
-        } = event
-        else {
-            continue;
-        };
-        if !lane.contains("-cell") {
-            continue;
+fn strip_cells(section: &mut PortableSection) {
+    section.events.retain(|event| match event {
+        MusicEvent::Note { lane, .. } => {
+            !lane.contains("-cell") && !lane.contains("echo-cells") && !lane.contains("low-cell")
         }
-        echoes.push(MusicEvent::Note {
-            id: format!("{}:theme-low-cell:{start_tick}", section.id),
-            section: section.id.clone(),
-            lane: format!("{}-low-cell", section.id),
-            start_tick: *start_tick + bar / 16,
-            duration_ticks: *duration_ticks + bar / 8,
-            velocity: *velocity * 0.35,
-            pitch: pitch.saturating_sub(12),
-            voice: "dusk".into(),
-            role: None,
-        });
-    }
-    section.events.extend(echoes);
+        _ => true,
+    });
 }
 
 fn retarget_section(section: &mut PortableSection, id: &str) {
