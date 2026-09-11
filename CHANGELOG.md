@@ -12,6 +12,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab: the engine button is now a live readout — it shows the current section while playing, previews the next one while waiting for the bar, and sweeps between section colours during a crossover ("Handshake → Scan"). The volume + engine row is a fixed top bar on phones.
 - Audio Lab: cleaned up the Game signals hierarchy (single heading plus helper, no redundant "Game phase" title), fixed the double separator above Final lap, aligned the toggle with its label, and balanced the generator summary wrap.
 - Audio Lab: fixed the mobile layout — the game-type buttons no longer overlap or clip, labels are readable, the game signals are reachable with less scrolling, and the phase buttons use a 2x2 grid for Racing and a 3x2 grid for Suspense.
 - Audio Lab: moved the game signal controls (phase, intensity, pressure, final lap) out of the collapsed advanced panel to the top of Music controls, right after the level seed, so the adaptive behavior is immediately visible.

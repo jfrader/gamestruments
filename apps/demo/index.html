@@ -28,9 +28,17 @@
             <input type="range" id="master-volume" min="0" max="100" value="100" aria-label="Volume" />
             <span id="volume-readout" class="volume-readout">100%</span>
           </label>
-          <button class="start-button" id="start-audio" type="button">
+          <button class="start-button" id="start-audio" type="button" aria-label="Start engine" aria-pressed="false">
             <span class="start-light" aria-hidden="true"></span>
-            Start engine
+            <span class="engine-copy">
+              <span class="engine-label engine-label--from">Start engine</span>
+              <span class="engine-label engine-label--to"></span>
+            </span>
+            <span class="engine-stop" aria-hidden="true">
+              <span class="stop-glyph">■</span>
+              <span class="stop-word">STOP</span>
+            </span>
+            <span class="engine-progress" aria-hidden="true"></span>
           </button>
         </div>
       </header>
