@@ -6,6 +6,7 @@ import type {
   PortableSection,
   SectionId,
   TransitionPlan,
+  TransportSnapshot,
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
 import type { SuspenseArrangement } from "./wasm-engine.ts";
@@ -283,6 +284,37 @@ export function setStartButton(running: boolean): void {
   }
 }
 
+export function renderSectionSteps(
+  score: PortableScore,
+  tick: number,
+  snapshot: TransportSnapshot,
+  busy: boolean,
+): void {
+  const sections = score.sections;
+  const enabled = sections.length > 1 && !busy;
+  const active =
+    snapshot.transition !== null && tick >= snapshot.transition.startTick
+      ? snapshot.transition.to
+      : snapshot.currentSection;
+  const index = sections.findIndex((section) => section.id === active);
+  const base = index === -1 ? 0 : index;
+  const prevTarget = sections[(base - 1 + sections.length) % sections.length];
+  const nextTarget = sections[(base + 1) % sections.length];
+  if (prevTarget === undefined || nextTarget === undefined) return;
+  const targets = [
+    { button: elements.prevSection, target: prevTarget, label: "Previous" },
+    { button: elements.nextSection, target: nextTarget, label: "Next" },
+  ];
+  for (const { button, target, label } of targets) {
+    button.disabled = !enabled;
+    const title = `${label} section: ${target.label}`;
+    if (button.title !== title) {
+      button.title = title;
+      button.setAttribute("aria-label", title);
+    }
+  }
+}
+
 export function renderEngineButton(
   button: HTMLButtonElement,
   running: boolean,
@@ -491,4 +523,5 @@ export function renderFrame(
     section,
     sectionById,
   );
+  renderSectionSteps(score, tick, snapshot, busy);
 }

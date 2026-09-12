@@ -12,6 +12,8 @@ export const elements = {
   masterVolume: requireElement<HTMLInputElement>("#master-volume"),
   volumeReadout: requireElement<HTMLElement>("#volume-readout"),
   start: requireElement<HTMLButtonElement>("#start-audio"),
+  prevSection: requireElement<HTMLButtonElement>("#prev-section"),
+  nextSection: requireElement<HTMLButtonElement>("#next-section"),
   recipeButtons: requireElement<HTMLDivElement>("#recipe-buttons"),
   scoreButtons: requireElement<HTMLDivElement>("#score-buttons"),
   arrangementControl: requireElement<HTMLFieldSetElement>("#arrangement-control"),
