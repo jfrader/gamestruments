@@ -172,6 +172,14 @@ pub struct TraceState {
     pub progress: f64,
 }
 
+/// Scene a game is in for the `medieval` recipe. `danger` lets a combat
+/// encounter escalate into the boss section without a separate scene.
+#[derive(Clone, Debug, Default)]
+pub struct MedievalState {
+    pub scene: String,
+    pub danger: f64,
+}
+
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
         self.beats_per_bar.saturating_mul(self.ticks_per_beat)
@@ -350,9 +358,9 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 12] = [
+            const NOTE_VOICES: [&str; 16] = [
                 "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle", "felt", "dusk",
+                "triangle", "felt", "dusk", "harp", "recorder", "vielle", "bell",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));

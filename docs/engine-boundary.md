@@ -1,9 +1,13 @@
 # Engine Boundary (Audio Lab + shared Rust engine)
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
-- Owned by the shared Rust engine in `crates/engine` (`pocket_circuit`,
-  `suspense`, and score). WASM `gamestruments_score_json` accepts
-  `"recipe": "pocket-circuit" | "suspense"` (default pocket-circuit).
+- Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
+  `medieval`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "racing" | "suspense" | "medieval"` (default racing).
+- Medieval additionally accepts styles `court`, `minstrel`, and `chapel` and
+  generates seven eight-bar scene sections. `crates/engine/src/medieval.rs` owns
+  the section plans, selection rules, and `select_medieval_section`; the Rust
+  `AdaptiveTransport` exposes `request_medieval_state`.
 - Suspense additionally accepts `"arrangement": "original" | "extended"`.
   The lab defaults to Extended; omitting the field in the engine API retains
   Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
@@ -27,7 +31,7 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 Transport / section selection + transition planning:
 - The lab's music selector and Cue rows enumerate the loaded score's complete
   section list, including endings. Suspense's game signals are separate,
-  collapsed controls. Live cues wait for the next bar; the latest request made
+  collapsed controls; Medieval's scene buttons cue one section per scene. Live cues wait for the next bar; the latest request made
   during a blend queues after it. Cancel removes only a waiting request, never
   an in-progress blend. Stopped selection sets the next starting section.
 - For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).

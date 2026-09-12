@@ -105,19 +105,38 @@ Decrypt, Closed Session, and more). Gameplay can hold or move it with
 `set_form_hold`, `advance_form`, `is_form_held`, and `cue_section`. The full
 section list, selection rules, and trait mapping are in `kit/docs/api.md`.
 
+## Third Recipe: Medieval
+
+The same player ships **Medieval**, a seven-scene fantasy-RPG recipe. Set
+`recipe = "medieval"` before `generate`, choose a style, and cue the scene your
+game is in:
+
+```gdscript
+music.recipe = "medieval"
+music.style = "minstrel"        # court, minstrel, or chapel
+music.generate("realm-001")
+music.set_medieval_state("town", 0.1)
+music.set_medieval_state("combat", 0.9)  # danger >= 0.8 escalates combat to boss
+```
+
+Every scene is a stable eight-bar loop — Explore, Town, Dungeon, Combat, Boss,
+Tavern, Victory — and changes crossfade on the next bar. No form to manage: the
+game's scene is the whole state. Full list and errors in `kit/docs/api.md`.
+
 ## API at a Glance
 
 | Member | What it does |
 |---|---|
 | `project_secret: String` | Stable name for your title. Required, not a credential. |
-| `recipe: String` | `racing` (default) or `suspense`. |
+| `recipe: String` | `racing` (default), `suspense`, or `medieval`. |
 | `arrangement: String` | Suspense only: `original` (default) or `extended`. |
-| `style: String` | Racing: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. |
+| `style: String` | Racing: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. Medieval: `court`, `minstrel`, `chapel`. |
 | `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice` | Racing only. Optional voice overrides; empty uses the style default. |
-| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse. |
+| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse; Medieval as valor, mystery, warmth, and motion. |
 | `generate(seed: String) -> bool` | Makes the score, resets playback, starts at the recipe's first section. Check the result. |
 | `set_race_state(phase, intensity, pressure, final_lap, finish_result = "none") -> bool` | Racing: requests a section. Commits on the next bar. |
 | `set_trace_state(phase, heat, focus, progress) -> bool` | Suspense: requests a section from trace state. Commits on the next bar. |
+| `set_medieval_state(scene, danger) -> bool` | Medieval: requests a section for the scene. Commits on the next bar. |
 | `cue_section`, `set_form_hold`, `advance_form`, `is_form_held`, `get_current_section` | Suspense form controls. See `kit/docs/api.md`. |
 
 Every member, supported voice, and error case is documented in

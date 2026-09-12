@@ -90,6 +90,34 @@ test("switching to Suspense generates song-form music instead of racing", async 
   expect(runtimeErrors).toEqual([]);
 });
 
+test("switching to Medieval generates the seven-scene RPG music", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  await page.locator('#recipe-buttons button[data-recipe="medieval"]').click();
+  await expect(page.locator("#audition-status")).toContainText("Opened Medieval");
+  await expect(page.locator("#score-title")).toContainText(/Minstrel|Court|Chapel/);
+  await expect(page.locator("#section-list li")).toHaveCount(7);
+  await expect(page.locator("#section-list li").first()).toContainText("Explore");
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: medieval");
+
+  await page.getByRole("button", { name: "Combat", exact: true }).click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("Combat");
+
+  await page.locator("#start-audio").click();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("Extended adds longer beds and Original restores the same seed and score", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

@@ -9,6 +9,16 @@ export const SUSPENSE_PHASE_SECTIONS: Record<string, SectionId> = {
   complete: "coda",
 };
 
+export const MEDIEVAL_SCENE_SECTIONS: Record<string, SectionId> = {
+  explore: "explore",
+  town: "town",
+  dungeon: "dungeon",
+  combat: "combat",
+  boss: "boss",
+  tavern: "tavern",
+  victory: "victory",
+};
+
 export function playbackSectionOnScore(
   score: PortableScore,
   requested: SectionId | null,

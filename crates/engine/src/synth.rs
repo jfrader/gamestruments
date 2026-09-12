@@ -13,6 +13,10 @@ enum VoiceType {
     Pluck,
     Felt,
     Dusk,
+    Harp,
+    Recorder,
+    Vielle,
+    Bell,
     Bass,
     Epiano,
     Organ,
@@ -146,12 +150,20 @@ impl Synth {
                 "epiano" => VoiceType::Epiano,
                 "felt" => VoiceType::Felt,
                 "dusk" => VoiceType::Dusk,
+                "harp" => VoiceType::Harp,
+                "recorder" => VoiceType::Recorder,
+                "vielle" => VoiceType::Vielle,
+                "bell" => VoiceType::Bell,
                 _ => VoiceType::Warm,
             };
             let life = duration as f32
                 + match vtype {
                     VoiceType::Felt => 0.6,
                     VoiceType::Dusk => 1.2,
+                    VoiceType::Harp => 0.35,
+                    VoiceType::Recorder => 0.25,
+                    VoiceType::Vielle => 0.6,
+                    VoiceType::Bell => 1.5,
                     _ => NOTE_TAIL_SECONDS,
                 }
                 + 0.05;
@@ -303,7 +315,11 @@ impl Synth {
             | VoiceType::Pulse
             | VoiceType::Pluck
             | VoiceType::Felt
-            | VoiceType::Dusk => {
+            | VoiceType::Dusk
+            | VoiceType::Harp
+            | VoiceType::Recorder
+            | VoiceType::Vielle
+            | VoiceType::Bell => {
                 let (
                     primary,
                     secondary,
@@ -416,6 +432,70 @@ impl Synth {
                         0.25,
                         0.0,
                     ),
+                    VoiceType::Harp => (
+                        Wave::Triangle,
+                        Wave::Sine,
+                        2.0,
+                        0.10,
+                        3.0,
+                        0.055,
+                        0.004,
+                        0.16,
+                        0.30,
+                        0.30,
+                        2600.0,
+                        640.0,
+                        0.55,
+                        0.006,
+                    ),
+                    VoiceType::Recorder => (
+                        Wave::Triangle,
+                        Wave::Sine,
+                        2.0,
+                        0.05,
+                        4.0,
+                        0.062,
+                        0.05,
+                        0.20,
+                        0.72,
+                        0.22,
+                        1800.0,
+                        700.0,
+                        0.30,
+                        0.0,
+                    ),
+                    VoiceType::Vielle => (
+                        Wave::Saw,
+                        Wave::Triangle,
+                        1.003,
+                        0.5,
+                        9.0,
+                        0.06,
+                        0.18,
+                        0.4,
+                        0.66,
+                        0.5,
+                        1500.0,
+                        620.0,
+                        0.35,
+                        0.0,
+                    ),
+                    VoiceType::Bell => (
+                        Wave::Sine,
+                        Wave::Sine,
+                        2.003,
+                        0.30,
+                        4.0,
+                        0.055,
+                        0.006,
+                        0.5,
+                        0.35,
+                        1.4,
+                        4200.0,
+                        1600.0,
+                        0.4,
+                        0.0,
+                    ),
                     _ => unreachable!(),
                 };
                 let f1 = compute_freq(base, age, pd) * 2f32.powf(-det_c / 1200.0);
@@ -439,7 +519,10 @@ impl Synth {
                 let q = res + if is_mel { 0.25 } else { 0.0 };
                 sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
                 let peak = g * velocity_curve(vel, 0.82) * if is_mel { 1.18 } else { 1.0 };
-                let cap = if matches!(v.voice_type, VoiceType::Felt | VoiceType::Dusk) {
+                let cap = if matches!(
+                    v.voice_type,
+                    VoiceType::Felt | VoiceType::Dusk | VoiceType::Vielle | VoiceType::Bell
+                ) {
                     rel
                 } else {
                     0.24
@@ -953,6 +1036,37 @@ mod tests {
                 .iter()
                 .all(|sample| sample.is_finite() && sample.abs() < 0.1));
             assert!(synth.voices.is_empty());
+        }
+    }
+
+    #[test]
+    fn medieval_voices_render_audible_samples_with_finite_output() {
+        for voice in ["harp", "recorder", "vielle", "bell"] {
+            let mut synth = Synth::new(22050.0);
+            synth.trigger(
+                &MusicEvent::Note {
+                    id: "medieval".into(),
+                    section: "combat".into(),
+                    lane: "melody".into(),
+                    start_tick: 0,
+                    duration_ticks: 960,
+                    velocity: 0.6,
+                    pitch: 67,
+                    voice: voice.into(),
+                    role: Some("melody".into()),
+                },
+                960.0,
+            );
+            let mut buffer = vec![0.0; 22050];
+            synth.fill(&mut buffer);
+            let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
+            assert!(energy > 1.0, "{voice} should be audible, got {energy}");
+            assert!(
+                buffer
+                    .iter()
+                    .all(|sample| sample.is_finite() && sample.abs() < 0.95),
+                "{voice} must stay finite and in range"
+            );
         }
     }
 

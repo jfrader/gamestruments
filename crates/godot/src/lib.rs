@@ -1,7 +1,8 @@
 use gamestruments_engine::{
-    generate_racing, generate_suspense_arrangement, AdaptiveTransport, FormAudio,
-    GameState, GenerateInput, InstrumentPalette, PortableScore, Style, SuspenseArrangement,
-    SuspenseInput, SuspenseStyle, Synth, TraceState,
+    generate_medieval, generate_racing, generate_suspense_arrangement, AdaptiveTransport,
+    FormAudio, GameState, GenerateInput, InstrumentPalette, MedievalInput, MedievalState,
+    MedievalStyle, PortableScore, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth,
+    TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -186,7 +187,31 @@ impl GamestrumentsPlayer {
             return false;
         }
         let recipe = self.recipe.to_string();
-        let score = if recipe == "suspense" {
+        let score = if recipe == "medieval" {
+            let style = if self.style.is_empty() {
+                MedievalStyle::Minstrel
+            } else {
+                match MedievalStyle::parse(&self.style.to_string()) {
+                    Ok(style) => style,
+                    Err(_) => {
+                        godot_error!(
+                            "Unknown Gamestruments medieval style \"{}\"; use court, minstrel, or chapel",
+                            self.style
+                        );
+                        return false;
+                    }
+                }
+            };
+            generate_medieval(&MedievalInput {
+                secret: self.project_secret.to_string(),
+                seed: seed.to_string(),
+                style,
+                valor: self.energy,
+                mystery: self.complexity,
+                warmth: self.brightness,
+                motion: self.syncopation,
+            })
+        } else if recipe == "suspense" {
             let style = if self.style.is_empty() {
                 SuspenseStyle::Terminal
             } else {
@@ -394,6 +419,26 @@ impl GamestrumentsPlayer {
                 heat,
                 focus,
                 progress,
+            },
+            self.tick,
+        );
+        true
+    }
+
+    #[func]
+    fn set_medieval_state(&mut self, scene: GString, danger: f64) -> bool {
+        let Some(transport) = self.transport.as_mut() else {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_medieval_state");
+            return false;
+        };
+        if !danger.is_finite() || !(0.0..=1.0).contains(&danger) {
+            godot_error!("Gamestruments medieval danger must be within 0.0..1.0");
+            return false;
+        }
+        transport.request_medieval_state(
+            &MedievalState {
+                scene: scene.to_string(),
+                danger,
             },
             self.tick,
         );

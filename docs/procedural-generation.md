@@ -40,6 +40,15 @@ interrupts. Alert/heat cues the bridge once. Styles are `terminal`, `cipher`,
 and `noir`. Generation traits are tension, heat, mystery, and pulse. Runtime
 state is `tracePhase`, heat, focus, and progress.
 
+Medieval is a fourth interaction model for fantasy RPGs. It is scene-selected,
+not song-form: seven eight-bar loops (`explore`, `town`, `dungeon`, `combat`,
+`boss`, `tavern`, `victory`) each carry a stable modal identity that survives
+indefinitely on loop. Church modes, open-fifth drones, and plucked/bowed/breath
+voices replace the racing palette. Styles are `court`, `minstrel`, and
+`chapel`. Generation traits are valor, mystery, warmth, and motion. Runtime
+state is `scene` plus a `danger` value, so a hard combat encounter escalates to
+`boss` without a separate scene.
+
 ## API
 
 The Audio Lab (`apps/demo`) now uses the shared WASM engine for generation

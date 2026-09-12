@@ -99,6 +99,34 @@ Suspense ignores the Racing voice overrides and reads `energy`,
 `complexity`, `brightness`, and `syncopation` as tension, heat, mystery, and
 pulse. Exact selection rules and the section list are in `api.md`.
 
+## Medieval Recipe
+
+Medieval is scene-selected: call `set_medieval_state` whenever the game's
+situation changes. There is no form to hold or advance.
+
+```gdscript
+func _ready() -> void:
+    player.recipe = "medieval"
+    player.style = "minstrel"  # court, minstrel, or chapel
+    music_ready = player.generate("realm-001")
+
+func entered_town() -> void:
+    if music_ready:
+        player.set_medieval_state("town", 0.0)
+
+func battle_started(danger: float) -> void:
+    if music_ready:
+        # danger >= 0.8 turns the combat encounter into the boss section
+        player.set_medieval_state("combat", danger)
+
+func won() -> void:
+    if music_ready:
+        player.set_medieval_state("victory", 0.0)
+```
+
+Medieval reads `energy`, `complexity`, `brightness`, and `syncopation` as
+valor, mystery, warmth, and motion. Scene transitions crossfade on the next bar.
+
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.
 The demo ships four circuits, one per engine style (neon, pocket funk, fusion,

@@ -1,5 +1,6 @@
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection};
+use crate::theory::{json_num, midi_to_note, mode_intervals, scale_pitch, NOTE_NAMES};
 
 pub const GENERATOR_VERSION: &str = "1.10.1";
 pub const DNA_SEED_VERSION: &str = "1.1.0";
@@ -234,9 +235,6 @@ fn normalize_traits(
     }
 }
 
-const NOTE_NAMES: [&str; 12] = [
-    "c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b",
-];
 const KEY_PITCH_CLASSES: [i32; 7] = [0, 2, 3, 5, 7, 9, 10];
 const PROGRESSIONS: [&[i32; 4]; 4] = [&[0, 5, 3, 4], &[0, 3, 5, 4], &[0, 4, 5, 3], &[0, 2, 5, 4]];
 const MOTIF_CONTOURS: [&[i32; 8]; 4] = [
@@ -246,16 +244,6 @@ const MOTIF_CONTOURS: [&[i32; 8]; 4] = [
     &[0, 4, 3, 1, 2, 5, 4, 0],
 ];
 const MAJOR_INTERVALS: [i32; 7] = [0, 2, 4, 5, 7, 9, 11];
-
-fn mode_intervals(mode: &str) -> Vec<i32> {
-    match mode {
-        "natural-minor" => vec![0, 2, 3, 5, 7, 8, 10],
-        "dorian" => vec![0, 2, 3, 5, 7, 9, 10],
-        "mixolydian" => vec![0, 2, 4, 5, 7, 9, 10],
-        "lydian" => vec![0, 2, 4, 6, 7, 9, 11],
-        _ => vec![0, 2, 3, 5, 7, 9, 10],
-    }
-}
 
 fn select_mode(rng: &mut DeterministicRandom, brightness: f64) -> String {
     if brightness < 0.34 {
@@ -444,21 +432,6 @@ fn create_ornament_dna(seed: u32, traits: &NormalizedTraits) -> OrnamentDna {
             0,
         ],
         turnaround_step: rng.integer(7),
-    }
-}
-
-fn json_num(v: f64) -> String {
-    let mut s = format!("{:.2}", v);
-    while s.ends_with('0') && s.contains('.') {
-        s.pop();
-    }
-    if s.ends_with('.') {
-        s.pop();
-    }
-    if s.is_empty() {
-        "0".to_string()
-    } else {
-        s
     }
 }
 
@@ -1385,20 +1358,6 @@ fn velocity(base: f64, traits: &NormalizedTraits, plan: &SectionPlan) -> f64 {
     (base + traits.energy * 0.22 + plan.intensity * 0.24).clamp(0.1, 0.96)
 }
 
-fn scale_pitch(root: i32, degree: i32, intervals: &[i32]) -> i32 {
-    let len = intervals.len() as i32;
-    let idx = degree.rem_euclid(len);
-    let oct = (degree as f64 / len as f64).floor() as i32;
-    root + oct * 12 + intervals[idx as usize]
-}
-
-fn midi_to_note(midi: i32) -> String {
-    let pc = midi.rem_euclid(12);
-    let name = NOTE_NAMES[pc as usize];
-    let oct = (midi / 12) - 1;
-    format!("{}{}", name, oct)
-}
-
 fn default_rules() -> Vec<AdaptiveRule> {
     vec![
         AdaptiveRule {
@@ -1471,9 +1430,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
 mod tests {
     use std::collections::HashSet;
 
-    use super::{
-        generate_racing, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION,
-    };
+    use super::{generate_racing, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION};
 
     fn sample(secret: &str, palette: InstrumentPalette) -> GenerateInput {
         GenerateInput {
@@ -1498,9 +1455,8 @@ mod tests {
 
     #[test]
     fn secret_changes_the_piece() {
-        let pocket =
-            generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
-                .expect("pocket score must validate");
+        let pocket = generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
+            .expect("pocket score must validate");
         let other = generate_racing(&sample("other-secret", InstrumentPalette::default()))
             .expect("other score must validate");
         assert_ne!(pocket.id, other.id);
@@ -1598,8 +1554,7 @@ mod tests {
             syncopation: 0.9,
         };
         let generated = generate_racing(&input).expect("reserved score must validate");
-        let catalog_str =
-            include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
+        let catalog_str = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let catalog: super::PortableScore =
             serde_json::from_str(catalog_str).expect("catalog parses");
         assert_eq!(generated.bpm, catalog.bpm);

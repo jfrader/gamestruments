@@ -33,6 +33,7 @@ import {
   applyPlan,
   requestMusicState,
   requestSuspensePhase,
+  requestMedievalScene,
   cueSection,
   cancelCue,
   cueControlsBusy,
@@ -97,7 +98,9 @@ function renderRuntimeSignal(): void {
   elements.runtimeSignal.textContent =
     labRecipe === "suspense"
       ? `recipe: suspense  /  tracePhase: ${phase}`
-      : `racePhase: ${phase}`;
+      : labRecipe === "medieval"
+        ? `recipe: medieval  /  scene: ${phase}`
+        : `racePhase: ${phase}`;
 }
 
 renderGenreIndex();
@@ -277,13 +280,15 @@ elements.recipeButtons.addEventListener("click", (event) => {
     "button[data-recipe]",
   );
   const recipe = button?.dataset.recipe;
-  if (recipe !== "racing" && recipe !== "suspense") {
+  if (recipe !== "racing" && recipe !== "suspense" && recipe !== "medieval") {
     return;
   }
+  const recipeLabel =
+    recipe === "suspense" ? "Suspense" : recipe === "medieval" ? "Medieval" : "Racing";
   applyGenerationRequest(setLabRecipe(recipe), () => {
     renderCurrentScore();
     renderRuntimeSignal();
-    announceAudition(`Opened ${recipe === "suspense" ? "Suspense" : "Racing"}`);
+    announceAudition(`Opened ${recipeLabel}`);
   });
 });
 
@@ -291,7 +296,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-la
   button.addEventListener("click", () => {
     const recipe = button.dataset.recipe;
     window.location.hash = "lab";
-    if (recipe === "racing" || recipe === "suspense") {
+    if (recipe === "racing" || recipe === "suspense" || recipe === "medieval") {
       applyGenerationRequest(setLabRecipe(recipe), () => {
         renderCurrentScore();
         renderRuntimeSignal();
@@ -314,6 +319,8 @@ elements.phaseButtons.addEventListener("click", (event) => {
   renderRuntimeSignal();
   if (labRecipe === "suspense") {
     requestSuspensePhase();
+  } else if (labRecipe === "medieval") {
+    requestMedievalScene();
   } else {
     requestMusicState();
   }

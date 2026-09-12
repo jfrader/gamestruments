@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import {
   playbackSectionOnScore,
+  MEDIEVAL_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "../apps/demo/src/playback-section.ts";
 import {
@@ -57,6 +58,20 @@ describe("SUSPENSE_PHASE_SECTIONS", () => {
       alert: "bridge",
       extract: "outro",
       complete: "coda",
+    });
+  });
+});
+
+describe("MEDIEVAL_SCENE_SECTIONS", () => {
+  it("maps every scene button to its adaptive section", () => {
+    assert.deepEqual(MEDIEVAL_SCENE_SECTIONS, {
+      explore: "explore",
+      town: "town",
+      dungeon: "dungeon",
+      combat: "combat",
+      boss: "boss",
+      tavern: "tavern",
+      victory: "victory",
     });
   });
 });

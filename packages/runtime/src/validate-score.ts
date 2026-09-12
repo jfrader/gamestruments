@@ -13,6 +13,10 @@ const NOTE_VOICES = new Set([
   "triangle",
   "felt",
   "dusk",
+  "harp",
+  "recorder",
+  "vielle",
+  "bell",
 ]);
 const PERCUSSION_VOICES = new Set(["kick", "snare", "hat", "tom", "reverse-cymbal", "air-impact"]);
 

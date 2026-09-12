@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Added Medieval, a seven-scene fantasy-RPG recipe (first consumer: Fran's RPG): explore, town, dungeon, combat, boss, tavern, and victory. Each scene is a stable eight-bar modal loop with bar-quantized crossfades; a dangerous combat encounter escalates to the boss section. The Audio Lab can audition Medieval, and Godot `GamestrumentsPlayer` accepts `recipe = "medieval"` and `set_medieval_state(scene, danger)`. Four new synthesized voices (harp, recorder, vielle, bell) carry it. Racing and Suspense are unchanged.
 - Extended adds occasional seeded reverse-cymbal swells and filtered air impacts, short melodic spotlights in Decrypt/Other Hall, and an eight-bar Anomaly detour before Full Breach. Effects stay sparse and the kick/hat foundation continues; Original remains unchanged.
 - Suspense has two arrangements: the approved Original and a consolidated Extended, selected by default in the lab. Extended combines 16-bar main beds, uninterrupted kick/hat rhythm, low muted tones and filtered swells with quiet echoes. Sparse seeded tom details may appear or be absent without interrupting the beat; the separate Flow/Featured experiments are removed.
 - Added Suspense, a song-form recipe for long tense sessions (first consumer: Arkhos). Music moves through intro, verse, refrain, pre-chorus, chorus, post-chorus, interlude, bridge, solo, outro, and coda instead of looping one four-bar game-state bed. The Audio Lab can audition Racing or Suspense. Godot `GamestrumentsPlayer` accepts `recipe = "suspense"` and `set_trace_state`.

@@ -59,7 +59,11 @@ export interface NoteEvent extends EventBase {
     | "supersaw"
     | "triangle"
     | "felt"
-    | "dusk";
+    | "dusk"
+    | "harp"
+    | "recorder"
+    | "vielle"
+    | "bell";
   role?: "melody";
 }
 

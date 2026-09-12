@@ -12,7 +12,8 @@ import type { SuspenseArrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
-import { SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
+import { MEDIEVAL_SCENE_SECTIONS, SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
+import type { LabRecipe } from "./state.ts";
 
 export type ViewName = "lab" | "games" | "genres";
 const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
@@ -104,7 +105,7 @@ export function renderSections(
 export function renderScoreButtons(
   activeExperimentIndex: number,
   presets: readonly { style: string }[],
-  recipe: "racing" | "suspense",
+  recipe: LabRecipe,
 ): void {
   const racingLabels = ["Tiny Torque", "Neon Drift", "Countertop", "8-Bit"];
   const buttons = presets.map((preset, index) => {
@@ -115,8 +116,8 @@ export function renderScoreButtons(
     button.dataset.experimentIndex = String(index);
     button.setAttribute("aria-pressed", String(index === activeExperimentIndex));
     label.textContent =
-      recipe === "suspense"
-        ? preset.style
+      recipe === "suspense" || recipe === "medieval"
+        ? preset.style.charAt(0).toUpperCase() + preset.style.slice(1)
         : (racingLabels[index] ?? preset.style);
     genre.textContent = preset.style;
     button.append(label, genre);
@@ -125,8 +126,9 @@ export function renderScoreButtons(
   elements.scoreButtons.replaceChildren(...buttons);
 }
 
-export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string): void {
+export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
+  const medieval = recipe === "medieval";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
@@ -138,24 +140,28 @@ export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string)
       String(button.dataset.recipe === recipe),
     );
   }
-  elements.traitEnergyLabel.textContent = suspense ? "Tension" : "Energy";
-  elements.traitComplexityLabel.textContent = suspense ? "Heat" : "Complexity";
-  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : "Brightness";
-  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : "Syncopation";
-  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : "Speed intensity";
-  elements.meterPressureLabel.textContent = suspense ? "Focus" : "Position pressure";
-  elements.meterFinalLabel.textContent = suspense ? "Extracted" : "Final lap";
+  elements.traitEnergyLabel.textContent = suspense ? "Tension" : medieval ? "Valor" : "Energy";
+  elements.traitComplexityLabel.textContent = suspense ? "Heat" : medieval ? "Mystery" : "Complexity";
+  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : medieval ? "Warmth" : "Brightness";
+  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : medieval ? "Motion" : "Syncopation";
+  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : medieval ? "Valor meter" : "Speed intensity";
+  elements.meterPressureLabel.textContent = suspense ? "Focus" : medieval ? "Danger" : "Position pressure";
+  elements.meterFinalLabel.textContent = suspense ? "Extracted" : medieval ? "Victory" : "Final lap";
   elements.meterFinalCopy.textContent = suspense
     ? "Hold the coda / disconnect"
-    : "Add the maximum-commitment layer";
+    : medieval
+      ? "Force the victory fanfare"
+      : "Add the maximum-commitment layer";
   const phases = suspense
     ? Object.keys(SUSPENSE_PHASE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
-    : ([
-        ["garage", "Garage"],
-        ["grid", "Grid"],
-        ["race", "Race"],
-        ["finish", "Finish"],
-      ] as const);
+    : medieval
+      ? Object.keys(MEDIEVAL_SCENE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
+      : ([
+          ["garage", "Garage"],
+          ["grid", "Grid"],
+          ["race", "Race"],
+          ["finish", "Finish"],
+        ] as const);
   const buttons = phases.map(([id, label]) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -195,7 +201,7 @@ export function renderScoreIdentity(
   generationTraits: NormalizedMusicTraits,
   comparisonBaseSeed: string,
   soloMode: SoloMode,
-  recipe: "racing" | "suspense",
+  recipe: LabRecipe,
   presets: readonly { style: string }[],
   arrangement: SuspenseArrangement,
   phase: string,

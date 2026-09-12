@@ -68,7 +68,7 @@ export interface GenerateScoreParams {
   complexity: number;
   brightness: number;
   syncopation: number;
-  recipe?: "racing" | "suspense";
+  recipe?: "racing" | "suspense" | "medieval";
   arrangement?: SuspenseArrangement;
   tension?: number;
   heat?: number;

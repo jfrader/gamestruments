@@ -13,10 +13,11 @@ import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
 import {
   playbackSectionOnScore,
+  MEDIEVAL_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 
-export type LabRecipe = "racing" | "suspense";
+export type LabRecipe = "racing" | "suspense" | "medieval";
 
 export interface GenerationPreset {
   style: string;
@@ -57,6 +58,21 @@ export const SUSPENSE_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
+export const MEDIEVAL_PRESETS = [
+  {
+    style: "minstrel",
+    traits: { energy: 0.62, complexity: 0.5, brightness: 0.62, syncopation: 0.66 },
+  },
+  {
+    style: "court",
+    traits: { energy: 0.7, complexity: 0.66, brightness: 0.55, syncopation: 0.42 },
+  },
+  {
+    style: "chapel",
+    traits: { energy: 0.4, complexity: 0.6, brightness: 0.72, syncopation: 0.3 },
+  },
+] as const satisfies readonly GenerationPreset[];
+
 export let labRecipe: LabRecipe = "racing";
 export let suspenseArrangement: SuspenseArrangement = "extended";
 export let activeExperimentIndex = 0;
@@ -76,7 +92,9 @@ let generationQueue: Promise<void> = Promise.resolve();
 let latestGenerationRequest = 0;
 
 export function currentPresets(): readonly GenerationPreset[] {
-  return labRecipe === "suspense" ? SUSPENSE_PRESETS : GENERATION_PRESETS;
+  if (labRecipe === "suspense") return SUSPENSE_PRESETS;
+  if (labRecipe === "medieval") return MEDIEVAL_PRESETS;
+  return GENERATION_PRESETS;
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -121,6 +139,16 @@ export async function initializeLab(): Promise<void> {
 }
 
 export function currentState(): GameState {
+  if (labRecipe === "medieval") {
+    return {
+      numeric: {
+        danger: Number(elements.pressure.value),
+      },
+      categorical: {
+        scene: elements.finalLap.checked ? "victory" : phase,
+      },
+    };
+  }
   if (labRecipe === "suspense") {
     return {
       numeric: {
@@ -231,6 +259,12 @@ export function cueControlsBusy(): boolean {
 
 export function requestSuspensePhase(): void {
   const target = SUSPENSE_PHASE_SECTIONS[phase];
+  if (target === undefined) requestMusicState();
+  else cueSection(target);
+}
+
+export function requestMedievalScene(): void {
+  const target = MEDIEVAL_SCENE_SECTIONS[phase];
   if (target === undefined) requestMusicState();
   else cueSection(target);
 }
@@ -375,7 +409,7 @@ export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
   labRecipe = recipe;
   activeExperimentIndex = 0;
   manualCue = null;
-  phase = recipe === "suspense" ? "scan" : "garage";
+  phase = recipe === "suspense" ? "scan" : recipe === "medieval" ? "explore" : "garage";
   generationTraits = { ...generationPreset(0).traits };
   return requestExperiment(0, levelSeed, generationTraits);
 }
