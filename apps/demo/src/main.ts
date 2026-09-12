@@ -34,6 +34,7 @@ import {
   requestMusicState,
   requestSuspensePhase,
   cueSection,
+  stepSection,
   cancelCue,
   cueControlsBusy,
   setFormHold,
@@ -128,6 +129,12 @@ elements.masterVolume.addEventListener("input", () => {
 
 elements.start.addEventListener("click", () => {
   void togglePlayback();
+});
+elements.prevSection.addEventListener("click", () => {
+  stepSection(-1);
+});
+elements.nextSection.addEventListener("click", () => {
+  stepSection(1);
 });
 elements.centerPlay.addEventListener("click", () => {
   void togglePlayback();
