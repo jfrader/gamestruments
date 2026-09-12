@@ -1471,9 +1471,7 @@ fn default_rules() -> Vec<AdaptiveRule> {
 mod tests {
     use std::collections::HashSet;
 
-    use super::{
-        generate_racing, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION,
-    };
+    use super::{generate_racing, GenerateInput, InstrumentPalette, Style, GENERATOR_VERSION};
 
     fn sample(secret: &str, palette: InstrumentPalette) -> GenerateInput {
         GenerateInput {
@@ -1498,9 +1496,8 @@ mod tests {
 
     #[test]
     fn secret_changes_the_piece() {
-        let pocket =
-            generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
-                .expect("pocket score must validate");
+        let pocket = generate_racing(&sample("pocket-secret", InstrumentPalette::default()))
+            .expect("pocket score must validate");
         let other = generate_racing(&sample("other-secret", InstrumentPalette::default()))
             .expect("other score must validate");
         assert_ne!(pocket.id, other.id);
@@ -1598,8 +1595,7 @@ mod tests {
             syncopation: 0.9,
         };
         let generated = generate_racing(&input).expect("reserved score must validate");
-        let catalog_str =
-            include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
+        let catalog_str = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let catalog: super::PortableScore =
             serde_json::from_str(catalog_str).expect("catalog parses");
         assert_eq!(generated.bpm, catalog.bpm);

@@ -1,5 +1,5 @@
-pub mod racing;
 pub mod form_audio;
+pub mod racing;
 pub mod render;
 pub mod rng;
 pub mod score;
@@ -11,11 +11,11 @@ pub mod transport;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+pub use form_audio::FormAudio;
 pub use racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 pub use render::render_wav;
 pub use score::{GameState, PortableScore, TraceState};
 pub use suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 pub use suspense_arrangement::{generate_suspense_arrangement, SuspenseArrangement};
 pub use synth::Synth;
-pub use form_audio::FormAudio;
 pub use transport::AdaptiveTransport;

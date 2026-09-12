@@ -56,7 +56,7 @@ Exported properties:
 
 - `project_secret: String`
 - `recipe: String` — `racing` (default) or `suspense`
-- `arrangement: String` — Suspense only: `original` (default) or `extended`
+- `arrangement: String` — Suspense only: `original` (default), `extended`, or `theme`
 - `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only
 - `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Racing and as tension/heat/mystery/pulse by Suspense

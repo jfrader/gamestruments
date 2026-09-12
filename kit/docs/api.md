@@ -17,7 +17,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
 - `recipe: String` — `racing` (default) or `suspense`.
-- `arrangement: String` — Suspense only: `original` (default) or `extended`. Ignored by Racing.
+- `arrangement: String` — Suspense only: `original` (default), `extended` (gameplay form with every phase), or `theme` (additive title bed: hats enter early, layers stay, drop holds). Ignored by Racing.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
   - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
@@ -108,7 +108,7 @@ Selection priority:
 
 - One-shot cues re-arm once the form leaves the cued section, so a later `alert` can fire again.
 - Holds stay until another state changes them.
-- `original` (default) has no progress-based `outro`; `extended` adds it and a longer arrangement.
+- `original` (default) has no progress-based `outro`; `extended` adds it and a longer arrangement; `theme` is a title bed that does not use Break and loops on the drop.
 - Changes commit on a bar boundary.
 
 ## Suspense — Form Controls
