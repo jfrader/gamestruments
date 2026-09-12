@@ -9,7 +9,7 @@ test("default Extended keeps kick and hat continuity over the entire automatic c
   await page.goto("/#lab");
   await selectRecipe(page, "suspense");
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
   await expect(page.locator("#score-title")).toContainText("Extended");
   const bpm = Number(await page.locator("#tempo-value").textContent());
   const secondsPerBar = 240 / bpm;

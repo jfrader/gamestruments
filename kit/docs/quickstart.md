@@ -70,7 +70,7 @@ generating, then drive it with trace state instead of race state:
 func _ready() -> void:
     player.recipe = "suspense"
     player.style = "terminal"        # terminal, cipher, or noir
-    player.arrangement = "original"  # or "extended"
+    player.arrangement = "original"  # or "extended" / "theme"
     music_ready = player.generate("chapter-001")
 
 func scan_started() -> void:

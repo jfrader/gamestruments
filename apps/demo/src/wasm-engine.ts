@@ -59,7 +59,7 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
-export type SuspenseArrangement = "original" | "extended";
+export type SuspenseArrangement = "original" | "extended" | "theme";
 
 export interface GenerateScoreParams {
   seed: string;

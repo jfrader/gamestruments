@@ -282,7 +282,7 @@ elements.genreIndex.addEventListener("click", (event) => {
 elements.arrangementButtons.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-arrangement]");
   const value = button?.dataset.arrangement;
-  if (value !== "original" && value !== "extended") {
+  if (value !== "original" && value !== "extended" && value !== "theme") {
     return;
   }
   applyGenerationRequest(setSuspenseArrangement(value), () => {
@@ -290,6 +290,7 @@ elements.arrangementButtons.addEventListener("click", (event) => {
     const messages = {
       original: "Original arrangement restored",
       extended: "Extended arrangement ready",
+      theme: "Theme arrangement ready",
     };
     announceAudition(messages[value]);
   });

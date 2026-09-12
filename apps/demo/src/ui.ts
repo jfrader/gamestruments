@@ -35,6 +35,7 @@ export type ViewName = "lab" | "games" | "genres";
 const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
   original: "The current sound, unchanged.",
   extended: "Scan → Scan II and Breach → Breach II are independent 16-bar sections. Hold, cue or advance them to match gameplay. Anomaly stays intact.",
+  theme: "Title-bed form: hats enter early, layers stay, and the drop holds instead of resetting.",
 };
 export { requireElement, elements };
 

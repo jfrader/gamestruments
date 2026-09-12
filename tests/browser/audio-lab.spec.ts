@@ -131,7 +131,7 @@ test("Extended adds longer beds and Original restores the same seed and score", 
   const original = page.locator('#arrangement-buttons button[data-arrangement="original"]');
   const extended = page.locator('#arrangement-buttons button[data-arrangement="extended"]');
   await expect(extended).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
   await original.click();
   await expect(original).toHaveAttribute("aria-pressed", "true");
   const summary = await page.locator("#generator-summary").textContent();

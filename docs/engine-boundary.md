@@ -15,7 +15,7 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   Racing tours garage, grid, cruise (×2), attack, final-lap, victory, then
   loops from grid; Adventure tours all eight sections, then loops from explore.
   With autoplay off, both recipes stay state-driven and byte-for-byte unchanged.
-- Suspense additionally accepts `"arrangement": "original" | "extended"`.
+- Suspense additionally accepts `"arrangement": "original" | "extended" | "theme"`.
   The lab defaults to Extended; omitting the field in the engine API retains
   Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
   subdued felt/dusk textures, a continuous rhythm and occasional seeded tom
@@ -80,8 +80,8 @@ The lab exposes the same behavior for every score that has a form — Suspense,
 and Racing/Adventure when autoplay is on — with a "Hold auto tour" / "Resume
 auto tour" toggle, a "Next" button that names the upcoming section, and
 per-section Cue buttons. These are playback controls, not additional
-arrangements or gameplay phase names. Suspense's Original and Extended remain
-its only arrangement choices; autoplay is a separate opt-in flag.
+arrangements or gameplay phase names. Suspense's Original, Extended, and Theme
+remain its only arrangement choices; autoplay is a separate opt-in flag.
 
 Audio synthesis / sound stage:
 - The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.
