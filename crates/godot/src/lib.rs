@@ -1,8 +1,8 @@
 use gamestruments_engine::{
-    generate_medieval, generate_racing, generate_suspense_arrangement, AdaptiveTransport,
-    FormAudio, GameState, GenerateInput, InstrumentPalette, MedievalInput, MedievalState,
-    MedievalStyle, PortableScore, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth,
-    TraceState,
+    generate_adventure, generate_medieval, generate_racing, generate_suspense_arrangement,
+    AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, FormAudio, GameState,
+    GenerateInput, InstrumentPalette, MedievalInput, MedievalState, MedievalStyle, PortableScore,
+    Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -187,7 +187,31 @@ impl GamestrumentsPlayer {
             return false;
         }
         let recipe = self.recipe.to_string();
-        let score = if recipe == "medieval" {
+        let score = if recipe == "adventure" {
+            let style = if self.style.is_empty() {
+                AdventureStyle::Campfire
+            } else {
+                match AdventureStyle::parse(&self.style.to_string()) {
+                    Ok(style) => style,
+                    Err(_) => {
+                        godot_error!(
+                            "Unknown Gamestruments adventure style \"{}\"; use campfire, wilds, or ruins",
+                            self.style
+                        );
+                        return false;
+                    }
+                }
+            };
+            generate_adventure(&AdventureInput {
+                secret: self.project_secret.to_string(),
+                seed: seed.to_string(),
+                style,
+                wonder: self.brightness,
+                danger: self.energy,
+                mystery: self.complexity,
+                motion: self.syncopation,
+            })
+        } else if recipe == "medieval" {
             let style = if self.style.is_empty() {
                 MedievalStyle::Minstrel
             } else {
@@ -439,6 +463,36 @@ impl GamestrumentsPlayer {
             &MedievalState {
                 scene: scene.to_string(),
                 danger,
+            },
+            self.tick,
+        );
+        true
+    }
+
+    #[func]
+    fn set_adventure_state(
+        &mut self,
+        area_phase: GString,
+        discovery: f64,
+        threat: f64,
+        quest_complete: bool,
+    ) -> bool {
+        let Some(transport) = self.transport.as_mut() else {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
+            return false;
+        };
+        for (name, value) in [("discovery", discovery), ("threat", threat)] {
+            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                godot_error!("Gamestruments adventure {name} must be within 0.0..1.0");
+                return false;
+            }
+        }
+        transport.request_adventure_state(
+            &AdventureState {
+                area_phase: area_phase.to_string(),
+                discovery,
+                threat,
+                quest_complete,
             },
             self.tick,
         );

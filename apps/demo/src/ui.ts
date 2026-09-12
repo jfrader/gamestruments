@@ -1,5 +1,4 @@
-import { pocketCircuitExperiments } from "../../../packages/studio/src/index.ts";
-import type { NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
+import { racingGenreExperiments } from "./genre-catalog.ts";
 import type {
   AdaptiveTransport,
   PortableScore,
@@ -12,8 +11,12 @@ import type { SuspenseArrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
-import { MEDIEVAL_SCENE_SECTIONS, SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
-import type { LabRecipe } from "./state.ts";
+import {
+  ADVENTURE_SCENE_SECTIONS,
+  MEDIEVAL_SCENE_SECTIONS,
+  SUSPENSE_PHASE_SECTIONS,
+} from "./playback-section.ts";
+import type { LabRecipe, NormalizedMusicTraits } from "./state.ts";
 
 export type ViewName = "lab" | "games" | "genres";
 const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
@@ -116,9 +119,9 @@ export function renderScoreButtons(
     button.dataset.experimentIndex = String(index);
     button.setAttribute("aria-pressed", String(index === activeExperimentIndex));
     label.textContent =
-      recipe === "suspense" || recipe === "medieval"
-        ? preset.style.charAt(0).toUpperCase() + preset.style.slice(1)
-        : (racingLabels[index] ?? preset.style);
+      recipe === "racing"
+        ? (racingLabels[index] ?? preset.style)
+        : preset.style.charAt(0).toUpperCase() + preset.style.slice(1);
     genre.textContent = preset.style;
     button.append(label, genre);
     return button;
@@ -129,6 +132,7 @@ export function renderScoreButtons(
 export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
   const medieval = recipe === "medieval";
+  const adventure = recipe === "adventure";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
@@ -140,28 +144,38 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
       String(button.dataset.recipe === recipe),
     );
   }
-  elements.traitEnergyLabel.textContent = suspense ? "Tension" : medieval ? "Valor" : "Energy";
-  elements.traitComplexityLabel.textContent = suspense ? "Heat" : medieval ? "Mystery" : "Complexity";
-  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : medieval ? "Warmth" : "Brightness";
-  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : medieval ? "Motion" : "Syncopation";
-  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : medieval ? "Valor meter" : "Speed intensity";
-  elements.meterPressureLabel.textContent = suspense ? "Focus" : medieval ? "Danger" : "Position pressure";
-  elements.meterFinalLabel.textContent = suspense ? "Extracted" : medieval ? "Victory" : "Final lap";
+  elements.traitEnergyLabel.textContent = suspense ? "Tension" : medieval ? "Valor" : adventure ? "Danger" : "Energy";
+  elements.traitComplexityLabel.textContent = suspense ? "Heat" : medieval ? "Mystery" : adventure ? "Mystery" : "Complexity";
+  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : medieval ? "Warmth" : adventure ? "Wonder" : "Brightness";
+  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : medieval ? "Motion" : adventure ? "Motion" : "Syncopation";
+  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : medieval ? "Valor meter" : adventure ? "Discovery" : "Speed intensity";
+  elements.meterPressureLabel.textContent = suspense ? "Focus" : medieval ? "Danger" : adventure ? "Threat" : "Position pressure";
+  elements.meterFinalLabel.textContent = suspense ? "Extracted" : medieval ? "Victory" : adventure ? "Quest complete" : "Final lap";
   elements.meterFinalCopy.textContent = suspense
     ? "Hold the coda / disconnect"
     : medieval
       ? "Force the victory fanfare"
-      : "Add the maximum-commitment layer";
-  const phases = suspense
-    ? Object.keys(SUSPENSE_PHASE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
+      : adventure
+        ? "Mark the quest complete"
+        : "Add the maximum-commitment layer";
+  const phaseSections = suspense
+    ? SUSPENSE_PHASE_SECTIONS
     : medieval
-      ? Object.keys(MEDIEVAL_SCENE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
-      : ([
-          ["garage", "Garage"],
-          ["grid", "Grid"],
-          ["race", "Race"],
-          ["finish", "Finish"],
-        ] as const);
+      ? MEDIEVAL_SCENE_SECTIONS
+      : adventure
+        ? ADVENTURE_SCENE_SECTIONS
+        : null;
+  const phases: readonly (readonly [string, string])[] = phaseSections === null
+    ? ([
+        ["garage", "Garage"],
+        ["grid", "Grid"],
+        ["race", "Race"],
+        ["finish", "Finish"],
+      ] as const)
+    : Object.keys(phaseSections).map((id) => [
+        id,
+        id.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
+      ] as const);
   const buttons = phases.map(([id, label]) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -174,7 +188,7 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
 }
 
 export function renderGenreIndex(): void {
-  const rows = pocketCircuitExperiments.map((experiment, index) => {
+  const rows = racingGenreExperiments.map((experiment, index) => {
     const item = document.createElement("li");
     const number = document.createElement("span");
     const copy = document.createElement("div");
@@ -187,7 +201,7 @@ export function renderGenreIndex(): void {
     copy.append(title, description);
     button.type = "button";
     button.dataset.experimentIndex = String(index);
-    button.textContent = `Open ${experiment.score.title}`;
+    button.textContent = `Open ${experiment.scoreTitle}`;
     item.append(number, copy, button);
     return item;
   });

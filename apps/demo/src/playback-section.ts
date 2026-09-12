@@ -19,6 +19,15 @@ export const MEDIEVAL_SCENE_SECTIONS: Record<string, SectionId> = {
   victory: "victory",
 };
 
+export const ADVENTURE_SCENE_SECTIONS: Record<string, SectionId> = {
+  camp: "camp",
+  explore: "explore",
+  clue: "clue",
+  danger: "danger",
+  sanctuary: "sanctuary",
+  "quest-complete": "quest-complete",
+};
+
 export function playbackSectionOnScore(
   score: PortableScore,
   requested: SectionId | null,

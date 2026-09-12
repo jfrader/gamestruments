@@ -127,6 +127,41 @@ func won() -> void:
 Medieval reads `energy`, `complexity`, `brightness`, and `syncopation` as
 valor, mystery, warmth, and motion. Scene transitions crossfade on the next bar.
 
+## Adventure Recipe
+
+Adventure is area-selected. Pass area phase, discovery, threat, and quest
+progress; the engine resolves the section (quest completion always wins):
+
+```gdscript
+func _ready() -> void:
+    player.recipe = "adventure"
+    player.style = "campfire"  # campfire, wilds, or ruins
+    music_ready = player.generate("world-3")
+
+func entered_forest() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.1, 0.05, false)
+
+func found_clue() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.4, 0.1, false)   # -> clue
+
+func ambushed(threat: float) -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.4, threat, false) # threat >= 0.7 -> danger
+
+func reached_sanctuary() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.9, 0.1, false)   # discovery >= 0.85 -> sanctuary
+
+func quest_finished() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.5, 0.1, true)    # -> quest-complete
+```
+
+Adventure reads `energy`, `complexity`, `brightness`, and `syncopation` as
+danger, mystery, wonder, and motion.
+
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.
 The demo ships four circuits, one per engine style (neon, pocket funk, fusion,

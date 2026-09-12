@@ -9,9 +9,6 @@
     "paths": {
       "@gamestruments/runtime": [
         "packages/runtime/src/index.ts"
-      ],
-      "@strudel/core": [
-        "packages/studio/strudel-core-shim.mjs"
       ]
     },
     "strict": true,
@@ -34,7 +31,6 @@
     "packages/**/*.ts",
     "types/**/*.d.ts",
     "tests/**/*.ts",
-    "vite.config.ts",
-    "vite.studio.config.ts"
+    "vite.config.ts"
   ]
 }

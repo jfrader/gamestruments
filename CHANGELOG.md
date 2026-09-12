@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Added Adventure, an exploration recipe ported from the former Lantern Trail authoring vocabulary: six eight-bar scenes (camp, explore, clue, danger, sanctuary, quest-complete) selected by area phase plus discovery, threat, and quest progress, with styles campfire, wilds, and ruins. Godot exposes `recipe = "adventure"` and `set_adventure_state(area_phase, discovery, threat, quest_complete)`, and the Audio Lab can audition it. Racing, Suspense, and Medieval are unchanged.
 - Added Medieval, a seven-scene fantasy-RPG recipe (first consumer: Fran's RPG): explore, town, dungeon, combat, boss, tavern, and victory. Each scene is a stable eight-bar modal loop with bar-quantized crossfades; a dangerous combat encounter escalates to the boss section. The Audio Lab can audition Medieval, and Godot `GamestrumentsPlayer` accepts `recipe = "medieval"` and `set_medieval_state(scene, danger)`. Four new synthesized voices (harp, recorder, vielle, bell) carry it. Racing and Suspense are unchanged.
 - Extended adds occasional seeded reverse-cymbal swells and filtered air impacts, short melodic spotlights in Decrypt/Other Hall, and an eight-bar Anomaly detour before Full Breach. Effects stay sparse and the kick/hat foundation continues; Original remains unchanged.
 - Suspense has two arrangements: the approved Original and a consolidated Extended, selected by default in the lab. Extended combines 16-bar main beds, uninterrupted kick/hat rhythm, low muted tones and filtered swells with quiet echoes. Sparse seeded tom details may appear or be absent without interrupting the beat; the separate Flow/Featured experiments are removed.
@@ -13,6 +14,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Retired the TypeScript Studio generator and CLI pipeline. The Rust engine is now the single generation authority and the whole repository uses one recipe vocabulary (`racing`, `suspense`, `medieval`, `adventure`); the Audio Lab's genre/experiment copy moved into the demo. This removes the bundled Strudel/AGPL dependency and shrinks the lab bundle from ~73 kB to ~57 kB.
 - Audio Lab: the engine button is now a live readout — it shows the current section while playing, previews the next one while waiting for the bar, and sweeps between section colours during a crossover ("Handshake → Scan"). The volume + engine row is a fixed top bar on phones.
 - Audio Lab: cleaned up the Game signals hierarchy (single heading plus helper, no redundant "Game phase" title), fixed the double separator above Final lap, aligned the toggle with its label, and balanced the generator summary wrap.
 - Audio Lab: fixed the mobile layout — the game-type buttons no longer overlap or clip, labels are readable, the game signals are reachable with less scrolling, and the phase buttons use a 2x2 grid for Racing and a 3x2 grid for Suspense.

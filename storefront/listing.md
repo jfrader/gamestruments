@@ -84,10 +84,12 @@ All future updates to this kit are included with your purchase. Questions or bug
 
 Gamestruments is out! It's an adaptive music engine for Godot 4 — your game generates its own soundtrack at runtime, with no audio files, no authoring tool, and no external services.
 
-The first release ships two recipes:
+The release ships four recipes:
 
 - **Racing** — six sections from the garage to the finish line, driven by speed, rival pressure, and lap state.
 - **Suspense** — song-form tension for infiltration, hacking, and horror, with a form your gameplay can hold or advance.
+- **Medieval** — seven fantasy-RPG scenes from a warm town to a boss fight, selected by scene and danger.
+- **Adventure** — six exploration scenes (camp, explore, clue, danger, sanctuary, quest complete) driven by discovery and threat.
 
 It runs on Linux, Windows, and macOS, includes the full MIT Rust source, and comes with a playable four-circuit demo so you can hear it before writing any code.
 

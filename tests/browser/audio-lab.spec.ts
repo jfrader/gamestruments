@@ -118,6 +118,34 @@ test("switching to Medieval generates the seven-scene RPG music", async ({ page 
   expect(runtimeErrors).toEqual([]);
 });
 
+test("switching to Adventure generates the six-scene exploration music", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  await page.locator('#recipe-buttons button[data-recipe="adventure"]').click();
+  await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
+  await expect(page.locator("#score-title")).toContainText(/Campfire|Wilds|Ruins/);
+  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");
+
+  await page.getByRole("button", { name: "Danger", exact: true }).click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("The Darkening Path");
+
+  await page.locator("#start-audio").click();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("Extended adds longer beds and Original restores the same seed and score", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

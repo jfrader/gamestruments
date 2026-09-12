@@ -172,6 +172,16 @@ pub struct TraceState {
     pub progress: f64,
 }
 
+/// Area state a game is in for the `adventure` recipe. Discovery and threat
+/// drive section choice; `quest_complete` always wins.
+#[derive(Clone, Debug, Default)]
+pub struct AdventureState {
+    pub area_phase: String,
+    pub discovery: f64,
+    pub threat: f64,
+    pub quest_complete: bool,
+}
+
 /// Scene a game is in for the `medieval` recipe. `danger` lets a combat
 /// encounter escalate into the boss section without a separate scene.
 #[derive(Clone, Debug, Default)]

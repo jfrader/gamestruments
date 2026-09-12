@@ -64,6 +64,7 @@
 
 use core::slice;
 
+use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
 use crate::medieval::{generate_medieval, MedievalInput, MedievalStyle};
 use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 use crate::render::render_wav;
@@ -205,7 +206,24 @@ pub unsafe extern "C" fn gamestruments_score_json(
             return unsafe { OUT_PTR };
         }
     };
-    let generated = if inp.recipe == "medieval" {
+    let generated = if inp.recipe == "adventure" {
+        let style = match AdventureStyle::parse(&inp.style) {
+            Ok(value) => value,
+            Err(error) => {
+                write_error(error);
+                return unsafe { OUT_PTR };
+            }
+        };
+        generate_adventure(&AdventureInput {
+            secret: inp.secret,
+            seed: inp.seed,
+            style,
+            wonder: inp.brightness,
+            danger: inp.energy,
+            mystery: inp.complexity,
+            motion: inp.syncopation,
+        })
+    } else if inp.recipe == "medieval" {
         let style = match MedievalStyle::parse(&inp.style) {
             Ok(value) => value,
             Err(error) => {

@@ -13,13 +13,14 @@
 ## Product
 
 - This repo is a **game music library**, not a Pocket Circuit checkout.
-- TypeScript Studio (`packages/studio`, AGPL) is the Audio Lab only. Do not
-  ship Strudel into games.
+- One generator authority: the Rust engine (`crates/engine`). The Audio Lab
+  (`apps/demo`, MIT) drives it through the committed WASM build; there is no
+  TypeScript generator or CLI pipeline.
 - In-game engine is Rust: `crates/engine` (MIT generator + transport + synth)
   and `crates/godot` (GDExtension). Games generate at level load from a
   project secret, instrument palette, and seed. Do not pre-bake every
   procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
-  Arkhos), and Medieval (fantasy-RPG scenes).
+  Arkhos), Medieval (fantasy-RPG scenes), and Adventure (exploration scenes).
 - `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
 - The buyer demo is a playable game integration: actual racing drives music.
   Neither a generator parameter panel nor a copy of the Audio Lab UI satisfies

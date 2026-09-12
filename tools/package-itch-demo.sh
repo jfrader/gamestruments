@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 npm run typecheck
-npm run build:packages
+npm run build:runtime
 npx vite build --base ./
 
 rm -f dist/gamestruments-lab-itch.zip
