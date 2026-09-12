@@ -1,28 +1,56 @@
 import type { MusicEvent, PortableSection } from "../../../packages/runtime/src/index.ts";
 
-export interface OrbitMotion {
+export interface OrbitPart {
+  id: string;
+  label: string;
+  instrument: string;
+  pulse: number;
+  turns: number;
+  colorIndex: number;
+}
+
+export interface OrbitFrame {
   beatPulse: number;
-  innerTurns: number;
-  melodyPulse: number;
-  outerTurns: number;
   playheadTurns: number;
-  rhythmPulse: number;
+  glowPulse: number;
+  parts: readonly OrbitPart[];
 }
 
 export type OrbitStyle = Record<
   | "--orbit-scale"
   | "--orbit-glow-opacity"
   | "--orbit-glow-scale"
-  | "--outer-opacity"
-  | "--outer-rotation"
-  | "--outer-scale"
-  | "--inner-opacity"
-  | "--inner-rotation"
-  | "--inner-scale"
   | "--playhead-opacity"
   | "--playhead-rotation",
   string
 >;
+
+const PART_LABELS: Record<string, string> = {
+  melody: "Melody",
+  harmony: "Harmony",
+  bass: "Bass",
+  kit: "Drums",
+};
+
+const PART_RATES: Record<string, number> = { melody: 4, harmony: 6, bass: 10, kit: 7 };
+const PART_DIRECTIONS: Record<string, number> = { melody: -1, harmony: 1, bass: -1, kit: 1 };
+
+interface PartGroup {
+  noteEvents: MusicEvent[];
+  percEvents: MusicEvent[];
+  voices: string[];
+}
+
+interface PartTemplate {
+  id: string;
+  label: string;
+  instrument: string;
+  colorIndex: number;
+  noteEvents: MusicEvent[];
+  percEvents: MusicEvent[];
+}
+
+const sectionPartsCache = new WeakMap<PortableSection, PartTemplate[]>();
 
 function cssNumber(value: number): string {
   return String(Math.round(value * 1_000_000) / 1_000_000);
@@ -37,12 +65,8 @@ function onsetPulse(
   sectionTick: number,
   sectionLength: number,
   windowTicks: number,
-  matches: (event: MusicEvent) => boolean,
 ): number {
   return events.reduce((strongest, event) => {
-    if (!matches(event)) {
-      return strongest;
-    }
     const distance = loopDistance(sectionTick, event.startTick, sectionLength);
     if (distance >= windowTicks) {
       return strongest;
@@ -52,78 +76,167 @@ function onsetPulse(
   }, 0);
 }
 
-function melodyPulseAt(
-  section: PortableSection,
+function notePulseAt(
+  events: readonly MusicEvent[],
   sectionTick: number,
+  lengthTicks: number,
   ticksPerBeat: number,
 ): number {
   const releaseTicks = ticksPerBeat * 0.35;
-  let melodyPulse = 0;
+  let pulse = 0;
 
-  for (const event of section.events) {
-    if (event.kind !== "note" || event.role !== "melody") {
-      continue;
-    }
-    const distance = loopDistance(sectionTick, event.startTick, section.lengthTicks);
+  for (const event of events) {
+    if (event.kind !== "note") continue;
+    const distance = loopDistance(sectionTick, event.startTick, lengthTicks);
     const audibleTicks = event.durationTicks + releaseTicks;
-    if (distance >= audibleTicks) {
-      continue;
-    }
+    if (distance >= audibleTicks) continue;
     const onset = Math.max(0, 1 - distance / (ticksPerBeat * 0.3));
     const release = distance <= event.durationTicks
       ? 1
       : 1 - (distance - event.durationTicks) / releaseTicks;
-    const pulse = event.velocity * release * (0.55 + onset * 0.45);
-    if (pulse > melodyPulse) {
-      melodyPulse = pulse;
+    const value = event.velocity * release * (0.55 + onset * 0.45);
+    if (value > pulse) pulse = value;
+  }
+
+  return pulse;
+}
+
+function percPulseAt(
+  events: readonly MusicEvent[],
+  sectionTick: number,
+  lengthTicks: number,
+  ticksPerBeat: number,
+): number {
+  return onsetPulse(events, sectionTick, lengthTicks, ticksPerBeat * 0.4);
+}
+
+function toTitleCase(id: string): string {
+  return id
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .trim();
+}
+
+function partIdFromLane(sectionId: string, lane: string): string {
+  const prefix = `${sectionId}-`;
+  return lane.startsWith(prefix) ? lane.slice(prefix.length) : lane;
+}
+
+function mostCommon(values: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best = values[0] ?? "kit";
+  let bestCount = -1;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      best = value;
+    }
+  }
+  return best;
+}
+
+// Groups the section's events into one entry per musical part (lane), so each
+// ring can be driven by that part's own notes. Cached per section object.
+function partTemplates(section: PortableSection): PartTemplate[] {
+  const cached = sectionPartsCache.get(section);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const groups = new Map<string, PartGroup>();
+  for (const event of section.events) {
+    if (event.kind === "stem") continue;
+    const id = partIdFromLane(section.id, event.lane);
+    let group = groups.get(id);
+    if (group === undefined) {
+      group = { noteEvents: [], percEvents: [], voices: [] };
+      groups.set(id, group);
+    }
+    if (event.kind === "note") {
+      group.noteEvents.push(event);
+      group.voices.push(event.voice);
+    } else {
+      group.percEvents.push(event);
+      group.voices.push(event.voice);
     }
   }
 
-  return melodyPulse;
+  const priority = ["melody", "harmony", "bass", "kit"];
+  const ordered: string[] = priority.filter((id) => groups.has(id));
+  for (const id of groups.keys()) {
+    if (!priority.includes(id)) {
+      ordered.push(id);
+    }
+  }
+
+  const templates = ordered.map((id, index) => {
+    const group = groups.get(id)!;
+    return {
+      id,
+      label: PART_LABELS[id] ?? toTitleCase(id),
+      instrument: group.percEvents.length > 0 ? "kit" : mostCommon(group.voices),
+      colorIndex: index % 6,
+      noteEvents: group.noteEvents,
+      percEvents: group.percEvents,
+    };
+  });
+
+  sectionPartsCache.set(section, templates);
+  return templates;
 }
 
-export function orbitMotionAt(
+function partTurns(transportTick: number, ticksPerBeat: number, id: string, index: number, pulse: number): number {
+  const rate = PART_RATES[id] ?? 5.5 + (index % 3);
+  const direction = PART_DIRECTIONS[id] ?? (index % 2 === 0 ? 1 : -1);
+  return (transportTick / (ticksPerBeat * rate)) * direction + pulse * 0.01;
+}
+
+export function orbitFrameAt(
   section: PortableSection,
   transportTick: number,
   sectionTick: number,
   ticksPerBeat: number,
   beatsPerBar: number,
-): OrbitMotion {
+): OrbitFrame {
   const barTicks = ticksPerBeat * beatsPerBar;
   const beatProgress = (transportTick % ticksPerBeat) / ticksPerBeat;
   const beatIndex = Math.floor((transportTick % barTicks) / ticksPerBeat);
   const beatWeight = beatIndex === 0 ? 1 : 0.72;
-  const barPosition = transportTick / barTicks;
-  const melodyPulse = melodyPulseAt(section, sectionTick, ticksPerBeat);
+
+  let glowPulse = 0;
+  const parts = partTemplates(section).map((template, index) => {
+    const pulse = Math.max(
+      notePulseAt(template.noteEvents, sectionTick, section.lengthTicks, ticksPerBeat),
+      percPulseAt(template.percEvents, sectionTick, section.lengthTicks, ticksPerBeat),
+    );
+    if (pulse > glowPulse) glowPulse = pulse;
+    return {
+      id: template.id,
+      label: template.label,
+      instrument: template.instrument,
+      pulse,
+      turns: partTurns(transportTick, ticksPerBeat, template.id, index, pulse),
+      colorIndex: template.colorIndex,
+    };
+  });
 
   return {
     beatPulse: Math.pow(1 - beatProgress, 4) * beatWeight,
-    innerTurns: -barPosition / 4,
-    melodyPulse,
-    outerTurns: barPosition / 8,
-    playheadTurns: barPosition / 2,
-    rhythmPulse: onsetPulse(
-      section.events,
-      sectionTick,
-      section.lengthTicks,
-      ticksPerBeat * 0.4,
-      (event) => event.kind === "percussion",
-    ),
+    playheadTurns: transportTick / barTicks / 2,
+    glowPulse,
+    parts,
   };
 }
 
-export function orbitStyleAt(motion: OrbitMotion): OrbitStyle {
+export function orbitStyleAt(frame: OrbitFrame): OrbitStyle {
   return {
-    "--orbit-scale": cssNumber(1 + motion.beatPulse * 0.008 + motion.rhythmPulse * 0.008),
-    "--orbit-glow-opacity": cssNumber(0.3 + motion.beatPulse * 0.15 + motion.melodyPulse * 0.12),
-    "--orbit-glow-scale": cssNumber(0.94 + motion.melodyPulse * 0.04),
-    "--outer-opacity": cssNumber(0.7 + motion.rhythmPulse * 0.18),
-    "--outer-rotation": `${cssNumber(motion.outerTurns)}turn`,
-    "--outer-scale": cssNumber(1 + motion.rhythmPulse * 0.014),
-    "--inner-opacity": cssNumber(0.76 + motion.melodyPulse * 0.16),
-    "--inner-rotation": `${cssNumber(motion.innerTurns)}turn`,
-    "--inner-scale": cssNumber(1 + motion.melodyPulse * 0.03),
-    "--playhead-opacity": cssNumber(0.82 + motion.beatPulse * 0.12),
-    "--playhead-rotation": `${cssNumber(motion.playheadTurns)}turn`,
+    "--orbit-scale": cssNumber(1 + frame.beatPulse * 0.008 + frame.glowPulse * 0.008),
+    "--orbit-glow-opacity": cssNumber(0.3 + frame.beatPulse * 0.15 + frame.glowPulse * 0.12),
+    "--orbit-glow-scale": cssNumber(0.94 + frame.glowPulse * 0.04),
+    "--playhead-opacity": cssNumber(0.82 + frame.beatPulse * 0.12),
+    "--playhead-rotation": `${cssNumber(frame.playheadTurns)}turn`,
   };
 }

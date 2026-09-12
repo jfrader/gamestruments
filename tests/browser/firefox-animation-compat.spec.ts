@@ -6,22 +6,21 @@ test("Firefox renders final reactive circle values", async ({ page }) => {
 
   const orbit = page.locator("#orbit");
   await orbit.evaluate((element) => element.replaceWith(element.cloneNode(true)));
-  const outerRing = orbit.locator(".orbit-ring--outer");
+  const circle = orbit.locator(".playhead");
   await orbit.evaluate((element) => {
     element.classList.add("is-running");
-    element.style.setProperty("--outer-rotation", "0turn");
-    element.style.setProperty("--outer-scale", "1");
+    element.style.setProperty("--playhead-rotation", "0turn");
   });
-  const initial = await outerRing.evaluate((element) => getComputedStyle(element).transform);
+  const initial = await circle.evaluate((element) => getComputedStyle(element).transform);
 
   await orbit.evaluate((element) => {
-    element.style.setProperty("--outer-rotation", "0.25turn");
+    element.style.setProperty("--playhead-rotation", "0.25turn");
   });
 
-  await expect.poll(async () => outerRing.evaluate((element) =>
+  await expect.poll(async () => circle.evaluate((element) =>
     getComputedStyle(element).transform,
   )).not.toBe(initial);
-  await expect.poll(async () => outerRing.evaluate((element) =>
+  await expect.poll(async () => circle.evaluate((element) =>
     getComputedStyle(element).transform,
   )).not.toBe("none");
 });
@@ -32,22 +31,21 @@ test("Firefox keeps circle motion with reduced motion enabled", async ({ page })
 
   const orbit = page.locator("#orbit");
   await orbit.evaluate((element) => element.replaceWith(element.cloneNode(true)));
-  const outerRing = orbit.locator(".orbit-ring--outer");
+  const circle = orbit.locator(".playhead");
   await orbit.evaluate((element) => {
     element.classList.add("is-running");
-    element.style.setProperty("--outer-rotation", "0turn");
-    element.style.setProperty("--outer-scale", "1");
+    element.style.setProperty("--playhead-rotation", "0turn");
   });
-  const initial = await outerRing.evaluate((element) => getComputedStyle(element).transform);
+  const initial = await circle.evaluate((element) => getComputedStyle(element).transform);
 
   await orbit.evaluate((element) => {
-    element.style.setProperty("--outer-rotation", "0.25turn");
+    element.style.setProperty("--playhead-rotation", "0.25turn");
   });
 
-  await expect.poll(async () => outerRing.evaluate((element) =>
+  await expect.poll(async () => circle.evaluate((element) =>
     getComputedStyle(element).transform,
   )).not.toBe(initial);
-  await expect.poll(async () => outerRing.evaluate((element) =>
+  await expect.poll(async () => circle.evaluate((element) =>
     getComputedStyle(element).transform,
   )).not.toBe("none");
 });
