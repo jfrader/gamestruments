@@ -3,7 +3,6 @@ import { describe, it } from "vitest";
 import {
   playbackSectionOnScore,
   ADVENTURE_SCENE_SECTIONS,
-  MEDIEVAL_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "../apps/demo/src/playback-section.ts";
 import {
@@ -63,29 +62,17 @@ describe("SUSPENSE_PHASE_SECTIONS", () => {
   });
 });
 
-describe("MEDIEVAL_SCENE_SECTIONS", () => {
-  it("maps every scene button to its adaptive section", () => {
-    assert.deepEqual(MEDIEVAL_SCENE_SECTIONS, {
-      explore: "explore",
-      town: "town",
-      dungeon: "dungeon",
-      combat: "combat",
-      boss: "boss",
-      tavern: "tavern",
-      victory: "victory",
-    });
-  });
-});
-
 describe("ADVENTURE_SCENE_SECTIONS", () => {
   it("maps every area phase to its adaptive section", () => {
     assert.deepEqual(ADVENTURE_SCENE_SECTIONS, {
       camp: "camp",
       explore: "explore",
-      clue: "clue",
-      danger: "danger",
+      town: "town",
+      dungeon: "dungeon",
+      combat: "combat",
+      boss: "boss",
       sanctuary: "sanctuary",
-      "quest-complete": "quest-complete",
+      victory: "victory",
     });
   });
 });

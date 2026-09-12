@@ -1040,12 +1040,12 @@ mod tests {
     }
 
     #[test]
-    fn medieval_voices_render_audible_samples_with_finite_output() {
+    fn adventure_voices_render_audible_samples_with_finite_output() {
         for voice in ["harp", "recorder", "vielle", "bell"] {
             let mut synth = Synth::new(22050.0);
             synth.trigger(
                 &MusicEvent::Note {
-                    id: "medieval".into(),
+                    id: "adventure".into(),
                     section: "combat".into(),
                     lane: "melody".into(),
                     start_tick: 0,

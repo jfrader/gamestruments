@@ -33,7 +33,6 @@ import {
   applyPlan,
   requestMusicState,
   requestSuspensePhase,
-  requestMedievalScene,
   requestAdventureScene,
   cueSection,
   cancelCue,
@@ -99,11 +98,9 @@ function renderRuntimeSignal(): void {
   elements.runtimeSignal.textContent =
     labRecipe === "suspense"
       ? `recipe: suspense  /  tracePhase: ${phase}`
-      : labRecipe === "medieval"
-        ? `recipe: medieval  /  scene: ${phase}`
-        : labRecipe === "adventure"
-          ? `recipe: adventure  /  areaPhase: ${phase}`
-          : `racePhase: ${phase}`;
+      : labRecipe === "adventure"
+        ? `recipe: adventure  /  areaPhase: ${phase}`
+        : `racePhase: ${phase}`;
 }
 
 renderGenreIndex();
@@ -283,22 +280,11 @@ elements.recipeButtons.addEventListener("click", (event) => {
     "button[data-recipe]",
   );
   const recipe = button?.dataset.recipe;
-  if (
-    recipe !== "racing" &&
-    recipe !== "suspense" &&
-    recipe !== "medieval" &&
-    recipe !== "adventure"
-  ) {
+  if (recipe !== "racing" && recipe !== "suspense" && recipe !== "adventure") {
     return;
   }
   const recipeLabel =
-    recipe === "suspense"
-      ? "Suspense"
-      : recipe === "medieval"
-        ? "Medieval"
-        : recipe === "adventure"
-          ? "Adventure"
-          : "Racing";
+    recipe === "suspense" ? "Suspense" : recipe === "adventure" ? "Adventure" : "Racing";
   applyGenerationRequest(setLabRecipe(recipe), () => {
     renderCurrentScore();
     renderRuntimeSignal();
@@ -310,12 +296,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-la
   button.addEventListener("click", () => {
     const recipe = button.dataset.recipe;
     window.location.hash = "lab";
-    if (
-      recipe === "racing" ||
-      recipe === "suspense" ||
-      recipe === "medieval" ||
-      recipe === "adventure"
-    ) {
+    if (recipe === "racing" || recipe === "suspense" || recipe === "adventure") {
       applyGenerationRequest(setLabRecipe(recipe), () => {
         renderCurrentScore();
         renderRuntimeSignal();
@@ -338,8 +319,6 @@ elements.phaseButtons.addEventListener("click", (event) => {
   renderRuntimeSignal();
   if (labRecipe === "suspense") {
     requestSuspensePhase();
-  } else if (labRecipe === "medieval") {
-    requestMedievalScene();
   } else if (labRecipe === "adventure") {
     requestAdventureScene();
   } else {

@@ -20,7 +20,7 @@
   and `crates/godot` (GDExtension). Games generate at level load from a
   project secret, instrument palette, and seed. Do not pre-bake every
   procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
-  Arkhos), Medieval (fantasy-RPG scenes), and Adventure (exploration scenes).
+  Arkhos), and Adventure (an eight-section fantasy quest arc).
 - `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
 - The buyer demo is a playable game integration: actual racing drives music.
   Neither a generator parameter panel nor a copy of the Audio Lab UI satisfies

@@ -13,11 +13,10 @@ import { elements } from "./dom";
 import {
   playbackSectionOnScore,
   ADVENTURE_SCENE_SECTIONS,
-  MEDIEVAL_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 
-export type LabRecipe = "racing" | "suspense" | "medieval" | "adventure";
+export type LabRecipe = "racing" | "suspense" | "adventure";
 
 /** The four generic generation sliders every recipe maps onto its own traits. */
 export interface NormalizedMusicTraits {
@@ -66,33 +65,22 @@ export const SUSPENSE_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
-export const MEDIEVAL_PRESETS = [
-  {
-    style: "minstrel",
-    traits: { energy: 0.62, complexity: 0.5, brightness: 0.62, syncopation: 0.66 },
-  },
-  {
-    style: "court",
-    traits: { energy: 0.7, complexity: 0.66, brightness: 0.55, syncopation: 0.42 },
-  },
-  {
-    style: "chapel",
-    traits: { energy: 0.4, complexity: 0.6, brightness: 0.72, syncopation: 0.3 },
-  },
-] as const satisfies readonly GenerationPreset[];
-
 export const ADVENTURE_PRESETS = [
   {
     style: "campfire",
     traits: { energy: 0.5, complexity: 0.45, brightness: 0.68, syncopation: 0.5 },
   },
   {
-    style: "wilds",
-    traits: { energy: 0.58, complexity: 0.66, brightness: 0.5, syncopation: 0.62 },
+    style: "court",
+    traits: { energy: 0.62, complexity: 0.55, brightness: 0.55, syncopation: 0.45 },
   },
   {
-    style: "ruins",
-    traits: { energy: 0.62, complexity: 0.6, brightness: 0.4, syncopation: 0.4 },
+    style: "chapel",
+    traits: { energy: 0.4, complexity: 0.6, brightness: 0.7, syncopation: 0.3 },
+  },
+  {
+    style: "wilds",
+    traits: { energy: 0.58, complexity: 0.7, brightness: 0.45, syncopation: 0.62 },
   },
 ] as const satisfies readonly GenerationPreset[];
 
@@ -116,7 +104,6 @@ let latestGenerationRequest = 0;
 
 export function currentPresets(): readonly GenerationPreset[] {
   if (labRecipe === "suspense") return SUSPENSE_PRESETS;
-  if (labRecipe === "medieval") return MEDIEVAL_PRESETS;
   if (labRecipe === "adventure") return ADVENTURE_PRESETS;
   return GENERATION_PRESETS;
 }
@@ -172,16 +159,6 @@ export function currentState(): GameState {
       },
       categorical: {
         areaPhase: phase,
-      },
-    };
-  }
-  if (labRecipe === "medieval") {
-    return {
-      numeric: {
-        danger: Number(elements.pressure.value),
-      },
-      categorical: {
-        scene: elements.finalLap.checked ? "victory" : phase,
       },
     };
   }
@@ -295,12 +272,6 @@ export function cueControlsBusy(): boolean {
 
 export function requestSuspensePhase(): void {
   const target = SUSPENSE_PHASE_SECTIONS[phase];
-  if (target === undefined) requestMusicState();
-  else cueSection(target);
-}
-
-export function requestMedievalScene(): void {
-  const target = MEDIEVAL_SCENE_SECTIONS[phase];
   if (target === undefined) requestMusicState();
   else cueSection(target);
 }
@@ -452,13 +423,7 @@ export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
   activeExperimentIndex = 0;
   manualCue = null;
   phase =
-    recipe === "suspense"
-      ? "scan"
-      : recipe === "medieval"
-        ? "explore"
-        : recipe === "adventure"
-          ? "camp"
-          : "garage";
+    recipe === "suspense" ? "scan" : recipe === "adventure" ? "camp" : "garage";
   generationTraits = { ...generationPreset(0).traits };
   return requestExperiment(0, levelSeed, generationTraits);
 }

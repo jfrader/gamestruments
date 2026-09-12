@@ -10,8 +10,8 @@ onto its own vocabulary and exposes its own runtime state:
 - **Racing** — north-star racing loops: race phase, speed intensity, position
   pressure, final lap, and finish result.
 - **Suspense** — a song form plus trace phase, heat, focus, and progress.
-- **Medieval** — fantasy-RPG scenes plus danger; a hard combat escalates to boss.
-- **Adventure** — area phase plus discovery, threat, and quest progress.
+- **Adventure** — an eight-section fantasy quest arc, four of them longer
+  two-movement arrangements, plus discovery, threat, and quest progress.
 
 ## Included
 
@@ -25,7 +25,7 @@ onto its own vocabulary and exposes its own runtime state:
 - four original racing scores covering garage through victory;
 - seeded alternate takes for procedural phrases;
 - deterministic generation with independent musical sub-seeds;
-- Racing, Suspense, Medieval, and Adventure recipes;
+- Racing, Suspense, and Adventure recipes;
 - synthesized voices only, with no samples;
 - live controls for seed, style, and the four generation traits;
 - native/WASM parity coverage, many-seed stress coverage, and automated runtime
@@ -54,6 +54,6 @@ onto its own vocabulary and exposes its own runtime state:
 - a production-ready commercial toolkit or final support policy.
 
 Future publishing, packaging, pricing, and open-core/commercial terms remain
-undecided. Racing, Suspense, Medieval, and Adventure demonstrate that game types
+undecided. Racing, Suspense, and Adventure demonstrate that game types
 enter through recipe and score boundaries rather than one hard-coded product
 shape.

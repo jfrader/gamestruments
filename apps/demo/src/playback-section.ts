@@ -9,23 +9,15 @@ export const SUSPENSE_PHASE_SECTIONS: Record<string, SectionId> = {
   complete: "coda",
 };
 
-export const MEDIEVAL_SCENE_SECTIONS: Record<string, SectionId> = {
+export const ADVENTURE_SCENE_SECTIONS: Record<string, SectionId> = {
+  camp: "camp",
   explore: "explore",
   town: "town",
   dungeon: "dungeon",
   combat: "combat",
   boss: "boss",
-  tavern: "tavern",
-  victory: "victory",
-};
-
-export const ADVENTURE_SCENE_SECTIONS: Record<string, SectionId> = {
-  camp: "camp",
-  explore: "explore",
-  clue: "clue",
-  danger: "danger",
   sanctuary: "sanctuary",
-  "quest-complete": "quest-complete",
+  victory: "victory",
 };
 
 export function playbackSectionOnScore(

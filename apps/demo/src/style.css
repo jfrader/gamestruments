@@ -824,16 +824,12 @@ input[type="range"]::-webkit-slider-thumb {
 .stage-setup .score-buttons strong { font-size: 11px; letter-spacing: 0.04em; }
 .stage-setup .score-buttons span { font-size: 10px; }
 .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.console-shell[data-recipe="medieval"] .stage-setup #score-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 /* game type now full-width top row via explicit placement; lower row uses 1fr 1fr independent of recipe */
 .stage-setup > fieldset:first-child {
   grid-column: 1 / -1;
 }
 .console-shell[data-recipe="racing"] .stage-setup > fieldset:nth-child(2) {
-  grid-column: 1 / -1;
-}
-.console-shell[data-recipe="medieval"] .stage-setup > fieldset:nth-child(2) {
   grid-column: 1 / -1;
 }
 .console-shell[data-recipe="adventure"] .stage-setup > fieldset:nth-child(2) {
@@ -1595,7 +1591,6 @@ footer p {
     grid-column: 1 / -1;
   }
   .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .console-shell[data-recipe="medieval"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -1728,12 +1723,8 @@ footer p {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .console-shell[data-recipe="medieval"] .stage-setup #score-buttons {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .console-shell[data-recipe="adventure"] .stage-setup #score-buttons {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stage-setup > fieldset,

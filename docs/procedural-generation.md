@@ -35,22 +35,19 @@ interrupts. Alert/heat cues the bridge once. Styles are `terminal`, `cipher`,
 and `noir`. Generation traits are tension, heat, mystery, and pulse. Runtime
 state is `tracePhase`, heat, focus, and progress.
 
-Medieval is a fourth interaction model for fantasy RPGs. It is scene-selected,
-not song-form: seven eight-bar loops (`explore`, `town`, `dungeon`, `combat`,
-`boss`, `tavern`, `victory`) each carry a stable modal identity that survives
-indefinitely on loop. Church modes, open-fifth drones, and plucked/bowed/breath
-voices replace the racing palette. Styles are `court`, `minstrel`, and
-`chapel`. Generation traits are valor, mystery, warmth, and motion. Runtime
-state is `scene` plus a `danger` value, so a hard combat encounter escalates to
-`boss` without a separate scene.
-
-Adventure is a fifth interaction model for exploration games, ported from the
-Lantern Trail vocabulary that previously lived only in the retired authoring
-pipeline. Six eight-bar loops (`camp`, `explore`, `clue`, `danger`, `sanctuary`,
-`quest-complete`) are selected by area phase plus discovery, threat, and quest
-progress. Styles are `campfire`, `wilds`, and `ruins`; generation traits are
-wonder, danger, mystery, and motion. Quest completion always wins, so finishing
-the quest resolves to the final section.
+Adventure is a third interaction model for fantasy and exploration games. It is
+area-selected, not song-form: eight sections (`camp`, `explore`, `town`,
+`dungeon`, `combat`, `boss`, `sanctuary`, `victory`) each carry a stable modal
+identity that survives indefinitely on loop. Four of them are sixteen-bar
+two-movement arrangements that develop inside the section — `explore` moves
+from wandering forest into discovery, `town` from hearth into tavern dance,
+`combat` from menace into battle, and `victory` from fanfare into earned rest —
+while the other four stay eight bars. Church modes, open-fifth drones, and
+plucked/bowed/breath voices replace the racing palette. Styles are `campfire`,
+`court`, `chapel`, and `wilds`. Generation traits are wonder, danger, mystery,
+and motion. Runtime state is `areaPhase` plus discovery, threat, and quest
+progress; quest completion always wins, and a high threat escalates combat into
+`boss`.
 
 ## API
 

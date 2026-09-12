@@ -182,14 +182,6 @@ pub struct AdventureState {
     pub quest_complete: bool,
 }
 
-/// Scene a game is in for the `medieval` recipe. `danger` lets a combat
-/// encounter escalate into the boss section without a separate scene.
-#[derive(Clone, Debug, Default)]
-pub struct MedievalState {
-    pub scene: String,
-    pub danger: f64,
-}
-
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
         self.beats_per_bar.saturating_mul(self.ticks_per_beat)

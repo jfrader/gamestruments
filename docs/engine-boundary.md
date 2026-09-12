@@ -2,14 +2,11 @@
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
 - Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
-  `medieval`, `adventure`, and score). WASM `gamestruments_score_json` accepts
-  `"recipe": "racing" | "suspense" | "medieval" | "adventure"` (default racing).
-- Medieval additionally accepts styles `court`, `minstrel`, and `chapel` and
-  generates seven eight-bar scene sections. `crates/engine/src/medieval.rs` owns
-  the section plans, selection rules, and `select_medieval_section`; the Rust
-  `AdaptiveTransport` exposes `request_medieval_state`.
-- Adventure accepts styles `campfire`, `wilds`, and `ruins` and generates six
-  eight-bar sections from area phase plus discovery, threat, and quest progress.
+  `adventure`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "racing" | "suspense" | "adventure"` (default racing).
+- Adventure accepts styles `campfire`, `court`, `chapel`, and `wilds` and
+  generates eight sections, four of them sixteen-bar two-movement arrangements,
+  selected from area phase plus discovery, threat, and quest progress.
   `crates/engine/src/adventure.rs` owns the plans, rules, and
   `select_adventure_section`; the Rust `AdaptiveTransport` exposes
   `request_adventure_state`.
@@ -36,8 +33,7 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 Transport / section selection + transition planning:
 - The lab's music selector and Cue rows enumerate the loaded score's complete
   section list, including endings. Suspense's game signals are separate,
-  collapsed controls; Medieval's scene buttons and Adventure's area-phase
-  buttons each cue one section. Live cues wait for the next bar; the latest request made
+  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar; the latest request made
   during a blend queues after it. Cancel removes only a waiting request, never
   an in-progress blend. Stopped selection sets the next starting section.
 - For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).
@@ -80,7 +76,7 @@ automatic. These are playback controls, not additional arrangements or gameplay
 phase names. Original and Extended remain the only arrangement choices.
 
 Audio synthesis / sound stage:
-- The signed-off sound (SYNTH_VOICES: warm/glass/pulse/pluck/chip + dedicated epiano/organ/supersaw/triangle/bass + medieval harp/recorder/vielle/bell + kit + full room bus + stereo imaging + compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio).
+- The signed-off sound (SYNTH_VOICES: warm/glass/pulse/pluck/chip + dedicated epiano/organ/supersaw/triangle/bass + adventure harp/recorder/vielle/bell + kit + full room bus + stereo imaging + compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio).
 - The Rust `Synth` (mono, no room) is the reference for the game engine only.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo

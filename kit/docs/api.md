@@ -4,34 +4,32 @@
 
 ## Recipes
 
-The player ships four recipes. Set `recipe` before calling `generate`; a generated score belongs to one recipe.
+The player ships three recipes. Set `recipe` before calling `generate`; a generated score belongs to one recipe.
 
 | Recipe | `recipe` | Drive it with | Styles |
 |---|---|---|---|
 | Racing | `"racing"` (default) | `set_race_state` | `fusion`, `neon`, `funk`, `chip` |
 | Suspense (song-form) | `"suspense"` | `set_trace_state` plus form controls | `terminal`, `cipher`, `noir` |
-| Medieval (RPG scenes) | `"medieval"` | `set_medieval_state` | `court`, `minstrel`, `chapel` |
-| Adventure (exploration) | `"adventure"` | `set_adventure_state` | `campfire`, `wilds`, `ruins` |
+| Adventure (fantasy quest) | `"adventure"` | `set_adventure_state` | `campfire`, `court`, `chapel`, `wilds` |
 
 ## Exported Properties
 
 Set these before calling `generate`. Later changes apply to the next generation call.
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
-- `recipe: String` — `racing` (default), `suspense`, `medieval`, or `adventure`.
-- `arrangement: String` — Suspense only: `original` (default) or `extended`. Ignored by Racing, Medieval, and Adventure.
+- `recipe: String` — `racing` (default), `suspense`, or `adventure`.
+- `arrangement: String` — Suspense only: `original` (default) or `extended`. Ignored by Racing and Adventure.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
   - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
-  - Medieval: `court`, `minstrel`, or `chapel`; empty defaults to `minstrel`.
-  - Adventure: `campfire`, `wilds`, or `ruins`; empty defaults to `campfire`.
-- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`. Suspense, Medieval, and Adventure ignore these and use their own per-style timbres.
+  - Adventure: `campfire`, `court`, `chapel`, or `wilds`; empty defaults to `campfire`.
+- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`. Suspense and Adventure ignore these and use their own per-style timbres.
 - `energy: float` — defaults to `0.62`.
 - `complexity: float` — defaults to `0.60`.
 - `brightness: float` — defaults to `0.52`.
 - `syncopation: float` — defaults to `0.70`.
   - Finite trait values are clamped to `0.0..1.0` during generation.
-  - Trait meaning depends on the recipe: Racing reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse; Medieval reads them as valor, mystery, warmth, and motion; Adventure reads them as danger, mystery, wonder, and motion.
+  - Trait meaning depends on the recipe: Racing reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse; Adventure reads them as danger, mystery, wonder, and motion.
 
 ## `generate`
 
@@ -39,7 +37,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
 var generated: bool = player.generate("level-001")
 ```
 
-Generates and validates the deterministic score for the current property values, resets transport and synthesis, and starts at the recipe's first section — `garage` for Racing, `intro` (Handshake) for Suspense, `explore` for Medieval, `camp` for Adventure.
+Generates and validates the deterministic score for the current property values, resets transport and synthesis, and starts at the recipe's first section — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure.
 
 Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style, arrangement, or voice, non-finite data, or an invalid generated score. Do not request state changes after a failed generation.
 
@@ -153,28 +151,6 @@ Base sections (`original`):
 
 `extended` keeps every base section and adds `scan-ii` (Scan II), `breach-ii` (Breach II), and `anomaly` (Anomaly), with longer beds for verse, verse-b, chorus, chorus-final, bridge, and solo.
 
-## Medieval — `set_medieval_state`
-
-```gdscript
-var accepted: bool = player.set_medieval_state("combat", 0.4)
-```
-
-- `set_medieval_state(scene: String, danger: float) -> bool` — requests the section for the current scene. `danger` must be within `0.0..1.0`.
-- Scenes: `explore`, `town`, `dungeon`, `combat`, `boss`, `tavern`, `victory`. A `combat` scene with `danger >= 0.8` escalates to `boss`; any unknown scene falls back to `explore`.
-- Like every state change, the new section commits on the next bar boundary.
-
-## Medieval Sections
-
-| Id | Label | Feeling |
-|---|---|---|
-| `explore` | Explore | open road / unhurried wonder |
-| `town` | Town | warm hearth / welcome |
-| `dungeon` | Dungeon | cold stone / held breath |
-| `combat` | Combat | steel drawn / forward drive |
-| `boss` | Boss | dread / no retreat |
-| `tavern` | Tavern | dance / raised cup |
-| `victory` | Victory | bright cadence / earned rest |
-
 ## Adventure — `set_adventure_state`
 
 ```gdscript
@@ -182,27 +158,30 @@ var accepted: bool = player.set_adventure_state("explore", 0.4, 0.2, false)
 ```
 
 - `set_adventure_state(area_phase: String, discovery: float, threat: float, quest_complete: bool) -> bool` — requests the section for the current area. `discovery` and `threat` must be within `0.0..1.0`.
-- A high `discovery` (`>= 0.85`) resolves to `sanctuary`; a high `threat` (`>= 0.7`) resolves to `danger`; `quest_complete` always resolves to `quest-complete`. Unknown phases fall back to `camp`.
+- A high `discovery` (`>= 0.85`) or the `sanctuary` phase resolves to `sanctuary`; a high `threat` (`>= 0.7`) resolves to `combat`, and a `combat` phase with `threat >= 0.85` escalates to `boss`; `quest_complete` always resolves to `victory`. Unknown phases fall back to `camp`.
 - Like every state change, the new section commits on the next bar boundary.
 
 ## Adventure Sections
 
-| Id | Label | Feeling |
-|---|---|---|
-| `camp` | Trailhead Camp | warmth / still anticipation |
-| `explore` | The Old Forest | curiosity / forward motion |
-| `clue` | A Lantern Found | mystery / dawning discovery |
-| `danger` | The Darkening Path | menace / resolve |
-| `sanctuary` | The Hidden Glade | awe / radiant arrival |
-| `quest-complete` | Lantern Lit | release / earned wonder |
+Four sections are sixteen-bar two-movement arrangements; movement two develops the material (marked with `→`).
+
+| Id | Label | Bars | Development |
+|---|---|---|---|
+| `camp` | Trailhead Camp | 8 | warmth / still anticipation |
+| `explore` | The Old Forest | 16 | curiosity → dawning discovery |
+| `town` | Hearth and Hall | 16 | welcome → rising revelry |
+| `dungeon` | The Deep Halls | 8 | cold stone / held breath |
+| `combat` | Steel and Shadow | 16 | menace → battle joined |
+| `boss` | No Retreat | 8 | dread / no retreat |
+| `sanctuary` | The Hidden Glade | 8 | awe / radiant arrival |
+| `victory` | Lantern Lit | 16 | release → earned rest |
 
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
 - Suspense scores contain the base sections above; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
-- Medieval scores contain the seven scene sections above and default to `explore`.
-- Adventure scores contain the six area sections above and default to `camp`.
+- Adventure scores contain the eight sections above and default to `camp`; `explore`, `town`, `combat`, and `victory` are 16 bars, the rest 8.
 - State changes are quantized to bar boundaries and new sections start at phrase bar zero.
 - Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 

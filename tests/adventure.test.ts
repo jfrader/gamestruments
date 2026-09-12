@@ -15,7 +15,8 @@ const exports = instance.exports;
 const memory = exports.memory;
 assert.ok(memory instanceof WebAssembly.Memory);
 
-const SECTIONS = ["camp", "explore", "clue", "danger", "sanctuary", "quest-complete"];
+const SECTIONS = ["camp", "explore", "town", "dungeon", "combat", "boss", "sanctuary", "victory"];
+const LONG = ["explore", "town", "combat", "victory"];
 
 function generate(style: string): { bytes: Uint8Array; score: PortableScore } {
   assert.ok(memory instanceof WebAssembly.Memory);
@@ -45,14 +46,15 @@ function generate(style: string): { bytes: Uint8Array; score: PortableScore } {
 }
 
 describe("Adventure recipe through the shipped WASM", () => {
-  it("generates the six lantern-trail sections", () => {
+  it("generates eight sections, four of them long two-movement arrangements", () => {
     const { score } = generate("campfire");
     assert.deepEqual(score.sections.map((section) => section.id), SECTIONS);
     assert.equal(score.defaultSection, "camp");
     assert.equal(score.form, undefined);
     const barTicks = score.beatsPerBar * score.ticksPerBeat;
     for (const section of score.sections) {
-      assert.equal(section.lengthTicks, 8 * barTicks, `${section.id} length`);
+      const expected = (LONG.includes(section.id) ? 16 : 8) * barTicks;
+      assert.equal(section.lengthTicks, expected, `${section.id} length`);
       assert.ok(section.events.length > 8, `${section.id} should carry events`);
     }
   });
@@ -61,32 +63,38 @@ describe("Adventure recipe through the shipped WASM", () => {
     const first = generate("wilds");
     const repeated = generate("wilds");
     assert.deepEqual(first.bytes, repeated.bytes);
-    const ruins = generate("ruins");
-    assert.notEqual(first.score.id, ruins.score.id);
-    assert.notEqual(first.score.bpm, ruins.score.bpm);
-    assert.notEqual(first.score.title, ruins.score.title);
+    const chapel = generate("chapel");
+    assert.notEqual(first.score.id, chapel.score.id);
+    assert.notEqual(first.score.bpm, chapel.score.bpm);
+    assert.notEqual(first.score.title, chapel.score.title);
   });
 
   it("maps area phase, discovery, threat, and quest progress to sections", () => {
-    const { score } = generate("campfire");
+    const { score } = generate("court");
     const request = (state: GameState) => new AdaptiveTransport(score).requestState(state, 0);
     const phase = (areaPhase: string) => ({ numeric: {}, categorical: { areaPhase } });
 
     assert.equal(request(phase("camp")).status, "unchanged");
-    assert.equal(request(phase("explore")).status, "scheduled");
-    assert.equal(request(phase("clue")).status, "scheduled");
-    assert.equal(request(phase("danger")).status, "scheduled");
+    for (const id of ["explore", "town", "dungeon", "boss", "sanctuary", "victory"]) {
+      const result = request(phase(id));
+      assert.equal(result.status, "scheduled", `${id} should schedule`);
+      if (result.status === "scheduled") assert.equal(result.plan.to, id);
+    }
 
-    const byDiscovery = request({ numeric: { discovery: 0.9 }, categorical: {} });
-    assert.equal(byDiscovery.status, "scheduled");
-    if (byDiscovery.status === "scheduled") assert.equal(byDiscovery.plan.to, "sanctuary");
+    const sanctuary = request({ numeric: { discovery: 0.9 }, categorical: {} });
+    assert.equal(sanctuary.status, "scheduled");
+    if (sanctuary.status === "scheduled") assert.equal(sanctuary.plan.to, "sanctuary");
 
-    const byThreat = request({ numeric: { threat: 0.8 }, categorical: {} });
-    assert.equal(byThreat.status, "scheduled");
-    if (byThreat.status === "scheduled") assert.equal(byThreat.plan.to, "danger");
+    const combat = request({ numeric: { threat: 0.8 }, categorical: {} });
+    assert.equal(combat.status, "scheduled");
+    if (combat.status === "scheduled") assert.equal(combat.plan.to, "combat");
+
+    const boss = request({ numeric: { threat: 0.9 }, categorical: { areaPhase: "combat" } });
+    assert.equal(boss.status, "scheduled");
+    if (boss.status === "scheduled") assert.equal(boss.plan.to, "boss");
 
     const complete = request({ numeric: { questComplete: 1 }, categorical: {} });
     assert.equal(complete.status, "scheduled");
-    if (complete.status === "scheduled") assert.equal(complete.plan.to, "quest-complete");
+    if (complete.status === "scheduled") assert.equal(complete.plan.to, "victory");
   });
 });

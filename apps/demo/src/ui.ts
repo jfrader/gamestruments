@@ -13,7 +13,6 @@ import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
 import {
   ADVENTURE_SCENE_SECTIONS,
-  MEDIEVAL_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 import type { LabRecipe, NormalizedMusicTraits } from "./state.ts";
@@ -131,7 +130,6 @@ export function renderScoreButtons(
 
 export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
-  const medieval = recipe === "medieval";
   const adventure = recipe === "adventure";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
@@ -144,27 +142,23 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
       String(button.dataset.recipe === recipe),
     );
   }
-  elements.traitEnergyLabel.textContent = suspense ? "Tension" : medieval ? "Valor" : adventure ? "Danger" : "Energy";
-  elements.traitComplexityLabel.textContent = suspense ? "Heat" : medieval ? "Mystery" : adventure ? "Mystery" : "Complexity";
-  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : medieval ? "Warmth" : adventure ? "Wonder" : "Brightness";
-  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : medieval ? "Motion" : adventure ? "Motion" : "Syncopation";
-  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : medieval ? "Valor meter" : adventure ? "Discovery" : "Speed intensity";
-  elements.meterPressureLabel.textContent = suspense ? "Focus" : medieval ? "Danger" : adventure ? "Threat" : "Position pressure";
-  elements.meterFinalLabel.textContent = suspense ? "Extracted" : medieval ? "Victory" : adventure ? "Quest complete" : "Final lap";
+  elements.traitEnergyLabel.textContent = suspense ? "Tension" : adventure ? "Danger" : "Energy";
+  elements.traitComplexityLabel.textContent = suspense ? "Heat" : adventure ? "Mystery" : "Complexity";
+  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : adventure ? "Wonder" : "Brightness";
+  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : adventure ? "Motion" : "Syncopation";
+  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : adventure ? "Discovery" : "Speed intensity";
+  elements.meterPressureLabel.textContent = suspense ? "Focus" : adventure ? "Threat" : "Position pressure";
+  elements.meterFinalLabel.textContent = suspense ? "Extracted" : adventure ? "Quest complete" : "Final lap";
   elements.meterFinalCopy.textContent = suspense
     ? "Hold the coda / disconnect"
-    : medieval
-      ? "Force the victory fanfare"
-      : adventure
-        ? "Mark the quest complete"
-        : "Add the maximum-commitment layer";
+    : adventure
+      ? "Mark the quest complete"
+      : "Add the maximum-commitment layer";
   const phaseSections = suspense
     ? SUSPENSE_PHASE_SECTIONS
-    : medieval
-      ? MEDIEVAL_SCENE_SECTIONS
-      : adventure
-        ? ADVENTURE_SCENE_SECTIONS
-        : null;
+    : adventure
+      ? ADVENTURE_SCENE_SECTIONS
+      : null;
   const phases: readonly (readonly [string, string])[] = phaseSections === null
     ? ([
         ["garage", "Garage"],
