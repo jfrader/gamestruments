@@ -25,7 +25,12 @@ async function verifyFormDownbeat(style: string, clickScan: boolean, page: Page,
     await page.locator('#section-select').selectOption("verse");
   }
   const bpm = Number(await page.locator("#tempo-value").textContent());
-  const sectionBars = clickScan ? { original: 8, extended: 16 }[arrangement] : 8;
+  const sectionBarsByArrangement: Record<SuspenseArrangement, number> = {
+    original: 8,
+    extended: 16,
+    theme: 8,
+  };
+  const sectionBars = clickScan ? sectionBarsByArrangement[arrangement] : 8;
   const secondsToBoundary = sectionBars * 4 * 60 / bpm;
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText(clickScan ? "Scan" : "Handshake");

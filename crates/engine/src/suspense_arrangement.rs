@@ -294,7 +294,7 @@ fn theme_melody(section: &mut PortableSection, root: u8, bar: u32, seed: u32) {
     } else {
         &[(0, 0, 0), (1, 6, 3), (4, 0, 4), (6, 4, 0)]
     };
-    let register = if seed % 2 == 0 { 0 } else { -7 };
+    let register = if seed.is_multiple_of(2) { 0 } else { -7 };
     for (bar_index, step, degree) in hits {
         let start = bar_index * bar + step * pulse;
         if start >= section.length_ticks {
