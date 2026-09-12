@@ -1,5 +1,6 @@
 import {
   AdaptiveTransport,
+  selectSection,
   type GameState,
   type PortableScore,
   type PortableSection,
@@ -62,6 +63,7 @@ export interface NormalizedMusicTraits {
 
 export interface GenerationPreset {
   style: string;
+  label?: string;
   traits: NormalizedMusicTraits;
 }
 
@@ -101,20 +103,19 @@ export const SUSPENSE_PRESETS = [
 
 export const ADVENTURE_PRESETS = [
   {
-    style: "campfire",
+    style: "folk",
+    label: "Medieval Folk",
     traits: { energy: 0.5, complexity: 0.45, brightness: 0.68, syncopation: 0.5 },
   },
   {
-    style: "court",
+    style: "dark",
+    label: "Dark Fantasy",
     traits: { energy: 0.62, complexity: 0.55, brightness: 0.55, syncopation: 0.45 },
   },
   {
-    style: "chapel",
+    style: "orchestral",
+    label: "Orchestral RPG",
     traits: { energy: 0.4, complexity: 0.6, brightness: 0.7, syncopation: 0.3 },
-  },
-  {
-    style: "wilds",
-    traits: { energy: 0.58, complexity: 0.7, brightness: 0.45, syncopation: 0.62 },
   },
 ] as const satisfies readonly GenerationPreset[];
 
@@ -135,6 +136,8 @@ let switchingScore = false;
 let switchingAudio = false;
 let generationQueue: Promise<void> = Promise.resolve();
 let latestGenerationRequest = 0;
+
+const AUTOPLAY_RECIPES: ReadonlySet<LabRecipe> = new Set(["racing", "adventure"]);
 
 export function currentPresets(): readonly GenerationPreset[] {
   if (labRecipe === "suspense") return SUSPENSE_PRESETS;
@@ -166,6 +169,7 @@ async function generateRequestedScore(
     style: preset.style,
     recipe: labRecipe,
     arrangement,
+    autoplay: AUTOPLAY_RECIPES.has(labRecipe),
     energy: requestedTraits.energy,
     complexity: requestedTraits.complexity,
     brightness: requestedTraits.brightness,
@@ -255,7 +259,11 @@ export function pendingCue(): SectionId | null {
 }
 
 export function requestMusicState(): void {
-  if (cueControlsBusy() || !audio.running) return;
+  if (cueControlsBusy()) return;
+  if (!audio.running) {
+    cueSection(selectSection(score, currentState()));
+    return;
+  }
   const tick = audio.currentTick();
   const automatic = transport.advance(tick);
   if (automatic !== null) applyPlan(automatic);

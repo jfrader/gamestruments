@@ -88,7 +88,7 @@ export function renderSections(
   const next = transport.nextFormSection(tick);
   elements.holdForm.disabled = busy || score.form === undefined;
   elements.holdForm.setAttribute("aria-pressed", String(transport.formHeld));
-  elements.holdForm.textContent = transport.formHeld ? "Resume automatic" : "Hold section";
+  elements.holdForm.textContent = transport.formHeld ? "Resume auto tour" : "Hold auto tour";
   elements.advanceForm.disabled = busy || next === null || transport.snapshot().transition !== null;
   elements.advanceForm.textContent = next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`;
   const status = busy ? "Preparing playback…" : view.status;
@@ -120,7 +120,7 @@ export function renderSections(
 
 export function renderScoreButtons(
   activeExperimentIndex: number,
-  presets: readonly { style: string }[],
+  presets: readonly { style: string; label?: string }[],
   recipe: LabRecipe,
 ): void {
   const racingLabels = ["Tiny Torque", "Neon Drift", "Countertop", "8-Bit"];
@@ -134,7 +134,7 @@ export function renderScoreButtons(
     label.textContent =
       recipe === "racing"
         ? (racingLabels[index] ?? preset.style)
-        : preset.style.charAt(0).toUpperCase() + preset.style.slice(1);
+        : preset.label ?? preset.style.charAt(0).toUpperCase() + preset.style.slice(1);
     genre.textContent = preset.style;
     button.append(label, genre);
     return button;
@@ -167,7 +167,6 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
   const adventure = recipe === "adventure";
   elements.shell.dataset.recipe = recipe;
-  elements.sectionControl.hidden = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
   renderRecipeSelect(recipe);
   elements.traitEnergyLabel.textContent = suspense ? "Tension" : adventure ? "Danger" : "Energy";
@@ -238,13 +237,14 @@ export function renderScoreIdentity(
   comparisonBaseSeed: string,
   soloMode: SoloMode,
   recipe: LabRecipe,
-  presets: readonly { style: string }[],
+  presets: readonly { style: string; label?: string }[],
   arrangement: SuspenseArrangement,
   phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
   renderRecipeChrome(recipe, phase);
+  elements.sectionControl.hidden = score.form === undefined;
   elements.arrangementControl.hidden = recipe !== "suspense";
   for (const button of elements.arrangementButtons.querySelectorAll<HTMLButtonElement>("button[data-arrangement]")) {
     button.setAttribute("aria-pressed", String(button.dataset.arrangement === arrangement));

@@ -23,6 +23,8 @@ test("generation controls remain functional before and during playback", async (
   });
   await expect(page.locator("#volume-readout")).toHaveText("50%");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+  await expect(page.locator("#section-control")).toBeVisible();
+  await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
 
   const neon = page.locator("#score-buttons button", { hasText: "Neon" });
   await neon.click();
@@ -105,7 +107,7 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
 
   await selectRecipe(page, "adventure");
   await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
-  await expect(page.locator("#score-title")).toContainText(/Campfire|Court|Chapel|Wilds/);
+  await expect(page.locator("#score-title")).toContainText(/Folk|Dark|Orchestral/);
   await expect(page.locator("#section-list li")).toHaveCount(8);
   await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
   await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");

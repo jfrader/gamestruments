@@ -16,15 +16,14 @@ const memory = exports.memory;
 assert.ok(memory instanceof WebAssembly.Memory);
 
 const SECTIONS = ["camp", "explore", "town", "dungeon", "combat", "boss", "sanctuary", "victory"];
-const LONG = ["explore", "town", "combat", "victory"];
-
-function generate(style: string): { bytes: Uint8Array; score: PortableScore } {
+function generate(style: string, autoplay?: boolean): { bytes: Uint8Array; score: PortableScore } {
   assert.ok(memory instanceof WebAssembly.Memory);
   const input = new TextEncoder().encode(JSON.stringify({
     recipe: "adventure",
     secret: "",
     seed: "trail-001",
     style,
+    ...(autoplay === undefined ? {} : { autoplay }),
     energy: 0.5,
     complexity: 0.45,
     brightness: 0.68,
@@ -46,31 +45,39 @@ function generate(style: string): { bytes: Uint8Array; score: PortableScore } {
 }
 
 describe("Adventure recipe through the shipped WASM", () => {
-  it("generates eight sections, four of them long two-movement arrangements", () => {
-    const { score } = generate("campfire");
+  it("keeps game-mode generation state-driven and gives every quest phase room to develop", () => {
+    const { score } = generate("folk");
     assert.deepEqual(score.sections.map((section) => section.id), SECTIONS);
     assert.equal(score.defaultSection, "camp");
     assert.equal(score.form, undefined);
     const barTicks = score.beatsPerBar * score.ticksPerBeat;
     for (const section of score.sections) {
-      const expected = (LONG.includes(section.id) ? 16 : 8) * barTicks;
-      assert.equal(section.lengthTicks, expected, `${section.id} length`);
+      const bars = section.lengthTicks / barTicks;
+      assert.equal(Number.isInteger(bars), true, `${section.id} must end on a bar`);
+      assert.equal(bars % 8, 0, `${section.id} must contain complete movements`);
+      assert.ok(bars >= 16, `${section.id} should have at least two movements`);
       assert.ok(section.events.length > 8, `${section.id} should carry events`);
     }
   });
 
-  it("is deterministic and style-sensitive", () => {
-    const first = generate("wilds");
-    const repeated = generate("wilds");
+  it("is deterministic and gives all three styles distinct voices", () => {
+    const first = generate("folk");
+    const repeated = generate("folk");
     assert.deepEqual(first.bytes, repeated.bytes);
-    const chapel = generate("chapel");
-    assert.notEqual(first.score.id, chapel.score.id);
-    assert.notEqual(first.score.bpm, chapel.score.bpm);
-    assert.notEqual(first.score.title, chapel.score.title);
+    const scores = [first.score, generate("dark").score, generate("orchestral").score];
+    assert.equal(new Set(scores.map((score) => score.id)).size, 3);
+    assert.equal(new Set(scores.map((score) => score.title)).size, 3);
+    const voiceArrangements = scores.map((score) => score.sections.map((section) =>
+      section.events
+        .filter((event) => event.kind === "note" || event.kind === "percussion")
+        .map((event) => `${event.lane}:${event.voice}`)
+        .join("|"),
+    ).join("/"));
+    assert.equal(new Set(voiceArrangements).size, 3);
   });
 
   it("maps area phase, discovery, threat, and quest progress to sections", () => {
-    const { score } = generate("court");
+    const { score } = generate("dark");
     const request = (state: GameState) => new AdaptiveTransport(score).requestState(state, 0);
     const phase = (areaPhase: string) => ({ numeric: {}, categorical: { areaPhase } });
 

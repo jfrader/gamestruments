@@ -68,7 +68,6 @@ function renderCurrentScore(): void {
     suspenseArrangement,
     phase,
   );
-  requestMusicState();
 }
 
 async function togglePlayback(): Promise<void> {

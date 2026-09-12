@@ -109,7 +109,7 @@ completion always wins):
 ```gdscript
 func _ready() -> void:
     player.recipe = "adventure"
-    player.style = "campfire"  # campfire, court, chapel, or wilds
+    player.style = "folk"  # folk, dark, or orchestral
     music_ready = player.generate("world-3")
 
 func entered_forest() -> void:
@@ -118,7 +118,7 @@ func entered_forest() -> void:
 
 func reached_town() -> void:
     if music_ready:
-        player.set_adventure_state("town", 0.5, 0.1, false)      # town -> tavern in movement two
+        player.set_adventure_state("town", 0.5, 0.1, false)
 
 func ambushed(threat: float) -> void:
     if music_ready:
@@ -134,10 +134,10 @@ func quest_finished() -> void:
 ```
 
 The eight sections (Camp, Explore, Town, Dungeon, Combat, Boss, Sanctuary,
-Victory) crossfade on the next bar; Explore, Town, Combat, and Victory are
-sixteen-bar two-movement arrangements that develop inside the section. Adventure
-reads `energy`, `complexity`, `brightness`, and `syncopation` as danger,
-mystery, wonder, and motion.
+Victory) crossfade on the next bar; Camp, Dungeon, Boss, and Sanctuary are 16
+bars, and Explore, Town, Combat, and Victory are 32. Adventure reads `energy`,
+`complexity`, `brightness`, and `syncopation` as danger, mystery, wonder, and
+motion.
 
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.

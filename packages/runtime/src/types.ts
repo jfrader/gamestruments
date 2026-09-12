@@ -69,7 +69,15 @@ export interface NoteEvent extends EventBase {
 
 export interface PercussionEvent extends EventBase {
   kind: "percussion";
-  voice: "kick" | "snare" | "hat" | "tom" | "reverse-cymbal" | "air-impact";
+  voice:
+    | "kick"
+    | "snare"
+    | "hat"
+    | "tom"
+    | "reverse-cymbal"
+    | "air-impact"
+    | "frame-drum"
+    | "tambourine";
 }
 
 export interface StemEvent extends EventBase {

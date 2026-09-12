@@ -1,4 +1,5 @@
 pub mod adventure;
+pub mod arrangement;
 pub mod form_audio;
 pub mod racing;
 pub mod render;
@@ -14,6 +15,7 @@ pub mod transport;
 mod wasm;
 
 pub use adventure::{generate_adventure, AdventureInput, AdventureStyle};
+pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 pub use form_audio::FormAudio;
 pub use racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 pub use render::render_wav;

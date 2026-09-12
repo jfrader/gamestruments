@@ -139,15 +139,15 @@
           </fieldset>
 
           <fieldset class="section-control" id="section-control" hidden>
-            <legend>Music Section</legend>
-            <label for="section-select">Cue any section</label>
+            <legend id="section-control-legend">Auto tour</legend>
+            <label id="section-control-label" for="section-select">Cue any phase</label>
             <select id="section-select" aria-describedby="section-help"></select>
             <div class="form-controls">
-              <button type="button" id="hold-form" aria-pressed="false">Hold section</button>
+              <button type="button" id="hold-form" aria-pressed="false">Hold auto tour</button>
               <button type="button" id="advance-form">Next section</button>
             </div>
-            <p id="section-help">While playing, selections wait for the next bar and blend. While stopped, choose where Play begins.</p>
-            <p>Hold repeats the current section. Next cues its development; resume automatic to leave at the end of the current loop.</p>
+            <p id="section-help">While playing, a cue waits for the next bar and blends. While stopped, choose where Play begins.</p>
+            <p id="form-help">The auto tour follows each phase's authored length. Hold loops here; Next cues once; Resume continues from that phase.</p>
           </fieldset>
 
         </aside>
@@ -260,8 +260,8 @@
           </li>
           <li class="is-live">
             <span>03</span>
-            <div><strong>Adventure</strong><small>Camp, explore, town, dungeon, combat, boss, sanctuary, victory — four long arrangements</small></div>
-            <button type="button" data-open-lab data-recipe="adventure">4 live experiments</button>
+            <div><strong>Adventure</strong><small>Camp, explore, town, dungeon, combat, boss, sanctuary, victory</small></div>
+            <button type="button" data-open-lab data-recipe="adventure">3 live experiments</button>
           </li>
           <li><span>04</span><div><strong>Horror</strong><small>Awareness, pursuit, isolation, release</small></div><i>Open slot</i></li>
           <li><span>05</span><div><strong>Strategy</strong><small>Economy, conflict, momentum, victory</small></div><i>Open slot</i></li>

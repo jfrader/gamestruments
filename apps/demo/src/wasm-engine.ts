@@ -70,6 +70,7 @@ export interface GenerateScoreParams {
   syncopation: number;
   recipe?: "racing" | "suspense" | "adventure";
   arrangement?: SuspenseArrangement;
+  autoplay?: boolean;
   tension?: number;
   heat?: number;
   mystery?: number;
@@ -87,6 +88,7 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     style: params.style,
     recipe: params.recipe ?? "racing",
     arrangement: params.arrangement ?? "original",
+    autoplay: params.autoplay ?? false,
     palette: { melody: "", harmony: "", drive: "", bass: "" },
     energy: params.energy,
     complexity: params.complexity,

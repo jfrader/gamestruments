@@ -1,8 +1,8 @@
 use gamestruments_engine::{
-    generate_adventure, generate_racing, generate_suspense_arrangement, AdaptiveTransport,
-    AdventureInput, AdventureState, AdventureStyle, FormAudio, GameState, GenerateInput,
-    InstrumentPalette, PortableScore, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle,
-    Synth, TraceState,
+    apply_automatic_arrangement, generate_adventure, generate_racing,
+    generate_suspense_arrangement, AdaptiveTransport, AdventureInput, AdventureState,
+    AdventureStyle, ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette,
+    PortableScore, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -24,6 +24,8 @@ struct GamestrumentsPlayer {
     recipe: GString,
     #[export]
     arrangement: GString,
+    #[export]
+    autoplay: bool,
     #[export]
     style: GString,
     #[export]
@@ -60,6 +62,7 @@ impl INode for GamestrumentsPlayer {
             project_secret: GString::new(),
             recipe: "racing".into(),
             arrangement: "original".into(),
+            autoplay: false,
             style: "funk".into(),
             melody_voice: GString::new(),
             harmony_voice: GString::new(),
@@ -187,82 +190,104 @@ impl GamestrumentsPlayer {
             return false;
         }
         let recipe = self.recipe.to_string();
-        let score = if recipe == "adventure" {
-            let style = if self.style.is_empty() {
-                AdventureStyle::Campfire
-            } else {
-                match AdventureStyle::parse(&self.style.to_string()) {
-                    Ok(style) => style,
-                    Err(_) => {
-                        godot_error!(
-                            "Unknown Gamestruments adventure style \"{}\"; use campfire, wilds, or ruins",
-                            self.style
-                        );
-                        return false;
+        let (score, automatic_recipe) = match recipe.as_str() {
+            "adventure" => {
+                let style = if self.style.is_empty() {
+                    AdventureStyle::Folk
+                } else {
+                    match AdventureStyle::parse(&self.style.to_string()) {
+                        Ok(style) => style,
+                        Err(_) => {
+                            godot_error!(
+                                "Unknown Gamestruments adventure style \"{}\"; use folk, dark, or orchestral",
+                                self.style
+                            );
+                            return false;
+                        }
                     }
-                }
-            };
-            generate_adventure(&AdventureInput {
-                secret: self.project_secret.to_string(),
-                seed: seed.to_string(),
-                style,
-                wonder: self.brightness,
-                danger: self.energy,
-                mystery: self.complexity,
-                motion: self.syncopation,
-            })
-        } else if recipe == "suspense" {
-            let style = if self.style.is_empty() {
-                SuspenseStyle::Terminal
-            } else {
-                match SuspenseStyle::parse(&self.style.to_string()) {
-                    Ok(style) => style,
-                    Err(_) => {
-                        godot_error!(
-                            "Unknown Gamestruments suspense style \"{}\"; use terminal, cipher, or noir",
-                            self.style
-                        );
-                        return false;
+                };
+                (
+                    generate_adventure(&AdventureInput {
+                        secret: self.project_secret.to_string(),
+                        seed: seed.to_string(),
+                        style,
+                        wonder: self.brightness,
+                        danger: self.energy,
+                        mystery: self.complexity,
+                        motion: self.syncopation,
+                    }),
+                    Some(ArrangementRecipe::Adventure),
+                )
+            }
+            "suspense" => {
+                let style = if self.style.is_empty() {
+                    SuspenseStyle::Terminal
+                } else {
+                    match SuspenseStyle::parse(&self.style.to_string()) {
+                        Ok(style) => style,
+                        Err(_) => {
+                            godot_error!(
+                                "Unknown Gamestruments suspense style \"{}\"; use terminal, cipher, or noir",
+                                self.style
+                            );
+                            return false;
+                        }
                     }
-                }
-            };
-            let Ok(arrangement) = SuspenseArrangement::parse(&self.arrangement.to_string()) else {
-                godot_error!("Unknown Gamestruments suspense arrangement");
+                };
+                let Ok(arrangement) = SuspenseArrangement::parse(&self.arrangement.to_string())
+                else {
+                    godot_error!("Unknown Gamestruments suspense arrangement");
+                    return false;
+                };
+                (
+                    generate_suspense_arrangement(
+                        &SuspenseInput {
+                            secret: self.project_secret.to_string(),
+                            seed: seed.to_string(),
+                            style,
+                            tension: self.energy,
+                            heat: self.complexity,
+                            mystery: self.brightness,
+                            pulse: self.syncopation,
+                        },
+                        arrangement,
+                    ),
+                    None,
+                )
+            }
+            "racing" => {
+                let Ok(style) = Style::parse(&self.style.to_string()) else {
+                    godot_error!("Unknown Gamestruments racing style");
+                    return false;
+                };
+                (
+                    generate_racing(&GenerateInput {
+                        secret: self.project_secret.to_string(),
+                        seed: seed.to_string(),
+                        style,
+                        palette: InstrumentPalette {
+                            melody: self.melody_voice.to_string(),
+                            harmony: self.harmony_voice.to_string(),
+                            drive: self.drive_voice.to_string(),
+                            bass: self.bass_voice.to_string(),
+                        },
+                        energy: self.energy,
+                        complexity: self.complexity,
+                        brightness: self.brightness,
+                        syncopation: self.syncopation,
+                    }),
+                    Some(ArrangementRecipe::Racing),
+                )
+            }
+            other => {
+                godot_error!("Unknown Gamestruments recipe \"{other}\"");
                 return false;
-            };
-            generate_suspense_arrangement(
-                &SuspenseInput {
-                    secret: self.project_secret.to_string(),
-                    seed: seed.to_string(),
-                    style,
-                    tension: self.energy,
-                    heat: self.complexity,
-                    mystery: self.brightness,
-                    pulse: self.syncopation,
-                },
-                arrangement,
-            )
-        } else {
-            let Ok(style) = Style::parse(&self.style.to_string()) else {
-                godot_error!("Unknown Gamestruments style");
-                return false;
-            };
-            generate_racing(&GenerateInput {
-                secret: self.project_secret.to_string(),
-                seed: seed.to_string(),
-                style,
-                palette: InstrumentPalette {
-                    melody: self.melody_voice.to_string(),
-                    harmony: self.harmony_voice.to_string(),
-                    drive: self.drive_voice.to_string(),
-                    bass: self.bass_voice.to_string(),
-                },
-                energy: self.energy,
-                complexity: self.complexity,
-                brightness: self.brightness,
-                syncopation: self.syncopation,
-            })
+            }
         };
+        let score = score.and_then(|score| match automatic_recipe {
+            Some(recipe) => apply_automatic_arrangement(score, recipe, self.autoplay),
+            None => Ok(score),
+        });
         let score = match score {
             Ok(score) => score,
             Err(error) => {

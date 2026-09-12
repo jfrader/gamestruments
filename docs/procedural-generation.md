@@ -35,19 +35,21 @@ interrupts. Alert/heat cues the bridge once. Styles are `terminal`, `cipher`,
 and `noir`. Generation traits are tension, heat, mystery, and pulse. Runtime
 state is `tracePhase`, heat, focus, and progress.
 
-Adventure is a third interaction model for fantasy and exploration games. It is
-area-selected, not song-form: eight sections (`camp`, `explore`, `town`,
+Adventure is a third interaction model for fantasy and exploration games. In
+gameplay mode it is area-selected: eight sections (`camp`, `explore`, `town`,
 `dungeon`, `combat`, `boss`, `sanctuary`, `victory`) each carry a stable modal
-identity that survives indefinitely on loop. Four of them are sixteen-bar
-two-movement arrangements that develop inside the section — `explore` moves
-from wandering forest into discovery, `town` from hearth into tavern dance,
-`combat` from menace into battle, and `victory` from fanfare into earned rest —
-while the other four stay eight bars. Church modes, open-fifth drones, and
-plucked/bowed/breath voices replace the racing palette. Styles are `campfire`,
-`court`, `chapel`, and `wilds`. Generation traits are wonder, danger, mystery,
-and motion. Runtime state is `areaPhase` plus discovery, threat, and quest
-progress; quest completion always wins, and a high threat escalates combat into
-`boss`.
+identity that survives indefinitely on loop. `camp`, `dungeon`, `boss`, and
+`sanctuary` are 16 bars; `explore`, `town`, `combat`, and `victory` are 32, and
+each section develops its material across phrases rather than repeating copied
+halves. Church modes, open-fifth drones, and plucked/bowed/breath voices
+replace the racing palette. Styles are `folk` (earthy medieval folk), `dark`
+(dark medieval fantasy), and `orchestral` (orchestral RPG). Generation traits
+are wonder, danger, mystery, and motion. Runtime state is `areaPhase` plus
+discovery, threat, and quest progress; quest completion always wins, and a high
+threat escalates combat into `boss`. The voices are harp, recorder, vielle, and
+bell plus frame-drum and tambourine percussion — synthesized, acoustic-inspired
+timbres rather than sample recordings. When `autoplay` is set, an attached song
+form tours the eight sections and loops from `explore`.
 
 ## API
 

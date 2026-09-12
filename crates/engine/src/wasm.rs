@@ -23,6 +23,7 @@
 //!   "secret": "...",
 //!   "seed": "...",
 //!   "style": "funk" | "chip" | "fusion" | "neon",
+//!   "autoplay": false,
 //!   "palette": { "melody": "", "harmony": "", "drive": "", "bass": "" },  // empty = default kit
 //!   "energy": 0.62,
 //!   "complexity": 0.6,
@@ -65,6 +66,7 @@
 use core::slice;
 
 use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
+use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
 use crate::render::render_wav;
 use crate::score::PortableScore;
@@ -175,6 +177,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
         recipe: String,
         #[serde(default)]
         arrangement: String,
+        #[serde(default)]
+        autoplay: bool,
         secret: String,
         seed: String,
         style: String,
@@ -205,74 +209,88 @@ pub unsafe extern "C" fn gamestruments_score_json(
             return unsafe { OUT_PTR };
         }
     };
-    let generated = if inp.recipe == "adventure" {
-        let style = match AdventureStyle::parse(&inp.style) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(error);
-                return unsafe { OUT_PTR };
-            }
-        };
-        generate_adventure(&AdventureInput {
-            secret: inp.secret,
-            seed: inp.seed,
-            style,
-            wonder: inp.brightness,
-            danger: inp.energy,
-            mystery: inp.complexity,
-            motion: inp.syncopation,
-        })
-    } else if inp.recipe == "suspense" {
-        let style = match SuspenseStyle::parse(&inp.style) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(error);
-                return unsafe { OUT_PTR };
-            }
-        };
-        let arrangement = match SuspenseArrangement::parse(&inp.arrangement) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(error);
-                return unsafe { OUT_PTR };
-            }
-        };
-        generate_suspense_arrangement(
-            &SuspenseInput {
+    let generated = match inp.recipe.as_str() {
+        "adventure" => {
+            let style = match AdventureStyle::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_adventure(&AdventureInput {
                 secret: inp.secret,
                 seed: inp.seed,
                 style,
-                tension: inp.tension,
-                heat: inp.heat,
-                mystery: inp.mystery,
-                pulse: inp.pulse,
-            },
-            arrangement,
-        )
-    } else {
-        let style = match Style::parse(&inp.style) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(error);
-                return unsafe { OUT_PTR };
-            }
-        };
-        let palette = InstrumentPalette {
-            melody: inp.palette.melody,
-            harmony: inp.palette.harmony,
-            drive: inp.palette.drive,
-            bass: inp.palette.bass,
-        };
-        generate_racing(&GenerateInput {
-            secret: inp.secret,
-            seed: inp.seed,
-            style,
-            palette,
-            energy: inp.energy,
-            complexity: inp.complexity,
-            brightness: inp.brightness,
-            syncopation: inp.syncopation,
-        })
+                wonder: inp.brightness,
+                danger: inp.energy,
+                mystery: inp.complexity,
+                motion: inp.syncopation,
+            })
+            .and_then(|score| {
+                apply_automatic_arrangement(score, ArrangementRecipe::Adventure, inp.autoplay)
+            })
+        }
+        "suspense" => {
+            let style = match SuspenseStyle::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            let arrangement = match SuspenseArrangement::parse(&inp.arrangement) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_suspense_arrangement(
+                &SuspenseInput {
+                    secret: inp.secret,
+                    seed: inp.seed,
+                    style,
+                    tension: inp.tension,
+                    heat: inp.heat,
+                    mystery: inp.mystery,
+                    pulse: inp.pulse,
+                },
+                arrangement,
+            )
+        }
+        "" | "racing" => {
+            let style = match Style::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            let palette = InstrumentPalette {
+                melody: inp.palette.melody,
+                harmony: inp.palette.harmony,
+                drive: inp.palette.drive,
+                bass: inp.palette.bass,
+            };
+            generate_racing(&GenerateInput {
+                secret: inp.secret,
+                seed: inp.seed,
+                style,
+                palette,
+                energy: inp.energy,
+                complexity: inp.complexity,
+                brightness: inp.brightness,
+                syncopation: inp.syncopation,
+            })
+            .and_then(|score| {
+                apply_automatic_arrangement(score, ArrangementRecipe::Racing, inp.autoplay)
+            })
+        }
+        other => {
+            write_error(format!("Unknown recipe: {other}"));
+            return unsafe { OUT_PTR };
+        }
     };
 
     match generated.and_then(|score| {

@@ -36,6 +36,9 @@ cargo clippy -p gamestruments-engine --all-targets -- -D warnings
 
 Requires Node.js 24. Final checks run in CI after push.
 
+After editing the Rust engine, rebuild the committed WASM (`npm run wasm:build`)
+and verify its digest (`npm run wasm:verify`; the digest covers inline tests too).
+
 Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.5.5 in the godot crate only; engine crate introduces no 1.94-only features and continues to build cleanly).
 
 ## Graphify
@@ -43,6 +46,11 @@ Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.
 - Query `graphify-out/graph.json` before broad source searches.
 - `graphify-out/` is local generated state, ignored per repo: dirty files there
   are expected and never committed. Never delete files inside it.
+
+## Collaboration
+
+- Prefer Grok/DeepSeek for substantial implementation/review to conserve the GPT
+  budget; the primary agent owns coordination, integration, and verification.
 
 ## Changelog
 

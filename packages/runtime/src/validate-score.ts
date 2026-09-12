@@ -18,7 +18,16 @@ const NOTE_VOICES = new Set([
   "vielle",
   "bell",
 ]);
-const PERCUSSION_VOICES = new Set(["kick", "snare", "hat", "tom", "reverse-cymbal", "air-impact"]);
+const PERCUSSION_VOICES = new Set([
+  "kick",
+  "snare",
+  "hat",
+  "tom",
+  "reverse-cymbal",
+  "air-impact",
+  "frame-drum",
+  "tambourine",
+]);
 
 function requireValid(condition: boolean, message: string): asserts condition {
   if (!condition) {

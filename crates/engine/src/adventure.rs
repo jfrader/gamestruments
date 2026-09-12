@@ -1,62 +1,49 @@
-//! Adventure exploration recipe.
+//! Medieval-inspired adaptive adventure score.
 //!
-//! One fantasy-RPG palette: eight sections, four of them sixteen-bar
-//! two-movement arrangements that develop through the former Camp/Explore/
-//! Clue/Town/Tavern/Danger/Combat/Victory beats. Sibling of `racing` and
-//! `suspense`; same deterministic DNA pattern and portable-score output.
-//!
-//! A section is one or more eight-bar [`Movement`]s played back to back.
-//! Movement two can change mode, register, density, percussion, voices, and
-//! melodic contour, so a longer section tells a small story instead of looping
-//! a single eight-bar idea twice.
+//! Eight long-form sections share one seeded modal identity while changing
+//! phrase, orchestration, and pulse to follow a complete fantasy quest arc.
 
-use crate::rng::{hash_text, DeterministicRandom};
+mod composition;
+
+use crate::rng::hash_text;
 use crate::score::{
-    AdaptiveCondition, AdaptiveRule, AdventureState, MusicEvent, PortableScore, PortableSection,
-    SCORE_SCHEMA_VERSION,
+    AdaptiveCondition, AdaptiveRule, AdventureState, PortableScore, SCORE_SCHEMA_VERSION,
 };
-use crate::theory::{json_num, mode_intervals, phrase_gain, scale_pitch, NOTE_NAMES};
+use crate::theory::NOTE_NAMES;
 
-pub const GENERATOR_VERSION: &str = "2.0.0";
+pub const GENERATOR_VERSION: &str = "3.0.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
-
-/// Bars per movement. Every section is one or two of these.
-const MOVEMENT_BARS: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AdventureStyle {
-    Campfire,
-    Court,
-    Chapel,
-    Wilds,
+    Folk,
+    Dark,
+    Orchestral,
 }
 
 impl AdventureStyle {
     pub fn parse(value: &str) -> Result<Self, String> {
         match value {
-            "campfire" => Ok(Self::Campfire),
-            "court" => Ok(Self::Court),
-            "chapel" => Ok(Self::Chapel),
-            "wilds" => Ok(Self::Wilds),
+            "folk" => Ok(Self::Folk),
+            "dark" => Ok(Self::Dark),
+            "orchestral" => Ok(Self::Orchestral),
             other => Err(format!("Unknown adventure style: {other}")),
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Campfire => "campfire",
-            Self::Court => "court",
-            Self::Chapel => "chapel",
-            Self::Wilds => "wilds",
+            Self::Folk => "folk",
+            Self::Dark => "dark",
+            Self::Orchestral => "orchestral",
         }
     }
 
     fn display(self) -> &'static str {
         match self {
-            Self::Campfire => "Campfire",
-            Self::Court => "Court",
-            Self::Chapel => "Chapel",
-            Self::Wilds => "Wilds",
+            Self::Folk => "Folk",
+            Self::Dark => "Dark",
+            Self::Orchestral => "Orchestral",
         }
     }
 }
@@ -97,418 +84,6 @@ fn normalize(input: &AdventureInput) -> NormalizedTraits {
     }
 }
 
-/// Instrument roles the style kit resolves to concrete synth voices.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Role {
-    Lead,
-    Pluck,
-    Glass,
-    Organ,
-    Warm,
-    Pulse,
-    Strings,
-    Low,
-    Pad,
-    Bell,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Perc {
-    None,
-    Soft,
-    Drive,
-    Dance,
-}
-
-struct StyleKit {
-    lead: &'static str,
-    pluck: &'static str,
-    glass: &'static str,
-    organ: &'static str,
-    warm: &'static str,
-    pulse: &'static str,
-    strings: &'static str,
-    low: &'static str,
-    pad: &'static str,
-    bell: &'static str,
-    base_bpm: f64,
-}
-
-/// Four sound worlds with clearly different instrument kits.
-fn style_kit(style: AdventureStyle) -> StyleKit {
-    match style {
-        AdventureStyle::Campfire => StyleKit {
-            lead: "epiano",
-            pluck: "pluck",
-            glass: "glass",
-            organ: "organ",
-            warm: "warm",
-            pulse: "pulse",
-            strings: "harp",
-            low: "dusk",
-            pad: "felt",
-            bell: "bell",
-            base_bpm: 104.0,
-        },
-        AdventureStyle::Court => StyleKit {
-            lead: "vielle",
-            pluck: "harp",
-            glass: "glass",
-            organ: "organ",
-            warm: "vielle",
-            pulse: "pulse",
-            strings: "vielle",
-            low: "dusk",
-            pad: "felt",
-            bell: "bell",
-            base_bpm: 92.0,
-        },
-        AdventureStyle::Chapel => StyleKit {
-            lead: "organ",
-            pluck: "harp",
-            glass: "bell",
-            organ: "organ",
-            warm: "organ",
-            pulse: "pulse",
-            strings: "vielle",
-            low: "dusk",
-            pad: "felt",
-            bell: "bell",
-            base_bpm: 76.0,
-        },
-        AdventureStyle::Wilds => StyleKit {
-            lead: "glass",
-            pluck: "pluck",
-            glass: "glass",
-            organ: "organ",
-            warm: "pulse",
-            pulse: "pulse",
-            strings: "harp",
-            low: "dusk",
-            pad: "dusk",
-            bell: "bell",
-            base_bpm: 90.0,
-        },
-    }
-}
-
-fn role_voice(kit: &StyleKit, role: Role) -> &'static str {
-    match role {
-        Role::Lead => kit.lead,
-        Role::Pluck => kit.pluck,
-        Role::Glass => kit.glass,
-        Role::Organ => kit.organ,
-        Role::Warm => kit.warm,
-        Role::Pulse => kit.pulse,
-        Role::Strings => kit.strings,
-        Role::Low => kit.low,
-        Role::Pad => kit.pad,
-        Role::Bell => kit.bell,
-    }
-}
-
-/// One eight-bar stretch of a section.
-struct Movement {
-    mode: &'static str,
-    register: i32,
-    intensity: f64,
-    density: f64,
-    perc: Perc,
-    drone: bool,
-    arp: bool,
-    finale: bool,
-    targets: [i32; 8],
-    melody_role: Role,
-    harmony_role: Role,
-    drone_role: Role,
-}
-
-struct SectionPlan {
-    id: &'static str,
-    label: &'static str,
-    feeling: &'static str,
-    color: &'static str,
-    movements: &'static [Movement],
-}
-
-const CAMP: Movement = Movement {
-    mode: "ionian",
-    register: 0,
-    intensity: 0.5,
-    density: 0.42,
-    perc: Perc::Soft,
-    drone: true,
-    arp: true,
-    finale: false,
-    targets: [0, 2, 4, 2, 2, 4, 0, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Warm,
-    drone_role: Role::Pad,
-};
-
-const EXPLORE_FOREST: Movement = Movement {
-    mode: "dorian",
-    register: 0,
-    intensity: 0.62,
-    density: 0.6,
-    perc: Perc::Soft,
-    drone: true,
-    arp: true,
-    finale: false,
-    targets: [0, 4, 2, 4, 4, 2, 1, 0],
-    melody_role: Role::Pluck,
-    harmony_role: Role::Warm,
-    drone_role: Role::Pad,
-};
-
-const EXPLORE_CLUE: Movement = Movement {
-    mode: "mixolydian",
-    register: 0,
-    intensity: 0.72,
-    density: 0.66,
-    perc: Perc::Soft,
-    drone: true,
-    arp: true,
-    finale: false,
-    targets: [0, 2, 4, 6, 4, 2, 1, 0],
-    melody_role: Role::Glass,
-    harmony_role: Role::Pulse,
-    drone_role: Role::Pad,
-};
-
-const TOWN_SQUARE: Movement = Movement {
-    mode: "ionian",
-    register: 0,
-    intensity: 0.55,
-    density: 0.55,
-    perc: Perc::Soft,
-    drone: false,
-    arp: true,
-    finale: false,
-    targets: [0, 4, 2, 4, 2, 0, 0, 0],
-    melody_role: Role::Pluck,
-    harmony_role: Role::Warm,
-    drone_role: Role::Pad,
-};
-
-const TOWN_TAVERN: Movement = Movement {
-    mode: "mixolydian",
-    register: 0,
-    intensity: 0.7,
-    density: 0.72,
-    perc: Perc::Dance,
-    drone: false,
-    arp: true,
-    finale: false,
-    targets: [0, 4, 2, 4, 4, 6, 4, 0],
-    melody_role: Role::Pluck,
-    harmony_role: Role::Pluck,
-    drone_role: Role::Pad,
-};
-
-const DUNGEON: Movement = Movement {
-    mode: "aeolian",
-    register: -7,
-    intensity: 0.32,
-    density: 0.26,
-    perc: Perc::None,
-    drone: true,
-    arp: false,
-    finale: false,
-    targets: [0, 0, 2, 0, 2, 0, 0, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Strings,
-    drone_role: Role::Low,
-};
-
-const COMBAT_DANGER: Movement = Movement {
-    mode: "aeolian",
-    register: -7,
-    intensity: 0.82,
-    density: 0.8,
-    perc: Perc::Drive,
-    drone: true,
-    arp: false,
-    finale: false,
-    targets: [0, 4, 2, 4, 4, 2, 1, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Pulse,
-    drone_role: Role::Low,
-};
-
-const COMBAT_BATTLE: Movement = Movement {
-    mode: "dorian",
-    register: 0,
-    intensity: 0.9,
-    density: 0.84,
-    perc: Perc::Drive,
-    drone: true,
-    arp: false,
-    finale: false,
-    targets: [0, 4, 2, 4, 6, 4, 2, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Strings,
-    drone_role: Role::Low,
-};
-
-const BOSS: Movement = Movement {
-    mode: "phrygian",
-    register: -7,
-    intensity: 1.0,
-    density: 0.84,
-    perc: Perc::Drive,
-    drone: true,
-    arp: false,
-    finale: false,
-    targets: [0, 4, 1, 4, 4, 2, 1, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Organ,
-    drone_role: Role::Low,
-};
-
-const SANCTUARY: Movement = Movement {
-    mode: "lydian",
-    register: 0,
-    intensity: 0.9,
-    density: 0.78,
-    perc: Perc::Dance,
-    drone: true,
-    arp: true,
-    finale: false,
-    targets: [0, 4, 6, 4, 7, 4, 2, 0],
-    melody_role: Role::Glass,
-    harmony_role: Role::Warm,
-    drone_role: Role::Pad,
-};
-
-const VICTORY_FANFARE: Movement = Movement {
-    mode: "ionian",
-    register: 12,
-    intensity: 0.85,
-    density: 0.62,
-    perc: Perc::Dance,
-    drone: false,
-    arp: true,
-    finale: true,
-    targets: [0, 4, 4, 7, 7, 4, 4, 0],
-    melody_role: Role::Lead,
-    harmony_role: Role::Strings,
-    drone_role: Role::Pad,
-};
-
-const VICTORY_REST: Movement = Movement {
-    mode: "ionian",
-    register: 0,
-    intensity: 0.5,
-    density: 0.4,
-    perc: Perc::Soft,
-    drone: false,
-    arp: true,
-    finale: false,
-    targets: [0, 2, 4, 2, 2, 0, 0, 0],
-    melody_role: Role::Glass,
-    harmony_role: Role::Warm,
-    drone_role: Role::Pad,
-};
-
-const PLANS: [SectionPlan; 8] = [
-    SectionPlan {
-        id: "camp",
-        label: "Trailhead Camp",
-        feeling: "warmth / still anticipation",
-        color: "#e8c67a",
-        movements: &[CAMP],
-    },
-    SectionPlan {
-        id: "explore",
-        label: "The Old Forest",
-        feeling: "curiosity / dawning discovery",
-        color: "#8fbf8f",
-        movements: &[EXPLORE_FOREST, EXPLORE_CLUE],
-    },
-    SectionPlan {
-        id: "town",
-        label: "Hearth and Hall",
-        feeling: "welcome / rising revelry",
-        color: "#e0b04e",
-        movements: &[TOWN_SQUARE, TOWN_TAVERN],
-    },
-    SectionPlan {
-        id: "dungeon",
-        label: "The Deep Halls",
-        feeling: "cold stone / held breath",
-        color: "#5b6b7a",
-        movements: &[DUNGEON],
-    },
-    SectionPlan {
-        id: "combat",
-        label: "Steel and Shadow",
-        feeling: "menace / battle joined",
-        color: "#c96a4a",
-        movements: &[COMBAT_DANGER, COMBAT_BATTLE],
-    },
-    SectionPlan {
-        id: "boss",
-        label: "No Retreat",
-        feeling: "dread / no retreat",
-        color: "#8e3b4a",
-        movements: &[BOSS],
-    },
-    SectionPlan {
-        id: "sanctuary",
-        label: "The Hidden Glade",
-        feeling: "awe / radiant arrival",
-        color: "#a6d7a0",
-        movements: &[SANCTUARY],
-    },
-    SectionPlan {
-        id: "victory",
-        label: "Lantern Lit",
-        feeling: "release / earned rest",
-        color: "#f2e39a",
-        movements: &[VICTORY_FANFARE, VICTORY_REST],
-    },
-];
-
-const KEY_PITCH_CLASSES: [i32; 7] = [0, 2, 3, 5, 7, 9, 10];
-const PROGRESSIONS: [&[i32; 4]; 4] = [&[0, 5, 3, 4], &[0, 3, 5, 4], &[0, 4, 5, 3], &[0, 2, 5, 4]];
-const MOTIFS: [&[i32; 4]; 4] = [&[0, 2, 3, 1], &[0, 3, 4, 2], &[0, 1, 4, 2], &[0, 4, 3, 1]];
-const ONSET_CELLS: [&[u32]; 6] = [
-    &[0, 2, 4, 6],
-    &[0, 3, 4, 6],
-    &[0, 1, 4, 6],
-    &[0, 4, 6],
-    &[0, 2, 4],
-    &[0, 3, 6],
-];
-const FINALE_ONSETS: [u32; 4] = [0, 2, 4, 6];
-
-struct HarmonyDna {
-    root_pitch_class: i32,
-    progression: Vec<i32>,
-    key: String,
-}
-
-fn create_harmony(seed: u32) -> HarmonyDna {
-    let mut rng = DeterministicRandom::new(seed);
-    let root_pitch_class = *rng.pick(&KEY_PITCH_CLASSES);
-    let progression = rng.pick(&PROGRESSIONS).to_vec();
-    HarmonyDna {
-        root_pitch_class,
-        progression,
-        key: NOTE_NAMES[root_pitch_class as usize].to_string(),
-    }
-}
-
-fn create_motif(seed: u32) -> [i32; 4] {
-    let mut rng = DeterministicRandom::new(seed);
-    let mut steps = **rng.pick(&MOTIFS);
-    let index = 1 + rng.integer(3) as usize;
-    steps[index] += *rng.pick(&[-1i32, 1]);
-    steps[0] = 0;
-    steps
-}
-
 fn subseed(secret: &str, seed: &str, domain: &str) -> u32 {
     let canonical = format!("string:{seed}");
     let mut value = format!("{DNA_SEED_VERSION}\0{canonical}\0{domain}");
@@ -519,13 +94,10 @@ fn subseed(secret: &str, seed: &str, domain: &str) -> u32 {
     hash_text(&value)
 }
 
-fn score_id(secret: &str, seed: &str, style: AdventureStyle, traits: &NormalizedTraits) -> String {
+fn score_id(secret: &str, seed: &str, style: AdventureStyle, traits: NormalizedTraits) -> String {
     let trait_json = format!(
         r#"{{"wonder":{},"danger":{},"mystery":{},"motion":{}}}"#,
-        json_num(traits.wonder),
-        json_num(traits.danger),
-        json_num(traits.mystery),
-        json_num(traits.motion)
+        traits.wonder, traits.danger, traits.mystery, traits.motion
     );
     let identity = hash_text(&format!(
         "{secret}\0{seed}\0{}\0{trait_json}\0{GENERATOR_VERSION}",
@@ -535,566 +107,6 @@ fn score_id(secret: &str, seed: &str, style: AdventureStyle, traits: &Normalized
         "adventure-generated-v{}-{identity:08x}",
         GENERATOR_VERSION.replace('.', "-")
     )
-}
-
-#[derive(Clone, Copy)]
-struct Roots {
-    bass: i32,
-    drone: i32,
-    harmony: i32,
-    melody: i32,
-}
-
-fn roots(movement: &Movement, harmony: &HarmonyDna) -> Roots {
-    let root = harmony.root_pitch_class;
-    Roots {
-        bass: 36 + root,
-        drone: 48 + root,
-        harmony: 55 + root,
-        // Only the melody follows the movement register; the bed stays put so
-        // low movements do not collapse into a muddy octave.
-        melody: 67 + root + movement.register,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_note(
-    events: &mut Vec<MusicEvent>,
-    section: &str,
-    movement: usize,
-    lane: &str,
-    index: usize,
-    start_tick: u32,
-    duration_ticks: u32,
-    velocity: f64,
-    pitch: i32,
-    voice: &str,
-    role: Option<&str>,
-) {
-    events.push(MusicEvent::Note {
-        id: format!("{section}:{lane}:{movement}:{index}"),
-        section: section.to_string(),
-        lane: lane.to_string(),
-        start_tick,
-        duration_ticks: duration_ticks.max(1),
-        velocity: velocity.clamp(0.05, 0.96),
-        pitch: pitch.clamp(0, 127) as u8,
-        voice: voice.to_string(),
-        role: role.map(str::to_string),
-    });
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_perc(
-    events: &mut Vec<MusicEvent>,
-    section: &str,
-    movement: usize,
-    lane: &str,
-    index: usize,
-    start_tick: u32,
-    duration_ticks: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:{lane}:{movement}:{index}"),
-        section: section.to_string(),
-        lane: lane.to_string(),
-        start_tick,
-        duration_ticks: duration_ticks.max(1),
-        velocity: velocity.clamp(0.05, 0.96),
-        voice: voice.to_string(),
-    });
-}
-
-fn event_id(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn drone_events(
-    plan: &SectionPlan,
-    movement: &Movement,
-    movement_index: usize,
-    roots: Roots,
-    intervals: &[i32],
-    bar_ticks: u32,
-    bar_offset: u32,
-    voice: &str,
-) -> Vec<MusicEvent> {
-    let mut events = Vec::new();
-    if !movement.drone {
-        return events;
-    }
-    let length = bar_ticks * MOVEMENT_BARS;
-    let start = bar_offset * bar_ticks;
-    let root_pitch = scale_pitch(roots.drone, 0, intervals);
-    push_note(
-        &mut events,
-        plan.id,
-        movement_index,
-        "drone",
-        0,
-        start,
-        length,
-        0.11,
-        root_pitch,
-        voice,
-        None,
-    );
-    // The fifth enters in the second phrase so the pedal has a little life.
-    let phrase_b = start + bar_ticks * (MOVEMENT_BARS / 2);
-    let fifth = scale_pitch(roots.drone, 4, intervals);
-    push_note(
-        &mut events,
-        plan.id,
-        movement_index,
-        "drone",
-        1,
-        phrase_b,
-        start + length - phrase_b,
-        0.1,
-        fifth,
-        voice,
-        None,
-    );
-    events
-}
-
-#[allow(clippy::too_many_arguments)]
-fn harmony_events(
-    plan: &SectionPlan,
-    movement_index: usize,
-    harmony: &HarmonyDna,
-    roots: Roots,
-    intervals: &[i32],
-    traits: &NormalizedTraits,
-    bar_ticks: u32,
-    bar_offset: u32,
-    voice: &str,
-) -> Vec<MusicEvent> {
-    let mut events = Vec::new();
-    let mut index = 0;
-    let degrees: Vec<i32> = if traits.wonder > 0.55 {
-        vec![0, 2, 4]
-    } else {
-        vec![0, 4]
-    };
-    for bar in 0..MOVEMENT_BARS {
-        let degree = harmony.progression[bar as usize % harmony.progression.len()];
-        let bar_start = (bar_offset + bar) * bar_ticks;
-        for offset in &degrees {
-            let pitch = scale_pitch(roots.harmony, degree + offset, intervals);
-            let velocity = (0.12 + traits.wonder * 0.06) * phrase_gain(bar);
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "harmony",
-                index,
-                bar_start,
-                bar_ticks,
-                velocity,
-                pitch,
-                voice,
-                None,
-            );
-            index += 1;
-        }
-    }
-    events
-}
-
-#[allow(clippy::too_many_arguments)]
-fn arp_events(
-    plan: &SectionPlan,
-    movement: &Movement,
-    movement_index: usize,
-    harmony: &HarmonyDna,
-    roots: Roots,
-    intervals: &[i32],
-    bar_ticks: u32,
-    pulse: u32,
-    bar_offset: u32,
-    voice: &str,
-) -> Vec<MusicEvent> {
-    if !movement.arp {
-        return Vec::new();
-    }
-    const PATTERN: [i32; 8] = [0, 4, 2, 4, 7, 4, 2, 4];
-    let mut events = Vec::new();
-    let mut index = 0;
-    for bar in 0..MOVEMENT_BARS {
-        let chord = harmony.progression[bar as usize % harmony.progression.len()];
-        let bar_start = (bar_offset + bar) * bar_ticks;
-        let gain = phrase_gain(bar);
-        for (step, degree) in PATTERN.iter().enumerate() {
-            let pitch = scale_pitch(roots.harmony, chord + degree, intervals);
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "arp",
-                index,
-                bar_start + step as u32 * pulse,
-                pulse,
-                (0.1 + movement.intensity * 0.03) * gain,
-                pitch,
-                voice,
-                None,
-            );
-            index += 1;
-        }
-    }
-    events
-}
-
-#[allow(clippy::too_many_arguments)]
-fn bass_events(
-    plan: &SectionPlan,
-    movement: &Movement,
-    movement_index: usize,
-    harmony: &HarmonyDna,
-    roots: Roots,
-    intervals: &[i32],
-    bar_ticks: u32,
-    pulse: u32,
-    bar_offset: u32,
-) -> Vec<MusicEvent> {
-    let mut events = Vec::new();
-    let mut index = 0;
-    let moving = matches!(movement.perc, Perc::Drive | Perc::Dance);
-    for bar in 0..MOVEMENT_BARS {
-        let degree = harmony.progression[bar as usize % harmony.progression.len()];
-        let bar_start = (bar_offset + bar) * bar_ticks;
-        let root = scale_pitch(roots.bass, degree, intervals);
-        if moving {
-            let fifth = scale_pitch(roots.bass, degree + 4, intervals);
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "bass",
-                index,
-                bar_start,
-                pulse * 4,
-                0.3,
-                root,
-                "bass",
-                None,
-            );
-            index += 1;
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "bass",
-                index,
-                bar_start + pulse * 4,
-                pulse * 4,
-                0.26,
-                fifth,
-                "bass",
-                None,
-            );
-            index += 1;
-        } else {
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "bass",
-                index,
-                bar_start,
-                bar_ticks,
-                0.28,
-                root,
-                "bass",
-                None,
-            );
-            index += 1;
-        }
-    }
-    events
-}
-
-fn onsets_for_bar(
-    rng: &mut DeterministicRandom,
-    movement: &Movement,
-    traits: &NormalizedTraits,
-    bar: u32,
-) -> Vec<u32> {
-    let chosen: &[u32] = if movement.finale {
-        &FINALE_ONSETS
-    } else {
-        let target = (2.0 + movement.density * traits.motion * 4.0).round() as usize;
-        let candidates: Vec<&[u32]> = ONSET_CELLS
-            .iter()
-            .copied()
-            .filter(|cell| cell.len() <= target.max(2))
-            .collect();
-        if candidates.is_empty() {
-            return vec![0, 4];
-        }
-        candidates[rng.integer(candidates.len() as u32) as usize]
-    };
-    if bar == MOVEMENT_BARS - 1 && chosen.len() > 1 {
-        chosen[..chosen.len() - 1].to_vec()
-    } else {
-        chosen.to_vec()
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn melody_events(
-    plan: &SectionPlan,
-    movement: &Movement,
-    movement_index: usize,
-    harmony: &HarmonyDna,
-    roots: Roots,
-    intervals: &[i32],
-    motif: &[i32; 4],
-    traits: &NormalizedTraits,
-    bar_ticks: u32,
-    pulse: u32,
-    bar_offset: u32,
-    rng: &mut DeterministicRandom,
-    voice: &str,
-) -> Vec<MusicEvent> {
-    let mut events = Vec::new();
-    let mut index = 0;
-    for bar in 0..MOVEMENT_BARS {
-        let degree = harmony.progression[bar as usize % harmony.progression.len()];
-        let target = movement.targets[(bar % 8) as usize];
-        let bar_start = (bar_offset + bar) * bar_ticks;
-        let gain = phrase_gain(bar);
-        let onsets = onsets_for_bar(rng, movement, traits, bar);
-        for (position, step) in onsets.iter().enumerate() {
-            // Anchor the downbeat on the bar's chord tone, then step through
-            // light neighbour motion seeded by the motif.
-            let offset = if position == 0 {
-                target
-            } else {
-                target + 1 + motif[position % motif.len()].rem_euclid(2)
-            };
-            let pitch = scale_pitch(roots.melody, degree + offset, intervals);
-            let next = onsets.get(position + 1).copied().unwrap_or(8);
-            let raw = f64::from((next - step) * pulse);
-            let duration = (raw * 0.85).max(f64::from(pulse) / 2.0) as u32;
-            let velocity = (0.2 + traits.wonder * 0.06 + movement.intensity * 0.08) * gain;
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "melody",
-                index,
-                bar_start + step * pulse,
-                duration,
-                velocity,
-                pitch,
-                voice,
-                Some("melody"),
-            );
-            index += 1;
-        }
-    }
-    events
-}
-
-fn fill_hits(perc: Perc) -> &'static [(&'static str, u32)] {
-    match perc {
-        Perc::Soft => &[("hat", 3), ("tom", 6)],
-        Perc::Drive => &[("tom", 5), ("snare", 7)],
-        Perc::Dance => &[("tom", 5), ("tom", 7)],
-        Perc::None => &[],
-    }
-}
-
-fn percussion_events(
-    plan: &SectionPlan,
-    movement: &Movement,
-    movement_index: usize,
-    traits: &NormalizedTraits,
-    bar_ticks: u32,
-    pulse: u32,
-    bar_offset: u32,
-) -> Vec<MusicEvent> {
-    let mut events = Vec::new();
-    if movement.perc == Perc::None {
-        return events;
-    }
-    let hits: &[(&str, u32)] = match movement.perc {
-        Perc::Soft => &[("kick", 0), ("hat", 2), ("hat", 6)],
-        Perc::Drive => &[
-            ("kick", 0),
-            ("kick", 4),
-            ("snare", 2),
-            ("snare", 6),
-            ("hat", 1),
-            ("hat", 3),
-            ("hat", 5),
-            ("hat", 7),
-        ],
-        Perc::Dance => &[
-            ("kick", 0),
-            ("tom", 2),
-            ("tom", 6),
-            ("hat", 1),
-            ("hat", 3),
-            ("hat", 5),
-            ("hat", 7),
-        ],
-        Perc::None => &[],
-    };
-    let velocity = 0.15 + traits.danger * 0.12 + movement.intensity * 0.06;
-    let mut index = 0;
-    for bar in 0..MOVEMENT_BARS {
-        let bar_start = (bar_offset + bar) * bar_ticks;
-        let mut bar_hits = hits.to_vec();
-        if bar % 4 == 3 {
-            bar_hits.extend_from_slice(fill_hits(movement.perc));
-        }
-        for (voice, step) in &bar_hits {
-            push_perc(
-                &mut events,
-                plan.id,
-                movement_index,
-                "percussion",
-                index,
-                bar_start + *step * pulse,
-                pulse / 2,
-                velocity,
-                voice,
-            );
-            index += 1;
-        }
-    }
-    events
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_section(
-    plan: &SectionPlan,
-    style: &StyleKit,
-    harmony: &HarmonyDna,
-    motif: &[i32; 4],
-    traits: &NormalizedTraits,
-    bar_ticks: u32,
-    pulse: u32,
-    section_seed: u32,
-) -> PortableSection {
-    let mut events = Vec::new();
-    let mut rng = DeterministicRandom::new(section_seed);
-    let mut bar_offset = 0u32;
-
-    for (movement_index, movement) in plan.movements.iter().enumerate() {
-        let intervals = mode_intervals(movement.mode);
-        let roots = roots(movement, harmony);
-        events.extend(drone_events(
-            plan,
-            movement,
-            movement_index,
-            roots,
-            &intervals,
-            bar_ticks,
-            bar_offset,
-            role_voice(style, movement.drone_role),
-        ));
-        events.extend(harmony_events(
-            plan,
-            movement_index,
-            harmony,
-            roots,
-            &intervals,
-            traits,
-            bar_ticks,
-            bar_offset,
-            role_voice(style, movement.harmony_role),
-        ));
-        events.extend(arp_events(
-            plan,
-            movement,
-            movement_index,
-            harmony,
-            roots,
-            &intervals,
-            bar_ticks,
-            pulse,
-            bar_offset,
-            role_voice(style, Role::Pluck),
-        ));
-        events.extend(bass_events(
-            plan,
-            movement,
-            movement_index,
-            harmony,
-            roots,
-            &intervals,
-            bar_ticks,
-            pulse,
-            bar_offset,
-        ));
-        events.extend(melody_events(
-            plan,
-            movement,
-            movement_index,
-            harmony,
-            roots,
-            &intervals,
-            motif,
-            traits,
-            bar_ticks,
-            pulse,
-            bar_offset,
-            &mut rng,
-            role_voice(style, movement.melody_role),
-        ));
-        events.extend(percussion_events(
-            plan,
-            movement,
-            movement_index,
-            traits,
-            bar_ticks,
-            pulse,
-            bar_offset,
-        ));
-
-        if movement.finale {
-            let pitch = scale_pitch(roots.melody, 4, &intervals) + 12;
-            push_note(
-                &mut events,
-                plan.id,
-                movement_index,
-                "accent",
-                0,
-                bar_offset * bar_ticks,
-                bar_ticks,
-                0.18,
-                pitch,
-                role_voice(style, Role::Bell),
-                None,
-            );
-        }
-
-        bar_offset += MOVEMENT_BARS;
-    }
-
-    events.sort_by(|left, right| {
-        left.start_tick()
-            .cmp(&right.start_tick())
-            .then_with(|| event_id(left).cmp(event_id(right)))
-    });
-
-    PortableSection {
-        id: plan.id.to_string(),
-        label: plan.label.to_string(),
-        feeling: plan.feeling.to_string(),
-        color: plan.color.to_string(),
-        length_ticks: bar_ticks * MOVEMENT_BARS * plan.movements.len() as u32,
-        events,
-    }
 }
 
 /// Serialized selection rules for the portable score, mirroring
@@ -1164,65 +176,57 @@ pub fn select_adventure_section(state: &AdventureState) -> &'static str {
     }
 }
 
-pub fn generate_adventure(input: &AdventureInput) -> Result<PortableScore, String> {
+fn compose_adventure(input: &AdventureInput) -> PortableScore {
     let traits = normalize(input);
-    let style = input.style;
-    let kit = style_kit(style);
+    let piece_seed = subseed(&input.secret, &input.seed, "piece");
+    let dna = composition::PieceDna::new(piece_seed);
+    let ticks_per_beat = 960;
+    let beats_per_bar = 4;
 
-    let harmony = create_harmony(subseed(&input.secret, &input.seed, "harmony"));
-    let motif = create_motif(subseed(&input.secret, &input.seed, "motif"));
-
-    let bpm = (kit.base_bpm + traits.motion * 20.0 - traits.mystery * 8.0)
-        .clamp(64.0, 132.0)
-        .round();
-
-    let ticks_per_beat = 960u32;
-    let beats_per_bar = 4u32;
-    let bar_ticks = ticks_per_beat * beats_per_bar;
-    let pulse = ticks_per_beat / 2;
-
-    let sections: Vec<PortableSection> = PLANS
-        .iter()
-        .map(|plan| {
-            build_section(
-                plan,
-                &kit,
-                &harmony,
-                &motif,
-                &traits,
-                bar_ticks,
-                pulse,
-                subseed(&input.secret, &input.seed, plan.id),
-            )
-        })
-        .collect();
-
-    let score = PortableScore {
+    PortableScore {
         schema_version: SCORE_SCHEMA_VERSION,
-        id: score_id(&input.secret, &input.seed, style, &traits),
-        title: format!("{} {} Trail", style.display(), harmony.key.to_uppercase()),
-        bpm,
+        id: score_id(&input.secret, &input.seed, input.style, traits),
+        title: format!(
+            "{} {} Quest",
+            input.style.display(),
+            NOTE_NAMES[dna.tonic_pitch_class as usize].to_uppercase()
+        ),
+        bpm: composition::tempo(input.style, traits),
         beats_per_bar,
         ticks_per_beat,
         crossfade_bars: 2.0,
         default_section: "camp".to_string(),
-        sections,
+        sections: composition::build_sections(
+            input.style,
+            traits,
+            &dna,
+            ticks_per_beat,
+            |section| subseed(&input.secret, &input.seed, section),
+        ),
         rules: default_rules(),
         form: None,
-    };
+    }
+}
+
+pub fn generate_adventure(input: &AdventureInput) -> Result<PortableScore, String> {
+    let score = compose_adventure(input);
     score.validate()?;
     Ok(score)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
 
-    use super::{
-        generate_adventure, select_adventure_section, AdventureInput, AdventureStyle,
-        GENERATOR_VERSION, PLANS,
+    use super::composition::{
+        mode_for, phrase_kind, voice_chord, PhraseKind, PieceDna, SECTION_PLANS,
     };
-    use crate::score::{AdventureState, MusicEvent};
+    use super::{
+        generate_adventure, select_adventure_section, subseed, AdventureInput, AdventureStyle,
+        GENERATOR_VERSION,
+    };
+    use crate::score::{AdventureState, MusicEvent, PortableSection};
+    use crate::theory::mode_intervals;
 
     fn sample(secret: &str, style: AdventureStyle) -> AdventureInput {
         AdventureInput {
@@ -1236,113 +240,398 @@ mod tests {
         }
     }
 
+    fn event_id(event: &MusicEvent) -> &str {
+        match event {
+            MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
+        }
+    }
+
+    fn musical_signature(section: &PortableSection, offset: u32, span: u32) -> Vec<String> {
+        section
+            .events
+            .iter()
+            .filter(|event| (offset..offset + span).contains(&event.start_tick()))
+            .map(|event| match event {
+                MusicEvent::Note {
+                    lane,
+                    start_tick,
+                    duration_ticks,
+                    pitch,
+                    voice,
+                    ..
+                } => format!(
+                    "n:{lane}:{}:{duration_ticks}:{pitch}:{voice}",
+                    start_tick - offset
+                ),
+                MusicEvent::Percussion {
+                    lane,
+                    start_tick,
+                    duration_ticks,
+                    voice,
+                    ..
+                } => format!("p:{lane}:{}:{duration_ticks}:{voice}", start_tick - offset),
+            })
+            .collect()
+    }
+
     #[test]
-    fn generates_eight_sections_with_four_long_arrangements() {
-        let score = generate_adventure(&sample("camp-secret", AdventureStyle::Campfire))
-            .expect("score must validate");
-        assert_eq!(score.sections.len(), 8);
-        assert_eq!(score.default_section, "camp");
-        let bar_ticks = (score.beats_per_bar * score.ticks_per_beat) as u32;
-        for expected in [
-            "camp",
-            "explore",
-            "town",
-            "dungeon",
-            "combat",
-            "boss",
-            "sanctuary",
-            "victory",
+    fn style_contract_is_exact() {
+        for (name, style) in [
+            ("folk", AdventureStyle::Folk),
+            ("dark", AdventureStyle::Dark),
+            ("orchestral", AdventureStyle::Orchestral),
         ] {
-            let section = score.section(expected).expect("section exists");
-            assert!(section.events.len() > 8, "{expected} should carry events");
+            assert_eq!(AdventureStyle::parse(name), Ok(style));
+            assert_eq!(style.as_str(), name);
         }
-        for long in ["explore", "town", "combat", "victory"] {
-            assert_eq!(
-                score.section(long).unwrap().length_ticks,
-                16 * bar_ticks,
-                "{long} should be a two-movement arrangement"
-            );
-        }
-        for short in ["camp", "dungeon", "boss", "sanctuary"] {
-            assert_eq!(
-                score.section(short).unwrap().length_ticks,
-                8 * bar_ticks,
-                "{short} should be a single movement"
-            );
+        for rejected in ["campfire", "court", "chapel", "wilds", "Folk"] {
+            assert!(AdventureStyle::parse(rejected).is_err());
         }
     }
 
     #[test]
-    fn movements_develop_inside_a_long_section() {
-        let score = generate_adventure(&sample("develop", AdventureStyle::Wilds)).unwrap();
-        let bar_ticks = (score.beats_per_bar * score.ticks_per_beat) as u32;
-        for id in ["explore", "town", "combat", "victory"] {
-            let section = score.section(id).unwrap();
-            let first: Vec<_> = section
-                .events
-                .iter()
-                .filter(|event| event.start_tick() < 8 * bar_ticks)
-                .collect();
-            let second: Vec<_> = section
-                .events
-                .iter()
-                .filter(|event| event.start_tick() >= 8 * bar_ticks)
-                .collect();
-            assert!(!first.is_empty(), "{id} movement one");
-            assert!(!second.is_empty(), "{id} movement two");
-            let first_voices: HashSet<&str> = first
-                .iter()
-                .filter_map(|event| match event {
-                    MusicEvent::Note { voice, .. } => Some(voice.as_str()),
-                    _ => None,
-                })
-                .collect();
-            let second_voices: HashSet<&str> = second
-                .iter()
-                .filter_map(|event| match event {
-                    MusicEvent::Note { voice, .. } => Some(voice.as_str()),
-                    _ => None,
-                })
-                .collect();
-            assert_ne!(
-                first_voices, second_voices,
-                "{id} movement two should change its instrument roles"
-            );
+    fn generates_the_eight_requested_long_sections_without_a_default_form() {
+        let score = generate_adventure(&sample("lengths", AdventureStyle::Folk)).unwrap();
+        let bar_ticks = score.bar_ticks();
+        assert_eq!(score.default_section, "camp");
+        assert!(score.form.is_none());
+        let expected = [
+            ("camp", 16),
+            ("explore", 32),
+            ("town", 32),
+            ("dungeon", 16),
+            ("combat", 32),
+            ("boss", 16),
+            ("sanctuary", 16),
+            ("victory", 32),
+        ];
+        assert_eq!(score.sections.len(), expected.len());
+        for (id, bars) in expected {
+            let section = score.section(id).expect("section must exist");
+            assert_eq!(section.length_ticks, bars * bar_ticks, "{id}");
+            assert!(!section.events.is_empty(), "{id} must contain music");
         }
     }
 
     #[test]
-    fn secret_and_style_change_the_piece() {
-        let first = generate_adventure(&sample("trail-a", AdventureStyle::Wilds)).unwrap();
-        let second = generate_adventure(&sample("trail-b", AdventureStyle::Wilds)).unwrap();
-        let chapel = generate_adventure(&sample("trail-a", AdventureStyle::Chapel)).unwrap();
-        assert_ne!(first.id, second.id);
-        assert_ne!(first.id, chapel.id);
-        assert_ne!(first.bpm, chapel.bpm);
-    }
-
-    #[test]
-    fn generation_is_deterministic() {
-        let input = sample("deterministic", AdventureStyle::Campfire);
+    fn generation_is_deterministic_and_seeds_change_musical_content() {
+        let input = sample("deterministic", AdventureStyle::Folk);
         let first = generate_adventure(&input).unwrap();
         let second = generate_adventure(&input).unwrap();
         assert_eq!(
             serde_json::to_vec(&first).unwrap(),
             serde_json::to_vec(&second).unwrap()
         );
+
+        let mut changed = input;
+        changed.seed = "trail-02".into();
+        let changed = generate_adventure(&changed).unwrap();
+        assert_ne!(first.id, changed.id);
+        assert_ne!(
+            musical_signature(
+                first.section("explore").unwrap(),
+                0,
+                first.section("explore").unwrap().length_ticks
+            ),
+            musical_signature(
+                changed.section("explore").unwrap(),
+                0,
+                changed.section("explore").unwrap().length_ticks
+            ),
+            "a seed must alter notes or rhythms, not only the score id"
+        );
     }
 
     #[test]
-    fn many_seeds_are_valid_and_unique() {
-        assert_eq!(GENERATOR_VERSION, "2.0.0");
+    fn traits_are_normalized_before_identity_and_composition() {
+        let mut unusual = sample("normalize", AdventureStyle::Dark);
+        unusual.wonder = f64::NAN;
+        unusual.danger = -4.0;
+        unusual.mystery = f64::INFINITY;
+        unusual.motion = 3.0;
+        let mut expected = unusual.clone();
+        expected.wonder = 0.5;
+        expected.danger = 0.0;
+        expected.mystery = 0.5;
+        expected.motion = 1.0;
+        assert_eq!(
+            serde_json::to_vec(&generate_adventure(&unusual).unwrap()).unwrap(),
+            serde_json::to_vec(&generate_adventure(&expected).unwrap()).unwrap()
+        );
+    }
+
+    #[test]
+    fn fine_trait_differences_affect_score_identity() {
+        // json_num used to round normalized traits to two decimals, so tuples
+        // that differed only past the hundredths (motion 0.449 vs 0.451, both
+        // serialized as "0.45") shared one id even though composition reads the
+        // exact value. The identity now round-trips the full f64, so distinct
+        // normalized tuples can no longer collide.
+        let input = |motion| AdventureInput {
+            secret: "identity".into(),
+            seed: "trail-01".into(),
+            style: AdventureStyle::Folk,
+            wonder: 0.6,
+            danger: 0.5,
+            mystery: 0.6,
+            motion,
+        };
+        let low = generate_adventure(&input(0.449)).unwrap();
+        let high = generate_adventure(&input(0.451)).unwrap();
+
+        assert_ne!(low.id, high.id, "0.449 and 0.451 must not share an id");
+
+        let low_explore = low.section("explore").unwrap();
+        let high_explore = high.section("explore").unwrap();
+        assert_ne!(
+            musical_signature(low_explore, 0, low_explore.length_ticks),
+            musical_signature(high_explore, 0, high_explore.length_ticks),
+            "motion crossing the 0.45 percussion threshold must alter the music, not only the id"
+        );
+    }
+
+    #[test]
+    fn events_use_acoustic_palette_safe_registers_and_unique_ids() {
+        let allowed_notes = HashSet::from(["harp", "recorder", "vielle", "bell"]);
+        let allowed_percussion = HashSet::from(["frame-drum", "tambourine"]);
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let score = generate_adventure(&sample("bounds", style)).unwrap();
+            let mut ids = HashSet::new();
+            for section in &score.sections {
+                for event in &section.events {
+                    assert!(ids.insert(event_id(event)), "duplicate event id");
+                    assert!(event.velocity().is_finite());
+                    assert!((0.0..=1.0).contains(&event.velocity()));
+                    assert!(
+                        event.start_tick() + event.duration_ticks() <= section.length_ticks,
+                        "{} event crosses section boundary",
+                        section.id
+                    );
+                    match event {
+                        MusicEvent::Note {
+                            pitch, voice, role, ..
+                        } => {
+                            assert!(allowed_notes.contains(voice.as_str()), "{voice}");
+                            assert!((36..=84).contains(pitch), "unsafe pitch {pitch}");
+                            if role.as_deref() == Some("melody") {
+                                assert!((55..=84).contains(pitch), "melody pitch {pitch}");
+                            }
+                        }
+                        MusicEvent::Percussion { voice, .. } => {
+                            assert!(allowed_percussion.contains(voice.as_str()), "{voice}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_layer_stays_in_the_section_mode_and_phrases_reach_home() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let input = sample("harmony", style);
+            let dna = PieceDna::new(subseed(&input.secret, &input.seed, "piece"));
+            let tonic = dna.tonic_pitch_class;
+            let score = generate_adventure(&input).unwrap();
+            let bar_ticks = score.bar_ticks();
+            for plan in SECTION_PLANS {
+                let section = score.section(plan.id).unwrap();
+                let pitch_classes: HashSet<i32> = mode_intervals(mode_for(style, plan.scene))
+                    .into_iter()
+                    .map(|interval| (tonic + interval).rem_euclid(12))
+                    .collect();
+                for pitch in section.events.iter().filter_map(MusicEvent::pitch) {
+                    assert!(
+                        pitch_classes.contains(&(i32::from(pitch) % 12)),
+                        "{} pitch {pitch} left {}",
+                        plan.id,
+                        mode_for(style, plan.scene)
+                    );
+                }
+
+                let phrase_count = plan.bars / 4;
+                for phrase in 0..phrase_count {
+                    let end = (phrase + 1) * 4 * bar_ticks;
+                    let last_melody = section
+                        .events
+                        .iter()
+                        .filter(|event| event.is_melody() && event.start_tick() < end)
+                        .max_by_key(|event| event.start_tick())
+                        .and_then(MusicEvent::pitch)
+                        .expect("every phrase has a melodic arrival");
+                    let expected_degree = match phrase_kind(phrase, phrase_count) {
+                        PhraseKind::Antecedent | PhraseKind::Development => 4,
+                        PhraseKind::Consequent | PhraseKind::Return | PhraseKind::Cadence => 0,
+                    };
+                    let interval =
+                        mode_intervals(mode_for(style, plan.scene))[expected_degree as usize];
+                    assert_eq!(
+                        i32::from(last_melody) % 12,
+                        (tonic + interval).rem_euclid(12),
+                        "{} phrase {phrase} has no directed arrival",
+                        plan.id
+                    );
+                }
+
+                let final_bass = section
+                    .events
+                    .iter()
+                    .filter(
+                        |event| matches!(event, MusicEvent::Note { lane, .. } if lane == "bass"),
+                    )
+                    .max_by_key(|event| event.start_tick())
+                    .and_then(MusicEvent::pitch)
+                    .unwrap();
+                assert_eq!(i32::from(final_bass) % 12, tonic);
+            }
+        }
+    }
+
+    #[test]
+    fn harmony_uses_nearest_ordered_chord_tones() {
+        for tonic in [0, 2, 3, 5, 7, 9, 10] {
+            for mode in [
+                "ionian",
+                "dorian",
+                "phrygian",
+                "lydian",
+                "mixolydian",
+                "aeolian",
+            ] {
+                let intervals = mode_intervals(mode);
+                let mut previous = None;
+                for degree in [0, 3, 1, 4, 0, 5, 4, 0] {
+                    let chord = voice_chord(tonic, degree, &intervals, previous);
+                    assert!(chord[0] < chord[1] && chord[1] < chord[2]);
+                    if let Some(old) = previous {
+                        for voice in 0..3 {
+                            assert!(
+                                (chord[voice] - old[voice]).abs() <= 8,
+                                "{mode} degree {degree} voice {voice} leapt from {} to {}",
+                                old[voice],
+                                chord[voice]
+                            );
+                        }
+                    }
+                    previous = Some(chord);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn styles_change_texture_and_rhythm_at_identical_traits() {
+        let scores = [
+            generate_adventure(&sample("styles", AdventureStyle::Folk)).unwrap(),
+            generate_adventure(&sample("styles", AdventureStyle::Dark)).unwrap(),
+            generate_adventure(&sample("styles", AdventureStyle::Orchestral)).unwrap(),
+        ];
+        for left in 0..scores.len() {
+            for right in left + 1..scores.len() {
+                let left_town = scores[left].section("town").unwrap();
+                let right_town = scores[right].section("town").unwrap();
+                let left_rhythm: Vec<_> = left_town
+                    .events
+                    .iter()
+                    .map(|event| (event.voice(), event.start_tick(), event.duration_ticks()))
+                    .collect();
+                let right_rhythm: Vec<_> = right_town
+                    .events
+                    .iter()
+                    .map(|event| (event.voice(), event.start_tick(), event.duration_ticks()))
+                    .collect();
+                assert_ne!(left_rhythm, right_rhythm, "style rhythm must be authored");
+
+                let lane_counts = |section: &PortableSection| {
+                    let mut counts = HashMap::new();
+                    for event in &section.events {
+                        let lane = match event {
+                            MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => {
+                                lane.as_str()
+                            }
+                        };
+                        *counts.entry(lane.to_string()).or_insert(0usize) += 1;
+                    }
+                    counts
+                };
+                assert_ne!(
+                    lane_counts(left_town),
+                    lane_counts(right_town),
+                    "style textures must use different layer activity"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn section_development_is_not_repeated_padding() {
+        let score = generate_adventure(&sample("develop", AdventureStyle::Orchestral)).unwrap();
+        for section in &score.sections {
+            let half = section.length_ticks / 2;
+            assert_ne!(
+                musical_signature(section, 0, half),
+                musical_signature(section, half, half),
+                "{} halves repeat after normalizing ids and time offsets",
+                section.id
+            );
+        }
+    }
+
+    #[test]
+    fn cadences_breathe_and_resolve_to_the_tonic() {
+        let input = sample("cadence", AdventureStyle::Folk);
+        let dna = PieceDna::new(subseed(&input.secret, &input.seed, "piece"));
+        let score = generate_adventure(&input).unwrap();
+        let bar_ticks = score.bar_ticks();
+        for section in &score.sections {
+            let final_bar = section.length_ticks - bar_ticks;
+            let previous_bar = final_bar - bar_ticks;
+            let final_melody: Vec<_> = section
+                .events
+                .iter()
+                .filter(|event| event.is_melody() && event.start_tick() >= final_bar)
+                .collect();
+            let previous_melody_count = section
+                .events
+                .iter()
+                .filter(|event| {
+                    event.is_melody() && (previous_bar..final_bar).contains(&event.start_tick())
+                })
+                .count();
+            assert_eq!(final_melody.len(), 1, "{} final cadence", section.id);
+            assert!(previous_melody_count > final_melody.len());
+            assert_eq!(
+                i32::from(final_melody[0].pitch().unwrap()) % 12,
+                dna.tonic_pitch_class
+            );
+            assert!(
+                final_melody[0].start_tick() + final_melody[0].duration_ticks()
+                    < section.length_ticks,
+                "{} must leave a breath after its final arrival",
+                section.id
+            );
+        }
+    }
+
+    #[test]
+    fn many_seeds_are_valid_and_varied() {
+        assert_eq!(GENERATOR_VERSION, "3.0.0");
         let styles = [
-            AdventureStyle::Campfire,
-            AdventureStyle::Court,
-            AdventureStyle::Chapel,
-            AdventureStyle::Wilds,
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
         ];
         let mut ids = HashSet::new();
-        for index in 0..192 {
+        let mut openings = HashSet::new();
+        for index in 0..48 {
             let input = AdventureInput {
                 secret: "stress".into(),
                 seed: format!("trail-{index}"),
@@ -1353,28 +642,22 @@ mod tests {
                 motion: f64::from((index % 19) as u32) / 18.0,
             };
             let score = generate_adventure(&input).expect("stress score must validate");
-            assert!(ids.insert(score.id.clone()), "duplicate id {}", score.id);
+            assert!(ids.insert(score.id.clone()));
+            let opening: Vec<_> = score
+                .section("explore")
+                .unwrap()
+                .events
+                .iter()
+                .filter_map(MusicEvent::pitch)
+                .take(24)
+                .collect();
+            openings.insert(opening);
         }
-        assert_eq!(ids.len(), 192);
-    }
-
-    #[test]
-    fn every_section_movement_is_wired_into_the_plans() {
-        let expected = [
-            "camp",
-            "explore",
-            "town",
-            "dungeon",
-            "combat",
-            "boss",
-            "sanctuary",
-            "victory",
-        ];
-        assert_eq!(PLANS.len(), expected.len());
-        for (plan, id) in PLANS.iter().zip(expected) {
-            assert_eq!(plan.id, id);
-            assert!((1..=2).contains(&plan.movements.len()));
-        }
+        assert_eq!(ids.len(), 48);
+        assert!(
+            openings.len() > 24,
+            "seed variety must be audible in pitches"
+        );
     }
 
     #[test]
@@ -1391,7 +674,7 @@ mod tests {
             "victory",
             "unknown",
         ];
-        let readings: [(f64, f64); 6] = [
+        let readings = [
             (0.0, 0.0),
             (0.4, 0.2),
             (0.9, 0.2),
@@ -1440,17 +723,14 @@ mod tests {
                         })
                         .map(|rule| rule.target)
                         .unwrap_or_else(|| "camp".to_string());
-                    assert_eq!(
-                        selected, ruled,
-                        "{phase} d={discovery} t={threat} q={quest_complete}"
-                    );
+                    assert_eq!(selected, ruled);
                 }
             }
         }
     }
 
     #[test]
-    fn threat_escalates_and_quest_completion_wins() {
+    fn sanctuary_discovery_and_quest_priority_are_preserved() {
         let state = |phase: &str, discovery: f64, threat: f64, quest: bool| AdventureState {
             area_phase: phase.into(),
             discovery,
@@ -1458,31 +738,19 @@ mod tests {
             quest_complete: quest,
         };
         assert_eq!(
-            select_adventure_section(&state("camp", 0.0, 0.0, false)),
-            "camp"
-        );
-        assert_eq!(
-            select_adventure_section(&state("explore", 0.4, 0.0, false)),
-            "explore"
-        );
-        assert_eq!(
             select_adventure_section(&state("explore", 0.9, 0.0, false)),
             "sanctuary"
         );
         assert_eq!(
-            select_adventure_section(&state("explore", 0.0, 0.75, false)),
-            "combat"
+            select_adventure_section(&state("sanctuary", 0.0, 0.0, false)),
+            "sanctuary"
         );
         assert_eq!(
             select_adventure_section(&state("combat", 0.0, 0.9, false)),
             "boss"
         );
         assert_eq!(
-            select_adventure_section(&state("boss", 0.0, 0.0, false)),
-            "boss"
-        );
-        assert_eq!(
-            select_adventure_section(&state("combat", 0.0, 0.0, true)),
+            select_adventure_section(&state("boss", 0.0, 0.0, true)),
             "victory"
         );
     }
