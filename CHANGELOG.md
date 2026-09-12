@@ -12,6 +12,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab: the orbit now shows one ring per musical part in the current section (melody, harmony, bass, drums, plus recipe-specific parts like suspense's drone and cell), each pulsing and rotating from its own note events with its instrument named in the tooltip.
 - Audio Lab: fixed the mobile Suspense layout — the Sound World fieldset is no longer squeezed to a sliver and the Sound World/Arrangement buttons each take a full-width row; added a regression test.
 - Audio Lab: added ◀/▶ section-step buttons flanking the engine button to cue the previous/next section (wrapping at the ends), with tooltips naming the target; the engine button is slightly narrower to make room.
 - Audio Lab: on phones the fixed controls bar now reserves its exact measured height (so it no longer covers the eyebrow/title at rest), and the game-type and sound-world buttons each take a full-width row instead of being squeezed side by side.

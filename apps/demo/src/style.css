@@ -887,12 +887,6 @@ input[type="range"]::-webkit-slider-thumb {
   --orbit-scale: 1;
   --orbit-glow-opacity: 0.3;
   --orbit-glow-scale: 0.94;
-  --outer-opacity: 0.7;
-  --outer-rotation: 0turn;
-  --outer-scale: 1;
-  --inner-opacity: 0.76;
-  --inner-rotation: 0deg;
-  --inner-scale: 1;
   --playhead-opacity: 0.82;
   --playhead-rotation: 0turn;
   position: relative;
@@ -923,31 +917,6 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.orbit-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--mood-color), transparent 25%);
-  transition: border-color 900ms ease;
-}
-
-.orbit-ring--outer {
-  inset: 0;
-  border-style: dashed;
-  opacity: var(--outer-opacity);
-  transform: rotate(var(--outer-rotation)) scale(var(--outer-scale));
-  transition: border-color 900ms ease, opacity 120ms linear, transform 140ms ease-out;
-  will-change: transform;
-}
-
-.orbit-ring--inner {
-  inset: 18%;
-  border-width: 8px 1px 1px;
-  opacity: var(--inner-opacity);
-  transform: rotate(var(--inner-rotation)) scale(var(--inner-scale));
-  transition: border-color 900ms ease, opacity 150ms linear, transform 180ms ease-out;
-  will-change: transform;
-}
-
 .playhead {
   position: absolute;
   inset: 6%;
@@ -961,8 +930,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .orbit:not(.is-running),
 .orbit:not(.is-running)::before,
-.orbit:not(.is-running) .orbit-ring,
-.orbit:not(.is-running) .playhead {
+.orbit:not(.is-running) .playhead,
+.orbit:not(.is-running) .orbit-part {
   transition: none;
 }
 
@@ -976,6 +945,37 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--signal);
   box-shadow: 0 0 18px var(--signal);
+}
+
+.orbit-part {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--part-color, color-mix(in srgb, var(--mood-color), transparent 25%));
+  opacity: var(--part-opacity, 0.7);
+  transform: rotate(var(--part-rotation, 0turn)) scale(var(--part-scale, 1));
+  transition: transform 90ms linear, opacity 90ms linear;
+  will-change: transform;
+  inset: var(--part-inset, 12%);
+}
+
+.orbit-part[data-part="melody"] {
+  border-style: solid;
+}
+.orbit-part[data-part="harmony"] {
+  border-style: dashed;
+}
+.orbit-part[data-part="bass"] {
+  border-width: 2px;
+}
+.orbit-part[data-part="kit"],
+.orbit-part[data-part="drums"] {
+  border-style: dotted;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-part {
+    transition: none;
+  }
 }
 
 .center-play {
