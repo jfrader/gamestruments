@@ -182,6 +182,32 @@ h1 span {
   opacity: 0.72;
 }
 
+.section-step {
+  width: 40px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.section-step:hover:not(:disabled),
+.section-step:focus-visible {
+  color: #11120f;
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.section-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .start-light {
   width: 7px;
   height: 7px;
@@ -211,6 +237,7 @@ h1 span {
   overflow: hidden;
   height: 1.1em;
   line-height: 1;
+  padding-top: 1px;
 }
 .engine-label {
   position: absolute;
@@ -310,7 +337,7 @@ h1 span {
   );
   border-color: color-mix(in srgb, var(--from-color, #d7ff3f), var(--to-color, #d7ff3f) 50%);
   color: #11120f;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--from-color, var(--signal)), transparent 60%);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--from-color, var(--signal)), transparent 72%);
   transition: background 80ms linear, border-color 80ms linear, box-shadow 120ms ease;
 }
 .engine-arrow {
@@ -321,7 +348,12 @@ h1 span {
 
 .start-button[data-engine-state="crossing"] .engine-label {
   color: #f1eee5;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.start-button[data-engine-state="crossing"] .stop-word {
+  display: none;
 }
 .start-button[data-engine-state="crossing"] .engine-label--from {
   opacity: 1;
@@ -339,7 +371,7 @@ h1 span {
   .start-button[data-engine-state="playing"],
   .start-button[data-engine-state="waiting"],
   .start-button[data-engine-state="crossing"] {
-    min-width: 260px;
+    min-width: 210px;
   }
 }
 
@@ -859,12 +891,6 @@ input[type="range"]::-webkit-slider-thumb {
   --orbit-scale: 1;
   --orbit-glow-opacity: 0.3;
   --orbit-glow-scale: 0.94;
-  --outer-opacity: 0.7;
-  --outer-rotation: 0turn;
-  --outer-scale: 1;
-  --inner-opacity: 0.76;
-  --inner-rotation: 0deg;
-  --inner-scale: 1;
   --playhead-opacity: 0.82;
   --playhead-rotation: 0turn;
   position: relative;
@@ -895,31 +921,6 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.orbit-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--mood-color), transparent 25%);
-  transition: border-color 900ms ease;
-}
-
-.orbit-ring--outer {
-  inset: 0;
-  border-style: dashed;
-  opacity: var(--outer-opacity);
-  transform: rotate(var(--outer-rotation)) scale(var(--outer-scale));
-  transition: border-color 900ms ease, opacity 120ms linear, transform 140ms ease-out;
-  will-change: transform;
-}
-
-.orbit-ring--inner {
-  inset: 18%;
-  border-width: 8px 1px 1px;
-  opacity: var(--inner-opacity);
-  transform: rotate(var(--inner-rotation)) scale(var(--inner-scale));
-  transition: border-color 900ms ease, opacity 150ms linear, transform 180ms ease-out;
-  will-change: transform;
-}
-
 .playhead {
   position: absolute;
   inset: 6%;
@@ -933,8 +934,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .orbit:not(.is-running),
 .orbit:not(.is-running)::before,
-.orbit:not(.is-running) .orbit-ring,
-.orbit:not(.is-running) .playhead {
+.orbit:not(.is-running) .playhead,
+.orbit:not(.is-running) .orbit-part {
   transition: none;
 }
 
@@ -948,6 +949,37 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--signal);
   box-shadow: 0 0 18px var(--signal);
+}
+
+.orbit-part {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--part-color, color-mix(in srgb, var(--mood-color), transparent 25%));
+  opacity: var(--part-opacity, 0.7);
+  transform: rotate(var(--part-rotation, 0turn)) scale(var(--part-scale, 1));
+  transition: transform 90ms linear, opacity 90ms linear;
+  will-change: transform;
+  inset: var(--part-inset, 12%);
+}
+
+.orbit-part[data-part="melody"] {
+  border-style: solid;
+}
+.orbit-part[data-part="harmony"] {
+  border-style: dashed;
+}
+.orbit-part[data-part="bass"] {
+  border-width: 2px;
+}
+.orbit-part[data-part="kit"],
+.orbit-part[data-part="drums"] {
+  border-style: dotted;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-part {
+    transition: none;
+  }
 }
 
 .center-play {
@@ -1448,7 +1480,6 @@ footer p {
     min-width: 148px;
     min-height: 44px;
     padding: 6px 12px;
-    margin-left: 12px;
   }
 
   .workspace {
@@ -1587,10 +1618,12 @@ footer p {
   .stage-setup { grid-template-columns: 1fr; }
   .stage-setup > fieldset,
   .stage-setup > fieldset:nth-child(2),
-  .stage-setup > fieldset:nth-child(3) {
+  .stage-setup > fieldset:nth-child(3),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(2),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(3) {
     grid-column: 1 / -1;
   }
-  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: 1fr; }
   .console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -1656,8 +1689,8 @@ footer p {
 
 @media (max-width: 640px) {
   .console-shell {
-    /* top padding reserves space for sticky .masthead-controls */
-    padding: 58px 16px 18px;
+    /* top padding reserves the fixed controls bar's measured height */
+    padding: calc(var(--sticky-bar-h, 61px) + 10px) 16px 18px;
   }
 
   .masthead {
@@ -1687,6 +1720,15 @@ footer p {
     /* keep volume+button in one row; button flex-grows */
     display: flex;
     align-items: center;
+    gap: 8px;
+  }
+
+  /* free room for the section-step buttons on phones */
+  .volume-control .volume-label {
+    display: none;
+  }
+  .volume-control input[type="range"] {
+    width: 56px;
   }
 
   .start-button {
@@ -1694,10 +1736,22 @@ footer p {
     margin-left: 0;
   }
 
-  /* long "FROM -> TO" crossing labels need tighter type on phones */
-  .start-button[data-engine-state="crossing"] .engine-label {
-    font-size: 10px;
-    letter-spacing: 0.04em;
+  /* each game type / sound world option gets its own full-width row on phones */
+  .stage-setup #recipe-buttons {
+    grid-template-columns: 1fr;
+  }
+  .stage-setup #recipe-buttons button {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .stage-setup #recipe-buttons button:last-child {
+    border-bottom: 0;
+  }
+  .stage-setup .score-buttons,
+  .stage-setup #score-buttons,
+  .stage-setup #arrangement-buttons,
+  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons {
+    grid-template-columns: 1fr;
   }
 
   .workspace {
@@ -1720,7 +1774,7 @@ footer p {
   }
 
   .console-shell[data-recipe="suspense"] .stage-setup #score-buttons {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .console-shell[data-recipe="adventure"] .stage-setup #score-buttons {
@@ -1729,7 +1783,9 @@ footer p {
 
   .stage-setup > fieldset,
   .stage-setup > fieldset:nth-child(2),
-  .stage-setup > fieldset:nth-child(3) {
+  .stage-setup > fieldset:nth-child(3),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(2),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(3) {
     grid-column: 1 / -1;
   }
 
@@ -1859,8 +1915,8 @@ footer p {
 
 @media (max-width: 420px) {
   .console-shell {
-    /* preserve top space for the sticky masthead-controls from the 640px rule */
-    padding: 52px 2px 4px;
+    /* keep the measured sticky-bar reserve from the 640px rule */
+    padding: calc(var(--sticky-bar-h, 61px) + 10px) 2px 4px;
   }
   .masthead-controls {
     padding: 6px 2px;

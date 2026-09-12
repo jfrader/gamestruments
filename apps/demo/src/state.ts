@@ -246,6 +246,23 @@ export function cueSection(target: SectionId): void {
   if (snapshot.transition?.to === target && tick < snapshot.transition.startTick) manualCue = target;
 }
 
+// Cue the previous (-1) or next (+1) section in the score order, wrapping at the ends.
+export function stepSection(delta: number): void {
+  if (cueControlsBusy() || score.sections.length === 0) return;
+  const tick = audio.currentTick();
+  const snapshot = transport.snapshot();
+  const active =
+    snapshot.transition !== null && tick >= snapshot.transition.startTick
+      ? snapshot.transition.to
+      : snapshot.currentSection;
+  const index = score.sections.findIndex((section) => section.id === active);
+  const base = index === -1 ? 0 : index;
+  const nextIndex = (base + delta + score.sections.length) % score.sections.length;
+  const next = score.sections[nextIndex];
+  if (next === undefined) return;
+  cueSection(next.id);
+}
+
 export function setFormHold(held: boolean): void {
   if (cueControlsBusy()) return;
   const cancelled = transport.setFormHeld(held, audio.currentTick());

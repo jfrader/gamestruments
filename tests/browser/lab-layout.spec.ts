@@ -128,13 +128,15 @@ for (const size of MOBILE_SIZES) {
         const s2b = r2.querySelector("span")!.getBoundingClientRect();
         const play = document.querySelector<HTMLElement>("#center-play")!.getBoundingClientRect();
         const signals = document.querySelector<HTMLElement>("#game-signals")!.getBoundingClientRect();
+        const stageWidth = document.querySelector<HTMLElement>(".stage-setup")!.getBoundingClientRect().width;
         const horizontalOverlap = !(r1b.right <= r2b.left + 1 || r2b.right <= r1b.left + 1);
         const verticalOverlap = !(r1b.bottom <= r2b.top || r2b.bottom <= r1b.top);
         return {
           anyOverlap: horizontalOverlap && verticalOverlap,
-          sideBySide: r2b.left >= r1b.right - 2,
+          // phones stack the game types: each gets a full-width row
+          stacked: r2b.top >= r1b.bottom - 2,
+          fullWidth: r1b.width >= stageWidth - 4 && r2b.width >= stageWidth - 4,
           sameHeight: Math.abs(r1b.height - r2b.height) <= 1,
-          aligned: Math.abs(r1b.top - r2b.top) <= 1,
           span1Fits: s1b.bottom <= r1b.bottom + 0.5 && s1b.top >= r1b.top - 0.5,
           span2Fits: s2b.bottom <= r2b.bottom + 0.5 && s2b.top >= r2b.top - 0.5,
           playTop: play.top,
@@ -143,9 +145,9 @@ for (const size of MOBILE_SIZES) {
         };
       });
       expect(metrics.anyOverlap).toBe(false);
-      expect(metrics.sideBySide).toBe(true);
+      expect(metrics.stacked).toBe(true);
+      expect(metrics.fullWidth).toBe(true);
       expect(metrics.sameHeight).toBe(true);
-      expect(metrics.aligned).toBe(true);
       expect(metrics.span1Fits).toBe(true);
       expect(metrics.span2Fits).toBe(true);
       expect(metrics.playTop).toBeGreaterThan(10);
@@ -222,5 +224,38 @@ test("game signals panel has exactly one visible legend and phase buttons spaced
       return Math.round(phase.getBoundingClientRect().top - help.getBoundingClientRect().bottom);
     });
     expect(gapMobile).toBeGreaterThanOrEqual(8);
+  });
+});
+
+test("mobile suspense: every setup fieldset and button is a full-width row", async ({ browser }) => {
+  await withIsolatedPage(browser, async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#lab");
+    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await expect(page.locator("#arrangement-control")).toBeVisible();
+    const metrics = await page.evaluate(() => {
+      const setup = document.querySelector(".stage-setup")!;
+      const width = Math.round(setup.getBoundingClientRect().width);
+      const fieldsets = Array.from(setup.querySelectorAll(":scope > fieldset")).filter(
+        (fieldset) => !(fieldset as HTMLElement).hidden,
+      );
+      const fieldsetWidths = fieldsets.map((fieldset) => Math.round(fieldset.getBoundingClientRect().width));
+      const buttons = Array.from(document.querySelectorAll("#score-buttons button, #arrangement-buttons button"));
+      const buttonWidths = buttons.map((button) => Math.round(button.getBoundingClientRect().width));
+      return {
+        width,
+        minFieldset: Math.min(...fieldsetWidths),
+        minButton: Math.min(...buttonWidths),
+        fieldsetCount: fieldsetWidths.length,
+        buttonCount: buttonWidths.length,
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+      };
+    });
+    expect(metrics.fieldsetCount).toBeGreaterThanOrEqual(3);
+    expect(metrics.buttonCount).toBeGreaterThanOrEqual(5);
+    // no fieldset or button may be squeezed into a side-by-side column
+    expect(metrics.minFieldset).toBeGreaterThanOrEqual(metrics.width - 4);
+    expect(metrics.minButton).toBeGreaterThanOrEqual(metrics.width - 8);
+    expect(metrics.noOverflow).toBe(true);
   });
 });

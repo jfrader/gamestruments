@@ -214,3 +214,29 @@ test("engine button reflects playing/waiting/crossing states and mobile controls
   const shellPad = await page.locator(".console-shell").evaluate((el) => parseInt(getComputedStyle(el).paddingTop, 10));
   expect(shellPad).toBeGreaterThan(40);
 });
+
+test("prev/next section buttons cue the neighbouring sections", async ({ page }) => {
+  await page.goto("/#lab");
+  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  const select = page.locator("#section-select");
+  await expect(select).toBeVisible();
+  const options = await select.locator("option").evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));
+  expect(options.length).toBeGreaterThan(2);
+  const first = await select.inputValue();
+  const startIndex = options.indexOf(first);
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  const at = (index: number) => options[(index + options.length) % options.length]!;
+
+  await page.locator("#next-section").click();
+  await expect(select).toHaveValue(at(startIndex + 1));
+  await expect(page.locator("#next-section")).toHaveAttribute("title", /^Next section: /);
+  await expect(page.locator("#prev-section")).toHaveAttribute("title", /^Previous section: /);
+
+  await page.locator("#prev-section").click();
+  await expect(select).toHaveValue(at(startIndex));
+
+  // wraps from the first section back to the last
+  await select.selectOption(at(0));
+  await page.locator("#prev-section").click();
+  await expect(select).toHaveValue(at(-1));
+});

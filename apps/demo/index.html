@@ -28,6 +28,7 @@
             <input type="range" id="master-volume" min="0" max="100" value="100" aria-label="Volume" />
             <span id="volume-readout" class="volume-readout">100%</span>
           </label>
+          <button class="section-step" id="prev-section" type="button" aria-label="Previous section" title="Previous section">◀</button>
           <button class="start-button" id="start-audio" type="button" aria-label="Start engine" aria-pressed="false">
             <span class="start-light" aria-hidden="true"></span>
             <span class="engine-copy">
@@ -40,6 +41,7 @@
             </span>
             <span class="engine-progress" aria-hidden="true"></span>
           </button>
+          <button class="section-step" id="next-section" type="button" aria-label="Next section" title="Next section">▶</button>
         </div>
       </header>
 
@@ -180,15 +182,19 @@
             <span id="mood-feeling">polished / unhurried</span>
             <p id="transition-label">Engine offline</p>
           </div>
-          <div class="orbit" id="orbit">
-            <div class="orbit-ring orbit-ring--outer"></div>
-            <div class="orbit-ring orbit-ring--inner"></div>
-            <div class="playhead"></div>
-            <button id="center-play" class="center-play" type="button" aria-label="Play or pause the engine">
-              <span class="center-glyph" aria-hidden="true">▶</span>
-              <span class="center-label">PLAY</span>
-            </button>
-          </div>
+           <div class="orbit" id="orbit">
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="orbit-part" data-orbit-part hidden></div>
+             <div class="playhead"></div>
+             <button id="center-play" class="center-play" type="button" aria-label="Play or pause the engine">
+               <span class="center-glyph" aria-hidden="true">▶</span>
+               <span class="center-label">PLAY</span>
+             </button>
+           </div>
           <div class="transport-readout">
             <span>BAR <strong id="bar-value">01</strong></span>
             <span>BEAT <strong id="beat-value">01</strong></span>

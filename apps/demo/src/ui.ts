@@ -5,17 +5,31 @@ import type {
   PortableSection,
   SectionId,
   TransitionPlan,
+  TransportSnapshot,
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
 import type { SuspenseArrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
-import { orbitMotionAt, orbitStyleAt } from "./orbit-visualizer.ts";
+import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
 import {
   ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 import type { LabRecipe, NormalizedMusicTraits } from "./state.ts";
+
+const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
+
+function getPartRings(): HTMLElement[] {
+  // Re-query each frame: N=6 is trivial; survives DOM clones in tests (e.g. firefox compat)
+  return Array.from(
+    document.querySelectorAll<HTMLElement>("#orbit [data-orbit-part]"),
+  );
+}
+
+function fmt(value: number): string {
+  return String(Math.round(value * 10000) / 10000);
+}
 
 export type ViewName = "lab" | "games" | "genres";
 const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
@@ -297,6 +311,37 @@ export function setStartButton(running: boolean): void {
   }
 }
 
+export function renderSectionSteps(
+  score: PortableScore,
+  tick: number,
+  snapshot: TransportSnapshot,
+  busy: boolean,
+): void {
+  const sections = score.sections;
+  const enabled = sections.length > 1 && !busy;
+  const active =
+    snapshot.transition !== null && tick >= snapshot.transition.startTick
+      ? snapshot.transition.to
+      : snapshot.currentSection;
+  const index = sections.findIndex((section) => section.id === active);
+  const base = index === -1 ? 0 : index;
+  const prevTarget = sections[(base - 1 + sections.length) % sections.length];
+  const nextTarget = sections[(base + 1) % sections.length];
+  if (prevTarget === undefined || nextTarget === undefined) return;
+  const targets = [
+    { button: elements.prevSection, target: prevTarget, label: "Previous" },
+    { button: elements.nextSection, target: nextTarget, label: "Next" },
+  ];
+  for (const { button, target, label } of targets) {
+    button.disabled = !enabled;
+    const title = `${label} section: ${target.label}`;
+    if (button.title !== title) {
+      button.title = title;
+      button.setAttribute("aria-label", title);
+    }
+  }
+}
+
 export function renderEngineButton(
   button: HTMLButtonElement,
   running: boolean,
@@ -476,24 +521,67 @@ export function renderFrame(
           : `Crossing from ${sectionById(activeTransition.from).label}`;
   elements.orbit.style.setProperty("--mood-color", section.color);
   elements.orbit.classList.toggle("is-running", audio.running);
-  const motion = audio.running
-    ? orbitMotionAt(
+  const frame: OrbitFrame = audio.running
+    ? orbitFrameAt(
         section,
         visualTick,
         audio.sectionVisualTick(section.id, visualTick),
         score.ticksPerBeat,
         score.beatsPerBar,
       )
-    : {
-        beatPulse: 0,
-        innerTurns: 0,
-        melodyPulse: 0,
-        outerTurns: 0,
-        playheadTurns: 0,
-        rhythmPulse: 0,
-      };
-  for (const [property, value] of Object.entries(orbitStyleAt(motion))) {
+    : { beatPulse: 0, playheadTurns: 0, glowPulse: 0, parts: [] };
+  for (const [property, value] of Object.entries(orbitStyleAt(frame))) {
     elements.orbit.style.setProperty(property, value);
+  }
+  const rings = getPartRings();
+  const n = frame.parts.length;
+  for (let i = 0; i < rings.length; i++) {
+    const el = rings[i]!;
+    const part = i < n ? frame.parts[i] : undefined;
+    const shouldHide = !part;
+    if (shouldHide) {
+      if (!el.hasAttribute("hidden")) el.setAttribute("hidden", "");
+      continue;
+    }
+    if (el.hasAttribute("hidden")) el.removeAttribute("hidden");
+
+    if (el.getAttribute("data-part") !== part.id) {
+      el.setAttribute("data-part", part.id);
+    }
+    const title = `${part.label} · ${part.instrument}`;
+    if (el.title !== title) {
+      el.title = title;
+      el.setAttribute("aria-label", title);
+    }
+
+    const color = PART_COLORS[part.colorIndex % PART_COLORS.length]!;
+    if (el.style.getPropertyValue("--part-color") !== color) {
+      el.style.setProperty("--part-color", color);
+    }
+
+    // spread ~4% to ~34% for up to 6 rings
+    const insetPct = 4 + i * 6;
+    const inset = `${insetPct}%`;
+    if (el.style.getPropertyValue("--part-inset") !== inset) {
+      el.style.setProperty("--part-inset", inset);
+    }
+
+    const p = part.pulse;
+    const opacity = 0.5 + p * 0.45;
+    const scale = 1 + p * 0.06;
+    const rot = `${fmt(part.turns)}turn`;
+    const opStr = fmt(opacity);
+    const scStr = fmt(scale);
+
+    if (el.style.getPropertyValue("--part-rotation") !== rot) {
+      el.style.setProperty("--part-rotation", rot);
+    }
+    if (el.style.getPropertyValue("--part-opacity") !== opStr) {
+      el.style.setProperty("--part-opacity", opStr);
+    }
+    if (el.style.getPropertyValue("--part-scale") !== scStr) {
+      el.style.setProperty("--part-scale", scStr);
+    }
   }
   renderSections(score, transport, audio, requested, busy);
 
@@ -505,4 +593,5 @@ export function renderFrame(
     section,
     sectionById,
   );
+  renderSectionSteps(score, tick, snapshot, busy);
 }
