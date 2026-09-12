@@ -226,3 +226,36 @@ test("game signals panel has exactly one visible legend and phase buttons spaced
     expect(gapMobile).toBeGreaterThanOrEqual(8);
   });
 });
+
+test("mobile suspense: every setup fieldset and button is a full-width row", async ({ browser }) => {
+  await withIsolatedPage(browser, async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#lab");
+    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await expect(page.locator("#arrangement-control")).toBeVisible();
+    const metrics = await page.evaluate(() => {
+      const setup = document.querySelector(".stage-setup")!;
+      const width = Math.round(setup.getBoundingClientRect().width);
+      const fieldsets = Array.from(setup.querySelectorAll(":scope > fieldset")).filter(
+        (fieldset) => !(fieldset as HTMLElement).hidden,
+      );
+      const fieldsetWidths = fieldsets.map((fieldset) => Math.round(fieldset.getBoundingClientRect().width));
+      const buttons = Array.from(document.querySelectorAll("#score-buttons button, #arrangement-buttons button"));
+      const buttonWidths = buttons.map((button) => Math.round(button.getBoundingClientRect().width));
+      return {
+        width,
+        minFieldset: Math.min(...fieldsetWidths),
+        minButton: Math.min(...buttonWidths),
+        fieldsetCount: fieldsetWidths.length,
+        buttonCount: buttonWidths.length,
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+      };
+    });
+    expect(metrics.fieldsetCount).toBeGreaterThanOrEqual(3);
+    expect(metrics.buttonCount).toBeGreaterThanOrEqual(5);
+    // no fieldset or button may be squeezed into a side-by-side column
+    expect(metrics.minFieldset).toBeGreaterThanOrEqual(metrics.width - 4);
+    expect(metrics.minButton).toBeGreaterThanOrEqual(metrics.width - 8);
+    expect(metrics.noOverflow).toBe(true);
+  });
+});
