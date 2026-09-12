@@ -40,6 +40,14 @@ pub fn midi_to_note(midi: i32) -> String {
     format!("{name}{octave}")
 }
 
+/// Eight-bar phrase dynamics: two four-bar arcs with a soft cadence landing.
+pub const PHRASE_ARC: [f64; 8] = [0.84, 0.94, 1.0, 0.9, 0.9, 0.97, 1.0, 0.76];
+
+/// Phrase gain for a bar, looping every eight bars.
+pub fn phrase_gain(bar: u32) -> f64 {
+    PHRASE_ARC[(bar % PHRASE_ARC.len() as u32) as usize]
+}
+
 /// Shortest two-decimal representation of a finite float for score ids.
 pub fn json_num(value: f64) -> String {
     let mut text = format!("{value:.2}");
@@ -58,7 +66,14 @@ pub fn json_num(value: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{midi_to_note, mode_intervals, scale_pitch};
+    use super::{midi_to_note, mode_intervals, phrase_gain, scale_pitch};
+
+    #[test]
+    fn phrase_dynamics_peak_and_land_softly() {
+        assert!(phrase_gain(0) < phrase_gain(2));
+        assert!(phrase_gain(7) < phrase_gain(6));
+        assert_eq!(phrase_gain(8), phrase_gain(0));
+    }
 
     #[test]
     fn modes_have_seven_degrees() {

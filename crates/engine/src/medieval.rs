@@ -10,7 +10,7 @@ use crate::score::{
     AdaptiveCondition, AdaptiveRule, MedievalState, MusicEvent, PortableScore, PortableSection,
     SCORE_SCHEMA_VERSION,
 };
-use crate::theory::{json_num, mode_intervals, scale_pitch, NOTE_NAMES};
+use crate::theory::{json_num, mode_intervals, phrase_gain, scale_pitch, NOTE_NAMES};
 
 pub const GENERATOR_VERSION: &str = "1.0.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
@@ -236,7 +236,7 @@ const PLANS: [SectionPlan; 7] = [
         bars: 8,
         intensity: 0.32,
         mode: "aeolian",
-        register: -12,
+        register: -7,
         density: 0.26,
         perc: Perc::None,
         drone: true,
@@ -270,7 +270,7 @@ const PLANS: [SectionPlan; 7] = [
         bars: 8,
         intensity: 1.0,
         mode: "phrygian",
-        register: -12,
+        register: -7,
         density: 0.84,
         perc: Perc::Drive,
         drone: true,
@@ -395,8 +395,10 @@ fn roots(plan: &SectionPlan, harmony: &HarmonyDna) -> Roots {
     let root = harmony.root_pitch_class;
     Roots {
         bass: 36 + root,
-        drone: 48 + root + plan.register,
-        harmony: 55 + root + plan.register,
+        drone: 48 + root,
+        harmony: 55 + root,
+        // Only the melody follows the section register; the bed stays put so
+        // low sections do not collapse into a muddy octave.
         melody: 67 + root + plan.register,
     }
 }
@@ -467,21 +469,34 @@ fn drone_events(
         return events;
     }
     let length = bar_ticks * plan.bars;
-    for (index, degree) in [0, 4].iter().enumerate() {
-        let pitch = scale_pitch(roots.drone, *degree, intervals);
-        push_note(
-            &mut events,
-            plan.id,
-            "drone",
-            index,
-            0,
-            length,
-            0.14,
-            pitch,
-            voice,
-            None,
-        );
-    }
+    let root_pitch = scale_pitch(roots.drone, 0, intervals);
+    push_note(
+        &mut events,
+        plan.id,
+        "drone",
+        0,
+        0,
+        length,
+        0.11,
+        root_pitch,
+        voice,
+        None,
+    );
+    // The fifth enters in the second phrase so the pedal has a little life.
+    let phrase_b = bar_ticks * (plan.bars / 2);
+    let fifth = scale_pitch(roots.drone, 4, intervals);
+    push_note(
+        &mut events,
+        plan.id,
+        "drone",
+        1,
+        phrase_b,
+        length - phrase_b,
+        0.1,
+        fifth,
+        voice,
+        None,
+    );
     events
 }
 
@@ -507,7 +522,7 @@ fn harmony_events(
         let bar_start = bar * bar_ticks;
         for offset in &degrees {
             let pitch = scale_pitch(roots.harmony, degree + offset, intervals);
-            let velocity = 0.12 + traits.warmth * 0.06;
+            let velocity = (0.12 + traits.warmth * 0.06) * phrase_gain(bar);
             push_note(
                 &mut events,
                 plan.id,
@@ -588,6 +603,64 @@ fn bass_events(
     events
 }
 
+fn bar_targets(section: &str) -> [i32; 8] {
+    match section {
+        "explore" => [0, 2, 4, 2, 4, 2, 1, 0],
+        "town" => [0, 4, 2, 4, 2, 0, 0, 0],
+        "dungeon" => [0, 0, 2, 0, 2, 0, 0, 0],
+        "combat" => [0, 4, 2, 4, 6, 4, 2, 0],
+        "boss" => [0, 4, 1, 4, 4, 2, 1, 0],
+        "tavern" => [0, 4, 2, 4, 4, 6, 4, 0],
+        "victory" => [0, 4, 4, 6, 7, 4, 4, 0],
+        _ => [0, 2, 4, 2, 4, 2, 1, 0],
+    }
+}
+
+/// Plucked styles get a broken-chord accompaniment; the held harmony is the pad.
+fn wants_arp(section: &str) -> bool {
+    matches!(section, "explore" | "town" | "tavern" | "victory")
+}
+
+#[allow(clippy::too_many_arguments)]
+fn arp_events(
+    plan: &SectionPlan,
+    harmony: &HarmonyDna,
+    roots: Roots,
+    intervals: &[i32],
+    bar_ticks: u32,
+    pulse: u32,
+    voice: &str,
+) -> Vec<MusicEvent> {
+    if !wants_arp(plan.id) {
+        return Vec::new();
+    }
+    const PATTERN: [i32; 8] = [0, 4, 2, 4, 7, 4, 2, 4];
+    let mut events = Vec::new();
+    let mut index = 0;
+    for bar in 0..plan.bars {
+        let chord = harmony.progression[bar as usize % harmony.progression.len()];
+        let bar_start = bar * bar_ticks;
+        let gain = phrase_gain(bar);
+        for (step, degree) in PATTERN.iter().enumerate() {
+            let pitch = scale_pitch(roots.harmony, chord + degree, intervals);
+            push_note(
+                &mut events,
+                plan.id,
+                "arp",
+                index,
+                bar_start + step as u32 * pulse,
+                pulse,
+                (0.1 + plan.intensity * 0.03) * gain,
+                pitch,
+                voice,
+                None,
+            );
+            index += 1;
+        }
+    }
+    events
+}
+
 fn onsets_for_bar(
     rng: &mut DeterministicRandom,
     plan: &SectionPlan,
@@ -631,17 +704,26 @@ fn melody_events(
 ) -> Vec<MusicEvent> {
     let mut events = Vec::new();
     let mut index = 0;
+    let targets = bar_targets(plan.id);
     for bar in 0..plan.bars {
         let degree = harmony.progression[bar as usize % harmony.progression.len()];
+        let target = targets[(bar % 8) as usize];
         let bar_start = bar * bar_ticks;
+        let gain = phrase_gain(bar);
         let onsets = onsets_for_bar(rng, plan, traits, bar);
         for (position, step) in onsets.iter().enumerate() {
-            let motif_degree = motif[position % motif.len()];
-            let pitch = scale_pitch(roots.melody, degree + motif_degree, intervals);
+            // Anchor the downbeat on the bar's chord tone, then step through
+            // light neighbour motion seeded by the motif.
+            let offset = if position == 0 {
+                target
+            } else {
+                target + 1 + motif[position % motif.len()].rem_euclid(2)
+            };
+            let pitch = scale_pitch(roots.melody, degree + offset, intervals);
             let next = onsets.get(position + 1).copied().unwrap_or(8);
             let raw = f64::from((next - step) * pulse);
             let duration = (raw * 0.85).max(f64::from(pulse) / 2.0) as u32;
-            let velocity = 0.2 + traits.valor * 0.08 + plan.intensity * 0.06;
+            let velocity = (0.2 + traits.valor * 0.08 + plan.intensity * 0.06) * gain;
             push_note(
                 &mut events,
                 plan.id,
@@ -658,6 +740,15 @@ fn melody_events(
         }
     }
     events
+}
+
+fn fill_hits(perc: Perc) -> &'static [(&'static str, u32)] {
+    match perc {
+        Perc::Soft => &[("hat", 3), ("tom", 6)],
+        Perc::Drive => &[("tom", 5), ("snare", 7)],
+        Perc::Dance => &[("tom", 5), ("tom", 7)],
+        Perc::None => &[],
+    }
 }
 
 fn percussion_events(
@@ -697,13 +788,17 @@ fn percussion_events(
     let mut index = 0;
     for bar in 0..plan.bars {
         let bar_start = bar * bar_ticks;
-        for (voice, step) in hits {
+        let mut bar_hits = hits.to_vec();
+        if bar % 4 == 3 {
+            bar_hits.extend_from_slice(fill_hits(plan.perc));
+        }
+        for (voice, step) in &bar_hits {
             push_perc(
                 &mut events,
                 plan.id,
                 "percussion",
                 index,
-                bar_start + step * pulse,
+                bar_start + *step * pulse,
                 pulse / 2,
                 velocity,
                 voice,
@@ -745,6 +840,15 @@ fn build_section(
         traits,
         bar_ticks,
         role_voice(style, plan.harmony_role),
+    ));
+    events.extend(arp_events(
+        plan,
+        harmony,
+        roots,
+        &intervals,
+        bar_ticks,
+        pulse,
+        role_voice(style, Role::Pluck),
     ));
     events.extend(bass_events(
         plan, harmony, roots, &intervals, bar_ticks, pulse,
