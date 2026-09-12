@@ -1614,10 +1614,12 @@ footer p {
   .stage-setup { grid-template-columns: 1fr; }
   .stage-setup > fieldset,
   .stage-setup > fieldset:nth-child(2),
-  .stage-setup > fieldset:nth-child(3) {
+  .stage-setup > fieldset:nth-child(3),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(2),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(3) {
     grid-column: 1 / -1;
   }
-  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 980px) {
@@ -1740,7 +1742,9 @@ footer p {
   .stage-setup #recipe-buttons button:last-child {
     border-bottom: 0;
   }
+  .stage-setup .score-buttons,
   .stage-setup #score-buttons,
+  .stage-setup #arrangement-buttons,
   .console-shell[data-recipe="suspense"] .stage-setup #score-buttons {
     grid-template-columns: 1fr;
   }
@@ -1765,12 +1769,14 @@ footer p {
   }
 
   .console-shell[data-recipe="suspense"] .stage-setup #score-buttons {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .stage-setup > fieldset,
   .stage-setup > fieldset:nth-child(2),
-  .stage-setup > fieldset:nth-child(3) {
+  .stage-setup > fieldset:nth-child(3),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(2),
+  .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(3) {
     grid-column: 1 / -1;
   }
 
