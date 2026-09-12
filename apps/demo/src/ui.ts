@@ -16,7 +16,7 @@ import {
   ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
-import type { LabRecipe, NormalizedMusicTraits } from "./state.ts";
+import { LAB_RECIPES, labRecipeInfo, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
 
@@ -142,20 +142,34 @@ export function renderScoreButtons(
   elements.scoreButtons.replaceChildren(...buttons);
 }
 
+export function renderRecipeSelect(recipe: LabRecipe): void {
+  const active = labRecipeInfo(recipe);
+  elements.recipeSelectLabel.textContent = active.label;
+  elements.recipeSelectDescription.textContent = active.description;
+  elements.recipeSelect.dataset.active = recipe;
+  const options = LAB_RECIPES.map((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "option");
+    button.dataset.recipe = entry.id;
+    button.setAttribute("aria-selected", String(entry.id === recipe));
+    const strong = document.createElement("strong");
+    strong.textContent = entry.label;
+    const small = document.createElement("small");
+    small.textContent = entry.description;
+    button.append(strong, small);
+    return button;
+  });
+  elements.recipeSelectMenu.replaceChildren(...options);
+}
+
 export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
   const adventure = recipe === "adventure";
   elements.shell.dataset.recipe = recipe;
   elements.sectionControl.hidden = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
-  for (const button of elements.recipeButtons.querySelectorAll<HTMLButtonElement>(
-    "button[data-recipe]",
-  )) {
-    button.setAttribute(
-      "aria-pressed",
-      String(button.dataset.recipe === recipe),
-    );
-  }
+  renderRecipeSelect(recipe);
   elements.traitEnergyLabel.textContent = suspense ? "Tension" : adventure ? "Danger" : "Energy";
   elements.traitComplexityLabel.textContent = suspense ? "Heat" : adventure ? "Mystery" : "Complexity";
   elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : adventure ? "Wonder" : "Brightness";

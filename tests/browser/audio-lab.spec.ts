@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 
 test("generation controls remain functional before and during playback", async ({ page }) => {
   const runtimeErrors: string[] = [];
@@ -77,7 +78,7 @@ test("switching to Suspense generates song-form music instead of racing", async 
   await page.goto("/#lab");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
 
-  await page.locator("#recipe-buttons button", { hasText: "Suspense" }).click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#audition-status")).toContainText("Opened Suspense");
   await expect(page.locator("#score-title")).toContainText(/Terminal|Cipher|Noir/);
   await expect(page.locator("#section-list li").first()).toContainText("Handshake");
@@ -102,7 +103,7 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   await page.goto("/#lab");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
 
-  await page.locator('#recipe-buttons button[data-recipe="adventure"]').click();
+  await selectRecipe(page, "adventure");
   await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
   await expect(page.locator("#score-title")).toContainText(/Campfire|Court|Chapel|Wilds/);
   await expect(page.locator("#section-list li")).toHaveCount(8);
@@ -123,7 +124,7 @@ test("Extended adds longer beds and Original restores the same seed and score", 
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
   await expect(page.locator("#arrangement-control")).toBeHidden();
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal");
   const original = page.locator('#arrangement-buttons button[data-arrangement="original"]');
   const extended = page.locator('#arrangement-buttons button[data-arrangement="extended"]');
@@ -156,7 +157,7 @@ test("Anomaly can be auditioned directly and safely rolled back to Original", as
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.getByRole("button", { name: "Cue Anomaly", exact: true }).click();
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Anomaly");

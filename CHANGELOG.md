@@ -13,6 +13,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Audio Lab: replaced the game-type toggle row with a single large selector that shows the active recipe and its description and opens a list of every recipe, so adding a recipe no longer means adding another button.
 - Retired the TypeScript Studio generator and CLI pipeline. The Rust engine is now the single generation authority and the whole repository uses one recipe vocabulary (`racing`, `suspense`, `adventure`); the Audio Lab's genre/experiment copy moved into the demo. This removes the bundled Strudel/AGPL dependency and shrinks the lab bundle from ~73 kB to ~57 kB.
 - Audio Lab: the orbit now shows one ring per musical part in the current section (melody, harmony, bass, drums, plus recipe-specific parts like suspense's drone and cell), each pulsing and rotating from its own note events with its instrument named in the tooltip.
 - Audio Lab: fixed the mobile Suspense layout — the Sound World fieldset is no longer squeezed to a sliver and the Sound World/Arrangement buttons each take a full-width row; added a regression test.

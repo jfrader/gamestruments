@@ -155,11 +155,24 @@
         <section class="music-stage">
           <div class="stage-grid" aria-hidden="true"></div>
           <section class="stage-setup" aria-label="Sound setup">
-            <fieldset class="sound-world-control">
-              <div id="recipe-buttons">
-                <button type="button" data-recipe="racing" aria-pressed="true">RACING<span>Speed, pressure, final lap, finish</span></button>
-                <button type="button" data-recipe="suspense" aria-pressed="false">SUSPENSE<span>Song form, hold &amp; cue</span></button>
-                <button type="button" data-recipe="adventure" aria-pressed="false">ADVENTURE<span>Camp, explore, town, dungeon, combat, boss, sanctuary, victory</span></button>
+            <fieldset class="sound-world-control recipe-field">
+              <legend>Game type</legend>
+              <div class="recipe-select" id="recipe-select">
+                <button
+                  id="recipe-select-trigger"
+                  class="recipe-select-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="recipe-select-label"
+                >
+                  <span class="recipe-select-copy">
+                    <strong id="recipe-select-label">Racing</strong>
+                    <small id="recipe-select-description">Speed, pressure, final lap, finish</small>
+                  </span>
+                  <span class="recipe-select-chevron" aria-hidden="true"></span>
+                </button>
+                <div id="recipe-select-menu" class="recipe-select-menu" role="listbox" aria-label="Game type" hidden></div>
               </div>
             </fieldset>
             <fieldset class="sound-world-control">

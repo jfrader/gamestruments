@@ -18,6 +18,40 @@ import {
 
 export type LabRecipe = "racing" | "suspense" | "adventure";
 
+/** Display metadata for the game-type selector. Add a recipe here and the
+ *  selector, trigger, and option list all pick it up. */
+export interface LabRecipeInfo {
+  id: LabRecipe;
+  label: string;
+  description: string;
+}
+
+export const LAB_RECIPES: readonly LabRecipeInfo[] = [
+  {
+    id: "racing",
+    label: "Racing",
+    description: "Speed, pressure, final lap, finish",
+  },
+  {
+    id: "suspense",
+    label: "Suspense",
+    description: "Song form, hold & cue",
+  },
+  {
+    id: "adventure",
+    label: "Adventure",
+    description: "Camp, explore, town, dungeon, combat, boss, sanctuary, victory",
+  },
+];
+
+export function isLabRecipe(value: string | undefined): value is LabRecipe {
+  return LAB_RECIPES.some((recipe) => recipe.id === value);
+}
+
+export function labRecipeInfo(recipe: LabRecipe): LabRecipeInfo {
+  return LAB_RECIPES.find((entry) => entry.id === recipe) ?? LAB_RECIPES[0]!;
+}
+
 /** The four generic generation sliders every recipe maps onto its own traits. */
 export interface NormalizedMusicTraits {
   energy: number;

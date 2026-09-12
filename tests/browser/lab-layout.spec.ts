@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 
 async function withIsolatedPage<T>(browser: any, fn: (page: import('@playwright/test').Page) => Promise<T>): Promise<T> {
   const context = await browser.newContext();
@@ -15,9 +16,9 @@ for (const height of [768, 600]) {
     await withIsolatedPage(browser, async (page) => {
       await page.setViewportSize({ width: 1366, height });
       await page.goto("/#lab");
-      await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+      await selectRecipe(page, "suspense");
       const panel = page.locator(".race-state");
-      await expect(page.locator(".stage-setup #recipe-buttons")).toHaveCount(1);
+      await expect(page.locator(".stage-setup #recipe-select")).toHaveCount(1);
       await expect(page.locator(".stage-setup #score-buttons")).toHaveCount(1);
       await expect(page.locator(".stage-setup #arrangement-control")).toHaveCount(1);
       expect(await panel.evaluate((element) => getComputedStyle(element).overflowY)).toBe("auto");
@@ -50,7 +51,7 @@ test("central setup selectors work and do not overlap the player", async ({ brow
   await withIsolatedPage(browser, async (page) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/#lab");
-    await page.locator('.stage-setup button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     await page.locator('.stage-setup button[data-experiment-index="2"]').click();
     await expect(page.locator("#score-title")).toContainText("Noir");
     await page.locator('.stage-setup button[data-arrangement="original"]').click();
@@ -72,7 +73,7 @@ test("the crossover sidebar can be wheel-scrolled to its final cue", async ({ br
   await withIsolatedPage(browser, async (page) => {
     await page.setViewportSize({ width: 1366, height: 600 });
     await page.goto("/#lab");
-    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     const panel = page.locator(".mix-state");
     await panel.hover({ position: { x: 40, y: 80 } });
     await page.mouse.wheel(0, 4000);
@@ -91,7 +92,7 @@ test("narrow screens keep setup above the player and use normal page scrolling",
   await withIsolatedPage(browser, async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#lab");
-    await page.locator('.stage-setup button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     const layout = await page.evaluate(() => {
       const panel = document.querySelector(".race-state")!;
       return { setupBottom: document.querySelector(".stage-setup")!.getBoundingClientRect().bottom,
@@ -114,45 +115,42 @@ const MOBILE_SIZES = [
 ];
 
 for (const size of MOBILE_SIZES) {
-  test(`mobile ${size.width}x${size.height}: recipe buttons do not overlap and key controls are reachable`, async ({ browser }) => {
+  test(`mobile ${size.width}x${size.height}: game-type selector fits and key controls are reachable`, async ({ browser }) => {
     await withIsolatedPage(browser, async (page) => {
       await page.setViewportSize(size);
       await page.goto("/#lab");
-      await expect(page.locator('#recipe-buttons button[data-recipe="racing"]')).toBeVisible();
+      const trigger = page.locator("#recipe-select-trigger");
+      await expect(trigger).toBeVisible();
       const metrics = await page.evaluate(() => {
-        const r1 = document.querySelector<HTMLButtonElement>('#recipe-buttons button[data-recipe="racing"]')!;
-        const r2 = document.querySelector<HTMLButtonElement>('#recipe-buttons button[data-recipe="suspense"]')!;
-        const r1b = r1.getBoundingClientRect();
-        const r2b = r2.getBoundingClientRect();
-        const s1b = r1.querySelector("span")!.getBoundingClientRect();
-        const s2b = r2.querySelector("span")!.getBoundingClientRect();
+        const triggerEl = document.querySelector<HTMLElement>("#recipe-select-trigger")!;
+        const triggerBox = triggerEl.getBoundingClientRect();
+        const copyBox = triggerEl.querySelector(".recipe-select-copy")!.getBoundingClientRect();
         const play = document.querySelector<HTMLElement>("#center-play")!.getBoundingClientRect();
         const signals = document.querySelector<HTMLElement>("#game-signals")!.getBoundingClientRect();
         const stageWidth = document.querySelector<HTMLElement>(".stage-setup")!.getBoundingClientRect().width;
-        const horizontalOverlap = !(r1b.right <= r2b.left + 1 || r2b.right <= r1b.left + 1);
-        const verticalOverlap = !(r1b.bottom <= r2b.top || r2b.bottom <= r1b.top);
         return {
-          anyOverlap: horizontalOverlap && verticalOverlap,
-          // phones stack the game types: each gets a full-width row
-          stacked: r2b.top >= r1b.bottom - 2,
-          fullWidth: r1b.width >= stageWidth - 4 && r2b.width >= stageWidth - 4,
-          sameHeight: Math.abs(r1b.height - r2b.height) <= 1,
-          span1Fits: s1b.bottom <= r1b.bottom + 0.5 && s1b.top >= r1b.top - 0.5,
-          span2Fits: s2b.bottom <= r2b.bottom + 0.5 && s2b.top >= r2b.top - 0.5,
+          fullWidth: triggerBox.width >= stageWidth - 4,
+          copyFits: copyBox.bottom <= triggerBox.bottom + 0.5 && copyBox.top >= triggerBox.top - 0.5,
           playTop: play.top,
           signalsTop: signals.top,
           noHorizontalOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
         };
       });
-      expect(metrics.anyOverlap).toBe(false);
-      expect(metrics.stacked).toBe(true);
       expect(metrics.fullWidth).toBe(true);
-      expect(metrics.sameHeight).toBe(true);
-      expect(metrics.span1Fits).toBe(true);
-      expect(metrics.span2Fits).toBe(true);
+      expect(metrics.copyFits).toBe(true);
       expect(metrics.playTop).toBeGreaterThan(10);
       expect(metrics.signalsTop).toBeGreaterThanOrEqual(0);
       expect(metrics.noHorizontalOverflow).toBe(true);
+
+      // Opening the list keeps every option on screen.
+      await trigger.click();
+      const options = page.locator("#recipe-select-menu button[data-recipe]");
+      await expect(options).toHaveCount(3);
+      for (let index = 0; index < 3; index += 1) {
+        await expect(options.nth(index)).toBeVisible();
+      }
+      await trigger.click();
+      await expect(page.locator("#recipe-select-menu")).toBeHidden();
     });
   });
 }
@@ -168,7 +166,7 @@ test("phase buttons use a 2x2 grid for Racing and a 3x2 grid for Suspense", asyn
       return { count: buttons.length, columns: Math.abs(third.top - first.top) > 1 ? 2 : 3 };
     });
     expect(await readGrid()).toEqual({ count: 4, columns: 2 });
-    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     expect(await readGrid()).toEqual({ count: 6, columns: 3 });
   });
 });
@@ -182,19 +180,19 @@ test("recipe switch keeps .stage-setup and .player-surface top positions identic
       const p = document.querySelector(".player-surface")!.getBoundingClientRect().top;
       return { s: Math.round(s), p: Math.round(p) };
     });
-    await page.locator('#recipe-buttons button[data-recipe="racing"]').click();
+    await selectRecipe(page, "racing");
     const t1 = await getTops();
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
-    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     await getTops();
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
-    await page.locator('#recipe-buttons button[data-recipe="racing"]').click();
+    await selectRecipe(page, "racing");
     const t3 = await getTops();
     expect(Math.abs(t3.s - t1.s)).toBeLessThanOrEqual(1);
     expect(Math.abs(t3.p - t1.p)).toBeLessThanOrEqual(1);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#lab");
-    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-mobile.png" });
   });
 });
@@ -231,7 +229,7 @@ test("mobile suspense: every setup fieldset and button is a full-width row", asy
   await withIsolatedPage(browser, async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#lab");
-    await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+    await selectRecipe(page, "suspense");
     await expect(page.locator("#arrangement-control")).toBeVisible();
     const metrics = await page.evaluate(() => {
       const setup = document.querySelector(".stage-setup")!;
