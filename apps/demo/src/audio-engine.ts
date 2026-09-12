@@ -1914,6 +1914,8 @@ export class DemoAudioEngine {
     const source = context.createBufferSource();
     const filter = context.createBiquadFilter();
     const envelope = context.createGain();
+    // Future-only automation can leak a sharp onset from the unity default.
+    envelope.gain.value = MIN_GAIN;
     source.buffer = this.#noiseBuffer;
     filter.type = filterType;
     filter.frequency.value = frequency;
