@@ -59,7 +59,13 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
+export type RacingArrangement = "original" | "extended";
 export type SuspenseArrangement = "original" | "extended" | "theme";
+export type Arrangement = RacingArrangement | SuspenseArrangement;
+
+export function isRacingArrangement(value: Arrangement): value is RacingArrangement {
+  return value === "original" || value === "extended";
+}
 
 export interface GenerateScoreParams {
   seed: string;
@@ -69,7 +75,7 @@ export interface GenerateScoreParams {
   brightness: number;
   syncopation: number;
   recipe?: "racing" | "suspense" | "adventure";
-  arrangement?: SuspenseArrangement;
+  arrangement?: Arrangement;
   autoplay?: boolean;
   tension?: number;
   heat?: number;

@@ -1,3 +1,4 @@
+use crate::racing_arrangement::EXTENDED_SECTION_ORDER;
 use crate::score::{FormOrigin, PortableScore, SongForm, SongFormStep};
 
 const AUTOPLAY_VERSION: &str = "1";
@@ -5,9 +6,11 @@ const AUTOPLAY_VERSION: &str = "1";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArrangementRecipe {
     Racing,
+    RacingExtended,
     Adventure,
 }
 
+#[derive(Clone, Copy)]
 struct TourStep {
     section: &'static str,
     repeats: u32,
@@ -46,6 +49,26 @@ const RACING_TOUR: Tour = Tour {
         },
     ],
     loop_from: 1,
+};
+
+const fn racing_extended_steps() -> [TourStep; EXTENDED_SECTION_ORDER.len()] {
+    let mut steps = [TourStep {
+        section: "",
+        repeats: 1,
+    }; EXTENDED_SECTION_ORDER.len()];
+    let mut index = 0;
+    while index < EXTENDED_SECTION_ORDER.len() {
+        steps[index].section = EXTENDED_SECTION_ORDER[index];
+        index += 1;
+    }
+    steps
+}
+
+static RACING_EXTENDED_STEPS: [TourStep; EXTENDED_SECTION_ORDER.len()] = racing_extended_steps();
+
+const RACING_EXTENDED_TOUR: Tour = Tour {
+    steps: &RACING_EXTENDED_STEPS,
+    loop_from: 2,
 };
 
 const ADVENTURE_TOUR: Tour = Tour {
@@ -100,6 +123,7 @@ pub fn apply_automatic_arrangement(
 
     let tour = match recipe {
         ArrangementRecipe::Racing => &RACING_TOUR,
+        ArrangementRecipe::RacingExtended => &RACING_EXTENDED_TOUR,
         ArrangementRecipe::Adventure => &ADVENTURE_TOUR,
     };
     for step in tour.steps {
@@ -132,8 +156,8 @@ pub fn apply_automatic_arrangement(
 mod tests {
     use super::{apply_automatic_arrangement, ArrangementRecipe};
     use crate::{
-        generate_adventure, generate_racing, AdventureInput, AdventureStyle, GenerateInput,
-        InstrumentPalette, Style,
+        generate_adventure, generate_racing, generate_racing_arrangement, AdventureInput,
+        AdventureStyle, GenerateInput, InstrumentPalette, RacingArrangement, Style,
     };
 
     fn racing_score() -> crate::PortableScore {
@@ -247,5 +271,55 @@ mod tests {
             error,
             "automatic Racing arrangement requires section victory"
         );
+    }
+
+    #[test]
+    fn racing_extended_tour_plays_all_ten_sections_in_order_and_loops_to_grid() {
+        let original = generate_racing_arrangement(
+            &GenerateInput {
+                secret: "arrangement-test".into(),
+                seed: "tour".into(),
+                style: Style::Funk,
+                palette: InstrumentPalette::default(),
+                energy: 0.6,
+                complexity: 0.5,
+                brightness: 0.5,
+                syncopation: 0.6,
+            },
+            RacingArrangement::Extended,
+        )
+        .expect("extended racing arrangement fixture must validate");
+        let original_id = original.id.clone();
+        let score = apply_automatic_arrangement(original, ArrangementRecipe::RacingExtended, true)
+            .expect("racing extended tour must validate");
+        let form = score
+            .form
+            .as_ref()
+            .expect("autoplay score must have a form");
+
+        assert_eq!(
+            form.steps
+                .iter()
+                .map(|step| (step.section.as_str(), step.repeats))
+                .collect::<Vec<_>>(),
+            [
+                ("garage", 1),
+                ("ignition", 1),
+                ("grid", 1),
+                ("cruise", 1),
+                ("slipstream", 1),
+                ("attack", 1),
+                ("redline", 1),
+                ("final-lap", 1),
+                ("victory", 1),
+                ("cooldown", 1),
+            ]
+        );
+        assert_eq!(form.loop_from, Some(2));
+        assert_eq!(form.origin, Some(crate::score::FormOrigin::TransitionStart));
+        assert_eq!(score.id, format!("{original_id}-autoplay-v1"));
+        score
+            .validate()
+            .expect("arranged extended score must validate");
     }
 }

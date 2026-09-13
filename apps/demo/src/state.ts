@@ -8,7 +8,13 @@ import {
   type TransitionPlan,
   type TransitionRequest,
 } from "../../../packages/runtime/src/index.ts";
-import { generateScore, type SuspenseArrangement } from "./wasm-engine.ts";
+import {
+  generateScore,
+  isRacingArrangement,
+  type Arrangement,
+  type RacingArrangement,
+  type SuspenseArrangement,
+} from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
 import {
@@ -120,6 +126,7 @@ export const ADVENTURE_PRESETS = [
 ] as const satisfies readonly GenerationPreset[];
 
 export let labRecipe: LabRecipe = "racing";
+export let racingArrangement: RacingArrangement = "extended";
 export let suspenseArrangement: SuspenseArrangement = "extended";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
@@ -139,10 +146,25 @@ let latestGenerationRequest = 0;
 
 const AUTOPLAY_RECIPES: ReadonlySet<LabRecipe> = new Set(["racing", "adventure"]);
 
-export function currentPresets(): readonly GenerationPreset[] {
-  if (labRecipe === "suspense") return SUSPENSE_PRESETS;
-  if (labRecipe === "adventure") return ADVENTURE_PRESETS;
+function presetsFor(recipe: LabRecipe): readonly GenerationPreset[] {
+  if (recipe === "suspense") return SUSPENSE_PRESETS;
+  if (recipe === "adventure") return ADVENTURE_PRESETS;
   return GENERATION_PRESETS;
+}
+
+export function currentPresets(): readonly GenerationPreset[] {
+  return presetsFor(labRecipe);
+}
+
+/** The arrangement for the active recipe, tracked per recipe so switching
+ *  game types never leaks one recipe's choice (e.g. Theme) into another. */
+export function currentArrangement(): Arrangement {
+  return labRecipe === "suspense" ? suspenseArrangement : racingArrangement;
+}
+
+/** A recipe accepts an arrangement only if that value is legal for it. */
+function recipeArrangementValid(recipe: LabRecipe, value: Arrangement): boolean {
+  return recipe !== "racing" || isRacingArrangement(value);
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -154,22 +176,32 @@ export function generationPreset(index = activeExperimentIndex): GenerationPrese
 }
 
 export async function generateCurrentScore(): Promise<PortableScore> {
-  return generateRequestedScore(activeExperimentIndex, levelSeed, generationTraits);
+  return generateRequestedScore(
+    activeExperimentIndex,
+    levelSeed,
+    generationTraits,
+    labRecipe,
+    currentArrangement(),
+  );
 }
 
 async function generateRequestedScore(
   index: number,
   requestedSeed: string,
   requestedTraits: NormalizedMusicTraits,
-  arrangement: SuspenseArrangement = suspenseArrangement,
+  recipe: LabRecipe,
+  arrangement: Arrangement,
 ): Promise<PortableScore> {
-  const preset = generationPreset(index);
+  const preset = presetsFor(recipe)[index];
+  if (preset === undefined) {
+    throw new Error(`Missing generation preset: ${index}`);
+  }
   return generateScore({
     seed: requestedSeed,
     style: preset.style,
-    recipe: labRecipe,
+    recipe,
     arrangement,
-    autoplay: AUTOPLAY_RECIPES.has(labRecipe),
+    autoplay: AUTOPLAY_RECIPES.has(recipe),
     energy: requestedTraits.energy,
     complexity: requestedTraits.complexity,
     brightness: requestedTraits.brightness,
@@ -343,14 +375,17 @@ export function requestAdventureScene(): void {
 
 export async function activateExperiment(
   index: number,
-  nextSeed = levelSeed,
-  nextTraits: NormalizedMusicTraits = generationTraits,
-  nextArrangement: SuspenseArrangement = suspenseArrangement,
+  nextSeed: string,
+  nextTraits: NormalizedMusicTraits,
+  nextArrangement: Arrangement,
+  requestId: number,
 ): Promise<boolean> {
+  const requestedRecipe = labRecipe;
   if (
     switchingScore ||
     switchingAudio ||
-    currentPresets()[index] === undefined
+    presetsFor(requestedRecipe)[index] === undefined ||
+    !recipeArrangementValid(requestedRecipe, nextArrangement)
   ) {
     return false;
   }
@@ -365,7 +400,16 @@ export async function activateExperiment(
       ? previousSnapshot.transition.to
       : previousSnapshot.currentSection);
   try {
-    const nextScore = await generateRequestedScore(index, nextSeed, nextTraits, nextArrangement);
+    const nextScore = await generateRequestedScore(
+      index,
+      nextSeed,
+      nextTraits,
+      requestedRecipe,
+      nextArrangement,
+    );
+    if (requestId !== latestGenerationRequest) {
+      return false;
+    }
     const initialSection = playbackSectionOnScore(nextScore, requestedSection);
     const nextTransport = new AdaptiveTransport(nextScore, initialSection);
     nextTransport.setFormHeld(transport.formHeld, 0);
@@ -381,7 +425,11 @@ export async function activateExperiment(
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
-    suspenseArrangement = nextArrangement;
+    if (requestedRecipe === "suspense") {
+      suspenseArrangement = nextArrangement;
+    } else if (requestedRecipe === "racing" && isRacingArrangement(nextArrangement)) {
+      racingArrangement = nextArrangement;
+    }
     score = nextScore;
     transport = nextTransport;
     audio = nextAudio;
@@ -396,12 +444,12 @@ export function requestExperiment(
   index: number,
   nextSeed = levelSeed,
   nextTraits: NormalizedMusicTraits = generationTraits,
-  nextArrangement: SuspenseArrangement = suspenseArrangement,
+  nextArrangement: Arrangement = currentArrangement(),
 ): Promise<boolean> {
   const request = ++latestGenerationRequest;
   const pending = generationQueue.then(() =>
     request === latestGenerationRequest
-      ? activateExperiment(index, nextSeed, nextTraits, nextArrangement)
+      ? activateExperiment(index, nextSeed, nextTraits, nextArrangement, request)
       : false,
   );
   generationQueue = pending.then(
@@ -467,8 +515,8 @@ export function setPhase(value: string): void {
   phase = value;
 }
 
-export function setSuspenseArrangement(value: SuspenseArrangement): Promise<boolean> {
-  if (labRecipe !== "suspense") {
+export function setArrangement(value: Arrangement): Promise<boolean> {
+  if (labRecipe === "adventure" || !recipeArrangementValid(labRecipe, value)) {
     return Promise.resolve(false);
   }
   return requestExperiment(activeExperimentIndex, levelSeed, generationTraits, value);

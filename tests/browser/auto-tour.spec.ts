@@ -22,7 +22,7 @@ async function expectTourSettled(page: Page): Promise<void> {
   });
 }
 
-test("Racing opens in the auto tour and advances Garage → Starting Grid on the authored boundary", async ({ page }) => {
+test("Racing opens in the extended auto tour and advances Garage → Ignition on the authored boundary", async ({ page }) => {
   test.setTimeout(30000);
   const errors = watchErrors(page);
 
@@ -31,6 +31,39 @@ test("Racing opens in the auto tour and advances Garage → Starting Grid on the
   await expect(page.locator("#section-control")).toBeVisible();
   await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
   await expect(page.locator("#mood-name")).toHaveText("Garage");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("Garage");
+
+  await expect(page.locator("#mood-name")).toHaveText("Ignition", { timeout: 20000 });
+  await expectTourSettled(page);
+
+  await page.locator("#hold-form").click();
+  await expect(page.locator("#hold-form")).toHaveText("Resume auto tour");
+  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#transition-label")).toHaveText("Holding section");
+  await expect(page.locator("#mood-name")).toHaveText("Ignition");
+  await expect(page.locator("#section-select")).toBeEnabled();
+  await expect(page.locator("#advance-form")).toBeEnabled();
+
+  await page.locator("#hold-form").click();
+  await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
+  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "false");
+
+  await page.locator("#start-audio").click();
+  expect(errors).toEqual([]);
+});
+
+test("Racing Original keeps the six-section tour and advances Garage → Starting Grid", async ({ page }) => {
+  test.setTimeout(30000);
+  const errors = watchErrors(page);
+
+  await page.goto("/#lab");
+  await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="original"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#mood-name")).toHaveText("Garage");
 
   await page.locator("#center-play").click();
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
@@ -38,18 +71,6 @@ test("Racing opens in the auto tour and advances Garage → Starting Grid on the
 
   await expect(page.locator("#mood-name")).toHaveText("Starting Grid", { timeout: 20000 });
   await expectTourSettled(page);
-
-  await page.locator("#hold-form").click();
-  await expect(page.locator("#hold-form")).toHaveText("Resume auto tour");
-  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#transition-label")).toHaveText("Holding section");
-  await expect(page.locator("#mood-name")).toHaveText("Starting Grid");
-  await expect(page.locator("#section-select")).toBeEnabled();
-  await expect(page.locator("#advance-form")).toBeEnabled();
-
-  await page.locator("#hold-form").click();
-  await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
-  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "false");
 
   await page.locator("#start-audio").click();
   expect(errors).toEqual([]);

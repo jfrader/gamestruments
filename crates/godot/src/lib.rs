@@ -1,8 +1,9 @@
 use gamestruments_engine::{
-    apply_automatic_arrangement, generate_adventure, generate_racing,
+    apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
     generate_suspense_arrangement, AdaptiveTransport, AdventureInput, AdventureState,
     AdventureStyle, ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette,
-    PortableScore, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
+    PortableScore, RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle,
+    Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -260,23 +261,35 @@ impl GamestrumentsPlayer {
                     godot_error!("Unknown Gamestruments racing style");
                     return false;
                 };
+                let Ok(arrangement) = RacingArrangement::parse(&self.arrangement.to_string())
+                else {
+                    godot_error!("Unknown Gamestruments racing arrangement");
+                    return false;
+                };
+                let recipe = match arrangement {
+                    RacingArrangement::Original => ArrangementRecipe::Racing,
+                    RacingArrangement::Extended => ArrangementRecipe::RacingExtended,
+                };
                 (
-                    generate_racing(&GenerateInput {
-                        secret: self.project_secret.to_string(),
-                        seed: seed.to_string(),
-                        style,
-                        palette: InstrumentPalette {
-                            melody: self.melody_voice.to_string(),
-                            harmony: self.harmony_voice.to_string(),
-                            drive: self.drive_voice.to_string(),
-                            bass: self.bass_voice.to_string(),
+                    generate_racing_arrangement(
+                        &GenerateInput {
+                            secret: self.project_secret.to_string(),
+                            seed: seed.to_string(),
+                            style,
+                            palette: InstrumentPalette {
+                                melody: self.melody_voice.to_string(),
+                                harmony: self.harmony_voice.to_string(),
+                                drive: self.drive_voice.to_string(),
+                                bass: self.bass_voice.to_string(),
+                            },
+                            energy: self.energy,
+                            complexity: self.complexity,
+                            brightness: self.brightness,
+                            syncopation: self.syncopation,
                         },
-                        energy: self.energy,
-                        complexity: self.complexity,
-                        brightness: self.brightness,
-                        syncopation: self.syncopation,
-                    }),
-                    Some(ArrangementRecipe::Racing),
+                        arrangement,
+                    ),
+                    Some(recipe),
                 )
             }
             other => {

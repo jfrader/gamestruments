@@ -8,7 +8,7 @@ import type {
   TransportSnapshot,
 } from "../../../packages/runtime/src/index.ts";
 import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
-import type { SuspenseArrangement } from "./wasm-engine.ts";
+import type { Arrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
@@ -32,12 +32,50 @@ function fmt(value: number): string {
 }
 
 export type ViewName = "lab" | "games" | "genres";
-const ARRANGEMENT_DESCRIPTIONS: Record<SuspenseArrangement, string> = {
-  original: "The current sound, unchanged.",
-  extended: "Scan → Scan II and Breach → Breach II are independent 16-bar sections. Hold, cue or advance them to match gameplay. Anomaly stays intact.",
-  theme: "Title-bed form: hats enter early, layers stay, and the drop holds instead of resetting.",
-};
 export { requireElement, elements };
+
+interface ArrangementOption {
+  id: Arrangement;
+  label: string;
+  description: string;
+  summary: string;
+}
+
+const RACING_ARRANGEMENTS: readonly ArrangementOption[] = [
+  {
+    id: "original",
+    label: "Original",
+    description: "Six original phases",
+    summary: "The original musical parts, unchanged.",
+  },
+  {
+    id: "extended",
+    label: "Extended",
+    description: "Ten-section race · ignition → cooldown",
+    summary: "Ten-section race: ignition, slipstream, redline, and cooldown extend the tour.",
+  },
+];
+
+const SUSPENSE_ARRANGEMENTS: readonly ArrangementOption[] = [
+  {
+    id: "original",
+    label: "Original",
+    description: "Approved 8-bar version",
+    summary: "The current sound, unchanged.",
+  },
+  {
+    id: "extended",
+    label: "Extended",
+    description: "Atmosphere · continuous groove",
+    summary: "Scan → Scan II and Breach → Breach II are independent 16-bar sections. Hold, cue or advance them to match gameplay. Anomaly stays intact.",
+  },
+  {
+    id: "theme",
+    label: "Theme",
+    description: "Build · drop · hold",
+    summary: "Title-bed form: hats enter early, layers stay, and the drop holds instead of resetting.",
+  },
+];
 
 const sectionRows = new Map<
   string,
@@ -230,6 +268,32 @@ export function renderGenreIndex(): void {
   elements.genreIndex.replaceChildren(...rows);
 }
 
+export function renderArrangementControl(recipe: LabRecipe, arrangement: Arrangement): void {
+  const visible = recipe !== "adventure";
+  elements.arrangementControl.hidden = !visible;
+  if (!visible) {
+    elements.arrangementSummary.value = "";
+    return;
+  }
+  const options = recipe === "suspense" ? SUSPENSE_ARRANGEMENTS : RACING_ARRANGEMENTS;
+  elements.arrangementButtons.replaceChildren(
+    ...options.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.arrangement = option.id;
+      button.setAttribute("aria-pressed", String(option.id === arrangement));
+      const strong = document.createElement("strong");
+      strong.textContent = option.label;
+      const span = document.createElement("span");
+      span.textContent = option.description;
+      button.append(strong, span);
+      return button;
+    }),
+  );
+  elements.arrangementSummary.value =
+    options.find((option) => option.id === arrangement)?.summary ?? "";
+}
+
 export function renderScoreIdentity(
   activeExperimentIndex: number,
   score: PortableScore,
@@ -239,18 +303,14 @@ export function renderScoreIdentity(
   soloMode: SoloMode,
   recipe: LabRecipe,
   presets: readonly { style: string; label?: string }[],
-  arrangement: SuspenseArrangement,
+  arrangement: Arrangement,
   phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
   renderRecipeChrome(recipe, phase);
   elements.sectionControl.hidden = score.form === undefined;
-  elements.arrangementControl.hidden = recipe !== "suspense";
-  for (const button of elements.arrangementButtons.querySelectorAll<HTMLButtonElement>("button[data-arrangement]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.arrangement === arrangement));
-  }
-  elements.arrangementSummary.value = recipe === "suspense" ? ARRANGEMENT_DESCRIPTIONS[arrangement] : "";
+  renderArrangementControl(recipe, arrangement);
   renderGenerationControls(score, levelSeed, generationTraits);
   document.title = `Gamestruments Audio Lab — ${score.title}`;
   renderScoreButtons(activeExperimentIndex, presets, recipe);

@@ -27,6 +27,19 @@ immediately reshape that material with different onset masks, density, register,
 articulation, bass motion, and percussion. A newly activated section starts at
 phrase bar zero even when the crossover begins on a later global bar.
 
+Racing has two arrangements: `original` (default) and `extended`. Extended
+generates the six original sections byte-for-byte, then adds four new sections
+harvested from the same piece and palette — `ignition` (8 bars), `slipstream`
+(16 bars), `redline` (16 bars), and `cooldown` (8 bars) — for a ten-section
+order: garage, ignition, grid, cruise, slipstream, attack, redline, final-lap,
+victory, cooldown. The new sections are cueable and appear in the autoplay tour
+but carry no new adaptive rules. When `autoplay` is set, the attached song form
+tours the sections: `original` tours garage, grid, cruise (×2), attack,
+final-lap, victory, then loops from grid; `extended` tours all ten sections once
+each, then loops from grid. With autoplay off, both arrangements remain
+state-driven and unchanged, and both wrappers leave the form empty until the
+autoplay adapter is explicitly enabled.
+
 Suspense is a third interaction model for long tense sessions (Arkhos and
 similar infiltration games). Form still auto-advances, but the writing is
 texture, not pop: a drone, a 2–3 note cell (Santaolalla), and a machine pulse

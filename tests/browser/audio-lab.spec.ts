@@ -125,7 +125,8 @@ test("Extended adds longer beds and Original restores the same seed and score", 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
-  await expect(page.locator("#arrangement-control")).toBeHidden();
+  await expect(page.locator("#arrangement-control")).toBeVisible();
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
   await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal");
   const original = page.locator('#arrangement-buttons button[data-arrangement="original"]');
@@ -169,5 +170,106 @@ test("Anomaly can be auditioned directly and safely rolled back to Original", as
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await page.locator("#start-audio").click();
+  expect(errors).toEqual([]);
+});
+
+test("Racing and Suspense keep independent arrangement selections", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/#lab");
+
+  // Racing defaults to Extended and offers only Original/Extended.
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+
+  // Suspense adds Theme and picks it up without touching Racing's selection.
+  await selectRecipe(page, "suspense");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
+  await page.locator('#arrangement-buttons button[data-arrangement="theme"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="theme"]')).toHaveAttribute("aria-pressed", "true");
+
+  // Switching to Racing shows Extended again — Theme must not leak over.
+  await selectRecipe(page, "racing");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+
+  // Back to Suspense: the Theme selection is preserved.
+  await selectRecipe(page, "suspense");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="theme"]')).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
+
+test("Adventure hides the arrangement control entirely", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/#lab");
+  await selectRecipe(page, "adventure");
+  await expect(page.locator("#arrangement-control")).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Extended to Original while a new phase is active falls back to Garage", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  await page.goto("/#lab");
+
+  // Racing defaults to Extended; cue and play a phase Original does not have.
+  await page.getByRole("button", { name: "Cue Ignition", exact: true }).click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#mood-name")).toHaveText("Ignition");
+
+  // Roll back to Original while Ignition is the active section.
+  await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="original"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
+  await expect(page.locator("#mood-name")).toHaveText("Garage");
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await page.locator("#start-audio").click();
+  expect(errors).toEqual([]);
+});
+
+test("Racing rejects an invalid Theme selection without erroring", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  await page.goto("/#lab");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+
+  // Simulate a stale/async Theme selection the Racing UI would normally hide.
+  await page.evaluate(() => {
+    const container = document.querySelector<HTMLElement>("#arrangement-buttons")!;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.arrangement = "theme";
+    container.append(button);
+    button.click();
+  });
+
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
+
+test("rapid recipe switches settle on the final recipe without errors", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  await page.goto("/#lab");
+
+  await selectRecipe(page, "suspense");
+  await selectRecipe(page, "adventure");
+  await selectRecipe(page, "racing");
+  await selectRecipe(page, "suspense");
+
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: suspense");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });
