@@ -4,9 +4,9 @@ This is the exact, repo-owned source for the Gamestruments itch.io listing.
 Any updates to the storefront must be approved here first.
 For official itch creator documentation, see: https://itch.io/docs/creators/
 
-The next-update copy below is prepared locally, not published. Before approval,
-check its recipe inventory, requirements, screenshots, and download contents
-against the final music build. The dated launch devlog is historical.
+The 0.1.2 copy below was published on 2026-09-13 (see
+`docs/releases/v0.1.2.md` for exact artifacts and the transaction record). The
+dated launch devlog at the end is historical and is not edited.
 
 ## Metadata Fields
 
@@ -17,8 +17,9 @@ against the final music build. The dated launch devlog is historical.
 - **Kind:** Downloadable
 - **Pricing:** $12.99 minimum / Pay-what-you-want above (No launch discount)
 - **Language:** English
-- **Tags:** godot, godot-4, music, adaptive-music, dynamic-music, procedural, racing, suspense, adventure, soundtrack, audio, engine
+- **Tags:** adaptive-music, audio, dynamic-music, godot, godot-4, music, procedural, racing, soundtrack, adventure
 - **Release Status:** Released
+- **Released version:** 0.1.2 (2026-09-13)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
 - **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer). The source repository is private.
@@ -35,10 +36,10 @@ against the final music build. The dated launch devlog is historical.
 5. Purchase the kit
 
 **Media Capture Checklist:**
-- [ ] Build the itch HTML preview from the same approved lab source, with its actual phases and controls unchanged.
-- [ ] Clearly identify the interactive browser experience as **Audio Lab preview**; do not present it as exact native playback or as a bundled Godot interface.
+- [x] Build the itch HTML preview from the same approved lab source, with its actual phases and controls unchanged.
+- [x] Clearly identify the interactive browser experience as **Audio Lab preview**; do not present it as exact native playback or as a bundled Godot interface.
 - [ ] Capture native integration screenshots and native-audio evidence from the final extracted Godot kit, not the development checkout.
-- [ ] Cover image follows the 315:250 ratio (630x500 recommended).
+- [x] Cover image follows the 315:250 ratio (630x500 recommended).
 - [ ] Show one readable integration script and the native example it runs. Keep API calls legible rather than filling the page with code screenshots.
 - [ ] Include a short transition video recorded from the final native kit; it is required before promoting this update.
 - [ ] Fran has approved the music excerpts and finished video.
@@ -47,78 +48,66 @@ against the final music build. The dated launch devlog is historical.
 
 ### Gamestruments — Adaptive Music for Godot 4
 
-**Procedural music that adapts to your game.** Gamestruments generates
-deterministic, sample-free music inside Godot. Choose a recipe and seed,
-generate a score when your scene loads, then tell the player what's happening;
-it blends between musical sections on bar boundaries. No sample library,
-authoring tool, or cloud service is required.
+**Procedural music that adapts to your game.** Gamestruments generates deterministic, sample-free music inside Godot. Choose a recipe and seed, generate a score when your scene loads, then tell the player what's happening; it blends between musical sections on bar boundaries. No sample library, authoring tool, or cloud service is required.
 
-**Try the demo first:** [open the interactive Audio Lab](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo)
-or [use the standalone browser preview](https://gamestruments.gurisitos.games).
+**Try the demo first:** [open the interactive Audio Lab](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo) or [use the standalone browser preview](https://gamestruments.gurisitos.games).
+
+### Recipes
+
+- **Racing** — pace, rival pressure, lap state, and the finish.
+- **Suspense** — song-form tension for infiltration, hacking, and horror.
+- **Adventure** — an eight-section fantasy quest arc.
 
 ### What you get
 
-- A prebuilt Godot 4 addon for Linux x86_64, Windows x86_64, and macOS
-  arm64/x86_64, with the GDExtension descriptor.
+- A prebuilt Godot 4 addon for Linux x86_64, Windows x86_64, and macOS arm64/x86_64, with the GDExtension descriptor.
 - The full MIT-licensed Rust source, lockfile, and pinned toolchain.
 - Complete docs: quickstart, API reference, limitations, and troubleshooting.
-- Three native example scenes (playback, game signals, song form) with their own
-  addon copy. No browser or network needed.
-
-Use it for title music, rising tension, and action, then connect the music to
-your own game events.
+- Three native example scenes (playback, game signals, song form) with their own addon copy. No browser or network needed.
 
 ### Getting started
 
 1. Copy `addons/gamestruments/` into your project and restart Godot.
-2. Add a `GamestrumentsPlayer` child, set the recipe, style, and title
-   namespace, then call `generate(seed)` and check the result.
-3. Connect your game events to `set_race_state(...)`, `set_trace_state(...)`,
-   or `set_adventure_state(...)` for the chosen recipe. Form controls
-   (`cue_section` etc.) apply when a form is attached (Suspense, or Racing/Adventure
-   with `autoplay`).
+2. Add a `GamestrumentsPlayer` child, set the recipe, style, and title namespace, then call `generate(seed)` and check the result.
+3. Connect your game events to `set_race_state(...)` or `set_trace_state(...)` for the chosen recipe.
 
-The complete public docs and one free example script ship in a separate free
-download on this page: `gamestruments-docs-and-example.zip`.
+The complete public docs and one free example script ship in a separate free download on this page: `gamestruments-docs-and-example.zip`.
 
 ### Requirements
 
 - Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Native playback is fully offline. The optional browser preview needs a
-  connection and uses a different Web Audio layer, so its mix can differ from
-  the native addon.
+- Native playback is fully offline. The optional browser preview needs a connection and uses a different Web Audio layer, so its mix can differ from the native addon.
 - First-party code is MIT; gdext is MPL-2.0.
 
-All future updates to this kit are included with your purchase. Questions or
-bugs? Post in the comments.
+All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments.
 
-## Public docs download (prepared, not uploaded)
+## Published downloads (live 2026-09-13)
 
-- A free per-file demo download, `gamestruments-docs-and-example.zip`, is
-  prepared for the same paid product page. The paid price is unchanged.
-- It contains the complete buyer docs plus one `example.gd` extracted from the
-  canonical quickstart. Docs and source only: the example needs the paid addon
-  to run, and no native binaries or runnable project ship in it.
-- Downloaded Markdown, not a browser-native doc viewer.
-- Build with `npm run build:public-docs`.
-- The source repository stays private.
-- The free docs are readable before purchase, and the free ZIP is the
-  low-maintenance primary preparation. Publication still requires approval.
-- Configure the per-file demo download with itch.io's demo checkbox in the
-  product edit form (official reference:
-  <https://itch.io/docs/creators/getting-started>).
-- Put download links in the description rather than hiding them in the External
-  Links field; the download page is where the file is attached.
-- Keep demo-to-kit navigation same-tab (user preference).
-- Confirm the platform supports this behavior before publishing.
+- Paid kit upload: `gamestruments-0.1.2-godot4.zip`, 9840405 bytes,
+  SHA-256 `1af99d4c0ef5f4cd6092ce6660acedfc946155bae172c2fc6c491a76ac1a20b2`,
+  type **Source code**, no OS executable flags. Built by the release workflow
+  from tag `v0.1.2` (commit `7890af1a90ae51b894eba1dee9a4512b24af55c3`).
+- Free per-file demo download on the same page:
+  `gamestruments-docs-and-example.zip`, 21983 bytes,
+  SHA-256 `a39569b8ca72e376d39679624703783258df6255a08c7dafec3c3edc4732a8c4`,
+  type **Documentation or Instructions**, free-demo flag set. Contains the
+  complete buyer docs plus one `example.gd` from the canonical quickstart; no
+  addon or native binaries, and the example needs the paid addon to run.
+  Rebuild with `npm run build:public-docs`.
+- HTML Lab preview: `gamestruments-lab-itch.zip`, 250833 bytes,
+  SHA-256 `08c72a66c94523932a7d9032edb43de39129a48d1f4c2eecd0e38a83ec83a449`,
+  browser-play enabled, embed 960x600, mobile friendly, fullscreen.
+  Rebuild with `npm run build:itch`.
+- itch.io's per-file demo checkbox is the mechanism for the free download
+  (official reference: <https://itch.io/docs/creators/getting-started>).
+- Demo-to-kit navigation stays same-tab. The source repository stays private.
 
-## Video sequence (draft)
+## Video sequence (pending)
 
 Target 35–45 seconds. Music and captions only; no voiceover or sales copy. Code
 excerpts come from the tested canonical public example, using its existing API
-and phase names. Native-audio evidence must be captured from the final packaged
-native kit. Final recording awaits music approval; the existing Audio Lab stays
-as the interactive preview, unchanged.
+and phase names. Native-audio evidence must be captured from the packaged native
+kit. Music is approved; the recording is still outstanding.
 
 | Time | Caption | Shot |
 |---|---|---|
@@ -138,11 +127,10 @@ the music rather than forcing a transition to fit these draft timings.
 
 Gamestruments is out! It's an adaptive music engine for Godot 4 — your game generates its own soundtrack at runtime, with no audio files, no authoring tool, and no external services.
 
-The release ships four recipes:
+The first release ships two recipes:
 
 - **Racing** — six sections from the garage to the finish line, driven by speed, rival pressure, and lap state.
 - **Suspense** — song-form tension for infiltration, hacking, and horror, with a form your gameplay can hold or advance.
-- **Adventure** — an eight-section fantasy quest arc (explore, town, dungeon, combat, boss, sanctuary, victory), four of them longer arrangements, driven by discovery and threat.
 
 It runs on Linux, Windows, and macOS, includes the full MIT Rust source, and comes with a playable four-circuit demo so you can hear it before writing any code.
 
