@@ -15,6 +15,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Adventure: Folk now foregrounds plucked harp and recorder/fiddle phrasing, while Orchestral opens with bowed strings, longer melodic lines, and occasional woodwind answers. Warmer mode-aware harmony gives the safe phases clearer, brighter arrivals instead of accidental diminished-chord passages; the dangerous phases retain their darker contrast.
 - Audio Lab: replaced the game-type toggle row with a single large selector that shows the active recipe and its description and opens a list of every recipe, so adding a recipe no longer means adding another button.
 - Retired the TypeScript Studio generator and CLI pipeline. The Rust engine is now the single generation authority and the whole repository uses one recipe vocabulary (`racing`, `suspense`, `adventure`); the Audio Lab's genre/experiment copy moved into the demo. This removes the bundled Strudel/AGPL dependency and shrinks the lab bundle from ~73 kB to ~57 kB.
 - Audio Lab: the orbit now shows one ring per musical part in the current section (melody, harmony, bass, drums, plus recipe-specific parts like suspense's drone and cell), each pulsing and rotating from its own note events with its instrument named in the tooltip.
@@ -48,6 +49,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Fixed occasional sharp drum-click spikes at certain tempos in the Audio Lab without reducing the overall mix level or changing the musical parts.
 - Suspense Extended now enters Disconnect for `progress` in the 0.80–0.94 range, matching the game-engine selector; alert/heat cues re-arm after the form leaves the cued section instead of being swallowed.
 - Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.
 - Fixed the missing Suspense kick at Scan bar 9: form entrances are prepared by the audio scheduler at their exact boundary instead of rounding a late animation frame up to bar 10. The music and two-bar bed fades are unchanged.

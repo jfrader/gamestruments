@@ -11,7 +11,7 @@ use crate::score::{
 };
 use crate::theory::NOTE_NAMES;
 
-pub const GENERATOR_VERSION: &str = "3.0.0";
+pub const GENERATOR_VERSION: &str = "4.0.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -219,7 +219,8 @@ mod tests {
     use std::collections::{HashMap, HashSet};
 
     use super::composition::{
-        mode_for, phrase_kind, voice_chord, PhraseKind, PieceDna, SECTION_PLANS,
+        dominant_degree, mode_for, phrase_kind, progression, voice_chord, PhraseKind, PieceDna,
+        Scene, SECTION_PLANS,
     };
     use super::{
         generate_adventure, select_adventure_section, subseed, AdventureInput, AdventureStyle,
@@ -468,7 +469,9 @@ mod tests {
                         .and_then(MusicEvent::pitch)
                         .expect("every phrase has a melodic arrival");
                     let expected_degree = match phrase_kind(phrase, phrase_count) {
-                        PhraseKind::Antecedent | PhraseKind::Development => 4,
+                        PhraseKind::Antecedent | PhraseKind::Development => {
+                            dominant_degree(mode_for(style, plan.scene))
+                        }
                         PhraseKind::Consequent | PhraseKind::Return | PhraseKind::Cadence => 0,
                     };
                     let interval =
@@ -623,7 +626,7 @@ mod tests {
 
     #[test]
     fn many_seeds_are_valid_and_varied() {
-        assert_eq!(GENERATOR_VERSION, "3.0.0");
+        assert_eq!(GENERATOR_VERSION, "4.0.0");
         let styles = [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -752,6 +755,199 @@ mod tests {
         assert_eq!(
             select_adventure_section(&state("boss", 0.0, 0.0, true)),
             "victory"
+        );
+    }
+
+    /// Chord quality of a mode's triad on a scale degree, derived from the
+    /// actual interval sizes (major = 4+7, minor = 3+7, diminished = 3+6).
+    fn triad_quality(mode: &str, degree: i32) -> &'static str {
+        let intervals = mode_intervals(mode);
+        let root = intervals[degree.rem_euclid(7) as usize];
+        let third = intervals[(degree + 2).rem_euclid(7) as usize];
+        let fifth = intervals[(degree + 4).rem_euclid(7) as usize];
+        match ((third - root).rem_euclid(12), (fifth - root).rem_euclid(12)) {
+            (4, 7) => "major",
+            (3, 7) => "minor",
+            (3, 6) => "diminished",
+            _ => "other",
+        }
+    }
+
+    #[test]
+    fn warm_progressions_avoid_diminished_and_land_major() {
+        for mode in ["ionian", "lydian", "mixolydian"] {
+            for variant in 0..3 {
+                for phrase in 0..8 {
+                    for kind in [
+                        PhraseKind::Antecedent,
+                        PhraseKind::Consequent,
+                        PhraseKind::Development,
+                        PhraseKind::Return,
+                        PhraseKind::Cadence,
+                    ] {
+                        let chords = progression(mode, kind, Scene::Town, phrase, variant);
+                        for degree in chords {
+                            assert_ne!(
+                                triad_quality(mode, degree),
+                                "diminished",
+                                "{mode} {kind:?} plants a diminished degree {degree}"
+                            );
+                        }
+                        let arrival = *chords.last().unwrap();
+                        assert_eq!(
+                            triad_quality(mode, arrival),
+                            "major",
+                            "{mode} {kind:?} arrival degree {arrival} is not major"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn safe_and_dangerous_tonics_keep_contrast() {
+        for style in [AdventureStyle::Folk, AdventureStyle::Orchestral] {
+            for scene in [
+                Scene::Camp,
+                Scene::Explore,
+                Scene::Town,
+                Scene::Sanctuary,
+                Scene::Victory,
+            ] {
+                assert_eq!(
+                    triad_quality(mode_for(style, scene), 0),
+                    "major",
+                    "{style:?} {scene:?} safe phase tonic must be major"
+                );
+            }
+            for scene in [Scene::Dungeon, Scene::Combat, Scene::Boss] {
+                assert_eq!(
+                    triad_quality(mode_for(style, scene), 0),
+                    "minor",
+                    "{style:?} {scene:?} dangerous phase tonic must be minor"
+                );
+            }
+        }
+        // Dark stays bittersweet everywhere except the earned release of victory.
+        for scene in [
+            Scene::Camp,
+            Scene::Explore,
+            Scene::Town,
+            Scene::Dungeon,
+            Scene::Combat,
+            Scene::Boss,
+            Scene::Sanctuary,
+        ] {
+            assert_eq!(
+                triad_quality(mode_for(AdventureStyle::Dark, scene), 0),
+                "minor",
+                "Dark {scene:?} must stay minor"
+            );
+        }
+        assert_eq!(
+            triad_quality(mode_for(AdventureStyle::Dark, Scene::Victory), 0),
+            "major"
+        );
+    }
+
+    #[test]
+    fn folk_and_orchestral_foregrounds_use_distinct_instruments() {
+        let folk = generate_adventure(&sample("fgorch", AdventureStyle::Folk)).unwrap();
+        let orch = generate_adventure(&sample("fgorch", AdventureStyle::Orchestral)).unwrap();
+        for id in ["camp", "explore", "sanctuary", "victory"] {
+            let f = folk.section(id).unwrap();
+            let o = orch.section(id).unwrap();
+
+            assert!(
+                f.events
+                    .iter()
+                    .filter(|event| event.is_melody())
+                    .all(|event| event.voice() == "recorder"),
+                "{id}: folk melody must be recorder-led"
+            );
+            assert!(
+                !f.events.iter().any(|event| event.voice() == "vielle"),
+                "{id}: folk must not bow a held vielle pad"
+            );
+
+            assert!(
+                o.events
+                    .iter()
+                    .filter(|event| event.is_melody())
+                    .all(|event| event.voice() == "vielle"),
+                "{id}: orchestral melody must be vielle-led"
+            );
+            assert!(
+                o.events
+                    .iter()
+                    .any(|event| event.voice() == "vielle" && !event.is_melody()),
+                "{id}: orchestral needs a voiced string foundation"
+            );
+            assert!(
+                o.events
+                    .iter()
+                    .any(|event| event.voice() == "recorder" && !event.is_melody()),
+                "{id}: orchestral recorder should answer, not lead"
+            );
+        }
+    }
+
+    #[test]
+    fn camp_introduces_folk_and_orchestral_identity_in_the_first_bar() {
+        let folk = generate_adventure(&sample("opening", AdventureStyle::Folk)).unwrap();
+        let orchestral =
+            generate_adventure(&sample("opening", AdventureStyle::Orchestral)).unwrap();
+        let folk_opening: Vec<_> = folk
+            .section("camp")
+            .unwrap()
+            .events
+            .iter()
+            .filter(|event| event.start_tick() < folk.bar_ticks())
+            .collect();
+        let orchestral_opening: Vec<_> = orchestral
+            .section("camp")
+            .unwrap()
+            .events
+            .iter()
+            .filter(|event| event.start_tick() < orchestral.bar_ticks())
+            .collect();
+        assert!(folk_opening.iter().any(|event| event.voice() == "harp"));
+        assert!(!folk_opening.iter().any(|event| event.voice() == "vielle"));
+        assert!(orchestral_opening
+            .iter()
+            .any(|event| event.is_melody() && event.voice() == "vielle"));
+        assert!(orchestral_opening
+            .iter()
+            .any(|event| !event.is_melody() && event.voice() == "vielle"));
+    }
+
+    #[test]
+    fn orchestral_lead_gates_are_broader_than_folk_lilt() {
+        let folk = generate_adventure(&sample("gates", AdventureStyle::Folk)).unwrap();
+        let orch = generate_adventure(&sample("gates", AdventureStyle::Orchestral)).unwrap();
+
+        let melody = |section: &PortableSection| -> Vec<(u32, u32)> {
+            section
+                .events
+                .iter()
+                .filter(|event| event.is_melody())
+                .map(|event| (event.start_tick(), event.duration_ticks()))
+                .collect()
+        };
+        let folk_melody = melody(folk.section("camp").unwrap());
+        let orch_melody = melody(orch.section("camp").unwrap());
+
+        assert!(
+            orch_melody.len() < folk_melody.len(),
+            "orchestral lead should have fewer, broader onsets than folk lilt"
+        );
+        let avg_duration = |events: &[(u32, u32)]| {
+            events.iter().map(|(_, duration)| *duration).sum::<u32>() as f64 / events.len() as f64
+        };
+        assert!(
+            avg_duration(&orch_melody) > avg_duration(&folk_melody),
+            "orchestral lead should sing legato while folk lilts"
         );
     }
 }
