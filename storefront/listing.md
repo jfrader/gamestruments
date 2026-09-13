@@ -121,6 +121,28 @@ kit. Music is approved; the recording is still outstanding.
 Keep native and browser footage clearly identified. Final cuts should follow
 the music rather than forcing a transition to fit these draft timings.
 
+## Update Devlog — v0.1.2 (2026-09-13)
+
+Published: <https://gurisitosgames.itch.io/gamestruments-godot/devlog/1662999/v012-adventure-music-more-racing-and-a-simpler-kit>
+
+**Title:** v0.1.2 — Adventure music, more Racing, and a simpler kit
+
+Gamestruments 0.1.2 is out. If you already own the kit, just download the latest version — updates are included.
+
+**New: Adventure music.** An eight-section fantasy arc — camp, explore, town, dungeon, combat, boss, sanctuary, victory — in three styles: folk, dark, and orchestral. Your game drives it with one call: `set_adventure_state(area, discovery, threat, quest_complete)`.
+
+**More Racing.** The original six phases are untouched, and four new ones join them: Ignition, Slipstream, Redline, and Cooldown. In the browser lab, Racing now tours all ten on its own. Existing game code keeps using the original six; the extended arrangement is opt-in.
+
+**Easier to start.** The download now ships three small Godot examples instead of the old racing game:
+
+- play a title theme with `generate()`
+- feed gameplay values into the music with `set_race_state()`
+- hold, advance, and cue sections with a song form
+
+The full docs and one example script are also a free download on the product page, so you can read the integration before buying.
+
+**Hear it:** [try the browser lab](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo) or the [standalone preview](https://gamestruments.gurisitos.games). Then [get the kit](https://gurisitosgames.itch.io/gamestruments-godot).
+
 ## Launch Devlog (2026-09-11)
 
 **Title:** Now live: music your game writes as it plays
