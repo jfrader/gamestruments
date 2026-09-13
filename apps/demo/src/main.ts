@@ -22,8 +22,8 @@ import {
   initializeLab,
   levelSeed,
   labRecipe,
-  suspenseArrangement,
-  setSuspenseArrangement,
+  currentArrangement,
+  setArrangement,
   currentPresets,
   phase,
   score,
@@ -65,7 +65,7 @@ function renderCurrentScore(): void {
     soloMode,
     labRecipe,
     currentPresets(),
-    suspenseArrangement,
+    currentArrangement(),
     phase,
   );
 }
@@ -285,7 +285,7 @@ elements.arrangementButtons.addEventListener("click", (event) => {
   if (value !== "original" && value !== "extended" && value !== "theme") {
     return;
   }
-  applyGenerationRequest(setSuspenseArrangement(value), () => {
+  applyGenerationRequest(setArrangement(value), () => {
     renderCurrentScore();
     const messages = {
       original: "Original arrangement restored",

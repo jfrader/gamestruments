@@ -18,7 +18,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`.
-- `arrangement: String` — Suspense only: `original` (default), `extended` (gameplay form with every phase), or `theme` (additive title bed: hats enter early, layers stay, drop holds). Ignored by Racing and Adventure.
+- `arrangement: String` — per recipe: Racing `original` (default) or `extended` (ten-section race); Suspense `original` (default), `extended` (gameplay form with every phase), or `theme` (additive title bed: hats enter early, layers stay, drop holds). Ignored by Adventure.
 - `autoplay: bool` — Racing and Adventure only (default `false`). When true, attaches a song form that tours the recipe's sections automatically; when false, generation is state-driven. Ignored by Suspense.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; defaults to `funk`.
@@ -76,6 +76,25 @@ Selection priority:
 4. `phase = "race"`, `"grid"`, or `"garage"` selects `cruise`, `grid`, or `garage`.
 5. Any remaining `phase = "finish"` request selects `victory`.
 6. Unknown phases fall back to the score's default section.
+
+## Racing Sections
+
+`original` contains six 4-bar sections; `extended` keeps them byte-for-byte and adds four more harvested from the same piece and palette:
+
+| Id | Label | Bars | Arrangement |
+|---|---|---|---|
+| `garage` | Garage | 4 | original + extended |
+| `grid` | Starting Grid | 4 | original + extended |
+| `cruise` | Race Flow | 4 | original + extended |
+| `attack` | Position Fight | 4 | original + extended |
+| `final-lap` | Final Lap | 4 | original + extended |
+| `victory` | Finish | 4 | original + extended |
+| `ignition` | Ignition | 8 | extended |
+| `slipstream` | Slipstream | 16 | extended |
+| `redline` | Redline | 16 | extended |
+| `cooldown` | Cooldown | 8 | extended |
+
+With `autoplay = true`, the attached song form tours the arrangement in order — `original` tours garage, grid, cruise (×2), attack, final-lap, victory and loops from grid; `extended` tours all ten sections once each and loops from grid. The four new sections are cueable and appear in the tour, but they add no new state-driven rules: `set_race_state` still selects only the six original sections. Extended carries its own `-extended-v2` score id and ` — Extended` title suffix.
 
 ## Suspense — `set_trace_state`
 
@@ -182,7 +201,7 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
-- Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`.
+- Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
 - Suspense scores contain the base sections above; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
 - Adventure scores contain the eight sections above and default to `camp`; `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars, and `explore`, `town`, `combat`, and `victory` are 32.
 - State changes are quantized to bar boundaries and new sections start at phrase bar zero.

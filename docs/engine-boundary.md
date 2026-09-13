@@ -12,15 +12,32 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   exposes `request_adventure_state`.
 - Racing and Adventure optionally attach a song form through
   `apply_automatic_arrangement` when `autoplay` is set (default `false`).
-  Racing tours garage, grid, cruise (×2), attack, final-lap, victory, then
+  Racing `original` tours garage, grid, cruise (×2), attack, final-lap, victory,
+  then loops from grid; Racing `extended` tours all ten sections once each, then
   loops from grid; Adventure tours all eight sections, then loops from explore.
   With autoplay off, both recipes stay state-driven and byte-for-byte unchanged.
+  The adapter attaches a form only when autoplay is explicitly true; otherwise
+  the wrapper output keeps its empty (`None`) form.
 - Suspense additionally accepts `"arrangement": "original" | "extended" | "theme"`.
   The lab defaults to Extended; omitting the field in the engine API retains
   Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
   subdued felt/dusk textures, a continuous rhythm and occasional seeded tom
   details. The existing `generate_suspense` API remains Original. Godot exposes the same `arrangement`
   property, defaulting to `"original"`.
+- Racing additionally accepts `"arrangement": "original" | "extended"`. `original`
+  (the default, and returned for an omitted or empty field) is the approved
+  six-section race, byte-for-byte unchanged. `extended` keeps those six sections
+  identical and adds four new cueable sections harvested from the same piece and
+  palette — `ignition` (8 bars), `slipstream` (16 bars), `redline` (16 bars), and
+  `cooldown` (8 bars) — for a ten-section order: garage, ignition, grid, cruise,
+  slipstream, attack, redline, final-lap, victory, cooldown. Extended carries its
+  own `-extended-v2` id and ` — Extended` title suffix; the six original
+  sections, rules, and default `garage` opening are unchanged, and the new
+  sections are form-tour/cue targets only — no new gameplay state switches.
+  `generate_racing_arrangement` in `crates/engine/src/racing_arrangement.rs`
+  dispatches Original to `generate_racing` and Extended to `generate_extended`;
+  the autoplay adapter is applied afterward and leaves Original untouched.
+  Native and WASM default to Original; the Audio Lab defaults Racing to Extended.
 - Scan → Scan II and Breach → Breach II are independent, cueable 16-bar sections.
   The II variations begin with Anomaly-inspired textures, then develop response
   phrases instead of repeating eight bars twice. Scan and Breach retain their
@@ -82,6 +99,14 @@ auto tour" toggle, a "Next" button that names the upcoming section, and
 per-section Cue buttons. These are playback controls, not additional
 arrangements or gameplay phase names. Suspense's Original, Extended, and Theme
 remain its only arrangement choices; autoplay is a separate opt-in flag.
+
+The lab's arrangement selector is per recipe and remembered separately: Racing
+offers Original/Extended (default Extended), Suspense offers
+Original/Extended/Theme (default Extended), so switching a Suspense Theme never
+leaks into Racing. Adventure hides the arrangement control. When a Racing score
+switches from Extended to Original while a new phase (`ignition`, `slipstream`,
+`redline`, or `cooldown`) is playing, the lab falls back to `garage`, since
+Original has no such section.
 
 Audio synthesis / sound stage:
 - The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.

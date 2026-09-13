@@ -67,7 +67,8 @@ use core::slice;
 
 use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
-use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
+use crate::racing::{GenerateInput, InstrumentPalette, Style};
+use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::render_wav;
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
@@ -267,25 +268,37 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
+            let arrangement = match RacingArrangement::parse(&inp.arrangement) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
             let palette = InstrumentPalette {
                 melody: inp.palette.melody,
                 harmony: inp.palette.harmony,
                 drive: inp.palette.drive,
                 bass: inp.palette.bass,
             };
-            generate_racing(&GenerateInput {
-                secret: inp.secret,
-                seed: inp.seed,
-                style,
-                palette,
-                energy: inp.energy,
-                complexity: inp.complexity,
-                brightness: inp.brightness,
-                syncopation: inp.syncopation,
-            })
-            .and_then(|score| {
-                apply_automatic_arrangement(score, ArrangementRecipe::Racing, inp.autoplay)
-            })
+            let recipe = match arrangement {
+                RacingArrangement::Original => ArrangementRecipe::Racing,
+                RacingArrangement::Extended => ArrangementRecipe::RacingExtended,
+            };
+            generate_racing_arrangement(
+                &GenerateInput {
+                    secret: inp.secret,
+                    seed: inp.seed,
+                    style,
+                    palette,
+                    energy: inp.energy,
+                    complexity: inp.complexity,
+                    brightness: inp.brightness,
+                    syncopation: inp.syncopation,
+                },
+                arrangement,
+            )
+            .and_then(|score| apply_automatic_arrangement(score, recipe, inp.autoplay))
         }
         other => {
             write_error(format!("Unknown recipe: {other}"));

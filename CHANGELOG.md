@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Racing now has an Extended arrangement with four new phases — Ignition, Slipstream, Redline, and Cooldown — woven into a ten-section autoplay tour. Extended is the Lab default; Original remains available with its six musical parts unchanged. Existing game integrations still default to Original.
 - Added Adventure, an eight-section fantasy quest recipe (camp, explore, town, dungeon, combat, boss, sanctuary, victory). Camp, dungeon, boss, and sanctuary are 16 bars; explore, town, combat, and victory are 32, and each section develops its material across phrases rather than repeating copied halves. Styles are folk (earthy medieval folk), dark (dark medieval fantasy), and orchestral (orchestral RPG), using synthesized harp, recorder, vielle, and bell voices plus frame-drum and tambourine percussion — acoustic-inspired synthesis, not sample recordings. Godot exposes `recipe = "adventure"` and `set_adventure_state(area_phase, discovery, threat, quest_complete)`, and the Audio Lab can audition it.
 - Racing and Adventure now support an opt-in `autoplay` (default off). When enabled, the engine attaches a song form that tours the recipe's sections — Racing tours garage, grid, cruise (twice), attack, final-lap, and victory, then loops from grid; Adventure tours all eight sections, then loops from explore. With autoplay off, both recipes remain state-driven and unchanged. The Lab enables autoplay for Racing and Adventure; Suspense is unchanged, and Press Play is still required.
 - Suspense `theme` arrangement for title/menu music: same sections as Original, but the form builds (hats in the intro, drone carried forward) into a held drop instead of resetting at Break. After the drop, Theme adds hi-hat breaks and reverse-cymbal/snare landings instead of looping linear synth beeps. Gameplay `original` / `extended` phases are unchanged.
@@ -49,6 +50,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Racing Extended: removed the piercing octave lift from the new phases and rewrote Slipstream as a single call-and-response melody with rests and resolved phrase endings. Cooldown now eases into a closing phrase instead of mechanically dropping an octave. The six original musical sections remain unchanged.
 - Fixed occasional sharp drum-click spikes at certain tempos in the Audio Lab without reducing the overall mix level or changing the musical parts.
 - Suspense Extended now enters Disconnect for `progress` in the 0.80–0.94 range, matching the game-engine selector; alert/heat cues re-arm after the form leaves the cued section instead of being swallowed.
 - Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.

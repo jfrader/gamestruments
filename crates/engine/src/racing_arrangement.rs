@@ -1,0 +1,1485 @@
+use crate::racing::{generate_racing, GenerateInput};
+use crate::score::{MusicEvent, PortableScore, PortableSection};
+
+/// Version of the extended-arrangement wrapper itself. Kept independent of the
+/// generator version so the suffix stays stable while the generator evolves.
+pub const EXTENDED_VERSION: &str = "2";
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RacingArrangement {
+    #[default]
+    Original,
+    Extended,
+}
+
+impl RacingArrangement {
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "" | "original" => Ok(Self::Original),
+            "extended" => Ok(Self::Extended),
+            other => Err(format!("Unknown racing arrangement: {other}")),
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Original => "original",
+            Self::Extended => "extended",
+        }
+    }
+}
+
+pub fn generate_racing_arrangement(
+    input: &GenerateInput,
+    arrangement: RacingArrangement,
+) -> Result<PortableScore, String> {
+    match arrangement {
+        RacingArrangement::Original => generate_racing(input),
+        RacingArrangement::Extended => generate_extended(input),
+    }
+}
+
+pub const EXTENDED_SECTION_ORDER: [&str; 10] = [
+    "garage",
+    "ignition",
+    "grid",
+    "cruise",
+    "slipstream",
+    "attack",
+    "redline",
+    "final-lap",
+    "victory",
+    "cooldown",
+];
+
+struct PhaseSpec {
+    id: &'static str,
+    label: &'static str,
+    feeling: &'static str,
+    color: &'static str,
+    bars: u32,
+    source_id: &'static str,
+}
+
+const PHASES: [PhaseSpec; 4] = [
+    PhaseSpec {
+        id: "ignition",
+        label: "Ignition",
+        feeling: "gradual build / anticipation",
+        color: "#f2d9a0",
+        bars: 8,
+        source_id: "garage",
+    },
+    PhaseSpec {
+        id: "slipstream",
+        label: "Slipstream",
+        feeling: "call-and-response melody with breathing phrases",
+        color: "#6bc7b0",
+        bars: 16,
+        source_id: "cruise",
+    },
+    PhaseSpec {
+        id: "redline",
+        label: "Redline",
+        feeling: "controlled peak with rests",
+        color: "#e07050",
+        bars: 16,
+        source_id: "attack",
+    },
+    PhaseSpec {
+        id: "cooldown",
+        label: "Cooldown",
+        feeling: "resolved spacious",
+        color: "#a8c8a0",
+        bars: 8,
+        source_id: "victory",
+    },
+];
+
+fn generate_extended(input: &GenerateInput) -> Result<PortableScore, String> {
+    let mut score = generate_racing(input)?;
+    score.sections = EXTENDED_SECTION_ORDER
+        .iter()
+        .map(|id| match PHASES.iter().find(|phase| phase.id == *id) {
+            Some(phase) => Ok(build_phase(&score, phase)),
+            None => original_section(&score, id),
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    score.id.push_str(&format!("-extended-v{EXTENDED_VERSION}"));
+    score.title.push_str(" — Extended");
+    score.validate()?;
+    Ok(score)
+}
+
+fn original_section(score: &PortableScore, id: &str) -> Result<PortableSection, String> {
+    score
+        .section(id)
+        .cloned()
+        .ok_or_else(|| format!("racing requires {id}"))
+}
+
+/// A source event harvested from one of the base sections, with named fields so
+/// callers don't have to remember tuple positions.
+struct Harvested {
+    start_tick: u32,
+    duration_ticks: u32,
+    pitch: Option<u8>,
+    velocity: f64,
+    voice: String,
+}
+
+fn harvest(section: &PortableSection, kind: &str) -> Vec<Harvested> {
+    let suffix = format!("-{kind}");
+    section
+        .events
+        .iter()
+        .filter_map(|event| {
+            let (lane, start_tick, duration_ticks, velocity, voice, pitch) = match event {
+                MusicEvent::Note {
+                    lane,
+                    start_tick,
+                    duration_ticks,
+                    velocity,
+                    voice,
+                    pitch,
+                    ..
+                } => (
+                    lane,
+                    *start_tick,
+                    *duration_ticks,
+                    *velocity,
+                    voice.clone(),
+                    Some(*pitch),
+                ),
+                MusicEvent::Percussion {
+                    lane,
+                    start_tick,
+                    duration_ticks,
+                    velocity,
+                    voice,
+                    ..
+                } => (
+                    lane,
+                    *start_tick,
+                    *duration_ticks,
+                    *velocity,
+                    voice.clone(),
+                    None,
+                ),
+            };
+            if !lane.ends_with(&suffix) {
+                return None;
+            }
+            Some(Harvested {
+                start_tick,
+                duration_ticks,
+                pitch,
+                velocity,
+                voice,
+            })
+        })
+        .collect()
+}
+
+fn build_phase(base: &PortableScore, phase: &PhaseSpec) -> PortableSection {
+    let source = base
+        .section(phase.source_id)
+        .expect("source section for phase");
+    let bar_ticks = base.bar_ticks();
+    let length = phase.bars * bar_ticks;
+    let src_len = source.length_ticks;
+    let phrases = (phase.bars / 4) as usize;
+
+    let melody = harvest(source, "melody");
+    let harmony = harvest(source, "harmony");
+    let bass = harvest(source, "bass");
+    let kit = harvest(source, "kit");
+
+    // The four new phases get a comfortable lead register derived from the
+    // voice; the six original sections pass through untouched. The shift is a
+    // whole-octave down-only normalization, never an octave lift.
+    let window = voice_window(melody.first().map(|m| m.voice.as_str()));
+    let melody_shift = octave_shift_for_lane(&melody, window);
+    let lead_center = lead_register_center(&melody, melody_shift);
+
+    let mut events: Vec<MusicEvent> = Vec::new();
+    for ph in 0..phrases {
+        let offset = ph as u32 * src_len;
+        if phase.id == "slipstream" {
+            // The accompaniment (harmony/bass/kit) is copied from the seeded
+            // Cruise unchanged; the melody is composed separately below.
+            append_source_lane(
+                &mut events,
+                &harmony,
+                offset,
+                ph,
+                phase,
+                "harmony",
+                0,
+                length,
+                bar_ticks,
+            );
+            append_source_lane(
+                &mut events,
+                &bass,
+                offset,
+                ph,
+                phase,
+                "bass",
+                0,
+                length,
+                bar_ticks,
+            );
+            append_source_lane(
+                &mut events,
+                &kit,
+                offset,
+                ph,
+                phase,
+                "kit",
+                0,
+                length,
+                bar_ticks,
+            );
+        } else {
+            append_source_lane(
+                &mut events,
+                &melody,
+                offset,
+                ph,
+                phase,
+                "melody",
+                melody_shift,
+                length,
+                bar_ticks,
+            );
+            append_source_lane(
+                &mut events,
+                &harmony,
+                offset,
+                ph,
+                phase,
+                "harmony",
+                0,
+                length,
+                bar_ticks,
+            );
+            append_source_lane(
+                &mut events,
+                &bass,
+                offset,
+                ph,
+                phase,
+                "bass",
+                0,
+                length,
+                bar_ticks,
+            );
+            append_source_lane(
+                &mut events,
+                &kit,
+                offset,
+                ph,
+                phase,
+                "kit",
+                0,
+                length,
+                bar_ticks,
+            );
+        }
+    }
+
+    match phase.id {
+        "slipstream" => build_slipstream_melody(
+            &mut events,
+            &melody,
+            &harmony,
+            &bass,
+            length,
+            bar_ticks,
+            melody_shift,
+            lead_center,
+        ),
+        "redline" => apply_breaks(&mut events, bar_ticks),
+        "ignition" => add_anticipation(&mut events, length, bar_ticks, phase.id),
+        "cooldown" => {
+            apply_space(&mut events, bar_ticks, length);
+            apply_cooldown_release(&mut events, &harmony, &bass, length, bar_ticks, lead_center);
+        }
+        _ => {}
+    }
+
+    events.sort_by(|a, b| {
+        let sa = a.start_tick();
+        let sb = b.start_tick();
+        if sa != sb {
+            return sa.cmp(&sb);
+        }
+        event_id(a).cmp(event_id(b))
+    });
+
+    PortableSection {
+        id: phase.id.to_string(),
+        label: phase.label.to_string(),
+        feeling: phase.feeling.to_string(),
+        color: phase.color.to_string(),
+        length_ticks: length,
+        events,
+    }
+}
+
+/// Whether a lead voice reads bright (thin/buzzy) or warm (round/full). The
+/// register window keeps bright leads a little lower so they don't shriek.
+fn voice_window(voice: Option<&str>) -> (u8, u8) {
+    match voice {
+        Some("chip") | Some("supersaw") | Some("glass") => (55, 76),
+        _ => (55, 79), // epiano, pluck, warm, and any custom override
+    }
+}
+
+/// Minimal whole-octave down-shift (never an upward lift) that brings the top
+/// of a lane into its voice window. Preserves pitch classes, hence the contour.
+fn octave_shift_for_lane(src: &[Harvested], window: (u8, u8)) -> i32 {
+    let Some(hi) = src.iter().filter_map(|h| h.pitch).max() else {
+        return 0;
+    };
+    if hi <= window.1 {
+        return 0;
+    }
+    let mut shift = -12;
+    while i32::from(hi) + shift > i32::from(window.1) {
+        shift -= 12;
+    }
+    shift
+}
+
+/// Centre of the normalized lead register, used to fold accompaniment chord
+/// tones up into the melody's own octave band for nearest-register voice-leading.
+fn lead_register_center(src: &[Harvested], shift: i32) -> i32 {
+    let mut lo = i32::MAX;
+    let mut hi = i32::MIN;
+    for h in src {
+        if let Some(p) = h.pitch {
+            let v = i32::from(p) + shift;
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+    }
+    if lo == i32::MAX {
+        64
+    } else {
+        (lo + hi) / 2
+    }
+}
+
+/// Shift a pitch by whole octaves so it lands nearest to `center` (preserves
+/// pitch class). Lifts accompaniment chord tones into the lead register.
+fn fold_near(pitch: u8, center: i32) -> u8 {
+    (pitch % 12..=127)
+        .step_by(12)
+        .min_by_key(|candidate| i32::from(*candidate).abs_diff(center))
+        .expect("every pitch class has a valid MIDI representative")
+}
+
+/// Actual accompaniment chord pitches (per source bar) folded into the lead
+/// register, deduped and sorted ascending.
+fn chord_tones_per_bar(harmony: &[Harvested], center: i32, bar_ticks: u32) -> [Vec<u8>; 4] {
+    let mut bars = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
+    for h in harmony {
+        let Some(p) = h.pitch else { continue };
+        let bar = (h.start_tick / bar_ticks) as usize;
+        if bar < 4 {
+            bars[bar].push(fold_near(p, center));
+        }
+    }
+    for b in &mut bars {
+        b.sort_unstable();
+        b.dedup();
+    }
+    bars
+}
+
+/// Bass root pitch class (first/lowest bass note) per source bar. The root is
+/// what the cadence prefers to land on, derived from the actual bass rather
+/// than guessed from the title key.
+fn root_pc_per_bar(bass: &[Harvested], bar_ticks: u32) -> [Option<u8>; 4] {
+    let mut roots = [None; 4];
+    for b in bass {
+        let Some(p) = b.pitch else { continue };
+        let bar = (b.start_tick / bar_ticks) as usize;
+        if bar < 4 && roots[bar].is_none() {
+            roots[bar] = Some(p % 12);
+        }
+    }
+    roots
+}
+
+/// The nearest chord tone to `target`, preferring to step away from the exact
+/// pitch when it is already present (so the line keeps moving).
+fn nearest_chord_tone(target: u8, chord: &[u8]) -> u8 {
+    chord
+        .iter()
+        .copied()
+        .filter(|&c| c != target)
+        .min_by_key(|&c| i32::from(c).abs_diff(i32::from(target)))
+        .unwrap_or_else(|| chord.first().copied().unwrap_or(target))
+}
+
+/// A deliberate phrase landing: the actual root, then the fifth, then a chord
+/// tone already in the contour, then the nearest tone — in that order.
+fn cadence_landing(pitch: u8, chord: &[u8], root_pc: Option<u8>) -> u8 {
+    if let Some(root) = root_pc {
+        if let Some(&tone) = chord.iter().find(|&&c| c % 12 == root) {
+            return tone;
+        }
+        let fifth = (root + 7) % 12;
+        if let Some(&tone) = chord.iter().find(|&&c| c % 12 == fifth) {
+            return tone;
+        }
+    }
+    let pc = pitch % 12;
+    if chord.iter().any(|&c| c % 12 == pc) {
+        return pitch;
+    }
+    nearest_chord_tone(pitch, chord)
+}
+
+/// Copy one harvested lane into a phrase with light musical variation. Every
+/// emitted note stays inside the source bar it came from, so its pitch keeps
+/// that bar's chord underneath it.
+#[allow(clippy::too_many_arguments)]
+fn append_source_lane(
+    out: &mut Vec<MusicEvent>,
+    src: &[Harvested],
+    offset: u32,
+    phrase: usize,
+    phase: &PhaseSpec,
+    kind: &str,
+    melody_shift: i32,
+    maxl: u32,
+    bar_ticks: u32,
+) {
+    for (i, event) in src.iter().enumerate() {
+        // Ignition opens sparse: keep only the first note of each source bar
+        // and the kick, so the pulse stays grounded while anticipation builds.
+        if phase.id == "ignition" && phrase == 0 {
+            if kind == "melody" {
+                let first_of_bar =
+                    i == 0 || src[i - 1].start_tick / bar_ticks != event.start_tick / bar_ticks;
+                if !first_of_bar {
+                    continue;
+                }
+            } else if kind == "kit" && event.voice != "kick" {
+                continue;
+            }
+        }
+
+        let src_bar = event.start_tick / bar_ticks;
+        let bar_start = offset + src_bar * bar_ticks;
+        let bar_end = (bar_start + bar_ticks).min(maxl);
+
+        let st = event.start_tick + offset;
+        let mut dur = event.duration_ticks;
+        let mut vel = event.velocity;
+        let mut pitch = event.pitch;
+
+        // Register normalization (whole octave, never a lift) applied uniformly
+        // across the source so the contour survives.
+        if kind == "melody" && melody_shift != 0 {
+            if let Some(p) = pitch {
+                pitch = Some(fold_near(p, i32::from(p) + melody_shift));
+            }
+        }
+        if kind == "melody" && i % 3 == 0 {
+            dur = ((dur as f64) * 1.25).round() as u32;
+        }
+
+        // Light downbeat accent keeps the groove audible; ignition breathes.
+        if st.is_multiple_of(bar_ticks) {
+            vel = (vel * 1.04).min(0.96);
+        } else if st.is_multiple_of(bar_ticks / 2) {
+            vel = (vel * 0.95).min(0.96);
+        }
+        if phase.id == "ignition" && phrase == 0 {
+            vel *= 0.55;
+        }
+
+        if st >= bar_end {
+            continue;
+        }
+        let dur = dur.min(bar_end - st).max(1);
+
+        push_event(
+            out,
+            phase.id,
+            kind,
+            phrase,
+            i as u32,
+            st,
+            dur,
+            vel,
+            pitch,
+            &event.voice,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_event(
+    out: &mut Vec<MusicEvent>,
+    sec: &str,
+    kind: &str,
+    phrase: usize,
+    idx: u32,
+    st: u32,
+    dur: u32,
+    vel: f64,
+    pitch: Option<u8>,
+    voice: &str,
+) {
+    let lane = format!("{sec}-{kind}");
+    let id = format!("{sec}:{lane}:p{phrase}:{idx}");
+    if let Some(p) = pitch {
+        out.push(MusicEvent::Note {
+            id,
+            section: sec.to_string(),
+            lane,
+            start_tick: st,
+            duration_ticks: dur,
+            velocity: vel,
+            pitch: p,
+            voice: voice.to_string(),
+            role: if kind == "melody" {
+                Some("melody".to_string())
+            } else {
+                None
+            },
+        });
+    } else {
+        out.push(MusicEvent::Percussion {
+            id,
+            section: sec.to_string(),
+            lane,
+            start_tick: st,
+            duration_ticks: dur,
+            velocity: vel,
+            voice: voice.to_string(),
+        });
+    }
+}
+
+/// One source melody note, with its pitch already normalized into the lead
+/// register and its bar/step recovered from the source timeline.
+struct SrcNote {
+    bar: usize,
+    step: u32,
+    pitch: u8,
+    velocity: f64,
+}
+
+/// Emits a single monophonic lead line into the `slipstream-melody` lane.
+struct MelodyEmitter<'a> {
+    out: &'a mut Vec<MusicEvent>,
+    sec: &'a str,
+    voice: &'a str,
+    bar_ticks: u32,
+    phrase: usize,
+    idx: u32,
+}
+
+impl MelodyEmitter<'_> {
+    fn note(&mut self, bar: usize, step: u32, pitch: u8, dur: u32, vel: f64) {
+        let st = bar as u32 * self.bar_ticks + step * (self.bar_ticks / 8);
+        push_event(
+            self.out,
+            self.sec,
+            "melody",
+            self.phrase,
+            self.idx,
+            st,
+            dur,
+            vel,
+            Some(pitch),
+            self.voice,
+        );
+        self.idx += 1;
+    }
+}
+
+/// The Slipstream lead: one dedicated melody over the copied Cruise
+/// accompaniment. 16 bars as call (1-4), answer (5-8), development (9-12) and
+/// return/cadence (13-16), monophonic with a breath between phrases. No counter
+/// lane, no octave lift, no mechanical sixteenth displacement.
+#[allow(clippy::too_many_arguments)]
+fn build_slipstream_melody(
+    out: &mut Vec<MusicEvent>,
+    melody: &[Harvested],
+    harmony: &[Harvested],
+    bass: &[Harvested],
+    length: u32,
+    bar_ticks: u32,
+    melody_shift: i32,
+    lead_center: i32,
+) {
+    let Some(voice) = melody.first().map(|m| m.voice.clone()) else {
+        return;
+    };
+    let pulse = bar_ticks / 8;
+    let std = 3 * pulse / 4;
+    let cad = bar_ticks / 2;
+
+    let src: Vec<SrcNote> = melody
+        .iter()
+        .filter_map(|h| {
+            let p = h.pitch?;
+            Some(SrcNote {
+                bar: (h.start_tick / bar_ticks) as usize,
+                step: (h.start_tick % bar_ticks) / pulse,
+                pitch: fold_near(p, i32::from(p) + melody_shift),
+                velocity: h.velocity,
+            })
+        })
+        .collect();
+    if src.is_empty() {
+        return;
+    }
+
+    let chords = chord_tones_per_bar(harmony, lead_center, bar_ticks);
+    let roots = root_pc_per_bar(bass, bar_ticks);
+
+    let mut em = MelodyEmitter {
+        out,
+        sec: "slipstream",
+        voice: &voice,
+        bar_ticks,
+        phrase: 0,
+        idx: 0,
+    };
+
+    // Phrase 1 — call: the source contour and rhythm, resolved at the cadence.
+    let mut current = 0u8;
+    for (i, n) in src.iter().enumerate() {
+        let pitch = if i + 1 == src.len() {
+            cadence_landing(n.pitch, &chords[n.bar], roots[n.bar])
+        } else {
+            n.pitch
+        };
+        em.note(n.bar, n.step, pitch, std, n.velocity);
+        current = pitch;
+    }
+
+    // Phrase 2 — answer: chord tones led by nearest register from the call.
+    em.phrase = 1;
+    em.idx = 0;
+    const ANSWER_STEPS: [u32; 2] = [3, 6];
+    for bar in 0..4usize {
+        for (oi, &step) in ANSWER_STEPS.iter().enumerate() {
+            let pitch = if bar == 3 && oi == ANSWER_STEPS.len() - 1 {
+                cadence_landing(current, &chords[bar], roots[bar])
+            } else {
+                nearest_chord_tone(current, &chords[bar])
+            };
+            em.note(4 + bar, step, pitch, std, 0.5);
+            current = pitch;
+        }
+    }
+
+    // Phrase 3 — development: a rising arpeggio motif at a denser rhythm.
+    em.phrase = 2;
+    em.idx = 0;
+    const DEV_STEPS: [u32; 3] = [1, 3, 5];
+    for bar in 0..4usize {
+        let chord = &chords[bar];
+        if chord.is_empty() {
+            continue;
+        }
+        for (oi, &step) in DEV_STEPS.iter().enumerate() {
+            let pitch = if bar == 3 && oi == DEV_STEPS.len() - 1 {
+                cadence_landing(current, chord, roots[bar])
+            } else {
+                chord[oi % chord.len()]
+            };
+            let vel = 0.44 + 0.012 * f64::from(em.idx);
+            em.note(8 + bar, step, pitch, std, vel);
+            current = pitch;
+        }
+    }
+
+    // Phrase 4 — return: recall the call's opening, then thin into the handoff.
+    em.phrase = 3;
+    em.idx = 0;
+    for n in src.iter().take(4) {
+        em.note(12 + n.bar, n.step, n.pitch, std, n.velocity);
+        current = n.pitch;
+    }
+    let p14 = nearest_chord_tone(current, &chords[2]);
+    em.note(14, 2, p14, std, 0.5);
+    current = p14;
+    let p15 = cadence_landing(current, &chords[3], roots[3]);
+    em.note(
+        15,
+        2,
+        p15,
+        cad.min(length.saturating_sub(15 * bar_ticks + 2 * pulse)),
+        0.52,
+    );
+}
+
+/// Redline is a controlled peak, not a random dropout. Bars 8-9 rest the
+/// melody and harmony while bass and drums keep the groove; bar 12 opens with a
+/// single planned full-stop beat, then everything returns for the final push.
+fn apply_breaks(events: &mut Vec<MusicEvent>, bar_ticks: u32) {
+    let beat = bar_ticks / 4;
+    let stop_bar = 12u32;
+    let stop_start = stop_bar * bar_ticks;
+    events.retain(|event| {
+        let bar = event.start_tick() / bar_ticks;
+        let groove = matches!(event, MusicEvent::Percussion { .. })
+            || matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-bass"));
+        if (8..10).contains(&bar) && !groove {
+            return false;
+        }
+        if bar == stop_bar && event.start_tick() < stop_start + beat {
+            return false;
+        }
+        true
+    });
+    // Evolving dynamics: breathe into the breakdown, then push the final lap.
+    for event in events.iter_mut() {
+        let bar = event.start_tick() / bar_ticks;
+        let scale = match bar {
+            8..=9 => 0.72,
+            12..=15 => 1.06,
+            _ => 1.0,
+        };
+        if scale != 1.0 {
+            match event {
+                MusicEvent::Note { velocity, .. } | MusicEvent::Percussion { velocity, .. } => {
+                    *velocity = (*velocity * scale).min(0.96);
+                }
+            }
+        }
+    }
+}
+
+/// A pickup fill on the last two beats, alternating hat/snare and rising, so
+/// the section hands off into the grid with momentum.
+fn add_anticipation(events: &mut Vec<MusicEvent>, length: u32, bar_ticks: u32, sec: &str) {
+    let beat = bar_ticks / 4;
+    let sixteenth = beat / 4;
+    let lane = format!("{sec}-kit");
+    let base = length.saturating_sub(2 * beat);
+    for k in 0..8u32 {
+        let st = base + k * sixteenth;
+        if st >= length {
+            break;
+        }
+        let voice = if k % 2 == 0 { "hat" } else { "snare" };
+        events.push(MusicEvent::Percussion {
+            id: format!("{sec}:ignite:{k}"),
+            section: sec.to_string(),
+            lane: lane.clone(),
+            start_tick: st,
+            duration_ticks: sixteenth,
+            velocity: 0.18 + 0.05 * f64::from(k),
+            voice: voice.to_string(),
+        });
+    }
+}
+
+/// "Resolved spacious": keep only a soft heartbeat (kick + hat), drop the
+/// snare/tom, let every note ring a little longer, and ease the dynamics.
+fn apply_space(events: &mut Vec<MusicEvent>, bar_ticks: u32, maxl: u32) {
+    events.retain(|event| match event {
+        MusicEvent::Percussion { voice, .. } => matches!(voice.as_str(), "kick" | "hat"),
+        MusicEvent::Note { .. } => true,
+    });
+    for event in events.iter_mut() {
+        match event {
+            MusicEvent::Note {
+                duration_ticks,
+                velocity,
+                ..
+            }
+            | MusicEvent::Percussion {
+                duration_ticks,
+                velocity,
+                ..
+            } => {
+                *duration_ticks = ((*duration_ticks as f64) * 1.15).round() as u32;
+                *velocity = (*velocity * 0.85).max(0.08);
+            }
+        }
+        clamp_duration_to_bar(event, bar_ticks, maxl);
+    }
+}
+
+/// The Cooldown's second phrase is a real release rather than a mechanical
+/// octave drop: bar 5 thins to its first note, bar 6 holds a breath, and bar 7
+/// lands once on the actual root/fifth and holds it.
+fn apply_cooldown_release(
+    events: &mut Vec<MusicEvent>,
+    harmony: &[Harvested],
+    bass: &[Harvested],
+    length: u32,
+    bar_ticks: u32,
+    lead_center: i32,
+) {
+    let chords = chord_tones_per_bar(harmony, lead_center, bar_ticks);
+    let roots = root_pc_per_bar(bass, bar_ticks);
+    let cad_dur = bar_ticks / 2;
+
+    let mut kept = Vec::with_capacity(events.len());
+    let mut bar5_kept = false;
+    let mut bar7_kept = false;
+    for mut ev in events.drain(..) {
+        let st = ev.start_tick();
+        let is_melody = matches!(&ev, MusicEvent::Note { lane, .. } if lane.ends_with("-melody"));
+        if !is_melody {
+            kept.push(ev);
+            continue;
+        }
+        match st / bar_ticks {
+            0..=4 => kept.push(ev),
+            5 => {
+                if !bar5_kept {
+                    kept.push(ev);
+                    bar5_kept = true;
+                }
+            }
+            6 => {} // a held breath
+            7 => {
+                if !bar7_kept {
+                    if let MusicEvent::Note {
+                        pitch,
+                        duration_ticks,
+                        ..
+                    } = &mut ev
+                    {
+                        *pitch = cadence_landing(*pitch, &chords[3], roots[3]);
+                        *duration_ticks = cad_dur.min(length.saturating_sub(st)).max(1);
+                    }
+                    kept.push(ev);
+                    bar7_kept = true;
+                }
+            }
+            _ => kept.push(ev),
+        }
+    }
+    *events = kept;
+}
+
+fn clamp_duration_to_bar(event: &mut MusicEvent, bar_ticks: u32, maxl: u32) {
+    let bar_end = ((event.start_tick() / bar_ticks + 1) * bar_ticks).min(maxl);
+    let dur = event
+        .duration_ticks()
+        .min(bar_end.saturating_sub(event.start_tick()))
+        .max(1);
+    match event {
+        MusicEvent::Note { duration_ticks, .. } | MusicEvent::Percussion { duration_ticks, .. } => {
+            *duration_ticks = dur;
+        }
+    }
+}
+
+fn event_id(event: &MusicEvent) -> &str {
+    match event {
+        MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id.as_str(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
+    use std::collections::HashSet;
+
+    fn sample(secret: &str, style: Style, palette: InstrumentPalette) -> GenerateInput {
+        GenerateInput {
+            secret: secret.to_string(),
+            seed: "lab-710".to_string(),
+            style,
+            palette,
+            energy: 0.61,
+            complexity: 0.68,
+            brightness: 0.54,
+            syncopation: 0.71,
+        }
+    }
+
+    fn default_input() -> GenerateInput {
+        sample("arr-secret", Style::Funk, InstrumentPalette::default())
+    }
+
+    /// The exact Lab presets (apps/demo/src/state.ts GENERATION_PRESETS), used
+    /// to reproduce the high-brightness level-001/002/003 cases.
+    fn lab_input(style: Style, seed: &str) -> GenerateInput {
+        let (energy, complexity, brightness, syncopation) = match style {
+            Style::Fusion => (0.62, 0.68, 0.52, 0.72),
+            Style::Neon => (0.7, 0.48, 0.82, 0.35),
+            Style::Funk => (0.58, 0.75, 0.55, 0.9),
+            Style::Chip => (0.8, 0.7, 0.72, 0.62),
+        };
+        GenerateInput {
+            secret: String::new(),
+            seed: seed.to_string(),
+            style,
+            palette: InstrumentPalette::default(),
+            energy,
+            complexity,
+            brightness,
+            syncopation,
+        }
+    }
+
+    fn melody_notes(sec: &PortableSection) -> Vec<&MusicEvent> {
+        sec.events.iter().filter(|e| e.is_melody()).collect()
+    }
+
+    fn harmony_pcs_by_bar(sec: &PortableSection, bar_ticks: u32) -> Vec<HashSet<u8>> {
+        let bars = (sec.length_ticks / bar_ticks) as usize;
+        let mut pcs = vec![HashSet::new(); bars];
+        for ev in &sec.events {
+            if let MusicEvent::Note {
+                lane,
+                start_tick,
+                pitch,
+                ..
+            } = ev
+            {
+                if lane.ends_with("-harmony") {
+                    let b = (start_tick / bar_ticks) as usize;
+                    if b < bars {
+                        pcs[b].insert(pitch % 12);
+                    }
+                }
+            }
+        }
+        pcs
+    }
+
+    fn melody_is_monophonic(notes: &[&MusicEvent]) -> bool {
+        let mut sorted: Vec<&MusicEvent> = notes.to_vec();
+        sorted.sort_by_key(|e| e.start_tick());
+        sorted
+            .windows(2)
+            .all(|w| w[0].start_tick() + w[0].duration_ticks() <= w[1].start_tick())
+    }
+
+    fn phrase_melody<'a>(
+        notes: &'a [&MusicEvent],
+        ph: usize,
+        bar_ticks: u32,
+    ) -> Vec<&'a MusicEvent> {
+        let from = ph as u32 * 4 * bar_ticks;
+        let to = from + 4 * bar_ticks;
+        notes
+            .iter()
+            .copied()
+            .filter(|e| e.start_tick() >= from && e.start_tick() < to)
+            .collect()
+    }
+
+    /// A half's musical signature: (duration, pitch, voice) per event, with
+    /// absolute timeline offsets and ids ignored so we compare the music, not
+    /// the placement.
+    fn half_sig(
+        sec: &PortableSection,
+        bar_ticks: u32,
+        half: usize,
+    ) -> Vec<(u32, Option<u8>, String)> {
+        let half_bars = sec.length_ticks / bar_ticks / 2;
+        let from = half as u32 * half_bars * bar_ticks;
+        let to = from + half_bars * bar_ticks;
+        let mut v: Vec<_> = sec
+            .events
+            .iter()
+            .filter(|e| e.start_tick() >= from && e.start_tick() < to)
+            .map(|e| (e.duration_ticks(), e.pitch(), e.voice().to_string()))
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn register_folding_preserves_pitch_class_at_midi_boundaries() {
+        for pitch in 0u8..=127 {
+            for center in [-100, 0, 3, 64, 124, 127, 200] {
+                let folded = fold_near(pitch, center);
+                assert!(folded <= 127);
+                assert_eq!(folded % 12, pitch % 12);
+            }
+        }
+    }
+
+    #[test]
+    fn original_delegates_unchanged() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for (secret, pal) in [
+                ("arr-secret", InstrumentPalette::default()),
+                (
+                    "arr-secret",
+                    InstrumentPalette {
+                        melody: "supersaw".into(),
+                        harmony: "organ".into(),
+                        drive: "pulse".into(),
+                        bass: "triangle".into(),
+                    },
+                ),
+                ("", InstrumentPalette::default()),
+            ] {
+                let input = GenerateInput {
+                    secret: secret.to_string(),
+                    seed: "lab-710".to_string(),
+                    style,
+                    palette: pal,
+                    energy: 0.61,
+                    complexity: 0.68,
+                    brightness: 0.54,
+                    syncopation: 0.71,
+                };
+                let via =
+                    generate_racing_arrangement(&input, RacingArrangement::Original).expect("via");
+                let dir = generate_racing(&input).expect("direct");
+                assert_eq!(
+                    serde_json::to_vec(&via).expect("ser"),
+                    serde_json::to_vec(&dir).expect("ser"),
+                    "{style:?} {secret}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn extended_preserves_original_sections_byte_identical() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let ext =
+                    generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+                let orig = generate_racing(&input).expect("orig");
+                assert_eq!(ext.sections.len(), 10);
+                for id in ["garage", "grid", "cruise", "attack", "final-lap", "victory"] {
+                    let es = ext.section(id).expect(id);
+                    let os = orig.section(id).expect(id);
+                    assert_eq!(
+                        serde_json::to_vec(es).expect("es"),
+                        serde_json::to_vec(os).expect("os"),
+                        "original section {} mutated for {style:?} {seed}",
+                        id
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn extended_uses_own_version_and_title_suffix() {
+        let input = default_input();
+        let ext = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let orig = generate_racing(&input).expect("orig");
+        assert_eq!(EXTENDED_VERSION, "2");
+        assert_eq!(ext.id, format!("{}-extended-v2", orig.id));
+        assert_eq!(ext.title, format!("{} — Extended", orig.title));
+        // The original score is untouched by extended generation.
+        assert!(!orig.id.ends_with("-extended-v2"));
+        assert!(!orig.title.contains(" — Extended"));
+    }
+
+    #[test]
+    fn extended_has_ten_sections_in_order_and_new_lengths() {
+        let input = default_input();
+        let score = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let got: Vec<&str> = score.sections.iter().map(|s| s.id.as_str()).collect();
+        assert_eq!(got, EXTENDED_SECTION_ORDER.to_vec());
+        let bar = score.bar_ticks();
+        assert_eq!(score.section("ignition").unwrap().length_ticks, 8 * bar);
+        assert_eq!(score.section("slipstream").unwrap().length_ticks, 16 * bar);
+        assert_eq!(score.section("redline").unwrap().length_ticks, 16 * bar);
+        assert_eq!(score.section("cooldown").unwrap().length_ticks, 8 * bar);
+    }
+
+    #[test]
+    fn each_new_phase_has_varied_halves() {
+        let input = default_input();
+        let score = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let bar = score.bar_ticks();
+        for nid in ["ignition", "slipstream", "redline", "cooldown"] {
+            let sec = score.section(nid).expect(nid);
+            let a = half_sig(sec, bar, 0);
+            let b = half_sig(sec, bar, 1);
+            assert_ne!(a, b, "halves not varied for {}", nid);
+        }
+    }
+
+    #[test]
+    fn slipstream_is_monophonic_call_response_with_resolved_cadences() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            let input = lab_input(style, "level-001");
+            let score =
+                generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+            let bar = score.bar_ticks();
+            let beat = bar / 4;
+            let slip = score.section("slipstream").expect("slipstream");
+            let harm = harmony_pcs_by_bar(slip, bar);
+            let mel = melody_notes(slip);
+
+            // The fixed beat-4 counter lane is gone.
+            assert!(
+                slip.events
+                    .iter()
+                    .all(|e| !event_id(e).contains(":counter:")),
+                "{} still carries a counter lane",
+                style.as_str()
+            );
+            // One monophonic lead: no two melody notes sound together.
+            assert!(
+                melody_is_monophonic(&mel),
+                "{} melody notes overlap",
+                style.as_str()
+            );
+
+            for ph in 0..4 {
+                let notes = phrase_melody(&mel, ph, bar);
+                assert!(!notes.is_empty(), "{} phrase {ph} empty", style.as_str());
+                let last = notes.iter().max_by_key(|e| e.start_tick()).unwrap();
+                let last_bar = last.start_tick() / bar;
+                assert_eq!(
+                    last_bar,
+                    (ph * 4 + 3) as u32,
+                    "{} phrase {ph} must end in its 4th bar",
+                    style.as_str()
+                );
+                let pc = last.pitch().unwrap() % 12;
+                assert!(
+                    harm[last_bar as usize].contains(&pc),
+                    "{} phrase {ph} cadence pc {pc} not in bar {last_bar} harmony {:?}",
+                    style.as_str(),
+                    harm[last_bar as usize]
+                );
+                if ph < 3 {
+                    let next = phrase_melody(&mel, ph + 1, bar);
+                    let first_next = next.iter().min_by_key(|e| e.start_tick()).unwrap();
+                    let last_end = last.start_tick() + last.duration_ticks();
+                    assert!(
+                        first_next.start_tick() >= last_end + beat,
+                        "{} no breath between phrases {ph} and {}",
+                        style.as_str(),
+                        ph + 1
+                    );
+                }
+            }
+
+            // A final gap hands the lead off before the section ends.
+            let last = mel.iter().max_by_key(|e| e.start_tick()).unwrap();
+            assert!(
+                last.start_tick() + last.duration_ticks() < slip.length_ticks,
+                "{} has no handoff gap at the end",
+                style.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn slipstream_phrases_have_distinct_onset_patterns() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            let input = lab_input(style, "level-001");
+            let score =
+                generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+            let bar = score.bar_ticks();
+            let pulse = bar / 8;
+            let slip = score.section("slipstream").expect("slipstream");
+            let mel = melody_notes(slip);
+            let patterns: Vec<Vec<u32>> = (0..4)
+                .map(|ph| {
+                    phrase_melody(&mel, ph, bar)
+                        .iter()
+                        .map(|e| (e.start_tick() % bar) / pulse)
+                        .collect()
+                })
+                .collect();
+            for i in 0..4 {
+                for j in (i + 1)..4 {
+                    assert_ne!(
+                        patterns[i],
+                        patterns[j],
+                        "{} phrases {i} and {j} share an onset pattern",
+                        style.as_str()
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn new_phase_leads_stay_in_comfortable_register_across_lab_presets() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+                let bright = matches!(style, Style::Neon | Style::Chip);
+                let ceiling: u8 = if bright { 76 } else { 79 };
+                for nid in ["ignition", "slipstream", "redline", "cooldown"] {
+                    let sec = score.section(nid).expect(nid);
+                    let pitches: Vec<u8> = sec
+                        .events
+                        .iter()
+                        .filter(|e| e.is_melody())
+                        .filter_map(|e| e.pitch())
+                        .collect();
+                    assert!(!pitches.is_empty(), "{} {nid} has no lead", style.as_str());
+                    for &p in &pitches {
+                        assert!(p < 127, "{} {nid} clamps at 127", style.as_str());
+                        assert!(
+                            p <= ceiling,
+                            "{} {nid} lead {p} exceeds {ceiling} for {seed}",
+                            style.as_str()
+                        );
+                        assert!(
+                            p >= 48,
+                            "{} {nid} lead {p} below the comfortable floor for {seed}",
+                            style.as_str()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cooldown_second_phrase_thins_into_a_pause_and_stable_landing() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            let input = lab_input(style, "level-001");
+            let score =
+                generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+            let bar = score.bar_ticks();
+            let sec = score.section("cooldown").expect("cooldown");
+            let mel = melody_notes(sec);
+
+            let p0 = phrase_melody(&mel, 0, bar);
+            let p1 = phrase_melody(&mel, 1, bar);
+            assert!(
+                p1.len() < p0.len(),
+                "{} cooldown second phrase must thin",
+                style.as_str()
+            );
+            // Bar 6 (the second phrase's third bar) holds a breath.
+            let bar6 = mel.iter().filter(|e| e.start_tick() / bar == 6).count();
+            assert_eq!(bar6, 0, "{} cooldown must pause in bar 6", style.as_str());
+            // The stable landing sits on the final bar's actual harmony.
+            let harm = harmony_pcs_by_bar(sec, bar);
+            let last = mel.iter().max_by_key(|e| e.start_tick()).unwrap();
+            let last_bar = last.start_tick() / bar;
+            let pc = last.pitch().unwrap() % 12;
+            assert!(
+                harm[last_bar as usize].contains(&pc),
+                "{} cooldown landing pc {pc} outside bar {last_bar} harmony",
+                style.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn notes_stay_within_bar_boundaries() {
+        let input = default_input();
+        let score = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let bar = score.bar_ticks();
+        for nid in ["ignition", "slipstream", "redline", "cooldown"] {
+            let sec = score.section(nid).expect(nid);
+            for ev in &sec.events {
+                let end = ev.start_tick() + ev.duration_ticks();
+                assert!(end <= sec.length_ticks, "oob event in {}", nid);
+                assert_eq!(
+                    ev.start_tick() / bar,
+                    (end - 1) / bar,
+                    "{} event at {} spills a bar boundary",
+                    nid,
+                    ev.start_tick()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn redline_keeps_bass_and_drums_continuous() {
+        let input = default_input();
+        let score = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let bar = score.bar_ticks();
+        let beat = bar / 4;
+        let red = score.section("redline").expect("redline");
+        let bars = red.length_ticks / bar;
+        let stop_bar = 12u32;
+        for b in 0..bars {
+            let from = b * bar;
+            let to = from + bar;
+            let is_kick = |e: &MusicEvent| {
+                matches!(e, MusicEvent::Percussion { voice, .. } if voice == "kick")
+                    && e.start_tick() >= from
+                    && e.start_tick() < to
+            };
+            let is_bass = |e: &MusicEvent| {
+                matches!(e, MusicEvent::Note { lane, .. } if lane.ends_with("-bass"))
+                    && e.start_tick() >= from
+                    && e.start_tick() < to
+            };
+            if b == stop_bar {
+                // Only the single planned full-stop beat may silence the groove;
+                // bass and kick must resume within the same bar.
+                let during = red
+                    .events
+                    .iter()
+                    .filter(|e| e.start_tick() >= from && e.start_tick() < from + beat)
+                    .count();
+                assert_eq!(during, 0, "nothing should sound during the full stop");
+                let after = red
+                    .events
+                    .iter()
+                    .filter(|e| (is_kick(e) || is_bass(e)) && e.start_tick() >= from + beat)
+                    .count();
+                assert!(after > 0, "groove must resume after the planned stop");
+            } else {
+                assert!(red.events.iter().any(is_kick), "kick missing in bar {b}");
+                assert!(red.events.iter().any(is_bass), "bass missing in bar {b}");
+            }
+        }
+    }
+
+    #[test]
+    fn palette_overrides_reach_new_sections() {
+        let pal = InstrumentPalette {
+            melody: "supersaw".into(),
+            harmony: "organ".into(),
+            bass: "pulse".into(),
+            ..InstrumentPalette::default()
+        };
+        let input = sample("pal-test", Style::Neon, pal);
+        let ext = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        for nid in ["ignition", "slipstream", "redline", "cooldown"] {
+            let sec = ext.section(nid).expect(nid);
+            let mels: Vec<_> = sec
+                .events
+                .iter()
+                .filter(|e| e.is_melody())
+                .map(|e| e.voice().to_string())
+                .collect();
+            assert!(!mels.is_empty(), "no mel in {}", nid);
+            assert!(
+                mels.iter().all(|v| v == "supersaw"),
+                "mel palette not carried to {}",
+                nid
+            );
+            let nonm: Vec<_> = sec
+                .events
+                .iter()
+                .filter_map(|e| match e {
+                    MusicEvent::Note { .. } if !e.is_melody() => Some(e.voice().to_string()),
+                    _ => None,
+                })
+                .collect();
+            if !nonm.is_empty() {
+                let has = nonm.iter().any(|v| v == "organ" || v == "pulse");
+                assert!(has, "harmony/bass palette missing in {}", nid);
+            }
+        }
+    }
+
+    #[test]
+    fn rules_default_garage_form_none_unchanged() {
+        let input = default_input();
+        let ext = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let orig = generate_racing(&input).expect("orig");
+        assert_eq!(ext.default_section, "garage");
+        assert!(ext.form.is_none());
+        assert_eq!(
+            serde_json::to_vec(&ext.rules).expect("r"),
+            serde_json::to_vec(&orig.rules).expect("r")
+        );
+    }
+
+    #[test]
+    fn new_event_ids_unique_and_in_bounds() {
+        let input = default_input();
+        let score = generate_racing_arrangement(&input, RacingArrangement::Extended).expect("ext");
+        let mut seen = HashSet::new();
+        for sec in &score.sections {
+            for ev in &sec.events {
+                let iid = match ev {
+                    MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
+                };
+                assert!(seen.insert(iid.clone()), "duplicate event id {}", iid);
+                assert!(
+                    ev.start_tick() + ev.duration_ticks() <= sec.length_ticks,
+                    "oob {}",
+                    iid
+                );
+                assert!(!ev.voice().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn deterministic_across_calls_and_differs_by_seed() {
+        let i1 = sample("det", Style::Chip, InstrumentPalette::default());
+        let mut i2 = i1.clone();
+        i2.seed = "lab-710-x".to_string();
+        let s1 = generate_racing_arrangement(&i1, RacingArrangement::Extended).expect("s1");
+        let s1b = generate_racing_arrangement(&i1, RacingArrangement::Extended).expect("s1b");
+        let s2 = generate_racing_arrangement(&i2, RacingArrangement::Extended).expect("s2");
+        assert_eq!(
+            serde_json::to_vec(&s1).expect("s1s"),
+            serde_json::to_vec(&s1b).expect("s1bs")
+        );
+        assert_ne!(s1.id, s2.id);
+        assert_ne!(s1.sections[1].events.len() + s1.sections[4].events.len(), 0);
+    }
+
+    #[test]
+    fn many_styles_and_trait_values_produce_valid_ten_section_scores() {
+        let styles = [Style::Fusion, Style::Neon, Style::Funk, Style::Chip];
+        for (si, &st) in styles.iter().enumerate() {
+            for ti in 0..6 {
+                let e = 0.3 + (ti as f64) * 0.1;
+                let inp = GenerateInput {
+                    secret: format!("many-{}", si),
+                    seed: format!("t{}", ti),
+                    style: st,
+                    palette: InstrumentPalette::default(),
+                    energy: e,
+                    complexity: e + 0.05,
+                    brightness: 0.5 + (ti as f64) * 0.04,
+                    syncopation: 0.6 + (ti as f64) * 0.03,
+                };
+                let sc = generate_racing_arrangement(&inp, RacingArrangement::Extended)
+                    .expect("many must validate");
+                assert_eq!(sc.sections.len(), 10);
+                for nid in ["ignition", "slipstream", "redline", "cooldown"] {
+                    let s = sc.section(nid).unwrap();
+                    assert!(!s.events.is_empty(), "{} empty for {:?}", nid, st);
+                    assert!(s.length_ticks > 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parse_as_str_default_contract() {
+        assert_eq!(
+            RacingArrangement::parse("").unwrap(),
+            RacingArrangement::Original
+        );
+        assert_eq!(
+            RacingArrangement::parse("original").unwrap(),
+            RacingArrangement::Original
+        );
+        assert_eq!(
+            RacingArrangement::parse("extended").unwrap(),
+            RacingArrangement::Extended
+        );
+        assert!(RacingArrangement::parse("foo").is_err());
+        assert!(RacingArrangement::parse("Original").is_err());
+        assert_eq!(RacingArrangement::Original.as_str(), "original");
+        assert_eq!(RacingArrangement::Extended.as_str(), "extended");
+        assert_eq!(RacingArrangement::default(), RacingArrangement::Original);
+    }
+}
