@@ -139,15 +139,15 @@
           </fieldset>
 
           <fieldset class="section-control" id="section-control" hidden>
-            <legend>Music Section</legend>
-            <label for="section-select">Cue any section</label>
+            <legend id="section-control-legend">Auto tour</legend>
+            <label id="section-control-label" for="section-select">Cue any phase</label>
             <select id="section-select" aria-describedby="section-help"></select>
             <div class="form-controls">
-              <button type="button" id="hold-form" aria-pressed="false">Hold section</button>
+              <button type="button" id="hold-form" aria-pressed="false">Hold auto tour</button>
               <button type="button" id="advance-form">Next section</button>
             </div>
-            <p id="section-help">While playing, selections wait for the next bar and blend. While stopped, choose where Play begins.</p>
-            <p>Hold repeats the current section. Next cues its development; resume automatic to leave at the end of the current loop.</p>
+            <p id="section-help">While playing, a cue waits for the next bar and blends. While stopped, choose where Play begins.</p>
+            <p id="form-help">The auto tour follows each phase's authored length. Hold loops here; Next cues once; Resume continues from that phase.</p>
           </fieldset>
 
         </aside>
@@ -155,10 +155,24 @@
         <section class="music-stage">
           <div class="stage-grid" aria-hidden="true"></div>
           <section class="stage-setup" aria-label="Sound setup">
-            <fieldset class="sound-world-control">
-              <div id="recipe-buttons">
-                <button type="button" data-recipe="racing" aria-pressed="true">RACING<span>Speed, pressure, final lap, finish</span></button>
-                <button type="button" data-recipe="suspense" aria-pressed="false">SUSPENSE<span>Song form, hold &amp; cue</span></button>
+            <fieldset class="sound-world-control recipe-field">
+              <legend>Game type</legend>
+              <div class="recipe-select" id="recipe-select">
+                <button
+                  id="recipe-select-trigger"
+                  class="recipe-select-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="recipe-select-label"
+                >
+                  <span class="recipe-select-copy">
+                    <strong id="recipe-select-label">Racing</strong>
+                    <small id="recipe-select-description">Speed, pressure, final lap, finish</small>
+                  </span>
+                  <span class="recipe-select-chevron" aria-hidden="true"></span>
+                </button>
+                <div id="recipe-select-menu" class="recipe-select-menu" role="listbox" aria-label="Game type" hidden></div>
               </div>
             </fieldset>
             <fieldset class="sound-world-control">
@@ -245,7 +259,11 @@
             <div><strong>Suspense</strong><small>Song form, heat, focus, extract</small></div>
             <button type="button" data-open-lab data-recipe="suspense">3 live experiments</button>
           </li>
-          <li><span>03</span><div><strong>Adventure</strong><small>Biome, discovery, danger, shelter</small></div><i>Open slot</i></li>
+          <li class="is-live">
+            <span>03</span>
+            <div><strong>Adventure</strong><small>Camp, explore, town, dungeon, combat, boss, sanctuary, victory</small></div>
+            <button type="button" data-open-lab data-recipe="adventure">3 live experiments</button>
+          </li>
           <li><span>04</span><div><strong>Horror</strong><small>Awareness, pursuit, isolation, release</small></div><i>Open slot</i></li>
           <li><span>05</span><div><strong>Strategy</strong><small>Economy, conflict, momentum, victory</small></div><i>Open slot</i></li>
           <li><span>06</span><div><strong>Cozy</strong><small>Time, weather, activity, companionship</small></div><i>Open slot</i></li>

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 import { writeFile } from "node:fs/promises";
 import { installAudioCapture } from "./audio-capture.ts";
 
@@ -6,7 +7,7 @@ test("default Extended keeps kick and hat continuity over the entire automatic c
   test.setTimeout(600000);
   await installAudioCapture(page, true);
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
   await expect(page.locator("#score-title")).toContainText("Extended");

@@ -13,6 +13,12 @@ enum VoiceType {
     Pluck,
     Felt,
     Dusk,
+    Harp,
+    Recorder,
+    Vielle,
+    Bell,
+    FrameDrum,
+    Tambourine,
     Bass,
     Epiano,
     Organ,
@@ -146,15 +152,32 @@ impl Synth {
                 "epiano" => VoiceType::Epiano,
                 "felt" => VoiceType::Felt,
                 "dusk" => VoiceType::Dusk,
+                "harp" => VoiceType::Harp,
+                "recorder" => VoiceType::Recorder,
+                "vielle" => VoiceType::Vielle,
+                "bell" => VoiceType::Bell,
                 _ => VoiceType::Warm,
             };
-            let life = duration as f32
-                + match vtype {
-                    VoiceType::Felt => 0.6,
-                    VoiceType::Dusk => 1.2,
-                    _ => NOTE_TAIL_SECONDS,
+            let life = match vtype {
+                VoiceType::Harp => harp_life(base_freq),
+                VoiceType::Bell => bell_life(base_freq),
+                VoiceType::Felt => duration as f32 + 0.65,
+                VoiceType::Dusk => duration as f32 + 1.25,
+                VoiceType::Recorder => duration as f32 + 0.3,
+                VoiceType::Vielle => duration as f32 + 0.55,
+                _ => duration as f32 + NOTE_TAIL_SECONDS + 0.05,
+            };
+            let noise_state = if matches!(
+                vtype,
+                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle
+            ) {
+                match event {
+                    MusicEvent::Note { id, .. } => deterministic_noise_state(id),
+                    _ => unreachable!(),
                 }
-                + 0.05;
+            } else {
+                0x1234_5678
+            };
             let voice = Voice {
                 voice_type: vtype,
                 base_freq,
@@ -164,7 +187,7 @@ impl Synth {
                 duration: duration as f32,
                 life,
                 pitch,
-                noise_state: 0x1234_5678,
+                noise_state,
                 phase1: 0.0,
                 phase2: 0.0,
                 phase3: 0.0,
@@ -189,6 +212,8 @@ impl Synth {
             "tom" => VoiceType::Tom,
             "reverse-cymbal" => VoiceType::ReverseCymbal,
             "air-impact" => VoiceType::AirImpact,
+            "frame-drum" => VoiceType::FrameDrum,
+            "tambourine" => VoiceType::Tambourine,
             _ => VoiceType::Kick,
         };
         let mut base_freq = 80.0f32;
@@ -197,14 +222,24 @@ impl Synth {
             VoiceType::Snare => 0.125,
             VoiceType::Hat => 0.085,
             VoiceType::Tom => 0.20,
+            VoiceType::FrameDrum => 0.62,
+            VoiceType::Tambourine => 0.48,
             VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
             _ => 0.12,
         };
         let mut perc_id: Option<String> = None;
-        if voice == "tom" {
+        if matches!(
+            vtype,
+            VoiceType::Tom | VoiceType::FrameDrum | VoiceType::Tambourine
+        ) {
             if let MusicEvent::Percussion { id, .. } = event {
                 let u = deterministic_unit(id);
-                base_freq = 155.0 + u * 58.0;
+                base_freq = match vtype {
+                    VoiceType::Tom => 155.0 + u * 58.0,
+                    VoiceType::FrameDrum => 82.0 + u * 24.0,
+                    VoiceType::Tambourine => u,
+                    _ => unreachable!(),
+                };
                 perc_id = Some(id.clone());
             }
         } else if matches!(
@@ -227,6 +262,8 @@ impl Synth {
                 VoiceType::Snare => 0.16,
                 VoiceType::Hat => 0.08,
                 VoiceType::Tom => 0.026,
+                VoiceType::FrameDrum => 0.034,
+                VoiceType::Tambourine => 0.43,
                 _ => 0.1,
             };
             let buf_dur_s = 0.75f32;
@@ -447,6 +484,120 @@ impl Synth {
                 let env = compute_envelope_with_cap(age, v.duration, peak, sus, att, dec, rel, cap);
                 sig * env
             }
+            VoiceType::Harp => {
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let octave = generate_osc(v.phase2, Wave::Sine);
+                let upper = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * compute_freq(base, age, 0.004) * dt;
+                v.phase2 += TAU * base * 2.006 * dt;
+                v.phase3 += TAU * base * 3.012 * dt;
+
+                let lower_note = (220.0 / base).clamp(0.25, 1.0);
+                let body_decay = natural_decay(age, 0.72 + lower_note * 0.52);
+                let octave_decay = natural_decay(age, 0.34 + lower_note * 0.22);
+                let upper_decay = natural_decay(age, 0.13 + lower_note * 0.08);
+                let attack = (age / 0.003).clamp(0.0, 1.0);
+                let string = fundamental * body_decay
+                    + octave * 0.28 * octave_decay
+                    + upper * 0.12 * upper_decay;
+                let excitation = if age < 0.032 {
+                    let transient = 1.0 - age / 0.032;
+                    let sample = noise(&mut v.noise_state);
+                    v.filt.process(
+                        sample,
+                        (base * 5.5).clamp(900.0, 3200.0),
+                        0.7,
+                        sr,
+                        FilterMode::Bandpass,
+                    ) * transient
+                        * 0.12
+                } else {
+                    0.0
+                };
+                (string + excitation)
+                    * attack
+                    * 0.105
+                    * velocity_curve(vel, 0.8)
+                    * if is_mel { 1.08 } else { 1.0 }
+            }
+            VoiceType::Recorder => {
+                let vibrato_ramp = ((age - 0.2) / 0.38).clamp(0.0, 1.0);
+                let vibrato_cents = v.vib_phase.sin() * 6.0 * vibrato_ramp;
+                v.vib_phase += TAU * (5.05 + (v.pitch % 4) as f32 * 0.07) * dt;
+                let frequency = base * 2f32.powf(vibrato_cents / 1200.0);
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let second = generate_osc(v.phase2, Wave::Sine);
+                let third = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 2.0 * dt;
+                v.phase3 += TAU * frequency * 3.0 * dt;
+
+                let tone = fundamental * 0.82 + second * 0.2 + third * 0.075;
+                let breath_sample = noise(&mut v.noise_state);
+                let breath = v.filt.process(
+                    breath_sample,
+                    (base * 7.0).clamp(1800.0, 4200.0),
+                    0.55,
+                    sr,
+                    FilterMode::Bandpass,
+                );
+                let breath_attack = (age / 0.07).clamp(0.0, 1.0);
+                let sig = tone + breath * (0.018 + 0.025 * (1.0 - breath_attack));
+                let peak = 0.085 * velocity_curve(vel, 0.84) * if is_mel { 1.08 } else { 1.0 };
+                let env =
+                    compute_envelope_with_cap(age, v.duration, peak, 0.78, 0.045, 0.12, 0.24, 0.24);
+                sig * env
+            }
+            VoiceType::Vielle => {
+                let vibrato_ramp = ((age - 0.32) / 0.55).clamp(0.0, 1.0);
+                let vibrato_cents = v.vib_phase.sin() * 3.6 * vibrato_ramp;
+                v.vib_phase += TAU * (4.65 + (v.pitch % 5) as f32 * 0.045) * dt;
+                let frequency = base * 2f32.powf(vibrato_cents / 1200.0);
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let second = generate_osc(v.phase2, Wave::Sine);
+                let third = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 2.0 * dt;
+                v.phase3 += TAU * frequency * 3.0 * dt;
+
+                let evolution = v.trem_phase.sin();
+                v.trem_phase += TAU * (0.43 + (v.pitch % 3) as f32 * 0.035) * dt;
+                let second_gain = 0.28 + evolution * 0.045;
+                let third_gain = 0.115 - evolution * 0.025;
+                let tone = fundamental * 0.72 + second * second_gain + third * third_gain;
+                let bow_sample = noise(&mut v.noise_state);
+                let bow = v.filt.process(
+                    bow_sample,
+                    (base * 5.0).clamp(1150.0, 2800.0),
+                    0.48,
+                    sr,
+                    FilterMode::Bandpass,
+                );
+                let sig = tone + bow * 0.025;
+                let peak = 0.082 * velocity_curve(vel, 0.84) * if is_mel { 1.08 } else { 1.0 };
+                let env =
+                    compute_envelope_with_cap(age, v.duration, peak, 0.72, 0.085, 0.28, 0.45, 0.45);
+                sig * env
+            }
+            VoiceType::Bell => {
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let tierce = generate_osc(v.phase2, Wave::Sine);
+                let upper = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 2.72 * dt;
+                v.phase3 += TAU * base * 4.07 * dt;
+
+                let lower_note = (330.0 / base).clamp(0.35, 1.0);
+                let body = fundamental * natural_decay(age, 0.78 + lower_note * 0.62);
+                let color = tierce * 0.24 * natural_decay(age, 0.5 + lower_note * 0.28);
+                let shimmer = upper * 0.085 * natural_decay(age, 0.19 + lower_note * 0.13);
+                let strike = (age / 0.0025).clamp(0.0, 1.0);
+                (body + color + shimmer)
+                    * strike
+                    * 0.09
+                    * velocity_curve(vel, 0.82)
+                    * if is_mel { 1.06 } else { 1.0 }
+            }
             VoiceType::Bass => {
                 let f_body = compute_freq(base, age, 0.004);
                 let s_body = generate_osc(v.phase1, Wave::Triangle);
@@ -655,6 +806,48 @@ impl Synth {
                 let nf = v.filt.process(n, 6200.0, 0.35, sr, FilterMode::Highpass);
                 nf * ng
             }
+            VoiceType::FrameDrum => {
+                let body = generate_osc(v.phase1, Wave::Sine);
+                let first_mode = generate_osc(v.phase2, Wave::Sine);
+                let second_mode = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 1.59 * dt;
+                v.phase3 += TAU * base * 2.14 * dt;
+
+                let modes = body * natural_decay(age, 0.19)
+                    + first_mode * 0.38 * natural_decay(age, 0.12)
+                    + second_mode * 0.2 * natural_decay(age, 0.075);
+                let strike = if age < 0.034 {
+                    let transient = natural_decay(age, 0.009);
+                    let sample = noise(&mut v.noise_state);
+                    v.filt
+                        .process(sample, 1350.0 + base * 3.0, 0.72, sr, FilterMode::Bandpass)
+                        * transient
+                        * 0.13
+                } else {
+                    0.0
+                };
+                (modes + strike) * 0.2 * velocity_curve(vel, 0.82)
+            }
+            VoiceType::Tambourine => {
+                let variation = base;
+                let first_gap = 0.058 + variation * 0.018;
+                let second_gap = 0.142 + variation * 0.027;
+                let third_gap = 0.25 + variation * 0.035;
+                let envelope = rattle_burst(age, 0.0, 0.052)
+                    + rattle_burst(age, first_gap, 0.047) * 0.82
+                    + rattle_burst(age, second_gap, 0.056) * 0.64
+                    + rattle_burst(age, third_gap, 0.07) * 0.42;
+                let sample = noise(&mut v.noise_state);
+                let airy = v.filt.process(
+                    sample,
+                    4300.0 + variation * 1500.0,
+                    0.32,
+                    sr,
+                    FilterMode::Highpass,
+                );
+                airy * envelope.min(1.25) * 0.12 * velocity_curve(vel, 0.82)
+            }
             VoiceType::ReverseCymbal | VoiceType::AirImpact => {
                 let reverse = matches!(v.voice_type, VoiceType::ReverseCymbal);
                 let progress = (age / v.duration).clamp(0.0, 1.0);
@@ -750,6 +943,29 @@ fn midi_to_freq(pitch: u8) -> f32 {
 
 fn velocity_curve(v: f32, e: f32) -> f32 {
     v.max(0.02).powf(e)
+}
+
+fn natural_decay(age: f32, time_constant: f32) -> f32 {
+    (-age / time_constant.max(0.001)).exp()
+}
+
+fn harp_life(frequency: f32) -> f32 {
+    let lower_note = (220.0 / frequency).clamp(0.25, 1.0);
+    2.8 + lower_note * 1.25
+}
+
+fn bell_life(frequency: f32) -> f32 {
+    let lower_note = (330.0 / frequency).clamp(0.35, 1.0);
+    3.4 + lower_note * 1.4
+}
+
+fn rattle_burst(age: f32, start: f32, duration: f32) -> f32 {
+    if age < start || age >= start + duration {
+        return 0.0;
+    }
+    let progress = (age - start) / duration;
+    let attack = (progress / 0.12).clamp(0.0, 1.0);
+    attack * natural_decay(progress, 0.42)
 }
 
 fn clamp_f(v: f32, lo: f32, hi: f32) -> f32 {
@@ -875,6 +1091,19 @@ fn deterministic_unit(seed: &str) -> f32 {
     (hash as f32) / (u32::MAX as f32)
 }
 
+fn deterministic_noise_state(seed: &str) -> u32 {
+    let mut hash: u32 = 0x811c9dc5;
+    for b in seed.as_bytes() {
+        hash ^= *b as u32;
+        hash = hash.wrapping_mul(0x01000193);
+    }
+    if hash == 0 {
+        0x1234_5678
+    } else {
+        hash
+    }
+}
+
 use crate::score::PortableScore;
 
 #[cfg(test)]
@@ -882,6 +1111,63 @@ mod tests {
     use super::Synth;
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::MusicEvent;
+
+    fn rms(samples: &[f32]) -> f32 {
+        (samples.iter().map(|sample| sample * sample).sum::<f32>() / samples.len() as f32).sqrt()
+    }
+
+    fn difference_ratio(samples: &[f32]) -> f32 {
+        let signal = samples.iter().map(|sample| sample * sample).sum::<f32>();
+        let differences = samples
+            .windows(2)
+            .map(|pair| {
+                let difference = pair[1] - pair[0];
+                difference * difference
+            })
+            .sum::<f32>();
+        differences / signal.max(f32::EPSILON)
+    }
+
+    fn render_note(voice: &str, duration_ticks: u32, sample_count: usize) -> Vec<f32> {
+        let mut synth = Synth::new(22050.0);
+        synth.trigger(
+            &MusicEvent::Note {
+                id: format!("{voice}-test"),
+                section: "journey".into(),
+                lane: "melody".into(),
+                start_tick: 0,
+                duration_ticks,
+                velocity: 0.6,
+                pitch: 67,
+                voice: voice.into(),
+                role: Some("melody".into()),
+            },
+            960.0,
+        );
+        let mut samples = vec![0.0; sample_count];
+        synth.fill(&mut samples);
+        samples
+    }
+
+    fn render_percussion(voice: &str, id: &str) -> Vec<f32> {
+        let mut synth = Synth::new(22050.0);
+        synth.trigger(
+            &MusicEvent::Percussion {
+                id: id.into(),
+                section: "combat".into(),
+                lane: "percussion".into(),
+                start_tick: 0,
+                duration_ticks: 240,
+                velocity: 0.65,
+                voice: voice.into(),
+            },
+            960.0,
+        );
+        let mut samples = vec![0.0; 15435];
+        synth.fill(&mut samples);
+        assert!(synth.voices.is_empty(), "{voice} must clean up its voice");
+        samples
+    }
 
     #[test]
     fn ambient_voices_render_soft_tails_and_do_not_start_the_echo_early() {
@@ -922,10 +1208,6 @@ mod tests {
 
     #[test]
     fn procedural_noise_effects_have_opposite_envelopes_and_clean_up() {
-        fn rms(samples: &[f32]) -> f32 {
-            (samples.iter().map(|sample| sample * sample).sum::<f32>() / samples.len() as f32)
-                .sqrt()
-        }
         for voice in ["reverse-cymbal", "air-impact"] {
             let mut synth = Synth::new(22050.0);
             synth.trigger(
@@ -954,6 +1236,121 @@ mod tests {
                 .all(|sample| sample.is_finite() && sample.abs() < 0.1));
             assert!(synth.voices.is_empty());
         }
+    }
+
+    #[test]
+    fn adventure_voices_render_audible_samples_with_finite_output() {
+        for voice in ["harp", "recorder", "vielle", "bell"] {
+            let buffer = render_note(voice, 960, 22050);
+            let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
+            let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
+            assert!(energy > 1.0, "{voice} should be audible, got {energy}");
+            assert!(
+                buffer
+                    .iter()
+                    .all(|sample| sample.is_finite() && sample.abs() < 0.95),
+                "{voice} must stay finite and in range"
+            );
+            assert!(
+                peak < 0.4,
+                "{voice} should retain moderate headroom, got {peak}"
+            );
+        }
+        for voice in ["frame-drum", "tambourine"] {
+            let buffer = render_percussion(voice, "adventure-percussion");
+            let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
+            let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
+            assert!(energy > 1.0, "{voice} should be audible, got {energy}");
+            assert!(
+                buffer
+                    .iter()
+                    .all(|sample| sample.is_finite() && sample.abs() < 0.95),
+                "{voice} must stay finite and in range"
+            );
+            assert!(
+                peak < 0.4,
+                "{voice} should retain moderate headroom, got {peak}"
+            );
+        }
+    }
+
+    #[test]
+    fn harp_and_bell_decay_naturally_while_recorder_sustains() {
+        let harp = render_note("harp", 3840, 66150);
+        let recorder = render_note("recorder", 3840, 66150);
+        let bell = render_note("bell", 3840, 66150);
+        let early_range = 2205..6615;
+        let late_range = 55125..59535;
+
+        let harp_early = rms(&harp[early_range.clone()]);
+        let bell_early = rms(&bell[early_range.clone()]);
+        let harp_late = rms(&harp[late_range.clone()]);
+        let bell_late = rms(&bell[late_range.clone()]);
+        let recorder_late = rms(&recorder[late_range]);
+        assert!(
+            harp_late < harp_early * 0.12,
+            "harp must not hold long chords"
+        );
+        assert!(
+            bell_late < bell_early * 0.22,
+            "bell modes must decay naturally"
+        );
+        assert!(
+            recorder_late > harp_late * 5.0,
+            "recorder should retain breath-supported sustain"
+        );
+    }
+
+    #[test]
+    fn acoustic_percussion_is_deterministic_and_spectrally_distinct() {
+        let recorder = render_note("recorder", 960, 22050);
+        let recorder_repeat = render_note("recorder", 960, 22050);
+        let frame_drum = render_percussion("frame-drum", "percussion-seed");
+        let frame_drum_repeat = render_percussion("frame-drum", "percussion-seed");
+        let tambourine = render_percussion("tambourine", "percussion-seed");
+        let tambourine_repeat = render_percussion("tambourine", "percussion-seed");
+        let tambourine_variant = render_percussion("tambourine", "other-seed");
+
+        assert_eq!(recorder, recorder_repeat);
+        assert_eq!(frame_drum, frame_drum_repeat);
+        assert_eq!(tambourine, tambourine_repeat);
+        assert_ne!(tambourine, tambourine_variant);
+        assert!(
+            difference_ratio(&tambourine) > difference_ratio(&frame_drum) * 2.5,
+            "tambourine rattles should carry more high-frequency energy than the drum body"
+        );
+
+        let opening = rms(&tambourine[..2205]);
+        let tail = rms(&tambourine[8820..11025]);
+        assert!(
+            opening > tail * 3.0,
+            "tambourine rattles must decay rather than loop"
+        );
+    }
+
+    #[test]
+    fn acoustic_voice_lifetimes_end_without_stuck_notes() {
+        let mut synth = Synth::new(8000.0);
+        for voice in ["harp", "recorder", "vielle", "bell"] {
+            synth.trigger(
+                &MusicEvent::Note {
+                    id: format!("{voice}-cleanup"),
+                    section: "journey".into(),
+                    lane: "melody".into(),
+                    start_tick: 0,
+                    duration_ticks: 240,
+                    velocity: 0.5,
+                    pitch: 64,
+                    voice: voice.into(),
+                    role: Some("melody".into()),
+                },
+                960.0,
+            );
+        }
+        let mut buffer = vec![0.0; 48000];
+        synth.fill(&mut buffer);
+        assert!(buffer.iter().all(|sample| sample.is_finite()));
+        assert!(synth.voices.is_empty());
     }
 
     #[test]

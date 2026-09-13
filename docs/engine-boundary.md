@@ -1,9 +1,20 @@
 # Engine Boundary (Audio Lab + shared Rust engine)
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
-- Owned by the shared Rust engine in `crates/engine` (`pocket_circuit`,
-  `suspense`, and score). WASM `gamestruments_score_json` accepts
-  `"recipe": "pocket-circuit" | "suspense"` (default pocket-circuit).
+- Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
+  `adventure`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "racing" | "suspense" | "adventure"` (default racing).
+- Adventure accepts styles `folk`, `dark`, and `orchestral` and generates eight
+  sections selected from area phase plus discovery, threat, and quest progress.
+  `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars; `explore`, `town`,
+  `combat`, and `victory` are 32. `crates/engine/src/adventure.rs` owns the
+  plans, rules, and `select_adventure_section`; the Rust `AdaptiveTransport`
+  exposes `request_adventure_state`.
+- Racing and Adventure optionally attach a song form through
+  `apply_automatic_arrangement` when `autoplay` is set (default `false`).
+  Racing tours garage, grid, cruise (×2), attack, final-lap, victory, then
+  loops from grid; Adventure tours all eight sections, then loops from explore.
+  With autoplay off, both recipes stay state-driven and byte-for-byte unchanged.
 - Suspense additionally accepts `"arrangement": "original" | "extended" | "theme"`.
   The lab defaults to Extended; omitting the field in the engine API retains
   Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
@@ -22,12 +33,12 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   Anomaly is a single eight-bar detour after Decrypt: staggered
   tonal pulses over the same drum grid, with an authored swell/impact pair.
 - Exposed to the lab via WASM: `gamestruments_score_json` (see `crates/engine/src/wasm.rs`).
-- The TypeScript `@gamestruments/studio` generator is retained only for legacy authoring fixtures and catalog research. It is not a runtime or parity authority.
+- The Rust engine is the single generation authority; there is no TypeScript generator pipeline. `@gamestruments/runtime` is the Lab's TS transport only.
 
 Transport / section selection + transition planning:
 - The lab's music selector and Cue rows enumerate the loaded score's complete
   section list, including endings. Suspense's game signals are separate,
-  collapsed controls. Live cues wait for the next bar; the latest request made
+  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar; the latest request made
   during a blend queues after it. Cancel removes only a waiting request, never
   an in-progress blend. Stopped selection sets the next starting section.
 - For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).
@@ -65,13 +76,18 @@ music.advance_form()        # On escalation: enter Breach II, still held.
 music.set_form_hold(false)  # Let the current loop finish, then continue automatically.
 ```
 
-The lab exposes the same behavior with Hold section, Next section and Resume
-automatic. These are playback controls, not additional arrangements or gameplay
-phase names. Original and Extended remain the only arrangement choices.
+The lab exposes the same behavior for every score that has a form — Suspense,
+and Racing/Adventure when autoplay is on — with a "Hold auto tour" / "Resume
+auto tour" toggle, a "Next" button that names the upcoming section, and
+per-section Cue buttons. These are playback controls, not additional
+arrangements or gameplay phase names. Suspense's Original, Extended, and Theme
+remain its only arrangement choices; autoplay is a separate opt-in flag.
 
 Audio synthesis / sound stage:
-- The signed-off sound (SYNTH_VOICES: warm/glass/pulse/pluck/chip + dedicated epiano/organ/supersaw/triangle/bass + kit + full room bus + stereo imaging + compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio).
+- The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.
 - The Rust `Synth` (mono, no room) is the reference for the game engine only.
+  It mirrors the acoustic voices (harp/recorder/vielle/bell plus
+  frame-drum/tambourine) as acoustic-inspired synthesis, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo
   controls and crossfades also control the effect. The lab additionally filters

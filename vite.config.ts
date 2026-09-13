@@ -11,12 +11,6 @@ export default defineConfig({
           new URL("./packages/runtime/src/index.ts", import.meta.url),
         ),
       },
-      {
-        find: /^@strudel\/core$/,
-        replacement: fileURLToPath(
-          new URL("./packages/studio/strudel-core-shim.mjs", import.meta.url),
-        ),
-      },
     ],
   },
   build: {
@@ -26,10 +20,5 @@ export default defineConfig({
   test: {
     root: fileURLToPath(new URL(".", import.meta.url)),
     include: ["tests/**/*.test.ts"],
-    server: {
-      deps: {
-        inline: [/@strudel\/mini/],
-      },
-    },
   },
 });

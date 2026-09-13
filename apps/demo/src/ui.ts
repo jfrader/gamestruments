@@ -1,5 +1,4 @@
-import { pocketCircuitExperiments } from "../../../packages/studio/src/index.ts";
-import type { NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
+import { racingGenreExperiments } from "./genre-catalog.ts";
 import type {
   AdaptiveTransport,
   PortableScore,
@@ -13,7 +12,11 @@ import type { SuspenseArrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
-import { SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
+import {
+  ADVENTURE_SCENE_SECTIONS,
+  SUSPENSE_PHASE_SECTIONS,
+} from "./playback-section.ts";
+import { LAB_RECIPES, labRecipeInfo, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
 
@@ -86,7 +89,7 @@ export function renderSections(
   const next = transport.nextFormSection(tick);
   elements.holdForm.disabled = busy || score.form === undefined;
   elements.holdForm.setAttribute("aria-pressed", String(transport.formHeld));
-  elements.holdForm.textContent = transport.formHeld ? "Resume automatic" : "Hold section";
+  elements.holdForm.textContent = transport.formHeld ? "Resume auto tour" : "Hold auto tour";
   elements.advanceForm.disabled = busy || next === null || transport.snapshot().transition !== null;
   elements.advanceForm.textContent = next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`;
   const status = busy ? "Preparing playback…" : view.status;
@@ -118,8 +121,8 @@ export function renderSections(
 
 export function renderScoreButtons(
   activeExperimentIndex: number,
-  presets: readonly { style: string }[],
-  recipe: "racing" | "suspense",
+  presets: readonly { style: string; label?: string }[],
+  recipe: LabRecipe,
 ): void {
   const racingLabels = ["Tiny Torque", "Neon Drift", "Countertop", "8-Bit"];
   const buttons = presets.map((preset, index) => {
@@ -130,9 +133,9 @@ export function renderScoreButtons(
     button.dataset.experimentIndex = String(index);
     button.setAttribute("aria-pressed", String(index === activeExperimentIndex));
     label.textContent =
-      recipe === "suspense"
-        ? preset.style
-        : (racingLabels[index] ?? preset.style);
+      recipe === "racing"
+        ? (racingLabels[index] ?? preset.style)
+        : preset.label ?? preset.style.charAt(0).toUpperCase() + preset.style.slice(1);
     genre.textContent = preset.style;
     button.append(label, genre);
     return button;
@@ -140,36 +143,60 @@ export function renderScoreButtons(
   elements.scoreButtons.replaceChildren(...buttons);
 }
 
-export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string): void {
+export function renderRecipeSelect(recipe: LabRecipe): void {
+  const active = labRecipeInfo(recipe);
+  elements.recipeSelectLabel.textContent = active.label;
+  elements.recipeSelectDescription.textContent = active.description;
+  elements.recipeSelect.dataset.active = recipe;
+  const options = LAB_RECIPES.map((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "option");
+    button.dataset.recipe = entry.id;
+    button.setAttribute("aria-selected", String(entry.id === recipe));
+    const strong = document.createElement("strong");
+    strong.textContent = entry.label;
+    const small = document.createElement("small");
+    small.textContent = entry.description;
+    button.append(strong, small);
+    return button;
+  });
+  elements.recipeSelectMenu.replaceChildren(...options);
+}
+
+export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const suspense = recipe === "suspense";
+  const adventure = recipe === "adventure";
   elements.shell.dataset.recipe = recipe;
-  elements.sectionControl.hidden = !suspense;
   elements.gameSignals.dataset.recipe = recipe;
-  for (const button of elements.recipeButtons.querySelectorAll<HTMLButtonElement>(
-    "button[data-recipe]",
-  )) {
-    button.setAttribute(
-      "aria-pressed",
-      String(button.dataset.recipe === recipe),
-    );
-  }
-  elements.traitEnergyLabel.textContent = suspense ? "Tension" : "Energy";
-  elements.traitComplexityLabel.textContent = suspense ? "Heat" : "Complexity";
-  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : "Brightness";
-  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : "Syncopation";
-  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : "Speed intensity";
-  elements.meterPressureLabel.textContent = suspense ? "Focus" : "Position pressure";
-  elements.meterFinalLabel.textContent = suspense ? "Extracted" : "Final lap";
+  renderRecipeSelect(recipe);
+  elements.traitEnergyLabel.textContent = suspense ? "Tension" : adventure ? "Danger" : "Energy";
+  elements.traitComplexityLabel.textContent = suspense ? "Heat" : adventure ? "Mystery" : "Complexity";
+  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : adventure ? "Wonder" : "Brightness";
+  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : adventure ? "Motion" : "Syncopation";
+  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : adventure ? "Discovery" : "Speed intensity";
+  elements.meterPressureLabel.textContent = suspense ? "Focus" : adventure ? "Threat" : "Position pressure";
+  elements.meterFinalLabel.textContent = suspense ? "Extracted" : adventure ? "Quest complete" : "Final lap";
   elements.meterFinalCopy.textContent = suspense
     ? "Hold the coda / disconnect"
-    : "Add the maximum-commitment layer";
-  const phases = suspense
-    ? Object.keys(SUSPENSE_PHASE_SECTIONS).map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)] as const)
-    : ([
+    : adventure
+      ? "Mark the quest complete"
+      : "Add the maximum-commitment layer";
+  const phaseSections = suspense
+    ? SUSPENSE_PHASE_SECTIONS
+    : adventure
+      ? ADVENTURE_SCENE_SECTIONS
+      : null;
+  const phases: readonly (readonly [string, string])[] = phaseSections === null
+    ? ([
         ["garage", "Garage"],
         ["grid", "Grid"],
         ["race", "Race"],
         ["finish", "Finish"],
+      ] as const)
+    : Object.keys(phaseSections).map((id) => [
+        id,
+        id.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
       ] as const);
   const buttons = phases.map(([id, label]) => {
     const button = document.createElement("button");
@@ -183,7 +210,7 @@ export function renderRecipeChrome(recipe: "racing" | "suspense", phase: string)
 }
 
 export function renderGenreIndex(): void {
-  const rows = pocketCircuitExperiments.map((experiment, index) => {
+  const rows = racingGenreExperiments.map((experiment, index) => {
     const item = document.createElement("li");
     const number = document.createElement("span");
     const copy = document.createElement("div");
@@ -196,7 +223,7 @@ export function renderGenreIndex(): void {
     copy.append(title, description);
     button.type = "button";
     button.dataset.experimentIndex = String(index);
-    button.textContent = `Open ${experiment.score.title}`;
+    button.textContent = `Open ${experiment.scoreTitle}`;
     item.append(number, copy, button);
     return item;
   });
@@ -210,14 +237,15 @@ export function renderScoreIdentity(
   generationTraits: NormalizedMusicTraits,
   comparisonBaseSeed: string,
   soloMode: SoloMode,
-  recipe: "racing" | "suspense",
-  presets: readonly { style: string }[],
+  recipe: LabRecipe,
+  presets: readonly { style: string; label?: string }[],
   arrangement: SuspenseArrangement,
   phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
   elements.tempo.textContent = String(score.bpm);
   renderRecipeChrome(recipe, phase);
+  elements.sectionControl.hidden = score.form === undefined;
   elements.arrangementControl.hidden = recipe !== "suspense";
   for (const button of elements.arrangementButtons.querySelectorAll<HTMLButtonElement>("button[data-arrangement]")) {
     button.setAttribute("aria-pressed", String(button.dataset.arrangement === arrangement));

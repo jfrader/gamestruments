@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import {
   playbackSectionOnScore,
+  ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "../apps/demo/src/playback-section.ts";
 import {
@@ -57,6 +58,21 @@ describe("SUSPENSE_PHASE_SECTIONS", () => {
       alert: "bridge",
       extract: "outro",
       complete: "coda",
+    });
+  });
+});
+
+describe("ADVENTURE_SCENE_SECTIONS", () => {
+  it("maps every area phase to its adaptive section", () => {
+    assert.deepEqual(ADVENTURE_SCENE_SECTIONS, {
+      camp: "camp",
+      explore: "explore",
+      town: "town",
+      dungeon: "dungeon",
+      combat: "combat",
+      boss: "boss",
+      sanctuary: "sanctuary",
+      victory: "victory",
     });
   });
 });

@@ -6,9 +6,9 @@ from a per-title namespace, instrument palette, and seed, then drive
 bar-quantized state changes at runtime. No samples, no Strudel, and no
 authoring UI cross the game boundary.
 
-**Audio Lab** (the TypeScript + Strudel authoring/research surface in this
-repository) is for exploration, validation, and catalog work only. It is not
-part of the kit shipped to games.
+**Audio Lab** (the browser playground in `apps/demo`) is for exploration and
+validation only. It drives the same shared engine and is not part of the kit
+shipped to games.
 
 A level seed + secret creates a stable musical identity. Runtime parameters
 select and crossfade pre-generated arrangements inside that identity.
@@ -79,65 +79,32 @@ Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
 The in-game engine lives in Rust:
 
 - `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
-  from namespace + seed + palette + traits. Racing and Suspense
-  song-form recipes.
+  from namespace + seed + palette + traits. Racing, Suspense, and Adventure
+  recipes.
 - `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
 
-Games never see Strudel or the authoring packages. See
-`docs/kit-contract.md` and `crates/README.md`.
+Games never see the authoring code. See `docs/kit-contract.md` and
+`crates/README.md`.
 
 ### Authoring / Research (Audio Lab only)
 
-`packages/studio` (AGPL-3.0-or-later because of Strudel) is the authoring and
-research surface. Its TypeScript generator remains only for legacy fixtures
-and catalog research; Rust is the sole runtime generation authority.
-`packages/runtime` is the independent TS transport used inside the Lab only.
-
-`apps/demo` is the browser playground and validation harness.
+`packages/runtime` is the TypeScript transport used inside the Lab. `apps/demo`
+is the browser playground and validation harness. Generation runs through the
+shared WASM engine; the Rust engine is the single generation authority.
 
 The first collection follows the racing music brief (see
 [`docs/racing-music-brief.md`](docs/racing-music-brief.md)).
 
-## Procedural API (authoring / research path)
+## Procedural API
 
-The TypeScript authoring APIs (`@gamestruments/studio`) are for the Lab and
-catalog work only. They are AGPL and do not ship in games. The Audio Lab itself
-now drives generation through the shared WASM engine (see `docs/engine-boundary.md`).
-
-```ts
-import { generateRacingLevel } from "@gamestruments/studio";
-```
-
-See the **How Games Use It** section above and `docs/kit-contract.md` for the
-actual runtime contract used by shipped Godot games (Rust inside the
-GDExtension).
-
-Generation for games happens inside the extension at `generate(seed)`. See
-[`docs/procedural-generation.md`](docs/procedural-generation.md) (updated for
-the Rust path) and the catalog parity notes.
+Generation is owned by the Rust engine in `crates/engine`; the Audio Lab calls
+it through the committed WASM build (`apps/demo/public/engine`). See
+[`docs/engine-boundary.md`](docs/engine-boundary.md) for the boundary and
+[`docs/procedural-generation.md`](docs/procedural-generation.md) for the
+generation model. In games, generation happens inside the extension at
+`generate(seed)`.
 
 All voices are synthesized; no samples are used or redistributed.
-
-## Generation CLI (Lab / catalog only)
-
-The Node CLI is part of the authoring tooling for producing catalog takes and
-validating the Rust engine. It is not required by game buyers.
-
-```bash
-npm run build:studio
-node packages/studio/dist/cli.js ...
-```
-
-Game buyers use `generate(seed)` on the `GamestrumentsPlayer` node instead.
-
-## Godot Example (portable-score transport demo)
-
-[`examples/godot`](examples/godot) is the legacy portable-JSON consumer used
-during early validation. It is **not** the kit product.
-
-The actual kit integration for buyers is the GDExtension path described in
-"How Games Use It" and `docs/kit-contract.md`. The Rust engine generates inside
-the game process; no JSON export step is required for the runtime kit.
 
 ## Scope and Limits (kit product)
 
@@ -146,5 +113,5 @@ the game process; no JSON export step is required for the runtime kit.
 - No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
 - See `docs/kit-contract.md` (exact inventory, API, non-goals) for the
   authoritative commercial contract. The product price is $12.99.
-- The Audio Lab and its TypeScript packages remain AGPL for the authoring
-  surface; they are deliberately kept out of the game runtime.
+- Every component in this repository — runtime and Audio Lab — is MIT. There is
+  no bundled authoring dependency; see `LICENSE.md`.

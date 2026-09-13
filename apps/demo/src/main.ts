@@ -33,6 +33,7 @@ import {
   applyPlan,
   requestMusicState,
   requestSuspensePhase,
+  requestAdventureScene,
   cueSection,
   stepSection,
   cancelCue,
@@ -46,6 +47,9 @@ import {
   setComparisonBaseSeed,
   setPhase,
   setLabRecipe,
+  isLabRecipe,
+  labRecipeInfo,
+  type LabRecipe,
   setSoloMode,
 } from "./state";
 
@@ -64,7 +68,6 @@ function renderCurrentScore(): void {
     suspenseArrangement,
     phase,
   );
-  requestMusicState();
 }
 
 async function togglePlayback(): Promise<void> {
@@ -98,7 +101,9 @@ function renderRuntimeSignal(): void {
   elements.runtimeSignal.textContent =
     labRecipe === "suspense"
       ? `recipe: suspense  /  tracePhase: ${phase}`
-      : `racePhase: ${phase}`;
+      : labRecipe === "adventure"
+        ? `recipe: adventure  /  areaPhase: ${phase}`
+        : `racePhase: ${phase}`;
 }
 
 renderGenreIndex();
@@ -291,26 +296,85 @@ elements.arrangementButtons.addEventListener("click", (event) => {
   });
 });
 
-elements.recipeButtons.addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-    "button[data-recipe]",
-  );
-  const recipe = button?.dataset.recipe;
-  if (recipe !== "racing" && recipe !== "suspense") {
-    return;
+function setRecipeMenuOpen(open: boolean): void {
+  elements.recipeSelectMenu.hidden = !open;
+  elements.recipeSelect.dataset.open = String(open);
+  elements.recipeSelectTrigger.setAttribute("aria-expanded", String(open));
+  if (open) {
+    const selected = elements.recipeSelectMenu.querySelector<HTMLButtonElement>(
+      'button[aria-selected="true"]',
+    );
+    (selected ?? elements.recipeSelectMenu.querySelector<HTMLButtonElement>("button"))?.focus();
+  } else if (elements.recipeSelectMenu.contains(document.activeElement)) {
+    elements.recipeSelectTrigger.focus();
   }
+}
+
+function chooseRecipe(recipe: LabRecipe): void {
+  setRecipeMenuOpen(false);
   applyGenerationRequest(setLabRecipe(recipe), () => {
     renderCurrentScore();
     renderRuntimeSignal();
-    announceAudition(`Opened ${recipe === "suspense" ? "Suspense" : "Racing"}`);
+    announceAudition(`Opened ${labRecipeInfo(recipe).label}`);
   });
+}
+
+elements.recipeSelectTrigger.addEventListener("click", () => {
+  setRecipeMenuOpen(elements.recipeSelectMenu.hidden);
+});
+
+elements.recipeSelectTrigger.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    setRecipeMenuOpen(true);
+  }
+});
+
+elements.recipeSelectMenu.addEventListener("click", (event) => {
+  const option = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-recipe]");
+  if (option !== null && isLabRecipe(option.dataset.recipe)) {
+    chooseRecipe(option.dataset.recipe);
+  }
+});
+
+elements.recipeSelectMenu.addEventListener("keydown", (event) => {
+  const options = [
+    ...elements.recipeSelectMenu.querySelectorAll<HTMLButtonElement>("button[data-recipe]"),
+  ];
+  const current = options.indexOf(document.activeElement as HTMLButtonElement);
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const delta = event.key === "ArrowDown" ? 1 : -1;
+    options[(current + delta + options.length) % options.length]?.focus();
+  } else if ((event.key === "Enter" || event.key === " ") && current >= 0) {
+    event.preventDefault();
+    const recipe = options[current]?.dataset.recipe;
+    if (isLabRecipe(recipe)) {
+      chooseRecipe(recipe);
+    }
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    setRecipeMenuOpen(false);
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!elements.recipeSelect.contains(event.target as Node)) {
+    setRecipeMenuOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.recipeSelectMenu.hidden) {
+    setRecipeMenuOpen(false);
+  }
 });
 
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-lab]")) {
   button.addEventListener("click", () => {
     const recipe = button.dataset.recipe;
     window.location.hash = "lab";
-    if (recipe === "racing" || recipe === "suspense") {
+    if (isLabRecipe(recipe)) {
       applyGenerationRequest(setLabRecipe(recipe), () => {
         renderCurrentScore();
         renderRuntimeSignal();
@@ -333,6 +397,8 @@ elements.phaseButtons.addEventListener("click", (event) => {
   renderRuntimeSignal();
   if (labRecipe === "suspense") {
     requestSuspensePhase();
+  } else if (labRecipe === "adventure") {
+    requestAdventureScene();
   } else {
     requestMusicState();
   }

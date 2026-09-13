@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 
 test("generation controls remain functional before and during playback", async ({ page }) => {
   const runtimeErrors: string[] = [];
@@ -22,6 +23,8 @@ test("generation controls remain functional before and during playback", async (
   });
   await expect(page.locator("#volume-readout")).toHaveText("50%");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+  await expect(page.locator("#section-control")).toBeVisible();
+  await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
 
   const neon = page.locator("#score-buttons button", { hasText: "Neon" });
   await neon.click();
@@ -77,7 +80,7 @@ test("switching to Suspense generates song-form music instead of racing", async 
   await page.goto("/#lab");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
 
-  await page.locator("#recipe-buttons button", { hasText: "Suspense" }).click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#audition-status")).toContainText("Opened Suspense");
   await expect(page.locator("#score-title")).toContainText(/Terminal|Cipher|Noir/);
   await expect(page.locator("#section-list li").first()).toContainText("Handshake");
@@ -90,12 +93,40 @@ test("switching to Suspense generates song-form music instead of racing", async 
   expect(runtimeErrors).toEqual([]);
 });
 
+test("switching to Adventure generates the eight-section quest arc", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  await selectRecipe(page, "adventure");
+  await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
+  await expect(page.locator("#score-title")).toContainText(/Folk|Dark|Orchestral/);
+  await expect(page.locator("#section-list li")).toHaveCount(8);
+  await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");
+
+  await page.getByRole("button", { name: "Combat", exact: true }).click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("Steel and Shadow");
+
+  await page.locator("#start-audio").click();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("Extended adds longer beds and Original restores the same seed and score", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
   await expect(page.locator("#arrangement-control")).toBeHidden();
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal");
   const original = page.locator('#arrangement-buttons button[data-arrangement="original"]');
   const extended = page.locator('#arrangement-buttons button[data-arrangement="extended"]');
@@ -128,7 +159,7 @@ test("Anomaly can be auditioned directly and safely rolled back to Original", as
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.getByRole("button", { name: "Cue Anomaly", exact: true }).click();
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Anomaly");

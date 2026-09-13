@@ -608,60 +608,135 @@ legend {
   color: #11120f;
 }
 
-/* Game type selector: headline mode switch, console aesthetic, full-width first in .stage-setup */
-.stage-setup #recipe-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--line);
-  overflow: hidden;
-  min-height: 0;
-}
-.stage-setup #recipe-buttons button {
+/* Game type selector: one large mode control that opens a list. Scales to any
+   number of recipes; the trigger always reads as the active mode. */
+.stage-setup .recipe-select {
   position: relative;
-  min-width: 0;
-  border: 0;
-  border-right: 1px solid var(--line);
-  padding: 4px 10px;
-  background: transparent;
-  color: var(--muted);
-  text-align: center;
+}
+.recipe-select-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 62px;
+  padding: 8px 14px 8px 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(241, 238, 229, 0.04), rgba(0, 0, 0, 0.16));
+  color: var(--signal);
+  text-align: left;
   cursor: pointer;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: 20px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  line-height: 1;
+  font: inherit;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.recipe-select-trigger::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--signal);
+}
+.recipe-select-trigger:hover,
+.recipe-select-trigger[aria-expanded="true"] {
+  border-color: var(--signal);
+  background: linear-gradient(180deg, rgba(215, 255, 63, 0.09), rgba(0, 0, 0, 0.16));
+}
+.recipe-select-copy {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 62px;
-  transition: background 140ms ease, color 140ms ease;
+  gap: 2px;
+  min-width: 0;
 }
-.stage-setup #recipe-buttons button:last-child {
-  border-right: 0;
+.recipe-select-copy strong {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 24px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--signal);
 }
-.stage-setup #recipe-buttons button span {
-  display: block;
+.recipe-select-copy small {
   font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: none;
-  margin-top: 2px;
-  opacity: 0.7;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.recipe-select-chevron {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  color: var(--signal);
+  transition: transform 160ms ease;
+}
+.recipe-select-trigger[aria-expanded="true"] .recipe-select-chevron {
+  transform: rotate(225deg);
+}
+.recipe-select-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--signal);
+  background: #14150f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+.recipe-select-menu[hidden] {
+  display: none;
+}
+.recipe-select-menu button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.recipe-select-menu button:last-child {
+  border-bottom: 0;
+}
+.recipe-select-menu button strong {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   line-height: 1;
 }
-.stage-setup #recipe-buttons button[aria-pressed="true"] {
+.recipe-select-menu button small {
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.recipe-select-menu button:hover,
+.recipe-select-menu button:focus-visible {
+  background: rgba(215, 255, 63, 0.1);
+  outline: none;
+}
+.recipe-select-menu button[aria-selected="true"] {
   background: var(--signal);
   color: #11120f;
   box-shadow: inset 4px 0 0 #11120f;
 }
-.stage-setup #recipe-buttons button[aria-pressed="true"] span {
-  color: rgba(17, 18, 15, 0.65);
-  opacity: 0.85;
-}
-.stage-setup #recipe-buttons button:not([aria-pressed="true"]):hover {
-  color: var(--signal);
+.recipe-select-menu button[aria-selected="true"] small {
+  color: rgba(17, 18, 15, 0.7);
 }
 
 .new-take,
@@ -856,11 +931,15 @@ input[type="range"]::-webkit-slider-thumb {
 .stage-setup .score-buttons strong { font-size: 11px; letter-spacing: 0.04em; }
 .stage-setup .score-buttons span { font-size: 10px; }
 .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 /* game type now full-width top row via explicit placement; lower row uses 1fr 1fr independent of recipe */
 .stage-setup > fieldset:first-child {
   grid-column: 1 / -1;
 }
 .console-shell[data-recipe="racing"] .stage-setup > fieldset:nth-child(2) {
+  grid-column: 1 / -1;
+}
+.console-shell[data-recipe="adventure"] .stage-setup > fieldset:nth-child(2) {
   grid-column: 1 / -1;
 }
 .console-shell[data-recipe="suspense"] .stage-setup > fieldset:nth-child(2) {
@@ -1456,12 +1535,11 @@ footer p {
     min-height: 158px;
   }
 
-  .stage-setup #recipe-buttons button {
-    min-height: 62px;
-    font-size: 22px;
+  .recipe-select-copy strong {
+    font-size: 26px;
   }
-  .stage-setup #recipe-buttons button span {
-    font-size: 9px;
+  .recipe-select-copy small {
+    font-size: 10px;
   }
 
   h1 {
@@ -1620,6 +1698,7 @@ footer p {
     grid-column: 1 / -1;
   }
   .console-shell[data-recipe="suspense"] .stage-setup #score-buttons { grid-template-columns: 1fr; }
+  .console-shell[data-recipe="adventure"] .stage-setup #score-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 980px) {
@@ -1731,17 +1810,6 @@ footer p {
     margin-left: 0;
   }
 
-  /* each game type / sound world option gets its own full-width row on phones */
-  .stage-setup #recipe-buttons {
-    grid-template-columns: 1fr;
-  }
-  .stage-setup #recipe-buttons button {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .stage-setup #recipe-buttons button:last-child {
-    border-bottom: 0;
-  }
   .stage-setup .score-buttons,
   .stage-setup #score-buttons,
   .stage-setup #arrangement-buttons,
@@ -1772,6 +1840,10 @@ footer p {
     grid-template-columns: 1fr;
   }
 
+  .console-shell[data-recipe="adventure"] .stage-setup #score-buttons {
+    grid-template-columns: 1fr;
+  }
+
   .stage-setup > fieldset,
   .stage-setup > fieldset:nth-child(2),
   .stage-setup > fieldset:nth-child(3),
@@ -1786,18 +1858,8 @@ footer p {
     padding: 8px 10px;
   }
 
-  .stage-setup #recipe-buttons button {
-    min-height: 54px;
-    font-size: 17px;
-    padding: 4px 6px;
-  }
-  .stage-setup #recipe-buttons button span {
-    font-size: 8px;
-    margin-top: 2px;
-    line-height: 1.05;
-  }
-  .stage-setup #recipe-buttons button[aria-pressed="true"] {
-    box-shadow: inset 3px 0 0 #11120f;
+  .recipe-select-copy strong {
+    font-size: 22px;
   }
 
   .player-surface {
@@ -1918,17 +1980,8 @@ footer p {
     padding: 12px 0 8px;
     gap: 8px;
   }
-  .stage-setup #recipe-buttons button {
-    min-height: 54px;
-    font-size: 16px;
-    padding: 3px 5px;
-  }
-  .stage-setup #recipe-buttons button span {
-    font-size: 8px;
-    margin-top: 1px;
-  }
-  .stage-setup #recipe-buttons button[aria-pressed="true"] {
-    box-shadow: inset 2px 0 0 #11120f;
+  .recipe-select-copy strong {
+    font-size: 20px;
   }
   .race-state .generator-control {
     margin-bottom: 2px;

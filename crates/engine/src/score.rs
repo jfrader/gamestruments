@@ -172,6 +172,16 @@ pub struct TraceState {
     pub progress: f64,
 }
 
+/// Area state a game is in for the `adventure` recipe. Discovery and threat
+/// drive section choice; `quest_complete` always wins.
+#[derive(Clone, Debug, Default)]
+pub struct AdventureState {
+    pub area_phase: String,
+    pub discovery: f64,
+    pub threat: f64,
+    pub quest_complete: bool,
+}
+
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
         self.beats_per_bar.saturating_mul(self.ticks_per_beat)
@@ -350,9 +360,9 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 12] = [
+            const NOTE_VOICES: [&str; 16] = [
                 "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle", "felt", "dusk",
+                "triangle", "felt", "dusk", "harp", "recorder", "vielle", "bell",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -365,13 +375,15 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 6] = [
+            const PERCUSSION_VOICES: [&str; 8] = [
                 "kick",
                 "snare",
                 "hat",
                 "tom",
                 "reverse-cymbal",
                 "air-impact",
+                "frame-drum",
+                "tambourine",
             ];
             if !PERCUSSION_VOICES.contains(&voice.as_str()) {
                 return Err(format!("percussion {id} has unsupported voice {voice}"));
@@ -465,5 +477,38 @@ mod tests {
             *pitch = 128;
         }
         assert_eq!(score.validate(), Err("note note has invalid pitch".into()));
+    }
+
+    fn percussion_score(voice: &str) -> PortableScore {
+        let mut score = valid_score();
+        score.sections[0].events = vec![MusicEvent::Percussion {
+            id: "percussion".into(),
+            section: "main".into(),
+            lane: "percussion".into(),
+            start_tick: 0,
+            duration_ticks: 960,
+            velocity: 0.6,
+            voice: voice.into(),
+        }];
+        score
+    }
+
+    #[test]
+    fn accepts_the_adventure_acoustic_percussion_voices() {
+        for voice in ["frame-drum", "tambourine"] {
+            assert_eq!(percussion_score(voice).validate(), Ok(()), "{voice}");
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_percussion_voices() {
+        for voice in ["frame_drum", "tamb", "clap", "bongo"] {
+            assert_eq!(
+                percussion_score(voice).validate(),
+                Err(format!(
+                    "percussion percussion has unsupported voice {voice}"
+                ))
+            );
+        }
     }
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 import { writeFile } from "node:fs/promises";
 import { installAudioCapture } from "./audio-capture.ts";
 
@@ -30,7 +31,7 @@ test("Decrypt plays its backing without the confirmed first-beat glass oscillato
     };
   });
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal A#");
   await expect(page.locator("#level-seed")).toHaveValue("level-001");
   await page.getByRole("button", { name: "Cue Decrypt", exact: true }).click();

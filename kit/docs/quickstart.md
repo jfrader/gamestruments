@@ -99,6 +99,46 @@ Suspense ignores the Racing voice overrides and reads `energy`,
 `complexity`, `brightness`, and `syncopation` as tension, heat, mystery, and
 pulse. Exact selection rules and the section list are in `api.md`.
 
+## Adventure Recipe
+
+Adventure is area-selected: call `set_adventure_state` whenever the game's
+situation changes. There is no form to hold or advance. Pass area phase,
+discovery, threat, and quest progress; the engine resolves the section (quest
+completion always wins):
+
+```gdscript
+func _ready() -> void:
+    player.recipe = "adventure"
+    player.style = "folk"  # folk, dark, or orchestral
+    music_ready = player.generate("world-3")
+
+func entered_forest() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.1, 0.05, false)
+
+func reached_town() -> void:
+    if music_ready:
+        player.set_adventure_state("town", 0.5, 0.1, false)
+
+func ambushed(threat: float) -> void:
+    if music_ready:
+        player.set_adventure_state("combat", 0.2, threat, false) # threat >= 0.85 -> boss
+
+func reached_sanctuary() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.9, 0.1, false)   # discovery >= 0.85 -> sanctuary
+
+func quest_finished() -> void:
+    if music_ready:
+        player.set_adventure_state("explore", 0.5, 0.1, true)    # quest complete -> victory
+```
+
+The eight sections (Camp, Explore, Town, Dungeon, Combat, Boss, Sanctuary,
+Victory) crossfade on the next bar; Camp, Dungeon, Boss, and Sanctuary are 16
+bars, and Explore, Town, Combat, and Victory are 32. Adventure reads `energy`,
+`complexity`, `brightness`, and `syncopation` as danger, mystery, wonder, and
+motion.
+
 For a complete playable integration, open `kit/demo/` as a Godot project and
 race using the controls in `kit/demo/README.md`. Its addon is already installed.
 The demo ships four circuits, one per engine style (neon, pocket funk, fusion,

@@ -1,5 +1,6 @@
 import {
   AdaptiveTransport,
+  selectSection,
   type GameState,
   type PortableScore,
   type PortableSection,
@@ -7,19 +8,62 @@ import {
   type TransitionPlan,
   type TransitionRequest,
 } from "../../../packages/runtime/src/index.ts";
-import { type NormalizedMusicTraits } from "../../../packages/studio/src/index.ts";
 import { generateScore, type SuspenseArrangement } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
 import {
   playbackSectionOnScore,
+  ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 
-export type LabRecipe = "racing" | "suspense";
+export type LabRecipe = "racing" | "suspense" | "adventure";
+
+/** Display metadata for the game-type selector. Add a recipe here and the
+ *  selector, trigger, and option list all pick it up. */
+export interface LabRecipeInfo {
+  id: LabRecipe;
+  label: string;
+  description: string;
+}
+
+export const LAB_RECIPES: readonly LabRecipeInfo[] = [
+  {
+    id: "racing",
+    label: "Racing",
+    description: "Speed, pressure, final lap, finish",
+  },
+  {
+    id: "suspense",
+    label: "Suspense",
+    description: "Song form, hold & cue",
+  },
+  {
+    id: "adventure",
+    label: "Adventure",
+    description: "Camp, explore, town, dungeon, combat, boss, sanctuary, victory",
+  },
+];
+
+export function isLabRecipe(value: string | undefined): value is LabRecipe {
+  return LAB_RECIPES.some((recipe) => recipe.id === value);
+}
+
+export function labRecipeInfo(recipe: LabRecipe): LabRecipeInfo {
+  return LAB_RECIPES.find((entry) => entry.id === recipe) ?? LAB_RECIPES[0]!;
+}
+
+/** The four generic generation sliders every recipe maps onto its own traits. */
+export interface NormalizedMusicTraits {
+  energy: number;
+  complexity: number;
+  brightness: number;
+  syncopation: number;
+}
 
 export interface GenerationPreset {
   style: string;
+  label?: string;
   traits: NormalizedMusicTraits;
 }
 
@@ -57,6 +101,24 @@ export const SUSPENSE_PRESETS = [
   },
 ] as const satisfies readonly GenerationPreset[];
 
+export const ADVENTURE_PRESETS = [
+  {
+    style: "folk",
+    label: "Medieval Folk",
+    traits: { energy: 0.5, complexity: 0.45, brightness: 0.68, syncopation: 0.5 },
+  },
+  {
+    style: "dark",
+    label: "Dark Fantasy",
+    traits: { energy: 0.62, complexity: 0.55, brightness: 0.55, syncopation: 0.45 },
+  },
+  {
+    style: "orchestral",
+    label: "Orchestral RPG",
+    traits: { energy: 0.4, complexity: 0.6, brightness: 0.7, syncopation: 0.3 },
+  },
+] as const satisfies readonly GenerationPreset[];
+
 export let labRecipe: LabRecipe = "racing";
 export let suspenseArrangement: SuspenseArrangement = "extended";
 export let activeExperimentIndex = 0;
@@ -75,8 +137,12 @@ let switchingAudio = false;
 let generationQueue: Promise<void> = Promise.resolve();
 let latestGenerationRequest = 0;
 
+const AUTOPLAY_RECIPES: ReadonlySet<LabRecipe> = new Set(["racing", "adventure"]);
+
 export function currentPresets(): readonly GenerationPreset[] {
-  return labRecipe === "suspense" ? SUSPENSE_PRESETS : GENERATION_PRESETS;
+  if (labRecipe === "suspense") return SUSPENSE_PRESETS;
+  if (labRecipe === "adventure") return ADVENTURE_PRESETS;
+  return GENERATION_PRESETS;
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -103,6 +169,7 @@ async function generateRequestedScore(
     style: preset.style,
     recipe: labRecipe,
     arrangement,
+    autoplay: AUTOPLAY_RECIPES.has(labRecipe),
     energy: requestedTraits.energy,
     complexity: requestedTraits.complexity,
     brightness: requestedTraits.brightness,
@@ -121,6 +188,18 @@ export async function initializeLab(): Promise<void> {
 }
 
 export function currentState(): GameState {
+  if (labRecipe === "adventure") {
+    return {
+      numeric: {
+        discovery: Number(elements.intensity.value),
+        threat: Number(elements.pressure.value),
+        questComplete: elements.finalLap.checked ? 1 : 0,
+      },
+      categorical: {
+        areaPhase: phase,
+      },
+    };
+  }
   if (labRecipe === "suspense") {
     return {
       numeric: {
@@ -180,7 +259,11 @@ export function pendingCue(): SectionId | null {
 }
 
 export function requestMusicState(): void {
-  if (cueControlsBusy() || !audio.running) return;
+  if (cueControlsBusy()) return;
+  if (!audio.running) {
+    cueSection(selectSection(score, currentState()));
+    return;
+  }
   const tick = audio.currentTick();
   const automatic = transport.advance(tick);
   if (automatic !== null) applyPlan(automatic);
@@ -248,6 +331,12 @@ export function cueControlsBusy(): boolean {
 
 export function requestSuspensePhase(): void {
   const target = SUSPENSE_PHASE_SECTIONS[phase];
+  if (target === undefined) requestMusicState();
+  else cueSection(target);
+}
+
+export function requestAdventureScene(): void {
+  const target = ADVENTURE_SCENE_SECTIONS[phase];
   if (target === undefined) requestMusicState();
   else cueSection(target);
 }
@@ -392,7 +481,8 @@ export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
   labRecipe = recipe;
   activeExperimentIndex = 0;
   manualCue = null;
-  phase = recipe === "suspense" ? "scan" : "garage";
+  phase =
+    recipe === "suspense" ? "scan" : recipe === "adventure" ? "camp" : "garage";
   generationTraits = { ...generationPreset(0).traits };
   return requestExperiment(0, levelSeed, generationTraits);
 }

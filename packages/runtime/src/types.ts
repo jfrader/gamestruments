@@ -59,13 +59,25 @@ export interface NoteEvent extends EventBase {
     | "supersaw"
     | "triangle"
     | "felt"
-    | "dusk";
+    | "dusk"
+    | "harp"
+    | "recorder"
+    | "vielle"
+    | "bell";
   role?: "melody";
 }
 
 export interface PercussionEvent extends EventBase {
   kind: "percussion";
-  voice: "kick" | "snare" | "hat" | "tom" | "reverse-cymbal" | "air-impact";
+  voice:
+    | "kick"
+    | "snare"
+    | "hat"
+    | "tom"
+    | "reverse-cymbal"
+    | "air-impact"
+    | "frame-drum"
+    | "tambourine";
 }
 
 export interface StemEvent extends EventBase {

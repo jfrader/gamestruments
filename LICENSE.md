@@ -11,7 +11,8 @@ The Gamestruments runtime components are licensed under the MIT License:
 - `kit/demo`
 - `kit/docs`
 
-The browser authoring and research surface under `packages/studio` and `apps/demo` uses Strudel and is licensed under AGPL-3.0-or-later. It is not included in the buyer runtime kit. Each package also carries its applicable license metadata or file.
+The browser playground under `apps/demo` shares the same MIT license; it has no
+bundled third-party authoring dependency.
 
 ## MIT License
 

@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 import { installAudioCapture } from "./audio-capture.ts";
 
 declare global { interface Window { cueClock: AudioContext; stoppedBeforeCue: number } }
 
 test("Suspense exposes every music section separately from game signals", async ({ page }) => {
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   const sectionIds = await page.locator("#section-select option").evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
   const rowIds = await page.locator("#section-list button").evaluateAll((buttons) => buttons.map((button) => (button as HTMLButtonElement).dataset.cueSection));
   expect(sectionIds).toEqual(rowIds);
@@ -33,7 +34,7 @@ test("cue buttons wait for a bar and an active blend keeps only the latest queue
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#center-play").click();
   await page.waitForFunction(() => Number(document.querySelector("#beat-value")!.textContent) >= 2);
   await page.getByRole("button", { name: "Cue Anomaly", exact: true }).click();
@@ -63,7 +64,7 @@ test("cancelled cues do not stop the current rhythm when their old fade timer ex
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("verse");
   const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
@@ -106,7 +107,7 @@ test("cancelling a looked-ahead cue stops its future voices", async ({ page }) =
     };
   });
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("verse");
   const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
@@ -140,7 +141,7 @@ test("a cue cannot replace the transport while audio is still starting", async (
     };
   });
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#center-play").click();
   await expect(page.locator("#section-select")).toBeDisabled();
   await expect(page.getByRole("button", { name: "Cue Anomaly", exact: true })).toBeDisabled();
@@ -158,7 +159,7 @@ test("a cue cannot replace the transport while audio is still starting", async (
 test("the complete section selector and cue status fit a compact viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("coda");
   await expect(page.locator("#cue-status")).toHaveText("Start with Closed Session");
   await expect(page.locator("#section-select option")).toHaveCount(17);
@@ -169,7 +170,7 @@ test("the complete section selector and cue status fit a compact viewport", asyn
 test("engine button reflects playing/waiting/crossing states and mobile controls are sticky", async ({ page }) => {
   test.setTimeout(30000);
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
 
   // start playback
   await page.locator("#center-play").click();
@@ -217,7 +218,7 @@ test("engine button reflects playing/waiting/crossing states and mobile controls
 
 test("prev/next section buttons cue the neighbouring sections", async ({ page }) => {
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   const select = page.locator("#section-select");
   await expect(select).toBeVisible();
   const options = await select.locator("option").evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));

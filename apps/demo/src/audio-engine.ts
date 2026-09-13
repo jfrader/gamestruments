@@ -14,7 +14,16 @@ const NOTE_TAIL_SECONDS = 0.16;
 type NoteEvent = Extract<MusicEvent, { kind: "note" }>;
 type SynthVoice = Exclude<
   NoteEvent["voice"],
-  "bass" | "epiano" | "organ" | "supersaw" | "triangle" | "chip"
+  | "bass"
+  | "epiano"
+  | "organ"
+  | "supersaw"
+  | "triangle"
+  | "chip"
+  | "harp"
+  | "recorder"
+  | "vielle"
+  | "bell"
 >;
 
 export type SoloMode = "full" | "melody" | "rhythm";
@@ -761,6 +770,12 @@ export class DemoAudioEngine {
       triangle: () =>
         this.#scheduleTriangleBass(event, start, duration, destination),
       chip: () => this.#scheduleChip(event, start, duration, destination),
+      harp: () => this.#scheduleHarp(event, start, destination),
+      recorder: () =>
+        this.#scheduleRecorder(event, start, duration, destination),
+      vielle: () =>
+        this.#scheduleVielle(event, start, duration, destination),
+      bell: () => this.#scheduleBell(event, start, destination),
     } as const;
     const scheduleDedicated = dedicated[event.voice as keyof typeof dedicated];
     if (scheduleDedicated !== undefined) {
@@ -876,6 +891,314 @@ export class DemoAudioEngine {
       filter,
       envelope,
     ]);
+  }
+
+  #scheduleHarp(
+    event: NoteEvent,
+    start: number,
+    destination: AudioNode,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(event.velocity, 0, 1);
+    const frequency = midiToFrequency(event.pitch);
+    const lowerNote = clamp(220 / frequency, 0.25, 1);
+    const life = 2.8 + lowerNote * 1.25;
+    const stop = start + life;
+    const peak =
+      0.105 *
+      Math.pow(Math.max(0.02, velocity), 0.8) *
+      (event.role === "melody" ? 1.08 : 1);
+    const ratios = [1, 2.006, 3.012] as const;
+    const gains = [1, 0.28, 0.12] as const;
+    const decays = [
+      0.72 + lowerNote * 0.52,
+      0.34 + lowerNote * 0.22,
+      0.13 + lowerNote * 0.08,
+    ] as const;
+    const mix = context.createGain();
+    const oscillators = ratios.map((ratio, index) => {
+      const oscillator = context.createOscillator();
+      const modeGain = context.createGain();
+      oscillator.type = "sine";
+      this.#schedulePitch(
+        oscillator.frequency,
+        frequency * ratio,
+        index === 0 ? 0.004 : 0,
+        start,
+      );
+      modeGain.gain.setValueAtTime(MIN_GAIN, start);
+      modeGain.gain.linearRampToValueAtTime(
+        Math.max(MIN_GAIN, peak * (gains[index] ?? 0)),
+        start + 0.003,
+      );
+      modeGain.gain.exponentialRampToValueAtTime(
+        MIN_GAIN,
+        Math.min(stop, start + (decays[index] ?? 0.2) * 6.2),
+      );
+      oscillator.connect(modeGain).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      return { oscillator, modeGain };
+    });
+    mix.connect(destination);
+    this.#scheduleNoise(
+      peak * 0.12,
+      start,
+      0.032,
+      "bandpass",
+      clamp(frequency * 5.5, 900, 3200),
+      0.7,
+      destination,
+      `${event.id}:harp-finger`,
+    );
+    const lead = oscillators[0];
+    if (lead !== undefined) {
+      this.#cleanupAfter(lead.oscillator, [
+        ...oscillators.flatMap(({ oscillator, modeGain }) => [
+          oscillator,
+          modeGain,
+        ]),
+        mix,
+      ]);
+    }
+  }
+
+  #scheduleRecorder(
+    event: NoteEvent,
+    start: number,
+    duration: number,
+    destination: AudioNode,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(event.velocity, 0, 1);
+    const frequency = midiToFrequency(event.pitch);
+    const end = start + duration;
+    const stop = end + 0.25;
+    const mix = context.createGain();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    const vibrato = context.createOscillator();
+    const vibratoDepth = context.createGain();
+    const ratios = [1, 2, 3] as const;
+    const gains = [0.82, 0.2, 0.075] as const;
+    const oscillators = ratios.map((ratio, index) => {
+      const oscillator = context.createOscillator();
+      const partialGain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency * ratio;
+      partialGain.gain.value = gains[index] ?? 0;
+      vibrato.connect(vibratoDepth).connect(oscillator.detune);
+      oscillator.connect(partialGain).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      return { oscillator, partialGain };
+    });
+    const vibratoStart = start + Math.min(0.2, duration * 0.55);
+    vibrato.type = "sine";
+    vibrato.frequency.value = 5.05 + (event.pitch % 4) * 0.07;
+    vibratoDepth.gain.setValueAtTime(0, start);
+    vibratoDepth.gain.setValueAtTime(0, vibratoStart);
+    vibratoDepth.gain.linearRampToValueAtTime(
+      6,
+      Math.min(end, vibratoStart + 0.38),
+    );
+    filter.type = "lowpass";
+    filter.frequency.value = Math.min(context.sampleRate * 0.44, 4300);
+    filter.Q.value = 0.3;
+    this.#scheduleEnvelope(
+      envelope.gain,
+      start,
+      duration,
+      0.085 *
+        Math.pow(Math.max(0.02, velocity), 0.84) *
+        (event.role === "melody" ? 1.08 : 1),
+      0.78,
+      0.045,
+      0.12,
+      0.24,
+    );
+    mix.connect(filter).connect(envelope).connect(destination);
+    this.#scheduleSustainedNoise(
+      0.002 * Math.pow(Math.max(0.02, velocity), 0.84),
+      start,
+      duration,
+      0.045,
+      0.24,
+      "bandpass",
+      clamp(frequency * 7, 1800, 4200),
+      0.55,
+      destination,
+      `${event.id}:recorder-breath`,
+    );
+    vibrato.start(start);
+    vibrato.stop(stop);
+    const lead = oscillators[0];
+    if (lead !== undefined) {
+      this.#cleanupAfter(lead.oscillator, [
+        ...oscillators.flatMap(({ oscillator, partialGain }) => [
+          oscillator,
+          partialGain,
+        ]),
+        mix,
+        filter,
+        envelope,
+        vibrato,
+        vibratoDepth,
+      ]);
+    }
+  }
+
+  #scheduleVielle(
+    event: NoteEvent,
+    start: number,
+    duration: number,
+    destination: AudioNode,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(event.velocity, 0, 1);
+    const frequency = midiToFrequency(event.pitch);
+    const end = start + duration;
+    const stop = end + 0.46;
+    const mix = context.createGain();
+    const envelope = context.createGain();
+    const vibrato = context.createOscillator();
+    const vibratoDepth = context.createGain();
+    const ratios = [1, 2, 3] as const;
+    const initialGains = [0.72, 0.235, 0.14] as const;
+    const finalGains = [0.72, 0.325, 0.09] as const;
+    const oscillators = ratios.map((ratio, index) => {
+      const oscillator = context.createOscillator();
+      const partialGain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency * ratio;
+      partialGain.gain.setValueAtTime(initialGains[index] ?? 0, start);
+      partialGain.gain.linearRampToValueAtTime(
+        finalGains[index] ?? 0,
+        Math.min(end, start + 1.15),
+      );
+      vibrato.connect(vibratoDepth).connect(oscillator.detune);
+      oscillator.connect(partialGain).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      return { oscillator, partialGain };
+    });
+    const vibratoStart = start + Math.min(0.32, duration * 0.58);
+    vibrato.type = "sine";
+    vibrato.frequency.value = 4.65 + (event.pitch % 5) * 0.045;
+    vibratoDepth.gain.setValueAtTime(0, start);
+    vibratoDepth.gain.setValueAtTime(0, vibratoStart);
+    vibratoDepth.gain.linearRampToValueAtTime(
+      3.6,
+      Math.min(end, vibratoStart + 0.55),
+    );
+    this.#scheduleEnvelope(
+      envelope.gain,
+      start,
+      duration,
+      0.082 *
+        Math.pow(Math.max(0.02, velocity), 0.84) *
+        (event.role === "melody" ? 1.08 : 1),
+      0.72,
+      0.085,
+      0.28,
+      0.45,
+      0.45,
+    );
+    mix.connect(envelope).connect(destination);
+    this.#scheduleSustainedNoise(
+      0.00205 * Math.pow(Math.max(0.02, velocity), 0.84),
+      start,
+      duration,
+      0.085,
+      0.45,
+      "bandpass",
+      clamp(frequency * 5, 1150, 2800),
+      0.48,
+      destination,
+      `${event.id}:vielle-bow`,
+    );
+    vibrato.start(start);
+    vibrato.stop(stop);
+    const lead = oscillators[0];
+    if (lead !== undefined) {
+      this.#cleanupAfter(lead.oscillator, [
+        ...oscillators.flatMap(({ oscillator, partialGain }) => [
+          oscillator,
+          partialGain,
+        ]),
+        mix,
+        envelope,
+        vibrato,
+        vibratoDepth,
+      ]);
+    }
+  }
+
+  #scheduleBell(
+    event: NoteEvent,
+    start: number,
+    destination: AudioNode,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(event.velocity, 0, 1);
+    const frequency = midiToFrequency(event.pitch);
+    const lowerNote = clamp(330 / frequency, 0.35, 1);
+    const life = 3.4 + lowerNote * 1.4;
+    const stop = start + life;
+    const peak =
+      0.09 *
+      Math.pow(Math.max(0.02, velocity), 0.82) *
+      (event.role === "melody" ? 1.06 : 1);
+    const ratios = [1, 2.72, 4.07] as const;
+    const gains = [1, 0.24, 0.085] as const;
+    const decays = [
+      0.78 + lowerNote * 0.62,
+      0.5 + lowerNote * 0.28,
+      0.19 + lowerNote * 0.13,
+    ] as const;
+    const mix = context.createGain();
+    const oscillators = ratios.map((ratio, index) => {
+      const oscillator = context.createOscillator();
+      const modeGain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency * ratio;
+      modeGain.gain.setValueAtTime(MIN_GAIN, start);
+      modeGain.gain.linearRampToValueAtTime(
+        Math.max(MIN_GAIN, peak * (gains[index] ?? 0)),
+        start + 0.0025,
+      );
+      modeGain.gain.exponentialRampToValueAtTime(
+        MIN_GAIN,
+        Math.min(stop, start + (decays[index] ?? 0.2) * 6.2),
+      );
+      oscillator.connect(modeGain).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      return { oscillator, modeGain };
+    });
+    mix.connect(destination);
+    const lead = oscillators[0];
+    if (lead !== undefined) {
+      this.#cleanupAfter(lead.oscillator, [
+        ...oscillators.flatMap(({ oscillator, modeGain }) => [
+          oscillator,
+          modeGain,
+        ]),
+        mix,
+      ]);
+    }
   }
 
   #scheduleBass(
@@ -1259,10 +1582,107 @@ export class DemoAudioEngine {
         this.#scheduleHat(event.velocity, start, destination, event.id),
       tom: () =>
         this.#scheduleTom(event.velocity, start, destination, event.id),
+      "frame-drum": () =>
+        this.#scheduleFrameDrum(event.velocity, start, destination, event.id),
+      tambourine: () =>
+        this.#scheduleTambourine(event.velocity, start, destination, event.id),
       "reverse-cymbal": () => this.#scheduleEffect(event, start, destination),
       "air-impact": () => this.#scheduleEffect(event, start, destination),
     };
     schedulers[event.voice]();
+  }
+
+  #scheduleFrameDrum(
+    eventVelocity: number,
+    start: number,
+    destination: AudioNode,
+    seed: string,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(eventVelocity, 0, 1);
+    const frequency = 82 + deterministicUnit(seed) * 24;
+    const stop = start + 0.62;
+    const ratios = [1, 1.59, 2.14] as const;
+    const gains = [1, 0.38, 0.2] as const;
+    const decays = [0.19, 0.12, 0.075] as const;
+    const mix = context.createGain();
+    const oscillators = ratios.map((ratio, index) => {
+      const oscillator = context.createOscillator();
+      const modeGain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency * ratio;
+      modeGain.gain.setValueAtTime(
+        Math.max(
+          MIN_GAIN,
+          0.2 *
+            Math.pow(Math.max(0.02, velocity), 0.82) *
+            (gains[index] ?? 0),
+        ),
+        start,
+      );
+      modeGain.gain.exponentialRampToValueAtTime(
+        MIN_GAIN,
+        start + (decays[index] ?? 0.08) * 5.2,
+      );
+      oscillator.connect(modeGain).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      return { oscillator, modeGain };
+    });
+    mix.connect(destination);
+    this.#scheduleNoise(
+      0.026 * Math.pow(Math.max(0.02, velocity), 0.82),
+      start,
+      0.034,
+      "bandpass",
+      1350 + frequency * 3,
+      0.72,
+      destination,
+      `${seed}:frame-drum-strike`,
+    );
+    const lead = oscillators[0];
+    if (lead !== undefined) {
+      this.#cleanupAfter(lead.oscillator, [
+        ...oscillators.flatMap(({ oscillator, modeGain }) => [
+          oscillator,
+          modeGain,
+        ]),
+        mix,
+      ]);
+    }
+  }
+
+  #scheduleTambourine(
+    eventVelocity: number,
+    start: number,
+    destination: AudioNode,
+    seed: string,
+  ): void {
+    if (this.#context === null) return;
+    const velocity = clamp(eventVelocity, 0, 1);
+    const variation = deterministicUnit(seed);
+    const peak = 0.12 * Math.pow(Math.max(0.02, velocity), 0.82);
+    const bursts = [
+      { offset: 0, duration: 0.052, gain: 1 },
+      { offset: 0.058 + variation * 0.018, duration: 0.047, gain: 0.82 },
+      { offset: 0.142 + variation * 0.027, duration: 0.056, gain: 0.64 },
+      { offset: 0.25 + variation * 0.035, duration: 0.07, gain: 0.42 },
+    ] as const;
+    for (const [index, burst] of bursts.entries()) {
+      this.#scheduleNoise(
+        peak * burst.gain,
+        start + burst.offset,
+        burst.duration,
+        "highpass",
+        4300 + variation * 1500,
+        0.32,
+        destination,
+        `${seed}:tambourine-rattle:${index}`,
+      );
+    }
   }
 
   #scheduleEffect(event: Extract<MusicEvent, { kind: "percussion" }>, start: number, destination: AudioNode): void {
@@ -1436,6 +1856,47 @@ export class DemoAudioEngine {
     this.#cleanupAfter(body, [body, overtone, overtoneGain, envelope]);
   }
 
+  #scheduleSustainedNoise(
+    gain: number,
+    start: number,
+    duration: number,
+    attack: number,
+    release: number,
+    filterType: BiquadFilterType,
+    frequency: number,
+    resonance: number,
+    destination: AudioNode,
+    seed: string,
+  ): void {
+    const context = this.#context;
+    if (context === null || this.#noiseBuffer === null) {
+      return;
+    }
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    source.buffer = this.#noiseBuffer;
+    source.loop = true;
+    filter.type = filterType;
+    filter.frequency.value = frequency;
+    filter.Q.value = resonance;
+    this.#scheduleEnvelope(
+      envelope.gain,
+      start,
+      duration,
+      gain,
+      0.82,
+      attack,
+      0.18,
+      release,
+      release,
+    );
+    source.connect(filter).connect(envelope).connect(destination);
+    source.start(start, deterministicUnit(seed) * this.#noiseBuffer.duration);
+    source.stop(start + duration + release + 0.01);
+    this.#cleanupAfter(source, [source, filter, envelope]);
+  }
+
   #scheduleNoise(
     gain: number,
     start: number,
@@ -1453,6 +1914,8 @@ export class DemoAudioEngine {
     const source = context.createBufferSource();
     const filter = context.createBiquadFilter();
     const envelope = context.createGain();
+    // Future-only automation can leak a sharp onset from the unity default.
+    envelope.gain.value = MIN_GAIN;
     source.buffer = this.#noiseBuffer;
     filter.type = filterType;
     filter.frequency.value = frequency;

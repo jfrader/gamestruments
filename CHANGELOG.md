@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- Added Adventure, an eight-section fantasy quest recipe (camp, explore, town, dungeon, combat, boss, sanctuary, victory). Camp, dungeon, boss, and sanctuary are 16 bars; explore, town, combat, and victory are 32, and each section develops its material across phrases rather than repeating copied halves. Styles are folk (earthy medieval folk), dark (dark medieval fantasy), and orchestral (orchestral RPG), using synthesized harp, recorder, vielle, and bell voices plus frame-drum and tambourine percussion — acoustic-inspired synthesis, not sample recordings. Godot exposes `recipe = "adventure"` and `set_adventure_state(area_phase, discovery, threat, quest_complete)`, and the Audio Lab can audition it.
+- Racing and Adventure now support an opt-in `autoplay` (default off). When enabled, the engine attaches a song form that tours the recipe's sections — Racing tours garage, grid, cruise (twice), attack, final-lap, and victory, then loops from grid; Adventure tours all eight sections, then loops from explore. With autoplay off, both recipes remain state-driven and unchanged. The Lab enables autoplay for Racing and Adventure; Suspense is unchanged, and Press Play is still required.
 - Suspense `theme` arrangement for title/menu music: same sections as Original, but the form builds (hats in the intro, drone carried forward) into a held drop instead of resetting at Break. After the drop, Theme adds hi-hat breaks and reverse-cymbal/snare landings instead of looping linear synth beeps. Gameplay `original` / `extended` phases are unchanged.
 - Extended adds occasional seeded reverse-cymbal swells and filtered air impacts, short melodic spotlights in Decrypt/Other Hall, and an eight-bar Anomaly detour before Full Breach. Effects stay sparse and the kick/hat foundation continues; Original remains unchanged.
 - Suspense has two arrangements: the approved Original and a consolidated Extended, selected by default in the lab. Extended combines 16-bar main beds, uninterrupted kick/hat rhythm, low muted tones and filtered swells with quiet echoes. Sparse seeded tom details may appear or be absent without interrupting the beat; the separate Flow/Featured experiments are removed.
@@ -13,6 +15,9 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Adventure: Folk now foregrounds plucked harp and recorder/fiddle phrasing, while Orchestral opens with bowed strings, longer melodic lines, and occasional woodwind answers. Warmer mode-aware harmony gives the safe phases clearer, brighter arrivals instead of accidental diminished-chord passages; the dangerous phases retain their darker contrast.
+- Audio Lab: replaced the game-type toggle row with a single large selector that shows the active recipe and its description and opens a list of every recipe, so adding a recipe no longer means adding another button.
+- Retired the TypeScript Studio generator and CLI pipeline. The Rust engine is now the single generation authority and the whole repository uses one recipe vocabulary (`racing`, `suspense`, `adventure`); the Audio Lab's genre/experiment copy moved into the demo. This removes the bundled Strudel/AGPL dependency and shrinks the lab bundle from ~73 kB to ~57 kB.
 - Audio Lab: the orbit now shows one ring per musical part in the current section (melody, harmony, bass, drums, plus recipe-specific parts like suspense's drone and cell), each pulsing and rotating from its own note events with its instrument named in the tooltip.
 - Audio Lab: fixed the mobile Suspense layout — the Sound World fieldset is no longer squeezed to a sliver and the Sound World/Arrangement buttons each take a full-width row; added a regression test.
 - Audio Lab: added ◀/▶ section-step buttons flanking the engine button to cue the previous/next section (wrapping at the ends), with tooltips naming the target; the engine button is slightly narrower to make room.
@@ -44,6 +49,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Fixed occasional sharp drum-click spikes at certain tempos in the Audio Lab without reducing the overall mix level or changing the musical parts.
 - Suspense Extended now enters Disconnect for `progress` in the 0.80–0.94 range, matching the game-engine selector; alert/heat cues re-arm after the form leaves the cued section instead of being swallowed.
 - Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.
 - Fixed the missing Suspense kick at Scan bar 9: form entrances are prepared by the audio scheduler at their exact boundary instead of rounding a late animation frame up to bar 10. The music and two-bar bed fades are unchanged.

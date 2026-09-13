@@ -1,4 +1,4 @@
-use crate::score::{FormOrigin, GameState, PortableScore, TraceState};
+use crate::score::{AdventureState, FormOrigin, GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionPlan {
@@ -106,6 +106,15 @@ impl AdaptiveTransport {
         }
         self.cue_target = Some(section.to_string());
         self.request_section(section, at_tick)
+    }
+
+    pub fn request_adventure_state(
+        &mut self,
+        state: &AdventureState,
+        at_tick: u32,
+    ) -> Option<TransitionPlan> {
+        let target = crate::adventure::select_adventure_section(state);
+        self.request_section(target, at_tick)
     }
 
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {

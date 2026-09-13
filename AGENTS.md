@@ -13,13 +13,14 @@
 ## Product
 
 - This repo is a **game music library**, not a Pocket Circuit checkout.
-- TypeScript Studio (`packages/studio`, AGPL) is the Audio Lab only. Do not
-  ship Strudel into games.
+- One generator authority: the Rust engine (`crates/engine`). The Audio Lab
+  (`apps/demo`, MIT) drives it through the committed WASM build; there is no
+  TypeScript generator or CLI pipeline.
 - In-game engine is Rust: `crates/engine` (MIT generator + transport + synth)
   and `crates/godot` (GDExtension). Games generate at level load from a
   project secret, instrument palette, and seed. Do not pre-bake every
-  procedural race to WAV. Recipes: Pocket Circuit (racing loops) and
-  Suspense (song-form; Arkhos).
+  procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
+  Arkhos), and Adventure (an eight-section fantasy quest arc).
 - `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
 - The buyer demo is a playable game integration: actual racing drives music.
   Neither a generator parameter panel nor a copy of the Audio Lab UI satisfies
@@ -35,6 +36,9 @@ cargo clippy -p gamestruments-engine --all-targets -- -D warnings
 
 Requires Node.js 24. Final checks run in CI after push.
 
+After editing the Rust engine, rebuild the committed WASM (`npm run wasm:build`)
+and verify its digest (`npm run wasm:verify`; the digest covers inline tests too).
+
 Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.5.5 in the godot crate only; engine crate introduces no 1.94-only features and continues to build cleanly).
 
 ## Graphify
@@ -42,6 +46,11 @@ Note: this workspace pins Rust 1.94 via root `rust-toolchain.toml` (for gdext 0.
 - Query `graphify-out/graph.json` before broad source searches.
 - `graphify-out/` is local generated state, ignored per repo: dirty files there
   are expected and never committed. Never delete files inside it.
+
+## Collaboration
+
+- Prefer Grok/DeepSeek for substantial implementation/review to conserve the GPT
+  budget; the primary agent owns coordination, integration, and verification.
 
 ## Changelog
 

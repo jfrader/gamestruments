@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 import { installAudioCapture } from "./audio-capture.ts";
 
 test("base/development pairs are independent and a held starting section survives regeneration", async ({ page }) => {
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   const options = await page.locator("#section-select option").evaluateAll((items) => items.map((item) => ({ id: (item as HTMLOptionElement).value, text: item.textContent })));
   expect(options).toHaveLength(17);
   for (const [base, variation] of [["verse", "scan-ii"], ["chorus", "breach-ii"]]) {
@@ -28,7 +29,7 @@ test("hold prevents the automatic boundary, Next enters Scan II held, and Resume
   test.setTimeout(160000);
   await installAudioCapture(page);
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("verse");
   const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();

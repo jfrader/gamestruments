@@ -105,20 +105,44 @@ Decrypt, Closed Session, and more). Gameplay can hold or move it with
 `set_form_hold`, `advance_form`, `is_form_held`, and `cue_section`. The full
 section list, selection rules, and trait mapping are in `kit/docs/api.md`.
 
+## Third Recipe: Adventure
+
+The same player ships **Adventure**, an eight-section fantasy quest arc. Set
+`recipe = "adventure"` before `generate`, choose a style, and pass the area
+phase plus discovery, threat, and quest progress:
+
+```gdscript
+music.recipe = "adventure"
+music.style = "folk"            # folk, dark, or orchestral
+music.generate("world-3")
+music.set_adventure_state("explore", 0.4, 0.1, false)   # discovery >= 0.3 -> explore
+music.set_adventure_state("town", 0.5, 0.1, false)      # town
+music.set_adventure_state("combat", 0.2, 0.9, false)    # combat + threat >= 0.85 -> boss
+music.set_adventure_state("explore", 0.9, 0.1, false)   # discovery >= 0.85 -> sanctuary
+music.set_adventure_state("explore", 0.5, 0.1, true)    # quest complete -> victory
+```
+
+Eight sections — Camp, Explore, Town, Dungeon, Combat, Boss, Sanctuary, and
+Victory — crossfade on the next bar. Camp, Dungeon, Boss, and Sanctuary are 16
+bars; Explore, Town, Combat, and Victory are 32. Quest completion always wins.
+Full list in `kit/docs/api.md`.
+
 ## API at a Glance
 
 | Member | What it does |
 |---|---|
 | `project_secret: String` | Stable name for your title. Required, not a credential. |
-| `recipe: String` | `racing` (default) or `suspense`. |
+| `recipe: String` | `racing` (default), `suspense`, or `adventure`. |
 | `arrangement: String` | Suspense only: `original` (default), `extended`, or `theme`. |
-| `style: String` | Racing: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. |
+| `autoplay: bool` | Racing and Adventure only (default `false`). When true, attaches a song form that tours the recipe's sections automatically; when false, generation is state-driven. |
+| `style: String` | Racing: `neon`, `funk`, `fusion`, `chip`. Suspense: `terminal`, `cipher`, `noir`. Adventure: `folk`, `dark`, `orchestral`. |
 | `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice` | Racing only. Optional voice overrides; empty uses the style default. |
-| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse. |
+| `energy`, `complexity`, `brightness`, `syncopation: float` | Optional traits from `0.0` to `1.0`. Suspense reads them as tension, heat, mystery, and pulse; Adventure as danger, mystery, wonder, and motion. |
 | `generate(seed: String) -> bool` | Makes the score, resets playback, starts at the recipe's first section. Check the result. |
 | `set_race_state(phase, intensity, pressure, final_lap, finish_result = "none") -> bool` | Racing: requests a section. Commits on the next bar. |
 | `set_trace_state(phase, heat, focus, progress) -> bool` | Suspense: requests a section from trace state. Commits on the next bar. |
-| `cue_section`, `set_form_hold`, `advance_form`, `is_form_held`, `get_current_section` | Suspense form controls. See `kit/docs/api.md`. |
+| `set_adventure_state(area_phase, discovery, threat, quest_complete) -> bool` | Adventure: requests a section for the area. Commits on the next bar. |
+| `cue_section`, `set_form_hold`, `advance_form`, `is_form_held`, `get_current_section` | Form controls for scores with a form (Suspense, and Racing/Adventure when `autoplay` is on). See `kit/docs/api.md`. |
 
 Every member, supported voice, and error case is documented in
 `kit/docs/api.md`. A complete walkthrough is in `kit/docs/quickstart.md`.

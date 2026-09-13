@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { selectRecipe } from "./recipe.ts";
 import { writeFile } from "node:fs/promises";
 import type { SuspenseArrangement } from "../../apps/demo/src/wasm-engine.ts";
 
@@ -10,7 +11,7 @@ async function verifyFormDownbeat(style: string, clickScan: boolean, page: Page,
 
   await page.goto("/#lab");
   await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal");
   if (style !== "Terminal") {
     await page.locator("#score-buttons button", { hasText: style }).click();
@@ -120,7 +121,7 @@ test("default Extended keeps the kick and hat going for eight bars after Handsha
   test.setTimeout(90000);
   await installAudioCapture(page);
   await page.goto("/#lab");
-  await page.locator('#recipe-buttons button[data-recipe="suspense"]').click();
+  await selectRecipe(page, "suspense");
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
   const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
