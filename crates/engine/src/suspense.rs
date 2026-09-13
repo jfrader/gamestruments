@@ -724,14 +724,83 @@ const TRACE_SPECS: &[TraceSpec] = &[
     },
 ];
 
-pub(crate) fn select_trace_section(state: &TraceState) -> Option<(&'static str, bool)> {
-    TRACE_SPECS.iter().find_map(|spec| {
-        let heat_ok = spec.heat_min.is_none_or(|min| state.heat >= min);
-        let focus_ok = spec.focus_min.is_none_or(|min| state.focus >= min);
-        let progress_ok = spec.progress_min.is_none_or(|min| state.progress >= min);
-        let phase_ok = spec.phase.is_none_or(|phase| state.phase == phase);
-        (heat_ok && focus_ok && progress_ok && phase_ok).then_some((spec.section, spec.hold))
-    })
+/// Choose a suspense section by evaluating the score's own serialized adaptive
+/// rules (the same rules the browser transport evaluates), so native transport
+/// stays in lock-step with what was actually generated. Original/Theme scores
+/// serialize only the base rules, so the extended `outro` progress cue never
+/// leaks into them.
+pub(crate) fn select_trace_section(
+    rules: &[AdaptiveRule],
+    state: &TraceState,
+) -> Option<(String, bool)> {
+    let mut matches: Vec<(usize, &AdaptiveRule)> = rules
+        .iter()
+        .enumerate()
+        .filter(|(_, rule)| trace_rule_matches(rule, state))
+        .collect();
+    matches.sort_by(|(left_index, left), (right_index, right)| {
+        right
+            .priority
+            .cmp(&left.priority)
+            .then_with(|| left_index.cmp(right_index))
+    });
+    matches
+        .into_iter()
+        .next()
+        .map(|(_, rule)| (rule.target.clone(), rule.hold != Some(false)))
+}
+
+fn trace_rule_matches(rule: &AdaptiveRule, state: &TraceState) -> bool {
+    if let Some(numeric) = rule.when.numeric.as_object() {
+        for (name, range) in numeric {
+            let current = match name.as_str() {
+                "heat" => state.heat,
+                "focus" => state.focus,
+                "progress" => state.progress,
+                // Unknown numeric keys have no corresponding TraceState field, so
+                // the browser would treat the value as missing and fail closed.
+                _ => return false,
+            };
+            if !current.is_finite() {
+                return false;
+            }
+            let Some(spec) = range.as_object() else {
+                continue;
+            };
+            if let Some(min) = spec.get("min").and_then(serde_json::Value::as_f64) {
+                if current < min {
+                    return false;
+                }
+            }
+            if let Some(max) = spec.get("max").and_then(serde_json::Value::as_f64) {
+                if current > max {
+                    return false;
+                }
+            }
+        }
+    }
+    if let Some(categorical) = rule.when.categorical.as_object() {
+        for (name, accepted) in categorical {
+            // The only categorical key a TraceState carries is `tracePhase`;
+            // anything else has no corresponding state value and fails closed.
+            if name != "tracePhase" {
+                return false;
+            }
+            let matched = match accepted {
+                serde_json::Value::String(expected) => expected == &state.phase,
+                serde_json::Value::Array(values) => values.iter().any(|value| {
+                    value
+                        .as_str()
+                        .is_some_and(|expected| expected == state.phase)
+                }),
+                _ => false,
+            };
+            if !matched {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 fn rules_from_specs(include_extended: bool) -> Vec<AdaptiveRule> {
@@ -859,8 +928,8 @@ pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String>
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_suspense, SuspenseInput, SuspenseStyle};
-    use crate::score::{MusicEvent, TraceState};
+    use super::{generate_suspense, select_trace_section, SuspenseInput, SuspenseStyle};
+    use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, TraceState};
     use crate::transport::AdaptiveTransport;
 
     fn input(seed: &str, style: SuspenseStyle) -> SuspenseInput {
@@ -1072,5 +1141,138 @@ mod tests {
         transport.advance(8 * 4 * 960);
         transport.advance(16 * 4 * 960);
         assert_eq!(transport.current_section(), "coda");
+    }
+
+    fn trace_rule(
+        target: &str,
+        numeric: serde_json::Value,
+        categorical: serde_json::Value,
+    ) -> AdaptiveRule {
+        AdaptiveRule {
+            target: target.into(),
+            priority: 80,
+            when: AdaptiveCondition {
+                numeric,
+                categorical,
+            },
+            hold: Some(false),
+        }
+    }
+
+    #[test]
+    fn trace_selector_fails_closed_on_unknown_numeric_keys() {
+        let rule = trace_rule(
+            "bridge",
+            serde_json::json!({ "temperature": { "min": 0.75 } }),
+            serde_json::json!({}),
+        );
+        let state = TraceState {
+            phase: "scan".into(),
+            heat: 0.9,
+            focus: 0.5,
+            progress: 0.1,
+        };
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state),
+            None
+        );
+    }
+
+    #[test]
+    fn trace_selector_fails_closed_on_unknown_categorical_keys() {
+        let rule = trace_rule(
+            "bridge",
+            serde_json::json!({}),
+            serde_json::json!({ "mood": "alert" }),
+        );
+        let state = TraceState {
+            phase: "alert".into(),
+            heat: 0.8,
+            focus: 0.2,
+            progress: 0.1,
+        };
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state),
+            None
+        );
+    }
+
+    #[test]
+    fn trace_selector_fails_closed_on_non_finite_values() {
+        let rule = trace_rule(
+            "bridge",
+            serde_json::json!({ "heat": { "min": 0.75 } }),
+            serde_json::json!({}),
+        );
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let state = TraceState {
+                phase: "scan".into(),
+                heat: bad,
+                focus: 0.5,
+                progress: 0.1,
+            };
+            assert_eq!(
+                select_trace_section(std::slice::from_ref(&rule), &state),
+                None,
+                "heat={bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn trace_selector_applies_min_and_max_bounds() {
+        let rule = trace_rule(
+            "outro",
+            serde_json::json!({ "progress": { "min": 0.5, "max": 0.9 } }),
+            serde_json::json!({}),
+        );
+        let state = |progress: f64| TraceState {
+            phase: "scan".into(),
+            heat: 0.5,
+            focus: 0.5,
+            progress,
+        };
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state(0.4)),
+            None,
+            "below min"
+        );
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state(0.95)),
+            None,
+            "above max"
+        );
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state(0.7)),
+            Some(("outro".into(), false)),
+            "inside range"
+        );
+    }
+
+    #[test]
+    fn trace_selector_accepts_an_array_phase_and_rejects_mismatches() {
+        let rule = trace_rule(
+            "outro",
+            serde_json::json!({}),
+            serde_json::json!({ "tracePhase": ["extract", "alert"] }),
+        );
+        let state = |phase: &str| TraceState {
+            phase: phase.into(),
+            heat: 0.1,
+            focus: 0.1,
+            progress: 0.1,
+        };
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state("extract")),
+            Some(("outro".into(), false))
+        );
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state("alert")),
+            Some(("outro".into(), false))
+        );
+        assert_eq!(
+            select_trace_section(std::slice::from_ref(&rule), &state("complete")),
+            None
+        );
     }
 }

@@ -136,11 +136,11 @@ export async function verifyNativeAssets(assetsDir) {
 export async function verifyPackagedNativeLibraries(root) {
   const archiveRoot = path.resolve(root);
   const rootAssets = path.join(archiveRoot, "addons", "gamestruments", "bin");
-  const demoAssets = path.join(archiveRoot, "kit", "demo", "addons", "gamestruments", "bin");
+  const examplesAssets = path.join(archiveRoot, "kit", "examples", "addons", "gamestruments", "bin");
   const rootBuffers = await readAndVerify(rootAssets);
   for (const [platform, filename] of Object.entries(filenames)) {
-    const demoBuffer = await readFile(path.join(demoAssets, filename));
-    assert(rootBuffers[platform].equals(demoBuffer), `${filename} differs between root and demo addons`);
+    const examplesBuffer = await readFile(path.join(examplesAssets, filename));
+    assert(rootBuffers[platform].equals(examplesBuffer), `${filename} differs between root and examples addons`);
   }
 }
 

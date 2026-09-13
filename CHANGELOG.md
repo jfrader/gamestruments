@@ -19,6 +19,7 @@
 - Adventure: Folk now foregrounds plucked harp and recorder/fiddle phrasing, while Orchestral opens with bowed strings, longer melodic lines, and occasional woodwind answers. Warmer mode-aware harmony gives the safe phases clearer, brighter arrivals instead of accidental diminished-chord passages; the dangerous phases retain their darker contrast.
 - Audio Lab: replaced the game-type toggle row with a single large selector that shows the active recipe and its description and opens a list of every recipe, so adding a recipe no longer means adding another button.
 - Retired the TypeScript Studio generator and CLI pipeline. The Rust engine is now the single generation authority and the whole repository uses one recipe vocabulary (`racing`, `suspense`, `adventure`); the Audio Lab's genre/experiment copy moved into the demo. This removes the bundled Strudel/AGPL dependency and shrinks the lab bundle from ~73 kB to ~57 kB.
+- Replaced the bundled racing-game demo with three independent Godot integration examples: generate/play Suspense Theme, react to Racing game signals, and direct a Suspense song form. Open `kit/examples/project.godot` instead of `kit/demo/project.godot`; the existing browser Audio Lab remains the single showcase UI. The examples work offline without it.
 - Audio Lab: the orbit now shows one ring per musical part in the current section (melody, harmony, bass, drums, plus recipe-specific parts like suspense's drone and cell), each pulsing and rotating from its own note events with its instrument named in the tooltip.
 - Audio Lab: fixed the mobile Suspense layout — the Sound World fieldset is no longer squeezed to a sliver and the Sound World/Arrangement buttons each take a full-width row; added a regression test.
 - Audio Lab: added ◀/▶ section-step buttons flanking the engine button to cue the previous/next section (wrapping at the ends), with tooltips naming the target; the engine button is slightly narrower to make room.
@@ -50,8 +51,10 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Native Suspense transitions now follow each arrangement's generated rules, matching the Audio Lab: the progress-based Disconnect at 0.8 applies only to Extended, not Original or Theme.
 - Racing Extended: removed the piercing octave lift from the new phases and rewrote Slipstream as a single call-and-response melody with rests and resolved phrase endings. Cooldown now eases into a closing phrase instead of mechanically dropping an octave. The six original musical sections remain unchanged.
 - Fixed occasional sharp drum-click spikes at certain tempos in the Audio Lab without reducing the overall mix level or changing the musical parts.
+- Godot player teardown now leaves its audio child under Godot's ownership instead of manually freeing it during scene exit; repeated native example scene lifecycles are checked for hangs and leaks.
 - Suspense Extended now enters Disconnect for `progress` in the 0.80–0.94 range, matching the game-engine selector; alert/heat cues re-arm after the form leaves the cued section instead of being swallowed.
 - Fixed the default Extended opening: Handshake enters Scan on a downbeat kick, then the kick and hats stay on the grid instead of stopping after that first hit. Full rhythm dropouts are reserved for Break and endings.
 - Fixed the missing Suspense kick at Scan bar 9: form entrances are prepared by the audio scheduler at their exact boundary instead of rounding a late animation frame up to bar 10. The music and two-bar bed fades are unchanged.

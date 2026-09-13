@@ -174,10 +174,7 @@ impl GamestrumentsPlayer {
             }
             p.stop();
             p.set_stream(Gd::<AudioStream>::null_arg());
-            if let Some(mut parent) = p.get_parent() {
-                parent.remove_child(&p);
-            }
-            p.free();
+            // Godot owns this child; stop its audio here and let parent teardown free it.
         }
     }
 }

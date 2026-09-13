@@ -23,6 +23,16 @@ acceptance or independent buyer acceptance.
 - **Checksum sidecar filename and SHA-256:**
 - **Retained rollback artifact location:**
 
+### Supporting Downloads and HTML Preview
+
+Build each item from the same final integrated commit as the kit, not an older
+preview worktree. Record each upload separately in the approval and rollback plan.
+
+| Item / destination | Filename | Bytes | SHA-256 | Source commit | Verification | Upload flags |
+|---|---|---|---|---|---|---|
+| Public docs + one example / paid product page | | | | | | Free demo file; no native binaries |
+| Existing Audio Lab / `gamestruments-audio-lab-demo` | | | | | | Browser-playable HTML; record embed/mobile/fullscreen settings |
+
 ## Verification Evidence
 - **Release workflow overall result:**
 
@@ -58,7 +68,7 @@ acceptance or independent buyer acceptance.
 | Task from `docs/kit-plan.md` | Pass/fail | Evidence, failure, or unclear wording |
 |---|---|---|
 | Identify requirements from buyer docs | | |
-| Open packaged demo and reach audible output | | |
+| Run each packaged native example and reach audible output | | |
 | Install root addon into a new project | | |
 | Generate and check the result | | |
 | Trigger all adaptive states | | |
@@ -72,13 +82,13 @@ SHA-256 so approval covers exact text.
 
 - **`storefront/listing.md` identity:**
 - **Title:** Gamestruments — Adaptive Music for Godot 4
-- **Slug:** gamestruments-racing-music-godot
+- **Slug:** gamestruments-godot
 - **Classification / kind:** Game Assets / Downloadable
-- **Short description:** A seed-driven, sample-free adaptive music engine for Godot 4.
+- **Short description (exact approved text from listing):**
 - **Price:** $12.99 (Minimum / Pay-what-you-want above)
 - **Launch discount:** None
 - **Language / release status:** English / Released
-- **Tags:** godot, godot-4, music, adaptive-music, dynamic-music, procedural, racing, soundtrack, audio, engine
+- **Tags (exact approved list):**
 - **Payment Mode (operator decision; itch.io Payouts or Direct):**
 - **Open Revenue Share percentage (operator decision):**
 - **Upload Flags:** No OS executable flags (archive contains libraries/source).
@@ -88,13 +98,14 @@ SHA-256 so approval covers exact text.
 - **New downloads and purchases:** Enabled
 - **Search/browse listing:** Enabled
 - **Community/comments:** Enabled for public support
-- **External links:** None at launch; private repository URLs are prohibited
+- **External links (record exact demo/docs links and navigation behavior):** Private repository URLs are prohibited.
 - **Indexing expectation acknowledged:** First paid page may require itch.io manual review and indexing can lag publication.
 
 ### Exact Storefront Media
 
-Every file must come from the immutable packaged Godot demo. Browser Audio Lab
-captures are prohibited as buyer-sound evidence.
+Native-audio evidence must come from the immutable packaged Godot kit. Record
+which native example or approved Lab state each visual shows; do not present
+browser playback as the exact native mix. Recordings from earlier drafts are stale.
 
 | Use/order | Filename or video URL | SHA-256 if local | Dimensions/duration | Packaged-demo source state | Approved |
 |---|---|---|---|---|---|
@@ -104,7 +115,7 @@ captures are prohibited as buyer-sound evidence.
 | Screenshot 3 | | | | | |
 | Screenshot 4 (optional) | | | | | |
 | Screenshot 5 (optional) | | | | | |
-| YouTube/Vimeo video (optional) | | n/a | | | |
+| Music/captions/code video (required for this update's promotion) | | n/a | | | |
 
 ## Support and Disclosures
 - **Support Route:** Public comments on the itch.io product page; purchase-specific or private matters use itch.io's purchase-support flow.
@@ -121,6 +132,7 @@ captures are prohibited as buyer-sound evidence.
 
 - **Approved page/account:**
 - **Approved archive SHA-256:**
+- **Approved public docs and HTML-preview SHA-256 values and destinations:**
 - **Approved listing identity:**
 - **Approved media identities:**
 - **Approved payment mode/revenue share/price:**

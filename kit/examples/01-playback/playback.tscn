@@ -1,0 +1,75 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://01-playback/playback.gd" id="1_inuk2"]
+
+[node name="Playback" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_inuk2")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Main" type="VBoxContainer" parent="ScrollContainer/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "01 — Playback (Suspense Theme)"
+autowrap_mode = 3
+
+[node name="HintLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "Title music: generate once at load, not per frame. Set project_secret + recipe + style + arrangement before generate()."
+autowrap_mode = 3
+
+[node name="StatusLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Status: (pending)"
+autowrap_mode = 3
+
+[node name="SectionLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Current section: (none)"
+autowrap_mode = 3
+
+[node name="RestartButton" type="Button" parent="ScrollContainer/Margin/Main"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Restart / Regenerate"
+
+[node name="WebLabLink" type="LinkButton" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open web Audio Lab"
+
+[node name="ErrorLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+autowrap_mode = 3
