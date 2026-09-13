@@ -90,22 +90,23 @@ impl AdaptiveTransport {
         at_tick: u32,
     ) -> Option<TransitionPlan> {
         self.advance(at_tick);
-        let Some((section, hold)) = crate::suspense::select_trace_section(state) else {
+        let Some((section, hold)) = crate::suspense::select_trace_section(&self.score.rules, state)
+        else {
             self.cue_target = None;
             return None;
         };
         if hold {
             self.cue_target = None;
-            return self.request_section(section, at_tick);
+            return self.request_section(&section, at_tick);
         }
-        let already_cued = self.cue_target.as_deref() == Some(section)
+        let already_cued = self.cue_target.as_deref() == Some(section.as_str())
             && self.current_section == section
             && self.transition.is_none();
         if already_cued {
             return None;
         }
-        self.cue_target = Some(section.to_string());
-        self.request_section(section, at_tick)
+        self.cue_target = Some(section.clone());
+        self.request_section(&section, at_tick)
     }
 
     pub fn request_adventure_state(
@@ -535,52 +536,292 @@ mod tests {
         assert_eq!(transport.section_entered_at, 38400);
     }
 
+    fn trace_input() -> SuspenseInput {
+        SuspenseInput {
+            secret: "qa".into(),
+            seed: "trace-rules".into(),
+            style: SuspenseStyle::Terminal,
+            tension: 0.62,
+            heat: 0.48,
+            mystery: 0.72,
+            pulse: 0.55,
+        }
+    }
+
+    type TraceContractCase = (
+        crate::SuspenseArrangement,
+        &'static str,
+        f64,
+        f64,
+        f64,
+        Option<(&'static str, bool)>,
+    );
+
+    /// Hardcoded contract for `select_trace_section`: (arrangement, phase, heat,
+    /// focus, progress) -> expected (section, hold). Base rules: complete→coda
+    /// (hold), progress≥0.95→coda (hold), extract→outro (hold), heat≥0.75→bridge,
+    /// alert→bridge, exploit&focus≥0.7→chorus. Extended adds progress≥0.8→outro
+    /// (hold), which heat≥0.75 and progress≥0.95 both outrank.
     #[test]
-    fn trace_selector_and_serialized_rules_agree_across_states() {
-        use crate::suspense::{extended_trace_rules, select_trace_section};
-        let phases = ["boot", "scan", "exploit", "alert", "extract", "complete"];
-        for phase in phases {
-            for heat in [0.0, 0.5, 0.76, 1.0] {
-                for focus in [0.0, 0.5, 0.71, 1.0] {
-                    for progress in [0.0, 0.5, 0.81, 0.96, 1.0] {
-                        let state = TraceState {
-                            phase: phase.into(),
-                            heat,
-                            focus,
-                            progress,
-                        };
-                        let selected: Option<(String, bool)> = select_trace_section(&state)
-                            .map(|(section, hold)| (section.to_string(), hold));
-                        let ruled: Option<(String, bool)> = extended_trace_rules()
-                            .into_iter()
-                            .find(|rule| {
-                                let phase_ok = rule
-                                    .when
-                                    .categorical
-                                    .get("tracePhase")
-                                    .is_none_or(|expected| expected == &state.phase);
-                                let numeric = rule.when.numeric.as_object().unwrap();
-                                let numeric_ok = [
-                                    ("heat", state.heat),
-                                    ("focus", state.focus),
-                                    ("progress", state.progress),
-                                ]
-                                .into_iter()
-                                .all(|(key, value)| {
-                                    numeric
-                                        .get(key)
-                                        .is_none_or(|spec| value >= spec["min"].as_f64().unwrap())
-                                });
-                                phase_ok && numeric_ok
-                            })
-                            .map(|rule| (rule.target.clone(), rule.hold.unwrap_or(true)));
-                        assert_eq!(
-                            selected, ruled,
-                            "{phase} heat={heat} focus={focus} progress={progress}"
-                        );
-                    }
-                }
+    fn trace_selector_obeys_the_serialized_rule_contract() {
+        use crate::suspense::select_trace_section;
+        type Arr = crate::SuspenseArrangement;
+        let cases: &[TraceContractCase] = &[
+            // complete wins everywhere
+            (
+                Arr::Original,
+                "complete",
+                0.1,
+                0.1,
+                1.0,
+                Some(("coda", true)),
+            ),
+            (
+                Arr::Extended,
+                "complete",
+                0.1,
+                0.1,
+                1.0,
+                Some(("coda", true)),
+            ),
+            (Arr::Theme, "complete", 0.1, 0.1, 1.0, Some(("coda", true))),
+            // extract routes to outro (hold) everywhere
+            (
+                Arr::Original,
+                "extract",
+                0.1,
+                0.1,
+                0.2,
+                Some(("outro", true)),
+            ),
+            (
+                Arr::Extended,
+                "extract",
+                0.1,
+                0.1,
+                0.2,
+                Some(("outro", true)),
+            ),
+            (Arr::Theme, "extract", 0.1, 0.1, 0.2, Some(("outro", true))),
+            // alert routes to bridge (no hold) everywhere
+            (
+                Arr::Original,
+                "alert",
+                0.5,
+                0.2,
+                0.1,
+                Some(("bridge", false)),
+            ),
+            (
+                Arr::Extended,
+                "alert",
+                0.5,
+                0.2,
+                0.1,
+                Some(("bridge", false)),
+            ),
+            (Arr::Theme, "alert", 0.5, 0.2, 0.1, Some(("bridge", false))),
+            // exploit with focus >= 0.7 routes to chorus; below the focus bound it does not
+            (
+                Arr::Original,
+                "exploit",
+                0.4,
+                0.71,
+                0.1,
+                Some(("chorus", false)),
+            ),
+            (
+                Arr::Extended,
+                "exploit",
+                0.4,
+                0.71,
+                0.1,
+                Some(("chorus", false)),
+            ),
+            (
+                Arr::Theme,
+                "exploit",
+                0.4,
+                0.71,
+                0.1,
+                Some(("chorus", false)),
+            ),
+            (Arr::Original, "exploit", 0.4, 0.69, 0.1, None),
+            (Arr::Extended, "exploit", 0.4, 0.69, 0.1, None),
+            (Arr::Theme, "exploit", 0.4, 0.69, 0.1, None),
+            // progress-only 0.8/0.94: Original/Theme have no outro rule; Extended does
+            (Arr::Original, "scan", 0.5, 0.5, 0.8, None),
+            (Arr::Theme, "scan", 0.5, 0.5, 0.8, None),
+            (Arr::Extended, "scan", 0.5, 0.5, 0.8, Some(("outro", true))),
+            (Arr::Original, "scan", 0.5, 0.5, 0.94, None),
+            (Arr::Theme, "scan", 0.5, 0.5, 0.94, None),
+            (Arr::Extended, "scan", 0.5, 0.5, 0.94, Some(("outro", true))),
+            // progress 0.79 is below even the extended outro threshold
+            (Arr::Original, "scan", 0.5, 0.5, 0.79, None),
+            (Arr::Theme, "scan", 0.5, 0.5, 0.79, None),
+            (Arr::Extended, "scan", 0.5, 0.5, 0.79, None),
+            // progress 0.95 reaches coda everywhere (outranks the extended outro rule)
+            (Arr::Original, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
+            (Arr::Extended, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
+            (Arr::Theme, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
+            // heat >= 0.75 outranks the extended outro rule; heat 0.74 does not
+            (
+                Arr::Original,
+                "scan",
+                0.75,
+                0.5,
+                0.8,
+                Some(("bridge", false)),
+            ),
+            (
+                Arr::Extended,
+                "scan",
+                0.75,
+                0.5,
+                0.8,
+                Some(("bridge", false)),
+            ),
+            (Arr::Theme, "scan", 0.75, 0.5, 0.8, Some(("bridge", false))),
+            (Arr::Original, "scan", 0.74, 0.5, 0.8, None),
+            (Arr::Extended, "scan", 0.74, 0.5, 0.8, Some(("outro", true))),
+            (Arr::Theme, "scan", 0.74, 0.5, 0.8, None),
+        ];
+        for &(arrangement, phase, heat, focus, progress, expected) in cases {
+            let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
+            let state = TraceState {
+                phase: phase.into(),
+                heat,
+                focus,
+                progress,
+            };
+            let selected = select_trace_section(&score.rules, &state);
+            assert_eq!(
+                selected,
+                expected.map(|(section, hold)| (section.to_string(), hold)),
+                "{arrangement:?} {phase} heat={heat} focus={focus} progress={progress}"
+            );
+        }
+    }
+
+    #[test]
+    fn trace_transport_progress_and_heat_obey_serialized_rules() {
+        // A neutral phase plus progress 0.8/0.94: only the Extended outro rule fires.
+        for progress in [0.8, 0.94] {
+            let progress_only = TraceState {
+                phase: "scan".into(),
+                heat: 0.5,
+                focus: 0.5,
+                progress,
+            };
+            for arrangement in [
+                crate::SuspenseArrangement::Original,
+                crate::SuspenseArrangement::Theme,
+            ] {
+                let score =
+                    crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
+                let mut transport = AdaptiveTransport::new(score, None).unwrap();
+                assert!(
+                    transport.request_trace_state(&progress_only, 0).is_none(),
+                    "{arrangement:?} serializes no outro progress rule, so progress {progress} must not cue outro"
+                );
             }
+            let extended = crate::generate_suspense_arrangement(
+                &trace_input(),
+                crate::SuspenseArrangement::Extended,
+            )
+            .unwrap();
+            let mut extended_transport = AdaptiveTransport::new(extended, None).unwrap();
+            let plan = extended_transport
+                .request_trace_state(&progress_only, 0)
+                .expect("Extended outro progress rule must cue outro");
+            assert_eq!(plan.to, "outro", "progress {progress}");
+        }
+
+        // Heat >= 0.75 outranks the extended outro rule in every arrangement.
+        let hot = TraceState {
+            phase: "scan".into(),
+            heat: 0.8,
+            focus: 0.5,
+            progress: 0.8,
+        };
+        for arrangement in [
+            crate::SuspenseArrangement::Original,
+            crate::SuspenseArrangement::Extended,
+            crate::SuspenseArrangement::Theme,
+        ] {
+            let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
+            let mut transport = AdaptiveTransport::new(score, None).unwrap();
+            let plan = transport
+                .request_trace_state(&hot, 0)
+                .expect("heat rule must cue bridge");
+            assert_eq!(plan.to, "bridge", "{arrangement:?} heat overrides outro");
+        }
+    }
+
+    #[test]
+    fn trace_transport_holds_and_rearms_across_arrangements() {
+        for arrangement in [
+            crate::SuspenseArrangement::Original,
+            crate::SuspenseArrangement::Extended,
+            crate::SuspenseArrangement::Theme,
+        ] {
+            let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
+
+            let mut complete = AdaptiveTransport::new(score.clone(), None).unwrap();
+            let plan = complete
+                .request_trace_state(
+                    &TraceState {
+                        phase: "complete".into(),
+                        heat: 0.1,
+                        focus: 0.1,
+                        progress: 1.0,
+                    },
+                    0,
+                )
+                .expect("complete cues coda");
+            assert_eq!(plan.to, "coda", "{arrangement:?} complete");
+            complete.advance(plan.end_tick);
+            assert_eq!(
+                complete.current_section(),
+                "coda",
+                "{arrangement:?} complete holds"
+            );
+
+            let mut extract = AdaptiveTransport::new(score.clone(), None).unwrap();
+            let plan = extract
+                .request_trace_state(
+                    &TraceState {
+                        phase: "extract".into(),
+                        heat: 0.1,
+                        focus: 0.1,
+                        progress: 0.2,
+                    },
+                    0,
+                )
+                .expect("extract cues outro");
+            assert_eq!(plan.to, "outro", "{arrangement:?} extract");
+
+            let alert = TraceState {
+                phase: "alert".into(),
+                heat: 0.8,
+                focus: 0.2,
+                progress: 0.1,
+            };
+            let mut rearm = AdaptiveTransport::new(score, None).unwrap();
+            let plan = rearm
+                .request_trace_state(&alert, 0)
+                .expect("alert cues bridge");
+            assert_eq!(plan.to, "bridge", "{arrangement:?} alert");
+            rearm.advance(plan.end_tick);
+            assert_eq!(
+                rearm.current_section(),
+                "bridge",
+                "{arrangement:?} alert lands"
+            );
+            assert!(
+                rearm.request_trace_state(&alert, plan.end_tick).is_none(),
+                "{arrangement:?} one-shot alert must not re-cue"
+            );
         }
     }
 

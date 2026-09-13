@@ -1,0 +1,179 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://03-song-form/song_form.gd" id="1_nfys0"]
+
+[node name="SongForm" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_nfys0")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Main" type="VBoxContainer" parent="ScrollContainer/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "03 — Song Form (suspense / terminal / extended)"
+autowrap_mode = 3
+
+[node name="HintLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "set_trace_state + cue_section + set_form_hold + advance_form. Check returns + is_form_held + get_current_section."
+autowrap_mode = 3
+
+[node name="StatusLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Status: (pending)"
+autowrap_mode = 3
+
+[node name="FormButtons" type="HBoxContainer" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+
+[node name="HoldButton" type="Button" parent="ScrollContainer/Margin/Main/FormButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Hold"
+
+[node name="ResumeButton" type="Button" parent="ScrollContainer/Margin/Main/FormButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Resume"
+
+[node name="AdvanceButton" type="Button" parent="ScrollContainer/Margin/Main/FormButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Advance"
+
+[node name="CueChorusButton" type="Button" parent="ScrollContainer/Margin/Main/FormButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cue chorus"
+
+[node name="TraceButtons" type="HBoxContainer" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+
+[node name="ScanButton" type="Button" parent="ScrollContainer/Margin/Main/TraceButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "scan"
+
+[node name="AlertButton" type="Button" parent="ScrollContainer/Margin/Main/TraceButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "alert"
+
+[node name="CompleteButton" type="Button" parent="ScrollContainer/Margin/Main/TraceButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "complete"
+
+[node name="ExtractButton" type="Button" parent="ScrollContainer/Margin/Main/TraceButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "extract"
+
+[node name="HeatRow" type="HBoxContainer" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+
+[node name="@Label@13" type="Label" parent="ScrollContainer/Margin/Main/HeatRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Heat:"
+
+[node name="HeatSlider" type="HSlider" parent="ScrollContainer/Margin/Main/HeatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.5
+
+[node name="FocusRow" type="HBoxContainer" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+
+[node name="@Label@14" type="Label" parent="ScrollContainer/Margin/Main/FocusRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Focus:"
+
+[node name="FocusSlider" type="HSlider" parent="ScrollContainer/Margin/Main/FocusRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.5
+
+[node name="ProgressRow" type="HBoxContainer" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+
+[node name="@Label@15" type="Label" parent="ScrollContainer/Margin/Main/ProgressRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Progress:"
+
+[node name="ProgressSlider" type="HSlider" parent="ScrollContainer/Margin/Main/ProgressRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.5
+
+[node name="ApplyTraceButton" type="Button" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Apply set_trace_state (check result)"
+
+[node name="HeldLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Form held: false"
+autowrap_mode = 3
+
+[node name="CurrentLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "Current section: (none)"
+autowrap_mode = 3
+
+[node name="ResultLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "Last op returned: (n/a)"
+autowrap_mode = 3
+
+[node name="WebLabLink" type="LinkButton" parent="ScrollContainer/Margin/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open web Audio Lab"
+
+[node name="ErrorLabel" type="Label" parent="ScrollContainer/Margin/Main"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+autowrap_mode = 3

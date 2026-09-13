@@ -10,21 +10,17 @@ config_version=5
 
 [application]
 
-config/name="Gamestruments Kit Demo"
-run/main_scene="res://kit_demo.tscn"
+config/name="Gamestruments Kit Examples"
+run/main_scene="res://01-playback/playback.tscn"
 config/features=PackedStringArray("4.7")
 
 [display]
 
-window/size/viewport_width=960.0
-window/size/viewport_height=620.0
+window/size/viewport_width=720.0
+window/size/viewport_height=540.0
 window/stretch/mode="canvas_items"
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-
-[audio]
-
-default_bus_layout=""

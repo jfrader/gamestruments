@@ -1,5 +1,15 @@
 # Quickstart — Fresh Godot Project
 
+Get a generated score playing in a new Godot 4.7 project, then drive it from
+gameplay. The two scripts below are complete, standalone, and copy-pastable.
+
+Install the addon first, then choose either the Racing or Suspense script.
+Each player generates one recipe at a time.
+
+Callbacks shown are samples. They are not auto-wired by name. In your game,
+connect your existing events (or call the functions) to the appropriate
+`set_race_state` / `set_trace_state` / form calls. Check every `bool` return.
+
 ## Prerequisites
 
 - Godot 4.7.x.
@@ -8,7 +18,10 @@
 
 ## Install
 
-Copy the archive's root `addons/gamestruments/` folder into your project so these paths exist:
+Place the archive's `gamestruments/` addon inside your project's `addons/`
+directory. Create `addons/` next to `project.godot` if needed; preserve any other
+addons already there. Restart Godot and wait for import to finish. The resulting
+paths are:
 
 ```text
 res://addons/gamestruments/gamestruments.gdextension
@@ -17,135 +30,151 @@ res://addons/gamestruments/bin/gamestruments_godot.dll
 res://addons/gamestruments/bin/libgamestruments_godot.dylib
 ```
 
-Restart Godot. `GamestrumentsPlayer` should appear in the Create New Node dialog without GDExtension errors in the Output panel.
+Godot loads only the binary for your current platform from that folder; the
+folder contains the three libraries for the packaged targets.
 
-## Configure
+`GamestrumentsPlayer` should appear in the Create New Node dialog without
+GDExtension errors. If not, see `troubleshooting.md`.
 
-1. Add a `GamestrumentsPlayer` child to a scene.
-2. Set `project_secret` to a stable, non-empty namespace for your title. It is not a security credential.
-3. Set `style` to `fusion`, `neon`, `funk`, or `chip`.
-4. Leave voice overrides empty for style defaults or choose a supported voice from `api.md`.
-5. Optionally add an audible bus named `Music` in Godot's Audio panel for
-   separate music mixing. A fresh project without that bus falls back to
-   `Master`.
+## Racing recipe (complete script)
 
-## Drive It
-
-Attach this script to the scene root and call the three race callbacks from
-your game's countdown, telemetry updates, and finish event:
+1. In a new Godot 4.7 project create a scene with a root Node.
+2. Add a child `GamestrumentsPlayer` (exact name).
+3. Attach this complete script to the *root* node.
+4. Run with F6.
 
 ```gdscript
 extends Node
 
-@onready var player: GamestrumentsPlayer = $GamestrumentsPlayer
+@onready var music: GamestrumentsPlayer = $GamestrumentsPlayer
 var music_ready := false
 
 func _ready() -> void:
-    music_ready = player.generate("level-001")
+    # Required: non-empty, stable namespace for this title.
+    music.project_secret = "my-game"
+    # Set recipe and supported style BEFORE generate().
+    music.recipe = "racing"
+    music.style = "neon"  # neon, funk, fusion, or chip
+    music.arrangement = "original"
+    music.autoplay = false
+
+    music_ready = music.generate("level-001")
     if not music_ready:
-        push_error("Gamestruments score generation failed")
+        push_error("Gamestruments generation failed. Check the Output panel.")
+        return
+    # Starts at default initial section: "garage". Do not call game callbacks here.
 
 func countdown_started() -> void:
-    if music_ready:
-        player.set_race_state("grid", 0.0, 0.0, false)
+    if music_ready and not music.set_race_state("grid", 0.0, 0.0, false):
+        push_warning("set_race_state was rejected")
 
 func race_updated(intensity: float, pressure: float, lap: int, total_laps: int) -> void:
-    if music_ready:
-        player.set_race_state("race", clampf(intensity, 0.0, 1.0),
-            clampf(pressure, 0.0, 1.0), lap == total_laps)
+    if not music_ready:
+        return
+    var accepted := music.set_race_state(
+        "race",
+        clampf(intensity, 0.0, 1.0),
+        clampf(pressure, 0.0, 1.0),
+        lap == total_laps)
+    if not accepted:
+        push_warning("set_race_state was rejected")
 
 func race_finished(won: bool) -> void:
-    if music_ready:
-        player.set_race_state("finish", 0.0, 0.0, false, "win" if won else "loss")
+    if not music_ready:
+        return
+    var result := "win" if won else "loss"
+    if not music.set_race_state("finish", 0.0, 0.0, false, result):
+        push_warning("set_race_state was rejected")
 ```
 
-Run the scene. The initial `garage` score starts immediately; accepted state requests commit on upcoming bar boundaries rather than cutting instantly.
+The example uses the native default (original, six state-driven phases). To
+match the Audio Lab Racing tour set `arrangement = "extended"` and `autoplay = true`
+before `generate()` (Lab default for Racing is the 10-phase autoplay form).
 
-## Suspense Recipe
+`generate` result `true` means the score is ready (initial garage section). All
+`set_race_state` calls are guarded and check their bool return. Intensity and
+pressure are clamped to 0..1. Finish always sends 0/0/false + the win/loss
+result (both outcomes intentionally select the same victory section). State
+changes commit on bar boundaries using bar-aligned crossfades (bars can occur
+inside phrases; no hard mid-phrase cut).
 
-The same player runs the song-form Suspense recipe. Set the recipe before
-generating, then drive it with trace state instead of race state:
+Use only with Racing recipe. `set_race_state` does not internally guard the
+recipe — call it only on a Racing player.
+
+## Suspense recipe (complete script)
+
+Use a separate scene/player from any Racing usage. Same setup: root + exact-name
+child + attach this full script to root + F6.
 
 ```gdscript
+extends Node
+
+@onready var music: GamestrumentsPlayer = $GamestrumentsPlayer
+var music_ready := false
+
 func _ready() -> void:
-    player.recipe = "suspense"
-    player.style = "terminal"        # terminal, cipher, or noir
-    player.arrangement = "original"  # or "extended" / "theme"
-    music_ready = player.generate("chapter-001")
+    music.project_secret = "my-game"
+    music.recipe = "suspense"
+    music.style = "terminal"        # terminal, cipher, or noir
+    music.arrangement = "extended"  # original, extended, or theme
+
+    music_ready = music.generate("chapter-001")
+    if not music_ready:
+        push_error("Gamestruments generation failed. Check the Output panel.")
+        return
+    # Starts at "intro". No game callbacks invoked from _ready.
 
 func scan_started() -> void:
-    if music_ready:
-        player.set_trace_state("scan", 0.3, 0.2, 0.1)
+    if music_ready and not music.set_trace_state("scan", 0.3, 0.2, 0.1):
+        push_warning("set_trace_state was rejected")
 
 func alarm_raised() -> void:
-    if music_ready:
-        player.set_trace_state("alert", 0.9, 0.5, 0.4)
+    if music_ready and not music.set_trace_state("alert", 0.9, 0.5, 0.4):
+        push_warning("set_trace_state was rejected")
 
 func chapter_finished() -> void:
-    if music_ready:
-        player.set_trace_state("complete", 0.2, 0.3, 1.0)
+    if music_ready and not music.set_trace_state("complete", 0.2, 0.3, 1.0):
+        push_warning("set_trace_state was rejected")
+
+func set_hold(held: bool) -> void:
+    if not music_ready:
+        return
+    if not music.set_form_hold(held):
+        push_warning("set_form_hold rejected")
+
+func advance() -> void:
+    if not music_ready:
+        return
+    if not music.advance_form():
+        push_warning("advance_form rejected")
+
+func cue(section: String) -> void:
+    if not music_ready:
+        return
+    if not music.cue_section(section):
+        push_warning("cue_section rejected")
 ```
 
-The form advances on its own between sections. Gameplay can freeze or move it:
+Each public call is independently guarded and its bool return checked. Do not
+combine hold + advance + cue inside one callback. The form auto-advances;
+`set_form_hold(true)` freezes it, `advance_form` steps it, `cue_section` jumps
+(and works on any generated score, form or not). `set_trace_state` accepts any
+phase string (known ones affect selection); numeric args are 0..1 finite. See
+`api.md` for exact native selection rules (e.g. `progress >= 0.8` selects
+`outro` for extended Suspense only; original and theme need an explicit
+`extract`/`complete` or `progress >= 0.95`).
 
-```gdscript
-player.set_form_hold(true)      # hold the current form step
-player.advance_form()           # move to the next step
-player.cue_section("chorus")    # jump to a section on the next bar
-var section := player.get_current_section()
-```
+`get_current_section()` is coarse (may report target during crossfade). No time
+guarantees (no "X minutes", no "never mid-phrase" beyond the bar-aligned rule).
 
-Suspense ignores the Racing voice overrides and reads `energy`,
-`complexity`, `brightness`, and `syncopation` as tension, heat, mystery, and
-pulse. Exact selection rules and the section list are in `api.md`.
+## Run the examples
 
-## Adventure Recipe
+`kit/examples/` is a self-contained Godot project (three independent reference
+scenes, shared addon copy, no browser). Open `kit/examples/project.godot`; F5
+runs only the playback example by design. To run 02 or 03, open its .tscn and
+press F6. See `kit/examples/README.md`.
 
-Adventure is area-selected: call `set_adventure_state` whenever the game's
-situation changes. There is no form to hold or advance. Pass area phase,
-discovery, threat, and quest progress; the engine resolves the section (quest
-completion always wins):
+See `api.md`, `limitations.md`, and `troubleshooting.md` before shipping.
 
-```gdscript
-func _ready() -> void:
-    player.recipe = "adventure"
-    player.style = "folk"  # folk, dark, or orchestral
-    music_ready = player.generate("world-3")
-
-func entered_forest() -> void:
-    if music_ready:
-        player.set_adventure_state("explore", 0.1, 0.05, false)
-
-func reached_town() -> void:
-    if music_ready:
-        player.set_adventure_state("town", 0.5, 0.1, false)
-
-func ambushed(threat: float) -> void:
-    if music_ready:
-        player.set_adventure_state("combat", 0.2, threat, false) # threat >= 0.85 -> boss
-
-func reached_sanctuary() -> void:
-    if music_ready:
-        player.set_adventure_state("explore", 0.9, 0.1, false)   # discovery >= 0.85 -> sanctuary
-
-func quest_finished() -> void:
-    if music_ready:
-        player.set_adventure_state("explore", 0.5, 0.1, true)    # quest complete -> victory
-```
-
-The eight sections (Camp, Explore, Town, Dungeon, Combat, Boss, Sanctuary,
-Victory) crossfade on the next bar; Camp, Dungeon, Boss, and Sanctuary are 16
-bars, and Explore, Town, Combat, and Victory are 32. Adventure reads `energy`,
-`complexity`, `brightness`, and `syncopation` as danger, mystery, wonder, and
-motion.
-
-For a complete playable integration, open `kit/demo/` as a Godot project and
-race using the controls in `kit/demo/README.md`. Its addon is already installed.
-The demo ships four circuits, one per engine style (neon, pocket funk, fusion,
-micro motor); switch circuits in the garage to hear each regenerate. Read
-`race_model.gd` for deriving intensity/pressure from gameplay and
-`race_music.gd` for generation and checked state requests. No timers or manual
-section buttons simulate the race. The music readout reports a request, not the
-current audible bar.
-
-See `api.md`, `limitations.md`, and `troubleshooting.md` before shipping an integration.
+Determinism: the combination of seed + project_secret + style + palette/voices +
+traits + generator version produces the identical score. Not seed alone.

@@ -21,9 +21,9 @@ Compatibility claims apply only after each native library passes the release wor
 
 - `addons/gamestruments/gamestruments.gdextension`.
 - Linux `.so`, Windows `.dll`, and universal macOS `.dylib` under `addons/gamestruments/bin/`.
-- The same complete addon under `kit/demo/addons/gamestruments/` for a self-contained demo.
+- The same complete addon under `kit/examples/addons/gamestruments/` for a self-contained examples project.
 - `crates/engine` and `crates/godot`, the catalog fixture required by shipped tests and examples, root `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml`.
-- `kit/demo/` and buyer documentation under `kit/docs/`.
+- `kit/examples/` and buyer documentation under `kit/docs/`.
 - Root `README.md`, `RELEASE-MANIFEST.json`, and `CHANGELOG.md`.
 - `LICENSE.md`, per-crate MIT license copies, `THIRD_PARTY_NOTICES.md`, exact dependency inventory, required attribution, and dependency license texts under `licenses/`.
 
@@ -31,22 +31,19 @@ The archive contains no Strudel code, TypeScript authoring packages, browser Aud
 
 ## Product Scope
 
-The kit generates deterministic scores from two shipped recipes, each from a per-title namespace, level seed, style, voice palette, traits, and generator version:
+The kit generates deterministic scores from three shipped recipes, each from a per-title namespace, level seed, style, voice palette (Racing), traits, and generator version:
 
-- **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` — driven by `set_race_state`.
-- **Suspense (song-form):** fourteen base sections from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`; the `extended` arrangement adds `scan-ii`, `breach-ii`, and `anomaly`. Gameplay can hold, advance, or cue the form.
+- **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` (original); `extended` adds four more (ignition/slipstream/redline/cooldown) — driven by `set_race_state`. Native default arrangement original.
+- **Suspense (song-form):** fourteen base sections from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`; the `extended` arrangement adds `scan-ii`, `breach-ii`, and `anomaly`; `theme` is additive title bed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
+- **Adventure:** eight sections (camp, explore, town, dungeon, combat, boss, sanctuary, victory) driven by `set_adventure_state`. 3 styles. 8 real phases.
 
-The included four-circuit demo is a playable three-lap race series against one
-rival, not an authoring tool or a full racing-game template. An intro card states
-the point before play: the music adapts to gameplay. Each circuit
-configures its own shipped style and seed in the garage (neon, pocket funk,
-fusion, micro motor). Grip-assisted keyboard steering, throttle, brake, and
-rechargeable boost control the car. Contact, leaving the road, or hitting the
-barrier slows the player. Real countdown, pace/rival pressure, lap, and finish
-state drive the shipped synth through a separate `race_music.gd` adapter. The
-demo supports pause, restart, keyboard/mouse, and a scaling 960×620 layout. No
-gamepad or touch controls are claimed. The browser Audio Lab is not its UI or
-runtime. See `kit/demo/README.md` for controls.
+The `kit/examples/` project is three independent reference scenes, not a
+playable game. `01-playback` generates and plays a Suspense Theme title bed,
+`02-game-signals` maps simulated race events to `set_race_state` requests (Original Racing),
+and `03-song-form` exercises the Suspense form controls and trace events. They share
+one addon copy and need no browser or network. The browser Audio Lab is a
+separate preview, not the examples' UI or runtime. See `kit/examples/README.md`. Adventure
+integration uses `set_adventure_state` (documented in API).
 
 ## Supported Public API
 
@@ -55,22 +52,26 @@ runtime. See `kit/demo/README.md` for controls.
 Exported properties:
 
 - `project_secret: String`
-- `recipe: String` — `racing` (default) or `suspense`
-- `arrangement: String` — Suspense only: `original` (default), `extended`, or `theme`
-- `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`
+- `recipe: String` — `racing` (default), `suspense`, or `adventure`
+- `arrangement: String` — Racing: `original` (default) or `extended`; Suspense: `original` (default), `extended`, or `theme`; ignored by Adventure
+- `autoplay: bool` — Racing and Adventure (default `false`); when true attaches form tour (arrangement tour, not audio autostart). Ignored by Suspense. Native default false.
+- `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`; Adventure `folk`, `dark`, `orchestral`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only
-- `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Racing and as tension/heat/mystery/pulse by Suspense
+- `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Racing, as tension/heat/mystery/pulse by Suspense, as danger/mystery/wonder/motion by Adventure
 
 Methods:
 
 - `generate(seed: String) -> bool`
 - `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> bool` — Racing
 - `set_trace_state(phase: String, heat: float, focus: float, progress: float) -> bool` — Suspense
+- `set_adventure_state(area_phase: String, discovery: float, threat: float, quest_complete: bool) -> bool` — Adventure
 - `cue_section(section: String) -> bool`
 - `set_form_hold(held: bool) -> bool`
 - `advance_form() -> bool`
 - `is_form_held() -> bool`
 - `get_current_section() -> String`
+
+Form controls (`cue_section` etc.) are valid for any score with a form (Suspense always; Racing/Adventure only when `autoplay` enabled at generate).
 
 Generation validates every score before playback. Failure returns `false` and emits a descriptive Godot error. State requests before successful generation also return `false`. See `kit/docs/api.md` for exact values and selection rules.
 
@@ -87,7 +88,7 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 ## Explicit Non-Goals
 
 - No general-purpose adaptive music graph or arbitrary game-state authoring.
-- No game genres beyond the shipped Racing and Suspense state models in this release.
+- No game genres beyond the shipped Racing, Suspense and Adventure state models in this release.
 - No editor plugin, pattern editor, sample import, MIDI/WAV export, FMOD, or Wwise integration.
 - No web, mobile, console, or Godot versions other than 4.7.x.
 - No claim that the browser Audio Lab sounds identical to the Godot runtime.
@@ -109,4 +110,4 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 - Support is best-effort through the public comments section on the itch.io product page for reproducible defects within the advertised environment and API. Purchase-specific or private matters use itch.io's purchase-support flow.
 - Refunds follow the terms presented by itch.io at purchase time.
 
-If a claim cannot be demonstrated from the immutable archive, target-platform workflow, included demo, and buyer docs, it must not appear on the storefront.
+If a claim cannot be demonstrated from the immutable archive, target-platform workflow, included examples, and buyer docs, it must not appear on the storefront.

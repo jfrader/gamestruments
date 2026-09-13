@@ -39,12 +39,39 @@ required=(
   "addons/gamestruments/bin/libgamestruments_godot.so"
   "addons/gamestruments/bin/gamestruments_godot.dll"
   "addons/gamestruments/bin/libgamestruments_godot.dylib"
-  "kit/demo/project.godot"
+  "kit/examples/project.godot"
+  "kit/examples/README.md"
+  "kit/examples/01-playback/README.md"
+  "kit/examples/01-playback/playback.tscn"
+  "kit/examples/01-playback/playback.gd"
+  "kit/examples/02-game-signals/README.md"
+  "kit/examples/02-game-signals/game_signals.tscn"
+  "kit/examples/02-game-signals/game_signals.gd"
+  "kit/examples/03-song-form/README.md"
+  "kit/examples/03-song-form/song_form.tscn"
+  "kit/examples/03-song-form/song_form.gd"
+  "kit/examples/tools/generate_example_scenes.gd"
+  "kit/examples/tools/runtime_smoke.gd"
+  "kit/examples/addons/gamestruments/gamestruments.gdextension"
+  "kit/examples/addons/gamestruments/bin/libgamestruments_godot.so"
+  "kit/examples/addons/gamestruments/bin/gamestruments_godot.dll"
+  "kit/examples/addons/gamestruments/bin/libgamestruments_godot.dylib"
   "kit/docs/README.md"
 )
+if [[ -e "$EXTRACTED/kit/demo" ]]; then
+  echo "ERROR: archive contains the retired kit/demo project" >&2
+  exit 1
+fi
 for file in "${required[@]}"; do
   test -f "$EXTRACTED/$file" || { echo "ERROR: archive is missing $file" >&2; exit 1; }
 done
+
+# Examples subtree must exist and no Godot editor cache may ship anywhere.
+test -d "$EXTRACTED/kit/examples" || { echo "ERROR: archive is missing kit/examples" >&2; exit 1; }
+if find "$EXTRACTED" -type d -name '.godot' -print -quit | grep -q .; then
+  echo "ERROR: archive contains a .godot directory" >&2
+  exit 1
+fi
 
 node "$REPO_ROOT/tools/verify-native-libraries.mjs" --root "$EXTRACTED"
 node "$REPO_ROOT/tests/verify-release-manifest.mjs" \

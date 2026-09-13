@@ -150,22 +150,35 @@ for library in "${NATIVE_LIBS[@]}"; do
   cp "$ASSETS_DIR/$library" "$STAGING/addons/gamestruments/bin/$library"
 done
 
-# kit content
-mkdir -p "$STAGING/kit"
-cp -a kit/demo "$STAGING/kit/demo"
+# kit content (explicit allowlist; never copy .godot, addons, or *.uid caches)
+mkdir -p "$STAGING/kit" \
+  "$STAGING/kit/examples/01-playback" \
+  "$STAGING/kit/examples/02-game-signals" \
+  "$STAGING/kit/examples/03-song-form" \
+  "$STAGING/kit/examples/tools"
+cp kit/examples/project.godot "$STAGING/kit/examples/project.godot"
+cp kit/examples/README.md "$STAGING/kit/examples/README.md"
+cp kit/examples/01-playback/README.md kit/examples/01-playback/playback.gd kit/examples/01-playback/playback.tscn \
+  "$STAGING/kit/examples/01-playback/"
+cp kit/examples/02-game-signals/README.md kit/examples/02-game-signals/game_signals.gd kit/examples/02-game-signals/game_signals.tscn \
+  "$STAGING/kit/examples/02-game-signals/"
+cp kit/examples/03-song-form/README.md kit/examples/03-song-form/song_form.gd kit/examples/03-song-form/song_form.tscn \
+  "$STAGING/kit/examples/03-song-form/"
+cp kit/examples/tools/generate_example_scenes.gd kit/examples/tools/runtime_smoke.gd \
+  "$STAGING/kit/examples/tools/"
 cp -a kit/docs "$STAGING/kit/docs"
 cp kit/README.md "$STAGING/README.md"
 # Same document inside kit/ with links rewritten for its deeper location.
-sed -e 's#kit/docs/#docs/#g' -e 's#kit/demo/#demo/#g' kit/README.md > "$STAGING/kit/README.md"
+sed -e 's#kit/docs/#docs/#g' -e 's#kit/examples/#examples/#g' kit/README.md > "$STAGING/kit/README.md"
 
-# Self-contained demo: copy the built addon *into* the demo subtree so that
-# opening the extracted `kit/demo/` folder directly as a Godot project works
-# (its project.godot + res://kit_demo.tscn + res://addons/gamestruments/...).
+# Self-contained examples: copy the built addon *into* the examples subtree so that
+# opening the extracted `kit/examples/` folder directly as a Godot project works
+# (its project.godot + res://01-playback/... + res://addons/gamestruments/...).
 # Buyers still get the root addons/ for dropping into their own project.
-mkdir -p "$STAGING/kit/demo/addons/gamestruments/bin"
-cp crates/godot/gamestruments.gdextension "$STAGING/kit/demo/addons/gamestruments/gamestruments.gdextension"
+mkdir -p "$STAGING/kit/examples/addons/gamestruments/bin"
+cp crates/godot/gamestruments.gdextension "$STAGING/kit/examples/addons/gamestruments/gamestruments.gdextension"
 for library in "${NATIVE_LIBS[@]}"; do
-  cp "$ASSETS_DIR/$library" "$STAGING/kit/demo/addons/gamestruments/bin/$library"
+  cp "$ASSETS_DIR/$library" "$STAGING/kit/examples/addons/gamestruments/bin/$library"
 done
 
 # Project, crate, and dependency licenses

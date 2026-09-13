@@ -7,6 +7,8 @@ coverage/
 playwright-report/
 test-results/
 examples/godot/.godot/
+kit/examples/.godot/
+kit/examples/addons/
 target/
 release-assets/
 godot-bin/

@@ -22,9 +22,24 @@
   procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
   Arkhos), and Adventure (an eight-section fantasy quest arc).
 - `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
-- The buyer demo is a playable game integration: actual racing drives music.
-  Neither a generator parameter panel nor a copy of the Audio Lab UI satisfies
-  demo acceptance. Keep music integration separate from game presentation.
+- The existing `apps/demo` browser Audio Lab is the single musical showcase. Do
+  not duplicate it in Godot or embed a browser in the addon, and do not build an
+  independent showcase UI, renamed substitute phases/scenario layer, or code/docs
+  panels. Use the lab's actual generated phases, names, and controls.
+  Its itch.io HTML preview must be packaged from the same approved lab source,
+  not recreated in the kit; code examples and integration docs belong in the
+  buyer kit, not in web-lab code panels or documentation tabs.
+  If the latest lab source on another unmerged branch includes unapproved release
+  content, keep the release blocked and reconcile the source explicitly — never
+  recreate a hybrid preview.
+  The buyer project in `kit/examples/` contains
+  three independently runnable scenes: playback, game signals, and song form.
+  Keep their public API calls visible and usable without the lab or a game.
+  Generate scene files with `kit/examples/tools/generate_example_scenes.gd`;
+  verify clean imports, all three examples, and missing-addon error handling with
+  `node tests/godot-package-smoke.mjs --godot <binary> --library <extension>`.
+  That smoke also runs the README and quickstart GDScript examples in a separate
+  fresh project. Keep those snippets complete and update their checks with them.
 
 ## Verify
 

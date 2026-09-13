@@ -2,9 +2,9 @@
 
 ## Product Scope
 
-- This release ships three fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory), **Suspense** (song-form: intro through coda, with an extended arrangement), and **Adventure** (fantasy quest: camp, explore, town, dungeon, combat, boss, sanctuary, victory — 16-bar camp/dungeon/boss/sanctuary and 32-bar explore/town/combat/victory). All use the same `GamestrumentsPlayer`.
-- It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game.
-- Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Adventure ships folk, dark, and orchestral. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported. Adventure's acoustic timbres (harp, recorder, vielle, bell, frame-drum, tambourine) are synthesized — acoustic-inspired, not sample recordings.
+- This release ships three fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory; extended adds four more), **Suspense** (song-form: intro through coda, with original/extended/theme), and **Adventure** (fantasy quest: camp, explore, town, dungeon, combat, boss, sanctuary, victory — 16-bar camp/dungeon/boss/sanctuary and 32-bar explore/town/combat/victory). All use the same `GamestrumentsPlayer`.
+- It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game. `kit/examples/` contains integration reference scenes, not a game or a game template.
+- Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Adventure ships folk, dark, and orchestral. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported. Adventure's acoustic timbres (harp, recorder, vielle, bell) are synthesized — acoustic-inspired, not sample recordings.
 
 ## Audio
 
@@ -30,5 +30,6 @@
 ## Integration and Support
 
 - Only `GamestrumentsPlayer` and the documented exported properties and methods are supported. Internal Rust modules and generated child nodes may change.
+- This kit ships the Godot 4 binding only. The Rust engine is a separate crate, but no other engine binding or custom-adapter framework is supported yet.
 - Source is included under MIT, but custom builds, modified APIs, and unadvertised targets are outside standard support.
 - Support is best-effort through reproducible reports in the itch.io product page's public comments; no response-time or long-term update SLA is promised. Purchase-specific or private matters use itch.io's purchase-support flow.

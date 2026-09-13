@@ -39,31 +39,37 @@ The release workflow must be green and show all of these before author QA:
 
 Any missing, skipped, or failing job blocks the candidate.
 
-## Extracted Demo
+## Extracted Examples
 
 1. Extract the verified archive to a clean directory.
-2. Open only the extracted `kit/demo/` folder in Godot 4.7.2 or the release-packet version.
+2. Open only the extracted `kit/examples/project.godot` in Godot 4.7.2 or the release-packet version.
 3. Confirm `GamestrumentsPlayer` loads without GDExtension errors.
-4. Run the scene. A short intro card must state that the music adapts to
-   gameplay; dismiss it and confirm audio begins from the generated garage
-   section without requiring repository files.
+4. Press F5. The default `01-playback` scene must generate and play without repository files.
 
-Perform the following on every supported OS family:
+Run each scene fresh (close and reopen it) and check:
 
-- Play Night Circuit: start the countdown, use throttle/brake and grip-assisted
-  steering, avoid the rival, spend/recharge boost, and complete three laps. No
-  music section buttons may stand in for gameplay.
-- Switch through all four circuits in the garage and confirm each style
-  (neon, pocket funk, fusion, micro motor) regenerates and plays its own
-  garage section before racing.
-- Confirm off-road/contact penalties, finish order, pause/resume (including
-  audio), focus-loss pause, and restart. Check both 960×620 and 1280×800 windows.
-- Observe garage before starting, grid at countdown, cruise away from the
-  rival, attack under pressure/boost, final lap on lap three, and the finish
-  outro. The HUD is a requested-section indicator, not audible-bar telemetry.
-- Switch circuits in the garage and confirm each style is audible and materially
-  distinct. Reload twice on the same circuit, then switch and verify
-  stable/different music respectively.
+- **01 Playback:** a non-empty `project_secret`, `recipe = "suspense"`,
+  `style = "terminal"`, `arrangement = "theme"`, and a successful `generate()`.
+  Music plays; restart replays from the first section; the section readout updates.
+- **02 Game signals:** the racing scene generates, then the controls produce
+  `set_race_state` requests for grid, cruise, attack, final lap, and victory.
+  Confirm requested vs currently playing are reported separately and that changes
+  wait for bar boundaries.
+- **03 Song form:** the suspense scene generates with `arrangement = "extended"`,
+  `set_trace_state` drives sections, `cue_section("chorus")` is accepted, and
+  `set_form_hold`, `advance_form`, and `is_form_held` behave as documented.
+  Holding the form must not stop sound.
+
+Then, on every supported OS family:
+
+- Confirm each scene stops and frees cleanly with no leak, crash, or error output when closed, and reopen it twice.
+- Remove or rename the example addon copy, reopen a scene, and confirm the
+  in-scene error explains the missing addon instead of crashing the editor.
+  Restore the addon afterward.
+- Confirm the browser links in the docs and listing open the Audio Lab showcase,
+  and that the examples themselves need no browser or network.
+- Confirm the archive contains the addon, the self-contained examples project,
+  source, docs, licenses, and manifest, with no audio assets or authoring packages.
 - In a fresh-project API integration, try supported voice overrides such as
   `pluck`, `organ`, `supersaw`, and `chip`.
 - In the fresh-project API integration, generate the Suspense recipe
@@ -72,9 +78,11 @@ Perform the following on every supported OS family:
   complete, and confirm sections change on bar boundaries without errors.
 - Confirm Suspense form controls: `set_form_hold`, `advance_form`,
   `is_form_held`, `cue_section`, and `get_current_section` behave as documented;
-  Racing returns `false` for form controls.
+  Racing/Adventure return `false` for form controls unless `autoplay=true`.
 - Confirm an empty Suspense style defaults to terminal and an unknown style
   fails with a clear error.
+- Confirm Adventure: 3 styles (folk/dark/orchestral default folk), `set_adventure_state`
+  with 8 phases, discovery/threat/quest_complete resolve correctly (e.g. high discovery -> sanctuary, quest_complete -> victory); form controls false for Adventure without autoplay.
 - Confirm transitions wait for musical boundaries rather than cutting immediately.
 - Let at least one section loop for 30 seconds and listen for clicks, silence, or discontinuity.
 - Test Music and Master bus gain/mute behavior.
@@ -83,14 +91,37 @@ Perform the following on every supported OS family:
 
 An unsupported voice must fail generation clearly instead of playing an invalid score.
 
+## Automated Examples Checks
+
+The default `tests/godot-package-smoke.mjs` run checks native playback headlessly
+with an explicit extension list. It also extracts the actual README and
+quickstart GDScript blocks into a separate bare project, then runs their setup
+and gameplay callbacks against the native addon. This is automated integration
+coverage, not independent human buyer acceptance.
+
+Use `--screenshots <directory>` on a machine
+with a display to additionally require a clean rendered editor import and
+capture all three examples, including narrow layouts and missing-addon states.
+Godot 4.7.2 headless **editor** startup crashes with the extension in this test
+environment; headless runtime playback is a separate, passing check.
+
+On NVIDIA 610.57.04, repeated OpenGL viewport screenshot readbacks can stall in
+the driver even in a plain UI project without the addon. On Linux with Mesa
+installed, use `__GLX_VENDOR_LIBRARY_NAME=mesa LIBGL_ALWAYS_SOFTWARE=1` for this
+rendered QA command and record that the captures use software rendering.
+Mesa's unsupported V-Sync warning is expected; engine errors and resource leaks
+still fail the harness. This does not replace native-platform listening checks.
+
 ## Claims Audit
 
-Confirm directly from the extracted archive and demo:
 
-- [ ] Product is described as Gamestruments with named recipes, not as a racing-only engine.
+Confirm directly from the extracted archive and examples:
+
+- [ ] Product is described as Gamestruments with named recipes (Racing, Suspense, Adventure), not as a racing-only engine.
+- [ ] `kit/examples/` is described as three independent integration references (PlaybackTheme, GameSignalsOriginalRacing, SongFormSuspenseExtended), not a playable game or a four-circuit race series.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
-- [ ] `generate(seed) -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, and the Suspense form methods match runtime behavior.
-- [ ] The six Racing sections and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
+- [ ] `generate(seed) -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, `set_adventure_state(...) -> bool`, and the form methods match runtime behavior.
+- [ ] The six Racing sections (original) and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`. Adventure's eight sections are reachable via `set_adventure_state`.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
 - [ ] The exact-runtime sound is accurately represented by proposed storefront media.
 - [ ] Complete Rust rebuild inputs, changelog, licenses, and third-party notices are present.
@@ -103,15 +134,21 @@ Confirm directly from the extracted archive and demo:
 |---|---|---|
 | Digest and source identity | | |
 | Native workflow jobs | | |
-| Fresh extracted demo | | |
-| Playable race, controls, win/loss, pause/restart, resize | | |
+| Fresh extracted examples | | |
+| 01 playback generation and restart | | |
+| 02 game-signal requests | | |
+| 03 form holds and cues | | |
+| Missing-addon error | | |
 | Four styles and seed behavior | | |
 | Voice validation | | |
-| Six adaptive sections | | |
+| Racing/Adventure/Suspense adaptive sections | | |
+| Adventure recipe and set_adventure_state (8 phases, 3 styles) | | |
 | Suspense recipe, trace states, and form controls | | |
 | Loop and bus behavior | | |
 | Regeneration during playback | | |
 | Clean repeated shutdown | | |
+| Browser links and offline examples | | |
+| Archive completeness | | |
 | Claims and archive contents | | |
 | Exact-runtime listening quality | | |
 
