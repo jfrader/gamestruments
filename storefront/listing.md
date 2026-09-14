@@ -22,7 +22,7 @@ dated launch devlog at the end is historical and is not edited.
 - **Released version:** 0.1.2 (2026-09-13)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
-- **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (same engine as the native addon, parity-tested; also the HTML5 path). The source repository is private.
+- **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Godot and HTML5, one engine). The source repository is private.
 
 ## Visual Thesis and Media Capture Checklist
 
@@ -48,7 +48,7 @@ dated launch devlog at the end is historical and is not edited.
 
 ### Gamestruments — Adaptive Music for Godot 4
 
-**Procedural music that adapts to your game.** Gamestruments generates deterministic, sample-free music inside Godot. Choose a recipe and seed, generate a score when your scene loads, then tell the player what's happening; it blends between musical sections on bar boundaries. No sample library, authoring tool, or cloud service is required.
+**Procedural music that adapts to your game.** Gamestruments generates deterministic, sample-free music in Godot and in HTML5. Choose a recipe and seed, generate a score when your scene loads, then tell the player what's happening; it blends between musical sections on bar boundaries. No sample library, authoring tool, or cloud service is required.
 
 **Try the demo first:** [open the interactive Audio Lab](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo) or [use the standalone browser preview](https://gamestruments.gurisitos.games).
 
@@ -76,7 +76,7 @@ The complete public docs and one free example script ship in a separate free dow
 ### Requirements
 
 - Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Same engine in Godot and in HTML5 games. Native playback is fully offline. The browser preview is that engine, parity-tested against native.
+- Also runs in HTML5. Native playback is fully offline. Hear it in the browser before you buy.
 - First-party code is MIT; gdext is MPL-2.0.
 
 All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments.

@@ -48,7 +48,7 @@ Do not call `set_race_state` / `set_trace_state` / `set_adventure_state` after f
 4. Try the archive's self-contained `kit/examples/` project to separate installation from game-specific bus configuration.
 5. Use Godot's debugger Audio view to verify the Music bus receives signal.
 
-The shipped synth is mono at 22050 Hz and intentionally leaner than the browser Audio Lab.
+The shipped synth is mono at 22050 Hz by design.
 
 ## State Does Not Change
 

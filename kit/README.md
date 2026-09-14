@@ -5,9 +5,8 @@ deterministic, sample-free music inside Godot — no audio files, no authoring
 tool, no external services. Add one node, call `generate()` when a scene loads,
 then tell it what's happening; it blends between sections on bar boundaries.
 
-Try the Audio Lab preview at <https://gamestruments.gurisitos.games> — same
-engine as the native addon, parity-tested, including HTML5. Open
-`kit/examples/` to run it inside Godot.
+Hear it in the browser at <https://gamestruments.gurisitos.games> — Godot
+and HTML5, one engine. Open `kit/examples/` to run it inside Godot.
 
 ## Use It in Your Game
 
@@ -83,8 +82,8 @@ tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
 
 ## See It Working
 
-- **Browser / HTML5:** <https://gamestruments.gurisitos.games> — same engine
-  as the native addon, parity-tested.
+- **Browser / HTML5:** <https://gamestruments.gurisitos.games> — hear the
+  engine in your browser.
 - **Native examples:** open `kit/examples/project.godot`. F5 runs the playback
   reference by design; open another `.tscn` and press F6. See
   `kit/examples/README.md`.
