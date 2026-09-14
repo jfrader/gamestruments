@@ -64,6 +64,7 @@ fi
 for required in \
   addons/gamestruments/README.md \
   addons/gamestruments/LICENSE.md \
+  addons/gamestruments/icon.png \
   crates/godot/gamestruments.gdextension
 do
   if [[ ! -f "$required" ]]; then
@@ -132,6 +133,7 @@ echo "==> Staging at $STAGING"
 mkdir -p "$STAGING/addons/gamestruments/bin"
 cp addons/gamestruments/README.md "$STAGING/addons/gamestruments/README.md"
 cp addons/gamestruments/LICENSE.md "$STAGING/addons/gamestruments/LICENSE.md"
+cp addons/gamestruments/icon.png "$STAGING/addons/gamestruments/icon.png"
 cp crates/godot/gamestruments.gdextension \
   "$STAGING/addons/gamestruments/gamestruments.gdextension"
 for library in "${NATIVE_LIBS[@]}"; do

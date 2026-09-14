@@ -26,9 +26,10 @@ at registration, do not invent a second publisher:
 - **Maximum Godot version:** leave open / 4.x
 - **Pricing:** Free. Optional donation / “get the full kit” link:
   https://gurisitosgames.itch.io/gamestruments-godot
-- **Source code link:** the GitHub repo is **private**. Do not paste
-  `https://github.com/jfrader/gamestruments` until Fran makes it public.
-  Until then leave the field empty or point at the itch product page.
+- **Source code link:** leave empty, or use the itch product page. Fran
+  confirmed 2026-09-14 that `jfrader/gamestruments` stays **private**. Do
+  not paste the GitHub URL. Upload the icon via the Media tab (a
+  `raw.githubusercontent.com` link will not work on a private repo).
 - **AI usage disclosure:** no AI-generated content in the addon binaries,
   descriptor, or plugin-folder docs.
 
@@ -91,17 +92,19 @@ toolchain, quickstart/API/limitations docs, and three native example scenes.
 
 ## Media plan
 
-Store Media tab uploads (do **not** rely on a `raw.githubusercontent.com` icon
-link while the repo is private):
+Captured 2026-09-14 from the extracted v0.1.2 kit (`kit/examples/`, Godot
+4.7.2, native addon). Never browser Audio Lab captures. Repo stays private,
+so upload these files through the Store Media tab (do not use a GitHub raw
+URL).
 
-- **Icon / thumbnail:** capture from the packaged v0.1.2 Godot examples, not
-  the browser Audio Lab. No icon is committed in git yet — there is no local
-  Godot binary in this checkout to capture from.
-- **Screenshots (3–5):** native example scenes from the extracted
-  `gamestruments-0.1.2-godot4.zip` (`kit/examples/`). Never browser Lab
-  captures as kit/store media.
-- **Featured image:** same source as screenshots.
-- **YouTube:** GURI-727 demonstration video when it exists. Do not submit
+- **Icon / thumbnail:** `addons/gamestruments/icon.png` (256×256, square pad
+  of the 01 Playback example).
+- **Screenshots:**
+  - `storefront/asset-store-media/01-playback.png` — generate / play / restart
+  - `storefront/asset-store-media/02-game-signals.png` — `set_race_state`
+  - `storefront/asset-store-media/03-song-form.png` — hold / cue / advance
+- **Featured image:** `01-playback.png` unless a later native video still exists.
+- **YouTube:** GURI-727 demonstration video when it exists. Do not promote
   without Fran-approved native audio footage.
 
 Visual thesis (itch listing): show the actual music and the small Godot
@@ -132,6 +135,7 @@ ZIP layout (AssetLib drop-in):
 ```text
 addons/gamestruments/README.md
 addons/gamestruments/LICENSE.md
+addons/gamestruments/icon.png
 addons/gamestruments/gamestruments.gdextension
 addons/gamestruments/bin/libgamestruments_godot.so
 addons/gamestruments/bin/gamestruments_godot.dll
@@ -144,10 +148,11 @@ listing of the v0.1.2 addon.”, min Godot 4.7, file under 1 GB.
 ## Submission checklist
 
 - [ ] Fran created the publisher account (name + slug above).
-- [ ] Fran decided whether the GitHub repo stays private (source-link / icon).
+- [x] GitHub repo stays private (Fran, 2026-09-14). No source-link to GitHub.
 - [ ] Asset type Addon, license MIT, Godot 4.7 minimum.
 - [ ] Pricing left Free; itch kit linked as the paid full archive.
-- [ ] Icon and screenshots uploaded via Media tab from packaged demo/examples.
+- [x] Icon and screenshots captured from packaged `kit/examples/` (files in repo).
+- [ ] Icon and screenshots uploaded via the Store Media tab.
 - [ ] Store ZIP built with `tools/package-asset-store.sh` and checksum recorded.
 - [ ] Submitted from Overview → submit for review.
 
