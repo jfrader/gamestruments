@@ -9,7 +9,7 @@ This folder is the addon. Keep it intact so Godot can load the platform-matching
 binary from `bin/`.
 
 **Hear the range in a browser:** <https://gamestruments.gurisitos.games>
-(Audio Lab preview — browser audio layer; native mix can differ.)
+(Same engine as this addon, parity-tested — also the HTML5 path.)
 
 **Full kit** (MIT source, docs, native examples): 
 <https://gurisitosgames.itch.io/gamestruments-godot>

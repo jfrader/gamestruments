@@ -9,7 +9,7 @@
 ## Audio
 
 - The runtime synth renders mono at 22050 Hz and sends identical left/right frames through Godot. This favors a small, deterministic runtime over sample-library fidelity.
-- The browser Audio Lab uses a separate stereo Web Audio presentation layer. It can demonstrate composition and controls, but not the exact buyer sound. The browser preview at <https://gamestruments.gurisitos.games> is the Audio Lab.
+- The browser Audio Lab and HTML5 path run the same Rust engine as the native addon (WASM parity-tested). The preview is at <https://gamestruments.gurisitos.games>. Godot HTML5 export of this GDExtension is not supported; use the WASM engine for web games.
 - No WAV, OGG, MP3, MIDI, stem export, sample import, mastering, effects rack, spatial audio, or middleware bridge ships.
 
 ## Runtime and Platforms

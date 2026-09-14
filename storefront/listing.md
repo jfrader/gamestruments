@@ -22,7 +22,7 @@ dated launch devlog at the end is historical and is not edited.
 - **Released version:** 0.1.2 (2026-09-13)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
-- **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Audio Lab: same generator, browser audio layer). The source repository is private.
+- **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (same engine as the native addon, parity-tested; also the HTML5 path). The source repository is private.
 
 ## Visual Thesis and Media Capture Checklist
 
@@ -76,7 +76,7 @@ The complete public docs and one free example script ship in a separate free dow
 ### Requirements
 
 - Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Native playback is fully offline. The optional browser preview needs a connection and uses a different Web Audio layer, so its mix can differ from the native addon.
+- Same engine in Godot and in HTML5 games. Native playback is fully offline. The browser preview is that engine, parity-tested against native.
 - First-party code is MIT; gdext is MPL-2.0.
 
 All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments.

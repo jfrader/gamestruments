@@ -53,7 +53,7 @@ it blends between musical sections on bar boundaries. No sample library,
 authoring tool, or cloud service is required.
 
 **Try it in the browser:** https://gamestruments.gurisitos.games
-(Audio Lab preview — browser audio layer; native mix can differ.)
+(Same engine as the native addon, parity-tested — also the HTML5 path.)
 
 **Full kit** (MIT source, docs, native examples):
 https://gurisitosgames.itch.io/gamestruments-godot
@@ -86,8 +86,8 @@ toolchain, quickstart/API/limitations docs, and three native example scenes.
 ### Requirements
 
 - Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Native playback is fully offline. The optional browser preview needs a
-  connection and uses a different Web Audio layer.
+- Same engine in Godot and in HTML5 games. Native playback is fully
+  offline. The browser preview is that engine, parity-tested against native.
 - First-party code is MIT; gdext is MPL-2.0.
 
 ## Media plan

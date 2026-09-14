@@ -14,7 +14,7 @@ belongs to one recipe.
 - [Examples](../examples/README.md) — the three native reference scenes and how to run them.
 
 Prefer to hear it first? The browser Audio Lab at
-<https://gamestruments.gurisitos.games> previews the musical range; it uses a
-browser audio layer, so the native addon mix can differ.
+<https://gamestruments.gurisitos.games> is the same engine as the native addon
+(parity-tested), including HTML5.
 
 The Rust core is MIT licensed and its complete rebuildable source is included.
