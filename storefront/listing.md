@@ -103,6 +103,11 @@ All future updates to this kit are included with your purchase. Questions or bug
   SHA-256 `08c72a66c94523932a7d9032edb43de39129a48d1f4c2eecd0e38a83ec83a449`,
   browser-play enabled, embed 960x600, mobile friendly, fullscreen.
   Rebuild with `npm run build:itch`.
+- Free sample video: `gamestruments-samples.mp4`, type **Video**, free-demo flag
+  set. 24 s of the native engine — Racing neon cruise, Suspense terminal theme,
+  Adventure folk explore — rendered at 48 kHz from the v0.1.3 engine and
+  mastered to about −14 LUFS. Regenerate it whenever the engine's output level
+  or sample rate changes, or it will misrepresent the kit.
 - itch.io's per-file demo checkbox is the mechanism for the free download
   (official reference: <https://itch.io/docs/creators/getting-started>).
 - Demo-to-kit navigation stays same-tab. The source repository stays private.
@@ -128,7 +133,7 @@ the music rather than forcing a transition to fit these draft timings.
 
 ## Update Devlog — v0.1.3 (2026-09-15)
 
-Published: (posted with this update)
+Published: <https://gurisitosgames.itch.io/gamestruments-godot/devlog/1665444/v013-turned-it-up-and-it-never-clips>
 
 **Title:** v0.1.3 — Turned it up, and it never clips
 
