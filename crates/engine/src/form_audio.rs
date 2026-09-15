@@ -89,7 +89,7 @@ impl FormAudio {
                 self.tonal[index].fill(&mut tonal);
                 mix += tonal[0] * gain;
             }
-            *sample = mix.clamp(-0.95, 0.95);
+            *sample = mix;
             self.frames += 1;
         }
     }

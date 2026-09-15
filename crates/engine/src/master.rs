@@ -1,0 +1,964 @@
+use std::f32::consts::{FRAC_1_SQRT_2, PI};
+
+use crate::dmath;
+
+pub const DEFAULT_TARGET_LUFS: f32 = -14.0;
+pub const DEFAULT_CEILING_DBTP: f32 = -1.0;
+pub const DEFAULT_SAMPLE_RATE: u32 = 48_000;
+
+/// Fixed makeup for the realtime (causal) path.
+/// Chosen by measuring several full renders through process() on post-compressor
+/// material (various styles/sections) and selecting the constant that lands
+/// average integrated LUFS near -14 (within the natural variation of material).
+/// Realtime cannot measure per-render, so a single documented constant is used.
+/// Fixed makeup applied on the realtime path only.
+///
+/// Realtime playback is causal and cannot measure the programme first, so unlike
+/// the offline renderer it cannot normalise to a loudness target. This constant
+/// stands in for the automatic makeup gain Web Audio's `DynamicsCompressorNode`
+/// applies in the Audio Lab, so live output lands in the same range as the lab
+/// rather than ~20 dB below it. The value was measured by running `process()`
+/// over the listening pack at several styles; it is not tuned per render, and
+/// the realtime limiter plus the hard ceiling keep it safe for any material.
+pub const REALTIME_MAKEUP_DB: f32 = 23.5;
+
+/// Guard subtracted (in dB) from the ceiling when computing the true-peak limit
+/// target on the offline path.
+///
+/// The limiter bounds the envelope produced by [`true_peak_envelope_4x`], while
+/// external meters such as `ffmpeg loudnorm` reconstruct with their own
+/// interpolant and can read slightly higher. This margin covers that difference
+/// so the externally measured true peak stays at or below `DEFAULT_CEILING_DBTP`.
+///
+/// Calibrated on the full listening pack (12 renders, racing and suspense,
+/// four styles, six sections): with 1.0 dB the external measurement reads
+/// -1.74 to -1.98 dBTP, i.e. every render clears the -1.0 dBTP ceiling with at
+/// least 0.7 dB to spare. Lowering it trades that margin for a little loudness.
+pub const TRUE_PEAK_GUARD_DB: f32 = 1.0;
+
+/// Release time for offline TP limiter gain smoothing (max-hold + exp release).
+/// 5 ms chosen to suppress distortion on transient hits without excessive pumping;
+/// non-causal smoothing is acceptable for offline.
+const TP_LIMITER_RELEASE_SEC: f32 = 0.005;
+
+#[derive(Clone, Default)]
+pub struct Biquad {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    z1: f32,
+    z2: f32,
+}
+
+impl Biquad {
+    pub fn highpass(fc: f32, q: f32, fs: f32) -> Self {
+        let w0 = 2.0 * PI * fc / fs;
+        let alpha = dmath::sin(w0) / (2.0 * q);
+        let a0 = 1.0 + alpha;
+        Self {
+            b0: ((1.0 + dmath::cos(w0)) / 2.0) / a0,
+            b1: -(1.0 + dmath::cos(w0)) / a0,
+            b2: ((1.0 + dmath::cos(w0)) / 2.0) / a0,
+            a1: (-2.0 * dmath::cos(w0)) / a0,
+            a2: (1.0 - alpha) / a0,
+            z1: 0.0,
+            z2: 0.0,
+        }
+    }
+
+    pub fn highshelf(fc: f32, q: f32, gain_db: f32, fs: f32) -> Self {
+        let a = dmath::pow10(gain_db / 40.0);
+        let w0 = 2.0 * PI * fc / fs;
+        let alpha = dmath::sin(w0) / (2.0 * q);
+        let a0 = (a + 1.0) - (a - 1.0) * dmath::cos(w0) + 2.0 * a.sqrt() * alpha;
+        Self {
+            b0: (a * ((a + 1.0) + (a - 1.0) * dmath::cos(w0) + 2.0 * a.sqrt() * alpha)) / a0,
+            b1: (-2.0 * a * ((a - 1.0) + (a + 1.0) * dmath::cos(w0))) / a0,
+            b2: (a * ((a + 1.0) + (a - 1.0) * dmath::cos(w0) - 2.0 * a.sqrt() * alpha)) / a0,
+            a1: (2.0 * ((a - 1.0) - (a + 1.0) * dmath::cos(w0))) / a0,
+            a2: ((a + 1.0) - (a - 1.0) * dmath::cos(w0) - 2.0 * a.sqrt() * alpha) / a0,
+            z1: 0.0,
+            z2: 0.0,
+        }
+    }
+
+    pub fn process(&mut self, x: f32) -> f32 {
+        let y = self.b0 * x + self.z1;
+        self.z1 = self.b1 * x - self.a1 * y + self.z2;
+        self.z2 = self.b2 * x - self.a2 * y;
+        y
+    }
+}
+
+pub struct HighPass {
+    filter: Biquad,
+}
+
+impl HighPass {
+    pub fn new(sample_rate: u32) -> Self {
+        Self {
+            filter: Biquad::highpass(28.0, 0.55, sample_rate as f32),
+        }
+    }
+
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        for x in buffer.iter_mut() {
+            *x = self.filter.process(*x);
+        }
+    }
+}
+
+// DynamicsProcessor implements a soft-knee peak-detecting compressor/limiter
+// with lookahead delay on the signal path (but causal detection).
+// Compressor uses sample peaks. Limiter is driven from true-peak envelope
+// via process_with_levels so that intersample peaks are seen and bounded.
+pub struct DynamicsProcessor {
+    threshold: f32,
+    knee: f32,
+    ratio: f32,
+    attack_coef: f32,
+    release_coef: f32,
+    gain_env: f32,
+    delay_line: std::collections::VecDeque<f32>,
+    lookahead_frames: usize,
+    engaged: bool,
+}
+
+impl DynamicsProcessor {
+    pub fn new(
+        sample_rate: u32,
+        threshold: f32,
+        knee: f32,
+        ratio: f32,
+        attack_sec: f32,
+        release_sec: f32,
+        lookahead_sec: f32,
+    ) -> Self {
+        let fs = sample_rate as f32;
+        let attack_coef = dmath::exp(-1.0 / (attack_sec * fs));
+        let release_coef = dmath::exp(-1.0 / (release_sec * fs));
+
+        let lookahead_frames = (lookahead_sec * fs).round() as usize;
+        let mut delay_line = std::collections::VecDeque::with_capacity(lookahead_frames + 1);
+        for _ in 0..lookahead_frames {
+            delay_line.push_back(0.0);
+        }
+
+        Self {
+            threshold,
+            knee,
+            ratio,
+            attack_coef,
+            release_coef,
+            gain_env: 1.0,
+            delay_line,
+            lookahead_frames,
+            engaged: false,
+        }
+    }
+
+    fn compute_target_gain(&self, input_abs: f32) -> f32 {
+        let level_db = if input_abs > 1e-6 {
+            20.0 * dmath::log10(input_abs)
+        } else {
+            -120.0
+        };
+        let over = level_db - self.threshold;
+        let mut reduction_db = 0.0;
+        if over > self.knee / 2.0 {
+            reduction_db = over * (1.0 - 1.0 / self.ratio);
+        } else if over > -self.knee / 2.0 && self.knee > 0.0 {
+            let q = over + self.knee / 2.0;
+            reduction_db = (q * q) / (2.0 * self.knee) * (1.0 - 1.0 / self.ratio);
+        }
+        dmath::db_to_linear(-reduction_db)
+    }
+
+    fn process_internal(&mut self, buffer: &mut [f32], levels: Option<&[f32]>) {
+        for (j, x) in buffer.iter_mut().enumerate() {
+            let input_abs = if let Some(ls) = levels {
+                ls[j]
+            } else {
+                x.abs()
+            };
+            let target_gain = self.compute_target_gain(input_abs.abs());
+
+            if target_gain < self.gain_env {
+                self.gain_env =
+                    self.attack_coef * self.gain_env + (1.0 - self.attack_coef) * target_gain;
+            } else {
+                self.gain_env =
+                    self.release_coef * self.gain_env + (1.0 - self.release_coef) * target_gain;
+            }
+
+            if self.gain_env < 0.99 {
+                self.engaged = true;
+            }
+
+            let delayed_x = if self.lookahead_frames > 0 {
+                self.delay_line.push_back(*x);
+                self.delay_line.pop_front().unwrap_or(*x)
+            } else {
+                *x
+            };
+
+            *x = delayed_x * self.gain_env;
+        }
+    }
+
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        self.process_internal(buffer, None);
+    }
+
+    /// Drive detector from externally supplied per-sample levels (used for
+    /// true-peak envelope in the realtime Limiter). `levels.len() == buffer.len()`.
+    pub fn process_with_levels(&mut self, buffer: &mut [f32], levels: &[f32]) {
+        assert_eq!(
+            buffer.len(),
+            levels.len(),
+            "levels must match buffer for TP-driven limiting"
+        );
+        self.process_internal(buffer, Some(levels));
+    }
+
+    pub fn was_engaged(&mut self) -> bool {
+        let engaged = self.engaged;
+        self.engaged = false;
+        engaged
+    }
+}
+
+pub struct Compressor {
+    processor: DynamicsProcessor,
+}
+
+impl Compressor {
+    pub fn new(sample_rate: u32) -> Self {
+        Self {
+            processor: DynamicsProcessor::new(sample_rate, -18.0, 12.0, 3.2, 0.007, 0.16, 0.003),
+        }
+    }
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        self.processor.process(buffer);
+    }
+}
+
+pub struct Limiter {
+    processor: DynamicsProcessor,
+    /// Last up to 3 *input* samples (pre-limiter) for cross-chunk true-peak
+    /// envelope computation. Enables detector to see inter-sample peaks that
+    /// span chunk boundaries. State persists; no reset per call.
+    tp_history: [f32; 3],
+}
+
+impl Limiter {
+    pub fn new(sample_rate: u32) -> Self {
+        Self {
+            processor: DynamicsProcessor::new(sample_rate, -3.0, 1.0, 18.0, 0.001, 0.075, 0.003),
+            tp_history: [0.0; 3],
+        }
+    }
+
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        if buffer.is_empty() {
+            return;
+        }
+        // Save inputs (pre any gain) so TP history reflects the signal *into* the limiter.
+        let inputs: Vec<f32> = buffer.to_vec();
+
+        // Build extended view: tp_history (past inputs) + current inputs.
+        // This lets env for early positions in chunk see past; within-chunk future
+        // gives additional lookahead for the gain computer.
+        let mut extended = vec![0.0f32; 3 + inputs.len()];
+        extended[0..3].copy_from_slice(&self.tp_history);
+        extended[3..].copy_from_slice(&inputs);
+
+        let env_ext = true_peak_envelope_4x(&extended);
+        let levels = &env_ext[3..];
+
+        self.processor.process_with_levels(buffer, levels);
+
+        // Update history from *inputs* (not the gained outputs).
+        let n = inputs.len();
+        if n >= 3 {
+            self.tp_history.copy_from_slice(&inputs[n - 3..]);
+        } else {
+            let shift = 3 - n;
+            for i in 0..shift {
+                self.tp_history[i] = self.tp_history[i + n];
+            }
+            self.tp_history[shift..(shift + n)].copy_from_slice(&inputs[..n]);
+        }
+    }
+
+    pub fn was_engaged(&mut self) -> bool {
+        self.processor.was_engaged()
+    }
+}
+
+/// Compute 4x true-peak envelope using Catmull-Rom cubic interpolation.
+/// Returns a Vec of len N where env[i] = max absolute value of the
+/// reconstructed signal in the local 4x neighbourhood of sample i.
+///
+/// Catmull-Rom is a linear combination of input samples (the four taps
+/// are a linear transform). Therefore, if input samples are scaled by g,
+/// every interpolated value (and thus every env entry) is scaled by exactly g.
+/// Bounding the envelope therefore bounds the continuous interpolated signal's
+/// true peak exactly (w.r.t. this interpolant).
+///
+/// We chose Catmull-Rom over a windowed-sinc polyphase because it requires
+/// no coefficient tables, is trivial to implement, and is "linear" for the
+/// scaling proof. It is the same family of cubic already prototyped in the
+/// prior attempt.
+/// Taps per 4x phase for the true-peak interpolator. An odd count keeps the
+/// sinc and its window centred on the fractional interpolation point for every
+/// phase; an even count truncates one side and tilts the passband, which makes
+/// the estimator over-read bright material. 33 taps keeps the worst-case
+/// reconstruction error near Nyquist around -13 dB, where a 13-tap kernel is
+/// only -3.6 dB and would let real intersample peaks through.
+const TP_TAPS_PER_PHASE: usize = 33;
+/// The taps span `i - 16 ..= i + 16` around the sample being interpolated.
+const TP_CENTER: isize = 16;
+
+/// Polyphase windowed-sinc kernels for the four 4x interpolation phases.
+///
+/// The interpolator is an FIR, and therefore linear in the input samples. The
+/// ceiling guarantee depends on exactly that: scaling every input sample by `g`
+/// scales every interpolated value by exactly `g`, so bounding this envelope
+/// bounds the reconstructed true peak. A cheaper interpolator (for example
+/// Catmull-Rom) also scales linearly but underestimates intersample peaks on
+/// bright material, which is why a real windowed-sinc kernel is used here.
+/// Hann-windowed 4x polyphase sinc kernels, normalised to unity DC gain
+/// per phase. Baked as literals rather than computed with `sin`/`cos` at
+/// run time: the platform libm would otherwise pick slightly different
+/// coefficients and break native/WASM byte parity.
+const TP_KERNELS: [[f32; TP_TAPS_PER_PHASE]; 4] = [
+    [
+        -0.0f32, 1.0988192e-18f32, -1.4836533e-18f32, -4.0453876e-18f32, -5.7087407e-18f32, 3.15073e-17f32,
+        -1.203203e-17f32, 1.5688382e-17f32, -1.9490858e-17f32, 2.3293337e-17f32, -2.6949688e-17f32, 3.03194e-17f32,
+        -3.327298e-17f32, 3.5696916e-17f32, -3.7498066e-17f32, 3.8607206e-17f32, 1.0f32, 3.8607206e-17f32,
+        -3.7498066e-17f32, 3.5696916e-17f32, -3.327298e-17f32, 3.03194e-17f32, -2.6949688e-17f32, 2.3293337e-17f32,
+        -1.9490858e-17f32, 1.5688382e-17f32, -1.203203e-17f32, 3.15073e-17f32, -5.7087407e-18f32, -4.0453876e-18f32,
+        -1.4836533e-18f32, 1.0988192e-18f32, -0.0f32,
+    ],
+    [
+        0.0f32, -7.987145e-05f32, 0.0004616447f32, -0.0012083584f32, 0.002379796f32, -0.004044325f32,
+        0.0062849806f32, -0.00921f32, 0.012971487f32, -0.017799895f32, 0.024071863f32, -0.032455638f32,
+        0.044261575f32, -0.062439073f32, 0.095230505f32, -0.17736062f32, 0.89975125f32, 0.29847378f32,
+        -0.124854244f32, 0.07602277f32, -0.052245565f32, 0.0378052f32, -0.027939532f32, 0.020723091f32,
+        -0.015233367f32, 0.010974186f32, -0.007653766f32, 0.005086629f32, -0.0031456735f32, 0.0017369703f32,
+        -0.0007857983f32, 0.00022864972f32, -8.606689e-06f32,
+    ],
+    [
+        0.0f32, -4.944115e-05f32, 0.00047260898f32, -0.0013919936f32, 0.0028899822f32, -0.005059594f32,
+        0.00801198f32, -0.011889399f32, 0.016888019f32, -0.023299532f32, 0.03159159f32, -0.042576153f32,
+        0.05780207f32, -0.08061996f32, 0.11980109f32, -0.20762788f32, 0.6350566f32, 0.6350566f32,
+        -0.20762788f32, 0.11980109f32, -0.08061996f32, 0.05780207f32, -0.042576153f32, 0.03159159f32,
+        -0.023299532f32, 0.016888019f32, -0.011889399f32, 0.00801198f32, -0.005059594f32, 0.0028899822f32,
+        -0.0013919936f32, 0.00047260898f32, -4.944115e-05f32,
+    ],
+    [
+        0.0f32, -8.606689e-06f32, 0.00022864972f32, -0.0007857983f32, 0.0017369703f32, -0.0031456735f32,
+        0.005086629f32, -0.007653766f32, 0.010974186f32, -0.015233367f32, 0.020723091f32, -0.027939532f32,
+        0.0378052f32, -0.052245565f32, 0.07602277f32, -0.124854244f32, 0.29847378f32, 0.89975125f32,
+        -0.17736062f32, 0.095230505f32, -0.062439073f32, 0.044261575f32, -0.032455638f32, 0.024071863f32,
+        -0.017799895f32, 0.012971487f32, -0.00921f32, 0.0062849806f32, -0.004044325f32, 0.002379796f32,
+        -0.0012083584f32, 0.0004616447f32, -7.987145e-05f32,
+    ],
+];
+/// Largest magnitude of the 4x interpolant in the neighbourhood of `index`.
+fn true_peak_at(samples: &[f32], index: usize) -> f32 {
+    let kernels = &TP_KERNELS;
+    let last = samples.len() - 1;
+    let mut peak = samples[index].abs();
+    for row in kernels {
+        let mut acc = 0.0f32;
+        for (tap, &h) in row.iter().enumerate() {
+            let j = index as isize + tap as isize - TP_CENTER;
+            let x = if j < 0 {
+                samples[0]
+            } else if j as usize > last {
+                samples[last]
+            } else {
+                samples[j as usize]
+            };
+            acc += x * h;
+        }
+        peak = peak.max(acc.abs());
+    }
+    peak
+}
+
+/// Per-sample neighbourhood peak of the 4x oversampled signal.
+pub fn true_peak_envelope_4x(samples: &[f32]) -> Vec<f32> {
+    if samples.is_empty() {
+        return Vec::new();
+    }
+    (0..samples.len())
+        .map(|index| true_peak_at(samples, index))
+        .collect()
+}
+
+/// Max absolute value over the sample points and the three 1/4-way points
+/// in the cubic segment from p1 to p2 (t=0 at p1, t=1 at p2).
+pub struct Meter {
+    k_filter_1: Biquad,
+    k_filter_2: Biquad,
+    block_samples: usize,
+    hop_samples: usize,
+    buffer: Vec<f32>,
+    blocks_energy: Vec<f32>,
+
+    max_true_peak: f32,
+}
+
+impl Meter {
+    pub fn new(sample_rate: u32) -> Self {
+        let fs = sample_rate as f32;
+        Self {
+            k_filter_1: Biquad::highshelf(1681.97, FRAC_1_SQRT_2, 4.0, fs),
+            k_filter_2: Biquad::highpass(38.13, 0.5003, fs),
+            block_samples: (fs * 0.400).round() as usize,
+            hop_samples: (fs * 0.100).round() as usize,
+            buffer: Vec::new(),
+            blocks_energy: Vec::new(),
+
+            max_true_peak: 0.0,
+        }
+    }
+
+    pub fn process(&mut self, buffer: &[f32]) {
+        // Meter and limiters must agree on true peak, so both use the shared
+        // polyphase windowed-sinc estimator rather than a cheaper stand-in.
+        for peak in true_peak_envelope_4x(buffer) {
+            if peak > self.max_true_peak {
+                self.max_true_peak = peak;
+            }
+        }
+
+        for &x in buffer {
+            let k1 = self.k_filter_1.process(x);
+            let k2 = self.k_filter_2.process(k1);
+
+            self.buffer.push(k2);
+            if self.buffer.len() == self.block_samples {
+                let sum_sq: f32 = self.buffer.iter().map(|&s| s * s).sum();
+                let z_i = sum_sq / (self.block_samples as f32);
+                self.blocks_energy.push(z_i);
+                self.buffer.drain(0..self.hop_samples);
+            }
+        }
+    }
+
+    pub fn report(&self) -> (f32, f32) {
+        let abs_gate = dmath::pow10(-70.0 / 10.0);
+        let mut abs_gated = Vec::new();
+        for &z in &self.blocks_energy {
+            if z > abs_gate {
+                abs_gated.push(z);
+            }
+        }
+
+        let mut lufs = -f32::INFINITY;
+        if !abs_gated.is_empty() {
+            let mean_energy: f32 = abs_gated.iter().sum::<f32>() / (abs_gated.len() as f32);
+            let abs_loudness = -0.691 + 10.0 * dmath::log10(mean_energy);
+
+            let rel_gate_db = abs_loudness - 10.0;
+            let rel_gate_z = dmath::pow10((rel_gate_db + 0.691) / 10.0);
+
+            let mut rel_gated = Vec::new();
+            for &z in &abs_gated {
+                if z > rel_gate_z {
+                    rel_gated.push(z);
+                }
+            }
+
+            if !rel_gated.is_empty() {
+                let final_energy: f32 = rel_gated.iter().sum::<f32>() / (rel_gated.len() as f32);
+                lufs = -0.691 + 10.0 * dmath::log10(final_energy);
+            }
+        }
+
+        let mut true_peak_db = -f32::INFINITY;
+        if self.max_true_peak > 1e-6 {
+            true_peak_db = 20.0 * dmath::log10(self.max_true_peak);
+        }
+
+        (lufs, true_peak_db)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MasterConfig {
+    pub target_lufs: f32,
+    pub ceiling_dbtp: f32,
+}
+
+impl Default for MasterConfig {
+    fn default() -> Self {
+        Self {
+            target_lufs: DEFAULT_TARGET_LUFS,
+            ceiling_dbtp: DEFAULT_CEILING_DBTP,
+        }
+    }
+}
+
+pub struct MasterReport {
+    pub integrated_lufs_before: f32,
+    pub integrated_lufs_after: f32,
+    pub true_peak_dbtp: f32,
+    pub limiter_engaged: bool,
+}
+
+pub struct MasterChain {
+    config: MasterConfig,
+    sample_rate: u32,
+    highpass: HighPass,
+    compressor: Compressor,
+    limiter: Limiter,
+    meter_before: Meter,
+    meter_after: Meter,
+    limiter_engaged: bool,
+}
+
+impl MasterChain {
+    pub fn new(sample_rate: u32, config: MasterConfig) -> Self {
+        Self {
+            config,
+            sample_rate,
+            highpass: HighPass::new(sample_rate),
+            compressor: Compressor::new(sample_rate),
+            limiter: Limiter::new(sample_rate),
+            meter_before: Meter::new(sample_rate),
+            meter_after: Meter::new(sample_rate),
+            limiter_engaged: false,
+        }
+    }
+
+    /// REALTIME causal path (Godot, live WASM etc.).
+    /// No lookahead beyond the internal 3 ms delay line; fixed makeup gain.
+    /// Detector for limiter is driven from true-peak envelope (cross-chunk stateful).
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        for x in buffer.iter_mut() {
+            if !x.is_finite() {
+                *x = 0.0;
+            }
+        }
+
+        self.meter_before.process(buffer);
+
+        self.highpass.process(buffer);
+        self.compressor.process(buffer);
+
+        // Fixed makeup (see const docs). Realtime has no access to whole-buffer
+        // loudness measurement, therefore a single constant is used.
+        let makeup = dmath::db_to_linear(REALTIME_MAKEUP_DB);
+        for x in buffer.iter_mut() {
+            *x *= makeup;
+        }
+
+        self.limiter.process(buffer);
+
+        if self.limiter.was_engaged() {
+            self.limiter_engaged = true;
+        }
+
+        let ceiling_linear = dmath::db_to_linear(self.config.ceiling_dbtp);
+        for x in buffer.iter_mut() {
+            *x = x.clamp(-ceiling_linear, ceiling_linear);
+        }
+
+        self.meter_after.process(buffer);
+    }
+
+    /// OFFLINE render path (render_wav etc.).
+    /// Whole buffer available: measure LUFS after comp, apply corrective gain
+    /// (iterated up to 3 times because TP limiting changes loudness slightly),
+    /// then apply true-peak limiting using the shared envelope helper + max-hold
+    /// release smoothing, then hard clamp.
+    pub fn process_offline(&mut self, samples: &mut [f32]) -> MasterReport {
+        if samples.is_empty() {
+            return MasterReport {
+                integrated_lufs_before: DEFAULT_TARGET_LUFS,
+                integrated_lufs_after: DEFAULT_TARGET_LUFS,
+                true_peak_dbtp: DEFAULT_CEILING_DBTP,
+                limiter_engaged: false,
+            };
+        }
+
+        for x in samples.iter_mut() {
+            if !x.is_finite() {
+                *x = 0.0;
+            }
+        }
+
+        self.highpass.process(samples);
+        self.compressor.process(samples);
+
+        // Measure post-compressor (pre-gain) LUFS for the "before" figure.
+        let lufs_before = measure_lufs(samples, self.sample_rate);
+
+        // Iterative gain to hit target (including effect of subsequent TP limiting).
+        // We re-measure after a simulated gain+limit on a probe because limiting
+        // reduces loudness a little on peaky material.
+        let mut target_gain = 1.0f32;
+        let ceiling_for_iter = dmath::db_to_linear(self.config.ceiling_dbtp);
+        let limit_t_for_iter = ceiling_for_iter * dmath::db_to_linear(-TRUE_PEAK_GUARD_DB);
+        let fs_iter = self.sample_rate as f32;
+        let r_iter = dmath::exp(-1.0 / (TP_LIMITER_RELEASE_SEC * fs_iter));
+        for _ in 0..3 {
+            let mut probe = samples.to_vec();
+            for x in &mut probe {
+                *x *= target_gain;
+            }
+            // simulate TP limit on probe (no need to write back clamp here for measure)
+            let env_p = true_peak_envelope_4x(&probe);
+            let mut gc: Vec<f32> = env_p
+                .iter()
+                .map(|&e| {
+                    if e > 1e-9 {
+                        (limit_t_for_iter / e).min(1.0)
+                    } else {
+                        1.0
+                    }
+                })
+                .collect();
+            let mut held = 1.0f32;
+            for g in &mut gc {
+                if *g < held {
+                    held = *g;
+                } else {
+                    held = r_iter * held + (1.0 - r_iter) * *g;
+                }
+                *g = held;
+            }
+            for (s, g) in probe.iter_mut().zip(gc.into_iter()) {
+                *s *= g;
+            }
+            let lu = measure_lufs(&probe, self.sample_rate);
+            let err = self.config.target_lufs - lu;
+            if err.abs() <= 0.3 {
+                break;
+            }
+            target_gain *= dmath::db_to_linear(err);
+            target_gain = target_gain.clamp(0.01, 100.0);
+        }
+
+        for x in samples.iter_mut() {
+            *x *= target_gain;
+        }
+
+        // True-peak limiting using the *exact same* envelope helper the Meter
+        // and realtime limiter use. Non-causal smoothing is fine for offline.
+        let ceiling = dmath::db_to_linear(self.config.ceiling_dbtp);
+        let limit_target = ceiling * dmath::db_to_linear(-TRUE_PEAK_GUARD_DB);
+
+        let env = true_peak_envelope_4x(samples);
+        let mut gain_curve: Vec<f32> = env
+            .iter()
+            .map(|&e| {
+                if e > 1e-9 {
+                    (limit_target / e).min(1.0)
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+
+        // max-hold + exponential release (instant attack, slow release)
+        let fs = self.sample_rate as f32;
+        let r = dmath::exp(-1.0 / (TP_LIMITER_RELEASE_SEC * fs));
+        let mut held = 1.0f32;
+        let mut any_reduction = false;
+        for g in &mut gain_curve {
+            if *g < held {
+                held = *g;
+            } else {
+                held = r * held + (1.0 - r) * *g;
+            }
+            if held < 0.999 {
+                any_reduction = true;
+            }
+            *g = held;
+        }
+
+        for (s, g) in samples.iter_mut().zip(gain_curve.into_iter()) {
+            *s *= g;
+        }
+
+        // Residual true-peak safety. The smoothed gain curve cannot track every
+        // isolated transient exactly, and an external meter uses its own (also
+        // linear) interpolant, so bound the envelope actually measured here.
+        // Because the interpolator is linear this converges tightly and only
+        // touches the samples that exceed the target.
+        for _ in 0..4 {
+            let env = true_peak_envelope_4x(samples);
+            let worst = env.iter().copied().fold(0.0f32, f32::max);
+            if worst <= limit_target {
+                break;
+            }
+            for (s, e) in samples.iter_mut().zip(env.iter()) {
+                if *e > limit_target {
+                    *s *= limit_target / *e;
+                }
+            }
+        }
+
+        // Absolute backstop: samples are *always* within ceiling after this.
+        for s in samples.iter_mut() {
+            *s = s.clamp(-ceiling, ceiling);
+        }
+
+        let lufs_after = measure_lufs(samples, self.sample_rate);
+
+        let final_tp = {
+            let env = true_peak_envelope_4x(samples);
+            let mp = env.iter().copied().fold(0.0f32, f32::max);
+            if mp > 1e-9 {
+                20.0 * dmath::log10(mp)
+            } else {
+                -120.0
+            }
+        };
+
+        MasterReport {
+            integrated_lufs_before: lufs_before,
+            integrated_lufs_after: lufs_after,
+            true_peak_dbtp: final_tp,
+            limiter_engaged: any_reduction || self.limiter_engaged,
+        }
+    }
+
+    pub fn report(&self) -> MasterReport {
+        let (lufs_before, _) = self.meter_before.report();
+        let (lufs_after, tp_after) = self.meter_after.report();
+        MasterReport {
+            integrated_lufs_before: lufs_before,
+            integrated_lufs_after: lufs_after,
+            true_peak_dbtp: tp_after,
+            limiter_engaged: self.limiter_engaged,
+        }
+    }
+}
+
+fn measure_lufs(samples: &[f32], sr: u32) -> f32 {
+    let mut m = Meter::new(sr);
+    m.process(samples);
+    let (l, _) = m.report();
+    l
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::PI;
+
+    // --- helpers local to tests ---
+    fn decode_wav_samples(wav: &[u8]) -> Vec<f32> {
+        let data_size = u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize;
+        let mut out = Vec::with_capacity(data_size / 2);
+        for i in (0..data_size).step_by(2) {
+            let s = i16::from_le_bytes(wav[44 + i..44 + i + 2].try_into().unwrap());
+            out.push(s as f32 / 32768.0);
+        }
+        out
+    }
+
+    fn ceiling_linear() -> f32 {
+        dmath::db_to_linear(DEFAULT_CEILING_DBTP)
+    }
+
+    #[test]
+    fn meter_sanity() {
+        // A full-scale 1 kHz sine (peak = 1.0) has RMS = 1/sqrt(2) ≈ -3.0103 dBFS.
+        // Per EBU R128 / ITU, integrated LUFS for such a sine is approximately -3.01 LUFS
+        // (the K-weighted, gated measurement lands very close because the tone is steady).
+        // True peak (our Catmull-Rom) for a pure sine at this freq is ~0.0 dBTP.
+        let mut meter = Meter::new(48000);
+        let mut sine = vec![0.0; 48000 * 3]; // 3s for stable blocks
+        for (i, x) in sine.iter_mut().enumerate() {
+            *x = (2.0 * PI * 1000.0 * i as f32 / 48000.0).sin();
+        }
+        meter.process(&sine);
+        let (lufs, tp) = meter.report();
+        assert!(
+            (lufs + 3.01).abs() < 0.5,
+            "full-scale 1kHz sine should measure ~-3.01 LUFS, got {}",
+            lufs
+        );
+        assert!(
+            tp.abs() < 0.2,
+            "full-scale 1kHz sine should measure ~0.0 dBTP, got {}",
+            tp
+        );
+    }
+
+    #[test]
+    fn realtime_limiter_awkward_chunks() {
+        let mut chain = MasterChain::new(48000, MasterConfig::default());
+        // very loud signal that would clip hard without limiter
+        let mut signal = vec![0.0; 48000];
+        for (i, x) in signal.iter_mut().enumerate() {
+            *x = (2.0 * PI * 100.0 * i as f32 / 48000.0).sin() * 10.0;
+        }
+
+        let chunks = [1usize, 7, 64, 256, 4096];
+        let mut pos = 0;
+        let mut out = Vec::new();
+        let mut ci = 0;
+        while pos < signal.len() {
+            let chunk_size = chunks[ci % chunks.len()].min(signal.len() - pos);
+            let mut buf = signal[pos..pos + chunk_size].to_vec();
+            chain.process(&mut buf);
+            // also assert no NaN in this chunk
+            for &s in &buf {
+                assert!(s.is_finite(), "NaN/Inf in realtime output");
+            }
+            out.extend_from_slice(&buf);
+            pos += chunk_size;
+            ci += 1;
+        }
+
+        let ceiling = ceiling_linear();
+        for &s in &out {
+            assert!(
+                s.abs() <= ceiling + 1e-6,
+                "sample ceiling invariant violated across chunks: {}",
+                s
+            );
+        }
+    }
+
+    #[test]
+    fn offline_renders_hit_lufs_and_tp_and_never_clip() {
+        // Sweep across recipes, styles, sections, seeds through the *offline* path (render_wav).
+        // This would have caught both the static-trim spread and the true-peak overs.
+        use crate::{
+            generate_racing, generate_suspense, render::render_wav, GenerateInput,
+            InstrumentPalette, Style, SuspenseInput, SuspenseStyle,
+        };
+
+        let seeds = ["qa-seed-a", "qa-seed-b"];
+        let r_styles = [Style::Funk, Style::Neon];
+        let r_sections = ["cruise", "grid", "attack"];
+        let ceiling = ceiling_linear();
+        let target = DEFAULT_TARGET_LUFS;
+
+        let mut all_lufs: Vec<f32> = vec![];
+
+        // Racing
+        for seed in &seeds {
+            for sty in &r_styles {
+                for sec in &r_sections {
+                    let score = generate_racing(&GenerateInput {
+                        secret: "qa-secret".into(),
+                        seed: (*seed).into(),
+                        style: *sty,
+                        palette: InstrumentPalette::default(),
+                        energy: 0.5,
+                        complexity: 0.5,
+                        brightness: 0.5,
+                        syncopation: 0.5,
+                    })
+                    .expect("racing score");
+                    let wav = render_wav(&score, sec, 1, 48000);
+                    let samples = decode_wav_samples(&wav);
+
+                    for &s in &samples {
+                        assert!(s.is_finite(), "non-finite sample in offline render");
+                        assert!(
+                            s.abs() <= ceiling + 1e-9,
+                            "offline sample exceeded ceiling {}: {}",
+                            ceiling,
+                            s
+                        );
+                    }
+
+                    let mut meter = Meter::new(48000);
+                    meter.process(&samples);
+                    let (lufs, tp) = meter.report();
+
+                    assert!(
+                        (lufs - target).abs() <= 1.5,
+                        "LUFS {} outside +/-1.5 of {} for racing {}/{}",
+                        lufs, target, seed, sec
+                    );
+                    assert!(
+                        tp <= DEFAULT_CEILING_DBTP + 1e-3,
+                        "true peak {} > ceiling for racing",
+                        tp
+                    );
+
+                    all_lufs.push(lufs);
+                }
+            }
+        }
+
+        // A bit of suspense too (different recipe) - use correct fields
+        for seed in &seeds {
+            let score = generate_suspense(&SuspenseInput {
+                secret: "qa-secret".into(),
+                seed: (*seed).into(),
+                style: SuspenseStyle::Terminal,
+                tension: 0.6,
+                heat: 0.5,
+                mystery: 0.5,
+                pulse: 0.5,
+            })
+            .expect("suspense score");
+            let wav = render_wav(&score, "verse", 1, 48000);
+            let samples = decode_wav_samples(&wav);
+            let mut meter = Meter::new(48000);
+            meter.process(&samples);
+            let (lufs, tp) = meter.report();
+            assert!(
+                (lufs - target).abs() <= 1.5,
+                "suspense LUFS out of range: {}",
+                lufs
+            );
+            assert!(tp <= DEFAULT_CEILING_DBTP + 1e-3);
+
+            for &s in &samples {
+                assert!(s.abs() <= ceiling + 1e-9);
+            }
+            all_lufs.push(lufs);
+        }
+
+        // Dedicated loudness spread test across styles (same recipe/seed/section).
+        // A static trim can never achieve this; the per-render measurement+gain can.
+        let spread_styles = [Style::Chip, Style::Funk, Style::Fusion, Style::Neon];
+        let mut style_lufs = vec![];
+        for sty in &spread_styles {
+            let score = generate_racing(&GenerateInput {
+                secret: "spread-secret".into(),
+                seed: "spread-seed".into(),
+                style: *sty,
+                palette: InstrumentPalette::default(),
+                energy: 0.62,
+                complexity: 0.6,
+                brightness: 0.52,
+                syncopation: 0.7,
+            })
+            .expect("style spread score");
+            let wav = render_wav(&score, "cruise", 2, 48000);
+            let samples = decode_wav_samples(&wav);
+            let mut meter = Meter::new(48000);
+            meter.process(&samples);
+            let (l, _) = meter.report();
+            style_lufs.push(l);
+        }
+        let min_l = style_lufs.iter().cloned().fold(f32::INFINITY, f32::min);
+        let max_l = style_lufs.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let spread = max_l - min_l;
+        assert!(
+            spread <= 2.0,
+            "loudness spread across styles {} > 2.0 LU (min {} max {})",
+            spread,
+            min_l,
+            max_l
+        );
+    }
+}

@@ -1,3 +1,4 @@
+use crate::master::{MasterChain, MasterConfig};
 use crate::score::PortableScore;
 use crate::synth::{events_starting_at, Synth};
 
@@ -43,8 +44,16 @@ pub fn render_wav(
         tick = tick.wrapping_add(window_ticks);
     }
 
+    let mut master = MasterChain::new(sample_rate, MasterConfig::default());
+    // Must use the offline path for renders so that per-render LUFS measurement +
+    // true-peak limiting can be performed (realtime path cannot do this).
+    let _ = master.process_offline(&mut samples);
+    
+    // The outer seam fade remains (cosmetic boundaries only; negligible effect on
+    // integrated LUFS and never increases true peak).
     apply_outer_seam_fade(&mut samples, sample_rate, total_sec);
     encode_16bit_mono_wav(&samples, sample_rate)
+
 }
 
 fn smoothstep(edge0: f64, edge1: f64, x: f64) -> f64 {
@@ -170,14 +179,14 @@ mod tests {
             syncopation: 0.7,
         })
         .expect("render test score must validate");
-        let wav = render_wav(&score, "cruise", 2, 22050);
+        let wav = render_wav(&score, "cruise", 2, 48000);
         let (sr, _bits, n_samples) = parse_wav_header(&wav);
-        assert_eq!(sr, 22050);
+        assert_eq!(sr, 48000);
 
         let expected = ((score.section("cruise").unwrap().length_ticks as f64
             / score.ticks_per_second())
             * 2.0
-            * 22050.0)
+            * 48000.0)
             .round() as usize;
         assert_eq!(n_samples, expected, "sample count must match duration * sr");
 
@@ -197,13 +206,13 @@ mod tests {
     }
 
     #[test]
-    fn golden_catalog_grid_3phrases_22050() {
+    fn golden_catalog_grid_3phrases_48000() {
         let json = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let score: PortableScore =
             serde_json::from_str(json).expect("catalog JSON must parse with existing derives");
-        let wav = render_wav(&score, "grid", 3, 22050);
+        let wav = render_wav(&score, "grid", 3, 48000);
         let samples = decode_wav_samples(&wav);
-        let sr = 22050u32;
+        let sr = 48000u32;
 
         let dur = samples.len() as f64 / sr as f64;
         assert!(

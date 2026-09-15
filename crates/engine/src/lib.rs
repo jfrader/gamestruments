@@ -1,6 +1,8 @@
 pub mod adventure;
 pub mod arrangement;
+pub(crate) mod dmath;
 pub mod form_audio;
+pub mod master;
 pub mod racing;
 pub mod racing_arrangement;
 pub mod render;

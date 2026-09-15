@@ -1,3 +1,4 @@
+use crate::dmath;
 use crate::score::MusicEvent;
 
 use std::f32::consts::TAU;
@@ -62,8 +63,8 @@ impl Biquad {
         let fc = fc.max(20.0).min(sr * 0.49);
         let q = q.max(0.1);
         let omega = std::f32::consts::TAU * (fc / sr);
-        let sin_om = omega.sin();
-        let cos_om = omega.cos();
+        let sin_om = dmath::sin(omega);
+        let cos_om = dmath::cos(omega);
         let alpha = sin_om / (2.0 * q);
         let (b0, b1, b2) = match mode {
             FilterMode::Lowpass => {
@@ -324,7 +325,7 @@ impl Synth {
                 mix += contrib;
                 j += 1;
             }
-            buffer[i] = mix.clamp(-0.95, 0.95);
+            buffer[i] = mix.clamp(-4.0, 4.0);
             self.phase += dt;
             i += 1;
         }
@@ -455,8 +456,8 @@ impl Synth {
                     ),
                     _ => unreachable!(),
                 };
-                let f1 = compute_freq(base, age, pd) * 2f32.powf(-det_c / 1200.0);
-                let f2 = compute_freq(base * sec_r, age, pd * 0.5) * 2f32.powf(det_c / 1200.0);
+                let f1 = compute_freq(base, age, pd) * dmath::powf(2.0, -det_c / 1200.0);
+                let f2 = compute_freq(base * sec_r, age, pd * 0.5) * dmath::powf(2.0, det_c / 1200.0);
                 let s1 = generate_osc(v.phase1, primary);
                 v.phase1 += TAU * f1 * dt;
                 let s2 = generate_osc(v.phase2, secondary);
@@ -469,7 +470,7 @@ impl Synth {
                 let ramp_d = v.duration.min(dec);
                 if ramp_d > 0.0 && age < ramp_d {
                     let frac = age / ramp_d;
-                    fc *= (end_fc / fc).powf(frac);
+                    fc *= dmath::powf(end_fc / fc, frac);
                 } else if age >= ramp_d {
                     fc = end_fc;
                 }
@@ -522,9 +523,9 @@ impl Synth {
             }
             VoiceType::Recorder => {
                 let vibrato_ramp = ((age - 0.2) / 0.38).clamp(0.0, 1.0);
-                let vibrato_cents = v.vib_phase.sin() * 6.0 * vibrato_ramp;
+                let vibrato_cents = dmath::sin(v.vib_phase) * 6.0 * vibrato_ramp;
                 v.vib_phase += TAU * (5.05 + (v.pitch % 4) as f32 * 0.07) * dt;
-                let frequency = base * 2f32.powf(vibrato_cents / 1200.0);
+                let frequency = base * dmath::powf(2.0, vibrato_cents / 1200.0);
                 let fundamental = generate_osc(v.phase1, Wave::Sine);
                 let second = generate_osc(v.phase2, Wave::Sine);
                 let third = generate_osc(v.phase3, Wave::Sine);
@@ -550,9 +551,9 @@ impl Synth {
             }
             VoiceType::Vielle => {
                 let vibrato_ramp = ((age - 0.32) / 0.55).clamp(0.0, 1.0);
-                let vibrato_cents = v.vib_phase.sin() * 3.6 * vibrato_ramp;
+                let vibrato_cents = dmath::sin(v.vib_phase) * 3.6 * vibrato_ramp;
                 v.vib_phase += TAU * (4.65 + (v.pitch % 5) as f32 * 0.045) * dt;
-                let frequency = base * 2f32.powf(vibrato_cents / 1200.0);
+                let frequency = base * dmath::powf(2.0, vibrato_cents / 1200.0);
                 let fundamental = generate_osc(v.phase1, Wave::Sine);
                 let second = generate_osc(v.phase2, Wave::Sine);
                 let third = generate_osc(v.phase3, Wave::Sine);
@@ -560,7 +561,7 @@ impl Synth {
                 v.phase2 += TAU * frequency * 2.0 * dt;
                 v.phase3 += TAU * frequency * 3.0 * dt;
 
-                let evolution = v.trem_phase.sin();
+                let evolution = dmath::sin(v.trem_phase);
                 v.trem_phase += TAU * (0.43 + (v.pitch % 3) as f32 * 0.035) * dt;
                 let second_gain = 0.28 + evolution * 0.045;
                 let third_gain = 0.115 - evolution * 0.025;
@@ -613,7 +614,7 @@ impl Synth {
                 let ramp_d = v.duration.min(0.16f32);
                 if age < ramp_d {
                     let frac = age / ramp_d;
-                    fc *= (end_fc / fc).powf(frac);
+                    fc *= dmath::powf(end_fc / fc, frac);
                 } else {
                     fc = end_fc;
                 }
@@ -625,39 +626,39 @@ impl Synth {
             }
             VoiceType::Epiano => {
                 let det = 7.0 / 1200.0;
-                let f_l = base * 2f32.powf(-det);
-                let f_r = base * 2f32.powf(det);
+                let f_l = base * dmath::powf(2.0, -det);
+                let f_r = base * dmath::powf(2.0, det);
                 let s_l = generate_osc(v.phase1, Wave::Sine);
                 v.phase1 += TAU * f_l * dt;
                 let s_r = generate_osc(v.phase2, Wave::Sine);
                 v.phase2 += TAU * f_r * dt;
-                let tine_f = base * (2.001 + vel * 0.003) * 2f32.powf(3.0 / 1200.0);
+                let tine_f = base * (2.001 + vel * 0.003) * dmath::powf(2.0, 3.0 / 1200.0);
                 let s_t = generate_osc(v.phase3, Wave::Sine);
                 v.phase3 += TAU * tine_f * dt;
                 let bg = 0.62;
                 let mut sig = (s_l + s_r) * bg + s_t * 0.0; // tine g separate
                                                             // tine pre gain ramp
-                let tine_peak = 0.11 + vel.powf(1.7) * 0.38;
+                let tine_peak = 0.11 + dmath::powf(vel, 1.7) * 0.38;
                 let tine_dec = 0.09 + (1.0 - vel) * 0.08;
                 let tine_d_t = v.duration.min(tine_dec);
                 let mut tg = 0.012;
                 if age < 0.004 {
                     let fr = age / 0.004;
                     let tgt = tine_peak * 0.7;
-                    tg = MIN_GAIN * (tgt / MIN_GAIN).powf(fr);
+                    tg = MIN_GAIN * dmath::powf(tgt / MIN_GAIN, fr);
                 } else if age < tine_d_t {
                     let fr = (age - 0.004) / (tine_d_t - 0.004).max(1e-6);
                     let tgt = tine_peak * 0.7;
-                    tg = tgt * (0.012 / tgt).powf(fr);
+                    tg = tgt * dmath::powf(0.012 / tgt, fr);
                 }
                 sig += s_t * tg;
                 // filter
-                let mut fc = 1100.0 + vel.powf(1.4) * 2200.0;
+                let mut fc = 1100.0 + dmath::powf(vel, 1.4) * 2200.0;
                 let end_fc = 780.0 + vel * 420.0;
                 let ramp_d = v.duration.min(0.28);
                 if ramp_d > 0.0 && age < ramp_d {
                     let fr = age / ramp_d;
-                    fc *= (end_fc / fc).powf(fr);
+                    fc *= dmath::powf(end_fc / fc, fr);
                 } else if age >= ramp_d {
                     fc = end_fc;
                 }
@@ -670,7 +671,7 @@ impl Synth {
                 let rel = 0.16;
                 let env = compute_envelope(age, v.duration, peak, sus, att, dec, rel);
                 // trem
-                let tr = 0.975 + v.trem_phase.sin() * (0.018 + vel * 0.008);
+                let tr = 0.975 + dmath::sin(v.trem_phase) * (0.018 + vel * 0.008);
                 v.trem_phase += TAU * (4.65 + ((v.pitch as i32 % 5) as f32) * 0.07) * dt;
                 sig * env * tr
             }
@@ -681,10 +682,10 @@ impl Synth {
                 let ps = [&mut v.phase1, &mut v.phase2, &mut v.phase3];
                 for (i, (&r, &g)) in rs.iter().zip(gs.iter()).enumerate() {
                     let f = base * r;
-                    mix += ps[i].sin() * g;
+                    mix += dmath::sin(*ps[i]) * g;
                     *ps[i] += TAU * f * dt;
                 }
-                let tr = 0.92 + v.trem_phase.sin() * 0.08;
+                let tr = 0.92 + dmath::sin(v.trem_phase) * 0.08;
                 v.trem_phase += TAU * 5.4 * dt;
                 let peak = (if is_mel { 0.09 } else { 0.034 }) * velocity_curve(vel, 0.8);
                 let env = compute_envelope(age, v.duration, peak, 0.7, 0.03, 0.18, 0.2);
@@ -695,7 +696,7 @@ impl Synth {
                 let mut mix = 0.0;
                 let ps = [&mut v.phase1, &mut v.phase2, &mut v.phase3];
                 for (i, &c) in dets.iter().enumerate() {
-                    let f = base * 2f32.powf(c / 1200.0);
+                    let f = base * dmath::powf(2.0, c / 1200.0);
                     mix += saw_phase(*ps[i]);
                     *ps[i] += TAU * f * dt;
                 }
@@ -704,7 +705,7 @@ impl Synth {
                 let ramp_d = v.duration.min(0.22);
                 if ramp_d > 0.0 && age < ramp_d {
                     let fr = age / ramp_d;
-                    fc *= (end_fc / fc).powf(fr);
+                    fc *= dmath::powf(end_fc / fc, fr);
                 } else if age >= ramp_d {
                     fc = end_fc;
                 }
@@ -727,9 +728,9 @@ impl Synth {
                 let steps = if is_lead { 28 } else { 48 };
                 let vib_f = if is_lead { 5.7 } else { 0.8 };
                 let vib_d = if is_lead { 16.0 } else { 4.0 };
-                let vib = v.vib_phase.sin() * vib_d;
+                let vib = dmath::sin(v.vib_phase) * vib_d;
                 v.vib_phase += TAU * vib_f * dt;
-                let f1 = base * 2f32.powf(vib / 1200.0);
+                let f1 = base * dmath::powf(2.0, vib / 1200.0);
                 let s1 = generate_osc(v.phase1, Wave::Square);
                 v.phase1 += TAU * f1 * dt;
                 let f2 = base * 2.0;
@@ -745,7 +746,7 @@ impl Synth {
                 let start_f = 162.0 + vel * 18.0;
                 let end_f = 49.0;
                 let tf = if age < 0.12 {
-                    start_f * (end_f / start_f).powf(age / 0.12)
+                    start_f * dmath::powf(end_f / start_f, age / 0.12)
                 } else {
                     end_f
                 };
@@ -753,14 +754,14 @@ impl Synth {
                 v.phase1 += TAU * tf * dt;
                 let g0 = (0.27 * vel).max(MIN_GAIN);
                 let te = if age < 0.22 {
-                    g0 * (MIN_GAIN / g0).powf(age / 0.22)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.22)
                 } else {
                     MIN_GAIN
                 };
                 let tone = s * te;
                 let ng = if age < 0.018 {
                     let g0 = (0.045 * vel).max(MIN_GAIN);
-                    g0 * (MIN_GAIN / g0).powf(age / 0.018)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.018)
                 } else {
                     0.0
                 };
@@ -772,7 +773,7 @@ impl Synth {
                 let start_f = 205.0f32;
                 let end_f = 142.0f32;
                 let tf = if age < 0.085 {
-                    start_f * (end_f / start_f).powf(age / 0.085_f32)
+                    start_f * dmath::powf(end_f / start_f, age / 0.085_f32)
                 } else {
                     end_f
                 };
@@ -780,14 +781,14 @@ impl Synth {
                 v.phase1 += TAU * tf * dt;
                 let g0 = (0.105 * vel).max(MIN_GAIN);
                 let te = if age < 0.12 {
-                    g0 * (MIN_GAIN / g0).powf(age / 0.12)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.12)
                 } else {
                     MIN_GAIN
                 };
                 let tone = s * te;
                 let ng = if age < 0.16 {
                     let g0 = (0.205 * vel).max(MIN_GAIN);
-                    g0 * (MIN_GAIN / g0).powf(age / 0.16)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.16)
                 } else {
                     0.0
                 };
@@ -798,7 +799,7 @@ impl Synth {
             VoiceType::Hat => {
                 let ng = if age < 0.08 {
                     let g0 = (0.12 * vel).max(MIN_GAIN);
-                    g0 * (MIN_GAIN / g0).powf(age / 0.08)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.08)
                 } else {
                     0.0
                 };
@@ -853,13 +854,13 @@ impl Synth {
                 let progress = (age / v.duration).clamp(0.0, 1.0);
                 let peak = (vel * if reverse { 0.085 } else { 0.075 }).max(MIN_GAIN);
                 let gain = if reverse && age < v.duration {
-                    MIN_GAIN * (peak / MIN_GAIN).powf(progress)
+                    MIN_GAIN * dmath::powf(peak / MIN_GAIN, progress)
                 } else if reverse && age < v.duration + 0.12 {
-                    peak * (MIN_GAIN / peak).powf((age - v.duration) / 0.12)
+                    peak * dmath::powf(MIN_GAIN / peak, (age - v.duration) / 0.12)
                 } else if !reverse && age < 0.006 {
                     MIN_GAIN + (peak - MIN_GAIN) * age / 0.006
                 } else if !reverse && age < v.duration {
-                    peak * (MIN_GAIN / peak).powf((age - 0.006) / (v.duration - 0.006))
+                    peak * dmath::powf(MIN_GAIN / peak, (age - 0.006) / (v.duration - 0.006))
                 } else {
                     0.0
                 };
@@ -879,7 +880,7 @@ impl Synth {
             VoiceType::Tom => {
                 let bs = v.base_freq;
                 let bf = if age < 0.15 {
-                    bs * (bs * 0.58 / bs).powf(age / 0.15)
+                    bs * dmath::powf(bs * 0.58 / bs, age / 0.15)
                 } else {
                     bs * 0.58
                 };
@@ -888,7 +889,7 @@ impl Synth {
                 let os = bs * 1.63;
                 let oe = bs * 0.92;
                 let of = if age < 0.11 {
-                    os * (oe / os).powf(age / 0.11)
+                    os * dmath::powf(oe / os, age / 0.11)
                 } else {
                     oe
                 };
@@ -896,14 +897,14 @@ impl Synth {
                 v.phase2 += TAU * of * dt;
                 let g0 = (0.17 * vel).max(MIN_GAIN);
                 let te = if age < 0.19 {
-                    g0 * (MIN_GAIN / g0).powf(age / 0.19)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.19)
                 } else {
                     MIN_GAIN
                 };
                 let tone = (sb + so * 0.23) * te;
                 let ng = if age < 0.026 {
                     let g0 = (0.032 * vel).max(MIN_GAIN);
-                    g0 * (MIN_GAIN / g0).powf(age / 0.026)
+                    g0 * dmath::powf(MIN_GAIN / g0, age / 0.026)
                 } else {
                     0.0
                 };
@@ -938,15 +939,15 @@ pub fn events_starting_at(
 }
 
 fn midi_to_freq(pitch: u8) -> f32 {
-    440.0 * 2.0_f32.powf((pitch as f32 - 69.0) / 12.0)
+    440.0 * dmath::powf(2.0, (pitch as f32 - 69.0) / 12.0)
 }
 
 fn velocity_curve(v: f32, e: f32) -> f32 {
-    v.max(0.02).powf(e)
+    dmath::powf(v.max(0.02), e)
 }
 
 fn natural_decay(age: f32, time_constant: f32) -> f32 {
-    (-age / time_constant.max(0.001)).exp()
+    dmath::exp(-age / time_constant.max(0.001))
 }
 
 fn harp_life(frequency: f32) -> f32 {
@@ -980,7 +981,7 @@ fn compute_freq(base: f32, age: f32, pitch_drop: f32) -> f32 {
         let ramp = 0.022;
         if age < ramp {
             let fr = age / ramp;
-            start_f * (base / start_f).powf(fr)
+            start_f * dmath::powf(base / start_f, fr)
         } else {
             base
         }
@@ -1022,17 +1023,17 @@ fn compute_envelope_with_cap(
         MIN_GAIN
     } else if t < attack_end {
         let fr = t / attack_end.max(1e-6);
-        MIN_GAIN * (safe_p / MIN_GAIN).powf(fr)
+        MIN_GAIN * dmath::powf(safe_p / MIN_GAIN, fr)
     } else if t < decay_end {
         let fr = (t - attack_end) / (decay_end - attack_end).max(1e-6);
-        safe_p * (sus_g / safe_p).powf(fr)
+        safe_p * dmath::powf(sus_g / safe_p, fr)
     } else if t < duration {
         sus_g
     } else {
         let rel_end = duration + release_t;
         if t < rel_end {
             let fr = (t - duration) / release_t.max(1e-6);
-            sus_g * (MIN_GAIN / sus_g).powf(fr)
+            sus_g * dmath::powf(MIN_GAIN / sus_g, fr)
         } else {
             MIN_GAIN
         }
@@ -1049,7 +1050,7 @@ enum Wave {
 
 fn generate_osc(phase: f32, wave: Wave) -> f32 {
     match wave {
-        Wave::Sine => phase.sin(),
+        Wave::Sine => dmath::sin(phase),
         Wave::Saw => saw_phase(phase),
         Wave::Triangle => {
             let x = 2.0 * (phase / TAU).fract() - 1.0;
@@ -1129,7 +1130,7 @@ mod tests {
     }
 
     fn render_note(voice: &str, duration_ticks: u32, sample_count: usize) -> Vec<f32> {
-        let mut synth = Synth::new(22050.0);
+        let mut synth = Synth::new(48000.0);
         synth.trigger(
             &MusicEvent::Note {
                 id: format!("{voice}-test"),
@@ -1150,7 +1151,7 @@ mod tests {
     }
 
     fn render_percussion(voice: &str, id: &str) -> Vec<f32> {
-        let mut synth = Synth::new(22050.0);
+        let mut synth = Synth::new(48000.0);
         synth.trigger(
             &MusicEvent::Percussion {
                 id: id.into(),
@@ -1163,7 +1164,7 @@ mod tests {
             },
             960.0,
         );
-        let mut samples = vec![0.0; 15435];
+        let mut samples = vec![0.0; 33600];
         synth.fill(&mut samples);
         assert!(synth.voices.is_empty(), "{voice} must clean up its voice");
         samples
@@ -1209,7 +1210,7 @@ mod tests {
     #[test]
     fn procedural_noise_effects_have_opposite_envelopes_and_clean_up() {
         for voice in ["reverse-cymbal", "air-impact"] {
-            let mut synth = Synth::new(22050.0);
+            let mut synth = Synth::new(48000.0);
             synth.trigger(
                 &MusicEvent::Percussion {
                     id: "effect-test".into(),
@@ -1222,10 +1223,10 @@ mod tests {
                 },
                 960.0,
             );
-            let mut samples = vec![0.0; 44100];
+            let mut samples = vec![0.0; 96000];
             synth.fill(&mut samples);
-            let early = rms(&samples[1000..5000]);
-            let late = rms(&samples[17000..21000]);
+            let early = rms(&samples[2100..10800]);
+            let late = rms(&samples[37000..45700]);
             if voice == "reverse-cymbal" {
                 assert!(late > early * 4.0);
             } else {
@@ -1241,7 +1242,7 @@ mod tests {
     #[test]
     fn adventure_voices_render_audible_samples_with_finite_output() {
         for voice in ["harp", "recorder", "vielle", "bell"] {
-            let buffer = render_note(voice, 960, 22050);
+            let buffer = render_note(voice, 960, 48000);
             let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
             let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
             assert!(energy > 1.0, "{voice} should be audible, got {energy}");
@@ -1276,11 +1277,11 @@ mod tests {
 
     #[test]
     fn harp_and_bell_decay_naturally_while_recorder_sustains() {
-        let harp = render_note("harp", 3840, 66150);
-        let recorder = render_note("recorder", 3840, 66150);
-        let bell = render_note("bell", 3840, 66150);
-        let early_range = 2205..6615;
-        let late_range = 55125..59535;
+        let harp = render_note("harp", 3840, 144000);
+        let recorder = render_note("recorder", 3840, 144000);
+        let bell = render_note("bell", 3840, 144000);
+        let early_range = 4800..14400;
+        let late_range = 120000..129600;
 
         let harp_early = rms(&harp[early_range.clone()]);
         let bell_early = rms(&bell[early_range.clone()]);
@@ -1303,8 +1304,8 @@ mod tests {
 
     #[test]
     fn acoustic_percussion_is_deterministic_and_spectrally_distinct() {
-        let recorder = render_note("recorder", 960, 22050);
-        let recorder_repeat = render_note("recorder", 960, 22050);
+        let recorder = render_note("recorder", 960, 48000);
+        let recorder_repeat = render_note("recorder", 960, 48000);
         let frame_drum = render_percussion("frame-drum", "percussion-seed");
         let frame_drum_repeat = render_percussion("frame-drum", "percussion-seed");
         let tambourine = render_percussion("tambourine", "percussion-seed");
@@ -1367,7 +1368,7 @@ mod tests {
         })
         .expect("synth test score must validate");
         let ticks_per_second = score.ticks_per_second();
-        let mut synth = Synth::new(22050.0);
+        let mut synth = Synth::new(48000.0);
         for event in &score.section("cruise").unwrap().events {
             if event.start_tick() < 960 {
                 synth.trigger(event, ticks_per_second);

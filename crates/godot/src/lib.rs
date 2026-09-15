@@ -1,4 +1,4 @@
-use gamestruments_engine::{
+use gamestruments_engine::{master::{MasterChain, MasterConfig},
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
     generate_suspense_arrangement, AdaptiveTransport, AdventureInput, AdventureState,
     AdventureStyle, ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette,
@@ -49,6 +49,7 @@ struct GamestrumentsPlayer {
     transport: Option<AdaptiveTransport>,
     synth: Synth,
     form_audio: Option<FormAudio>,
+    master: Option<MasterChain>,
     ticks_per_second: f64,
     tick: u32,
     sample_rate: f32,
@@ -75,11 +76,12 @@ impl INode for GamestrumentsPlayer {
             syncopation: 0.7,
             score: None,
             transport: None,
-            synth: Synth::new(22050.0),
+            synth: Synth::new(48000.0),
             form_audio: None,
+            master: None,
             ticks_per_second: 2160.0,
             tick: 0,
-            sample_rate: 22050.0,
+            sample_rate: 48000.0,
             live_player: None,
             base,
         }
@@ -132,6 +134,9 @@ impl INode for GamestrumentsPlayer {
                 form_audio.fill(score, transport, &mut buffer);
                 self.tick = form_audio.tick(self.ticks_per_second);
             }
+            if let Some(master) = self.master.as_mut() {
+                master.process(&mut buffer);
+            }
             for sample in buffer {
                 playback.push_frame(Vector2::new(sample, sample));
             }
@@ -159,6 +164,9 @@ impl INode for GamestrumentsPlayer {
             }
         }
         self.synth.fill(&mut buffer);
+        if let Some(master) = self.master.as_mut() {
+            master.process(&mut buffer);
+        }
         for sample in buffer {
             playback.push_frame(Vector2::new(sample, sample));
         }
@@ -308,6 +316,7 @@ impl GamestrumentsPlayer {
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
         self.synth = Synth::new(self.sample_rate);
+        self.master = Some(MasterChain::new(self.sample_rate as u32, MasterConfig::default()));
         let initial = score.default_section.clone();
         match AdaptiveTransport::new(score.clone(), Some(&initial)) {
             Ok(transport) => {

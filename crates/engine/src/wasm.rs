@@ -34,8 +34,8 @@
 //! Returns: pointer to UTF-8 JSON bytes of PortableScore (schema camelCase as usual).
 //!
 //! For render_wav: pass *bytes* of a previously-produced score JSON as score_ptr/len,
-//! section e.g. "cruise", phrases e.g. 3. Hardcodes 22050 Hz mono 16-bit WAV to match
-//! native golden tests and render_wav(..., 22050).
+//! section e.g. "cruise", phrases e.g. 3. Hardcodes 48000 Hz mono 16-bit WAV to match
+//! native golden tests and render_wav(..., 48000).
 //!
 //! ## Ownership contract (critical for callers)
 //!
@@ -349,8 +349,8 @@ pub unsafe extern "C" fn gamestruments_render_wav(
         return unsafe { OUT_PTR };
     }
 
-    // Hardcode 22050 to match all golden/render tests and native parity_ref
-    let wav = render_wav(&score, section, phrases, 22050);
+    // Hardcode 48000 to match all golden/render tests and native parity_ref
+    let wav = render_wav(&score, section, phrases, 48000);
     write_output(&wav);
     unsafe { OUT_PTR }
 }

@@ -8,7 +8,7 @@
 
 ## Audio
 
-- The runtime synth renders mono at 22050 Hz and sends identical left/right frames through Godot. This favors a small, deterministic runtime over sample-library fidelity.
+- The runtime synth renders mono at 48000 Hz and sends identical left/right frames through Godot. This favors a small, deterministic runtime over sample-library fidelity.
 - HTML5 games use the WASM engine. Godot HTML5 export of this GDExtension is not supported. Preview: <https://gamestruments.gurisitos.games>.
 - No WAV, OGG, MP3, MIDI, stem export, sample import, mastering, effects rack, spatial audio, or middleware bridge ships.
 
