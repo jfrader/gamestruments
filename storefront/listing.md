@@ -4,22 +4,23 @@ This is the exact, repo-owned source for the Gamestruments itch.io listing.
 Any updates to the storefront must be approved here first.
 For official itch creator documentation, see: https://itch.io/docs/creators/
 
-The 0.1.2 copy below was published on 2026-09-13 (see
-`docs/releases/v0.1.2.md` for exact artifacts and the transaction record). The
-dated launch devlog at the end is historical and is not edited.
+The 0.1.3 copy below became current on 2026-09-15 (see `docs/releases/v0.1.3.md`
+for exact artifacts). It supersedes the 0.1.2 copy published on 2026-09-13
+(`docs/releases/v0.1.2.md`). The dated devlogs at the end are historical and are
+not edited.
 
 ## Metadata Fields
 
 - **Title:** Gamestruments — Adaptive Music for Godot 4
 - **Recommended Slug:** gamestruments-godot
-- **Short Description:** Procedural music that adapts to your game, generated inside Godot.
+- **Short Description:** Procedural music that adapts to your game, in Godot and HTML5.
 - **Classification:** Game Assets
 - **Kind:** Downloadable
 - **Pricing:** $12.99 minimum / Pay-what-you-want above (No launch discount)
 - **Language:** English
 - **Tags:** adaptive-music, audio, dynamic-music, godot, godot-4, music, procedural, racing, soundtrack, adventure
 - **Release Status:** Released
-- **Released version:** 0.1.2 (2026-09-13)
+- **Released version:** 0.1.3 (2026-09-15)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
 - **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Godot and HTML5, one engine). The source repository is private.
@@ -61,6 +62,7 @@ dated launch devlog at the end is historical and is not edited.
 ### What you get
 
 - A prebuilt Godot 4 addon for Linux x86_64, Windows x86_64, and macOS arm64/x86_64, with the GDExtension descriptor.
+- **Mastered output.** Every render passes one shared master stage — highpass, compressor, limiter — and measures around −14 LUFS, with true peak held below −1.7 dBTP so nothing reaches 0 dBFS. 48 kHz mono.
 - The full MIT-licensed Rust source, lockfile, and pinned toolchain.
 - Complete docs: quickstart, API reference, limitations, and troubleshooting.
 - Three native example scenes (playback, game signals, song form) with their own addon copy. No browser or network needed.
@@ -81,12 +83,15 @@ The complete public docs and one free example script ship in a separate free dow
 
 All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments.
 
-## Published downloads (live 2026-09-13)
+## Published downloads (live 2026-09-15)
 
-- Paid kit upload: `gamestruments-0.1.2-godot4.zip`, 9840405 bytes,
-  SHA-256 `1af99d4c0ef5f4cd6092ce6660acedfc946155bae172c2fc6c491a76ac1a20b2`,
+- Paid kit upload: `gamestruments-0.1.3-godot4.zip`, 9985245 bytes,
+  SHA-256 `4e519eeef592eca7e725f13d8075a5943b2f536ce2d8b67aa5005f72670d1fa3`,
   type **Source code**, no OS executable flags. Built by the release workflow
-  from tag `v0.1.2` (commit `7890af1a90ae51b894eba1dee9a4512b24af55c3`).
+  from tag `v0.1.3` (commit `b43f3f2634385980ba9e8d12fcc0c00d719f4fc3`). This
+  replaces `gamestruments-0.1.2-godot4.zip` (9840405 bytes, SHA-256
+  `1af99d4c0ef5f4cd6092ce6660acedfc946155bae172c2fc6c491a76ac1a20b2`), which is
+  removed from the page so buyers only get the current kit.
 - Free per-file demo download on the same page:
   `gamestruments-docs-and-example.zip`, 21983 bytes,
   SHA-256 `a39569b8ca72e376d39679624703783258df6255a08c7dafec3c3edc4732a8c4`,
@@ -120,6 +125,30 @@ kit. Music is approved; the recording is still outstanding.
 
 Keep native and browser footage clearly identified. Final cuts should follow
 the music rather than forcing a transition to fit these draft timings.
+
+## Update Devlog — v0.1.3 (2026-09-15)
+
+Published: (posted with this update)
+
+**Title:** v0.1.3 — Turned it up, and it never clips
+
+Gamestruments 0.1.3 is out. If you already own the kit, grab the latest download — updates are included, and this one is worth grabbing.
+
+**The library was too quiet.** Renders were landing around −32 LUFS: roughly 20 dB below any normal listening reference, with the level swinging 4.7 LU between styles. Next to a commercial track, the music sounded broken.
+
+**One master stage fixes it.** Every render now passes the same chain the Audio Lab uses — highpass, compressor, limiter — instead of hard-clipping the raw voice sum:
+
+- **−14.9 to −14.0 LUFS** across the render pack (was −35.8 to −31.1), a 0.9 LU spread between styles
+- True peak **−2.0 to −1.7 dBTP** against a −1.0 dBTP ceiling, with a hard clamp backstop on both the offline and realtime paths
+- Nothing reaches 0 dBFS
+
+**48 kHz.** The default render rate moves from 22050 Hz to 48000 Hz across the engine, the WASM build, the parity reference, the examples, and the Godot extension.
+
+**What it means for your project.** Same API and no code changes, but your mix balance will move. If you tuned effects or ambience against the old quiet renders, rebalance against the new level. Pocket Circuit is the first consumer and is regenerating its baked loops.
+
+Full release notes: https://github.com/jfrader/gamestruments/releases/tag/v0.1.3
+
+**Hear it:** [try the browser lab](https://gurisitosgames.itch.io/gamestruments-audio-lab-demo) or the [standalone preview](https://gamestruments.gurisitos.games). Then [get the kit](https://gurisitosgames.itch.io/gamestruments-godot).
 
 ## Update Devlog — v0.1.2 (2026-09-13)
 
