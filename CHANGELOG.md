@@ -52,6 +52,7 @@
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
 
 ### Fixed
+- Rendered music now plays at a normal listening level instead of sitting roughly 20 dB below it, and every render is limited so it never reaches 0 dBFS. Renders also move from 22 050 Hz to 48 000 Hz mono.
 - Native Suspense transitions now follow each arrangement's generated rules, matching the Audio Lab: the progress-based Disconnect at 0.8 applies only to Extended, not Original or Theme.
 - Racing Extended: removed the piercing octave lift from the new phases and rewrote Slipstream as a single call-and-response melody with rests and resolved phrase endings. Cooldown now eases into a closing phrase instead of mechanically dropping an octave. The six original musical sections remain unchanged.
 - Fixed occasional sharp drum-click spikes at certain tempos in the Audio Lab without reducing the overall mix level or changing the musical parts.
@@ -74,7 +75,7 @@
 
 ### Added
 
-- Added WASM facade (`crates/engine/src/wasm.rs` + Cargo cdylib), native parity reference (`crates/engine/examples/parity_ref.rs`), and Node harness (`tests/wasm-parity.mjs`) that proves byte-identical PortableScore JSON + 22050 Hz WAV output for fixed inputs between native and `wasm32-unknown-unknown` (plus cross-run determinism). Wired to CI rust job + `npm run parity:wasm`. (GURI-579)
+- Added WASM facade (`crates/engine/src/wasm.rs` + Cargo cdylib), native parity reference (`crates/engine/examples/parity_ref.rs`), and Node harness (`tests/wasm-parity.mjs`) that proves byte-identical PortableScore JSON + 48000 Hz WAV output for fixed inputs between native and `wasm32-unknown-unknown` (plus cross-run determinism). Wired to CI rust job + `npm run parity:wasm`. (GURI-579)
 - Added `tools/package_kit.sh`, archive verification, a self-contained demo, and an author QA runbook for deterministic buyer release candidates. The retired Linux-only rc1 is not a releasable artifact.
 - Added `kit/demo/kit_demo.tscn` (and supporting `kit_demo.gd`, generator script, `project.godot` for smoke, README) that a buyer can open to prove load-time `generate(seed)` and `set_race_state` adaptive arc (garage/grid/cruise/attack/final-lap/victory). The scene is produced by a checked-in `tools/generate_demo_scene.gd` (never hand-edited .tscn). Documents integration and headless verification steps.
 - Added `docs/kit-opportunity.md` (buyer, evidence, differentiator, scope,
@@ -136,7 +137,7 @@
   phrases through the Synth with lab-matching outer seam fade, emitting valid
   16-bit mono PCM RIFF WAV.
 - Added golden test for the signed-off racing catalog take (tiny-torque
-  level-004 "grid" section, 3 phrases @ 22050 Hz).
+  level-004 "grid" section, 3 phrases @ 48000 Hz).
 
 ### Fixed
 

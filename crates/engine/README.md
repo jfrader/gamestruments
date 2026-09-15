@@ -129,7 +129,7 @@ All values are from direct code reading (2026-09-04 session).
 
 **Summary**: ~65+ individual parameters/knobs audited. All core voice identity, envelopes, filters, modulations now match after fixes. 3 rows marked intentional (mono design + documented bus). No other unexplained diffs remain.
 
-The render golden test (catalog grid 3phrases @22050) metrics continue to pass post-fix (peak <0.9, variation, duration).
+The render golden test (catalog grid 3phrases @48000) metrics continue to pass post-fix (peak <0.9, variation, duration).
 
 ## Verification commands (run in this dir)
 ```bash

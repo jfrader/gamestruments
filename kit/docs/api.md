@@ -211,6 +211,6 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 - Suspense scores contain the base sections above; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
 - Adventure scores contain the eight sections above and default to `camp`; `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars, and `explore`, `town`, `combat`, and `victory` are 32.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
-- Audio is synthesized at 22050 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
+- Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 
 Internal Rust types, child-node names, score serialization, and exact bytes across different generator versions are not supported public API.

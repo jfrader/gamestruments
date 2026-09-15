@@ -105,6 +105,6 @@ fn produce(input_json: &str, section: &str, phrases: usize) -> (Vec<u8>, Vec<u8>
     // parse the score JSON then render (exactly mirrors WASM render path)
     let score_parsed: PortableScore =
         serde_json::from_slice(&score_bytes).expect("reparse score json");
-    let wav = render_wav(&score_parsed, section, phrases, 22050);
+    let wav = render_wav(&score_parsed, section, phrases, 48000);
     (score_bytes, wav)
 }

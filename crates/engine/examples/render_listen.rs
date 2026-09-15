@@ -22,7 +22,7 @@ fn main() {
     {
         let json = include_str!("../../../catalog/racing/tiny-torque-level-004/score.json");
         let score: PortableScore = serde_json::from_str(json).expect("catalog json");
-        let wav = render_wav(&score, "grid", 3, 22050);
+        let wav = render_wav(&score, "grid", 3, 48000);
         entries.push(("menu-grid.wav".into(), wav));
     }
 
@@ -39,7 +39,7 @@ fn main() {
             syncopation: 0.7,
         })
         .expect("race listening score must validate");
-        let wav = render_wav(&score, "cruise", 4, 22050);
+        let wav = render_wav(&score, "cruise", 4, 48000);
         entries.push(("race-cruise.wav".into(), wav));
     }
 
@@ -62,7 +62,7 @@ fn main() {
             syncopation: 0.7,
         })
         .expect("style listening score must validate");
-        let wav = render_wav(&score, "cruise", 2, 22050);
+        let wav = render_wav(&score, "cruise", 2, 48000);
         entries.push((format!("style-{}-cruise-x2.wav", name), wav));
     }
 
@@ -80,7 +80,7 @@ fn main() {
             syncopation: 0.7,
         })
         .expect("section listening score must validate");
-        let wav = render_wav(&score, sec, 2, 22050);
+        let wav = render_wav(&score, sec, 2, 48000);
         entries.push((format!("section-{}-funk-x2.wav", sec), wav));
     }
 
@@ -88,7 +88,7 @@ fn main() {
     let mut readme_lines = vec![
         "# Gamestruments Listening Pack (GURI-563)".to_string(),
         "".to_string(),
-        "All renders @ 22050 Hz, mono 16-bit WAV from the Rust engine (after voice match audit).".to_string(),
+        "All renders @ 48000 Hz, mono 16-bit WAV from the Rust engine (after voice match audit).".to_string(),
         "Use for ear-QA against the Audio Lab sign-off.".to_string(),
         "".to_string(),
         "## Files and Checklist".to_string(),
