@@ -47,13 +47,13 @@ Procedural music that adapts to your game, generated inside Godot.
 ### Gamestruments — Adaptive Music for Godot 4
 
 Procedural music that adapts to your game. Gamestruments generates
-deterministic, sample-free music inside Godot. Choose a recipe and seed,
+deterministic, sample-free music in Godot and in HTML5. Choose a recipe and seed,
 generate a score when your scene loads, then tell the player what's happening;
 it blends between musical sections on bar boundaries. No sample library,
 authoring tool, or cloud service is required.
 
 **Try it in the browser:** https://gamestruments.gurisitos.games
-(Audio Lab preview — browser audio layer; native mix can differ.)
+(Godot and HTML5, one engine.)
 
 **Full kit** (MIT source, docs, native examples):
 https://gurisitosgames.itch.io/gamestruments-godot
@@ -86,8 +86,8 @@ toolchain, quickstart/API/limitations docs, and three native example scenes.
 ### Requirements
 
 - Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Native playback is fully offline. The optional browser preview needs a
-  connection and uses a different Web Audio layer.
+- Also runs in HTML5. Native playback is fully offline. Hear it in the
+  browser before you install.
 - First-party code is MIT; gdext is MPL-2.0.
 
 ## Media plan

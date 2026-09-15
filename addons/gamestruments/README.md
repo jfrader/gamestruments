@@ -8,8 +8,8 @@ then tell it what's happening; it blends between sections on bar boundaries.
 This folder is the addon. Keep it intact so Godot can load the platform-matching
 binary from `bin/`.
 
-**Hear the range in a browser:** <https://gamestruments.gurisitos.games>
-(Audio Lab preview — browser audio layer; native mix can differ.)
+**Hear it in the browser:** <https://gamestruments.gurisitos.games>
+(Godot and HTML5, one engine.)
 
 **Full kit** (MIT source, docs, native examples): 
 <https://gurisitosgames.itch.io/gamestruments-godot>
