@@ -84,14 +84,15 @@ test("cancelled cues do not stop the current rhythm when their old fade timer ex
   await expect(page.locator("#cue-status")).toHaveText("Automatic progression");
   await expect(page.locator("#mood-name")).toHaveText("Scan");
   await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, secondsPerBar * 5 + 0.2, { timeout: 25000 });
-  const kicks = await page.evaluate((secondsPerBar) => window.scanAudio.kicks.map((hit) => (hit.time - window.scanAudio.firstStart!) / secondsPerBar).filter((bar) => bar < 5 - 0.001), secondsPerBar);
+    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, secondsPerBar * 10 + 0.2, { timeout: 40000 });
+  const kicks = await page.evaluate((secondsPerBar) => window.scanAudio.kicks.map((hit) => (hit.time - window.scanAudio.firstStart!) / secondsPerBar).filter((bar) => bar < 10 - 0.001), secondsPerBar);
   await page.locator("#start-audio").click();
-  // The pool's kit is seeded and phase-dependent, so continuity is the contract
-  // here, not one exact grid: the cancelled cue must not leave a hole.
-  expect(kicks.length).toBeGreaterThanOrEqual(6);
+  // The pool's kit is seeded and the pilot phases may drop the kit for a whole
+  // 4-bar block, so continuity is the contract here, not one exact grid: the
+  // cancelled cue must not leave the rhythm stopped.
+  expect(kicks.length).toBeGreaterThanOrEqual(4);
   for (let index = 1; index < kicks.length; index++) {
-    expect(kicks[index]! - kicks[index - 1]!).toBeLessThan(1.01);
+    expect(kicks[index]! - kicks[index - 1]!).toBeLessThan(4.5);
   }
   expect(errors).toEqual([]);
 });

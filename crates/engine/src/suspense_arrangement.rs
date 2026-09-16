@@ -128,6 +128,7 @@ fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, S
         normalize_pool_percussion(section, bar);
         tilt_high_register(section, root);
         strip_confirmed_glass_cell(section);
+        apply_development_arc(section, bar, seed);
         anchor_phase_edges(section, root, bar);
     }
     Ok(score)
@@ -148,6 +149,90 @@ fn strip_confirmed_glass_cell(section: &mut PortableSection) {
             MusicEvent::Note { voice, lane, .. } if voice == "glass" && lane == &cell_lane
         )
     });
+}
+
+/// The layer a phase's material belongs to, from the bed up to the colour.
+/// 0 bed · 1 tick · 2 rhythm · 3 melodic cell · 4 arp/upper colour.
+fn layer_rank(event: &MusicEvent) -> u8 {
+    match event {
+        MusicEvent::Note { lane, .. } => {
+            if lane.ends_with("-drone") || lane.ends_with("-drone-upper") {
+                0
+            } else if lane.ends_with("-pulse") {
+                1
+            } else if lane.ends_with("-cell") {
+                3
+            } else if lane.ends_with("-arp") {
+                4
+            } else {
+                2
+            }
+        }
+        MusicEvent::Percussion { .. } => 2,
+    }
+}
+
+/// The pilot musical pass (GURI-789): a phase stops holding one texture for its
+/// whole length. Layers enter one at a time, the phase takes a full-bar breath
+/// (drop to the bed+tick), re-enters on an impact, then releases. That is Mr.
+/// Robot's additive/subtractive layering plus Santaolalla's development by
+/// reduction, expressed only with the events the score already carries.
+///
+/// Applied to `verse` and `solo` first so the other 25 phases can be A/B'd
+/// untouched; the bed (rank 0) is never masked, so the drone stays continuous.
+fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
+    if !matches!(section.id.as_str(), "verse" | "solo") || bar == 0 {
+        return;
+    }
+    let bars = section.length_ticks / bar;
+    let blocks = (bars / 4) as usize;
+    // A two-block phase (8 bars) has no room for an arc.
+    if blocks < 3 {
+        return;
+    }
+    let id = section.id.clone();
+    // Exposure -> peak -> release; a long phase also takes a breath before its
+    // final peak, the way a build drops out and re-enters.
+    let schedule: Vec<u8> = if blocks >= 6 {
+        const ARC: [u8; 8] = [1, 2, 3, 4, 1, 4, 3, 2];
+        (0..blocks)
+            .map(|block| ARC[(block * ARC.len()) / blocks])
+            .collect()
+    } else {
+        const ARC: [u8; 4] = [1, 2, 4, 3];
+        (0..blocks)
+            .map(|block| ARC[(block * ARC.len()) / blocks])
+            .collect()
+    };
+    let block_ticks = bar * 4;
+    let last_bar_start = section.length_ticks.saturating_sub(bar);
+    section.events.retain(|event| {
+        let start = event.start_tick();
+        // The closing bar is the release: it stays intact so the phase still
+        // lands on the seam the shared arc expects.
+        if start >= last_bar_start {
+            return true;
+        }
+        let block = (start / block_ticks) as usize;
+        layer_rank(event) <= schedule.get(block).copied().unwrap_or(4)
+    });
+    // Every time the arc adds a layer, the block lands on an impact. Ids get
+    // their own prefix so they never collide with the kit's `:kit:dev:` onsets.
+    for block in 0..blocks.saturating_sub(1) {
+        if schedule[block + 1] > schedule[block] && schedule[block + 1] >= 3 {
+            let start = (block as u32 + 1) * block_ticks;
+            section.events.push(MusicEvent::Percussion {
+                id: format!("{id}:kit:arc:{block}"),
+                section: id.clone(),
+                lane: format!("{id}-kit"),
+                start_tick: start,
+                duration_ticks: (bar / 2).max(1),
+                velocity: 0.4,
+                voice: "air-impact".to_string(),
+            });
+        }
+    }
+    section.events.sort_by_key(MusicEvent::start_tick);
 }
 
 fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
@@ -770,6 +855,11 @@ fn phase_bars(spec: &PhaseSpec, seed: u32) -> u32 {
             }
         }
     };
+    // The two development-pilot phases need room for their arc to be judged; the
+    // other 25 keep the take-chosen length.
+    if matches!(spec.id, "verse" | "solo") {
+        return bars.max(16);
+    }
     bars.max(4)
 }
 
@@ -3730,6 +3820,41 @@ mod tests {
             signature(0),
             signature(verse_bars - 1),
             "verse first bar must not equal its last"
+        );
+    }
+
+    /// The development pilot: the two pilot phases stop holding one texture for
+    /// their whole length, and every other phase is left untouched.
+    #[test]
+    fn the_pilot_phases_develop_in_blocks() {
+        let score = build_pool_score(&input("dev-arc"), 0).unwrap();
+        let bar = score.bar_ticks();
+        let block_ticks = bar * 4;
+        let has_kit = |section: &PortableSection, block: u32| {
+            section.events.iter().any(|event| {
+                matches!(event, MusicEvent::Percussion { voice, start_tick, .. }
+                    if matches!(voice.as_str(), "kick" | "snare" | "tom" | "hat")
+                        && start_tick / block_ticks == block)
+            })
+        };
+
+        let verse = score.section("verse").unwrap();
+        let blocks = verse.length_ticks / block_ticks;
+        assert!(blocks >= 4, "the pilot verse needs room for its arc");
+        assert!(
+            !has_kit(verse, 0),
+            "the arc must expose verse without its drum kit"
+        );
+        assert!(
+            has_kit(verse, blocks - 1),
+            "the arc must release verse with its kit back in"
+        );
+
+        // A non-pilot phase keeps its kit from the first block.
+        let chorus = score.section("chorus").unwrap();
+        assert!(
+            has_kit(chorus, 0),
+            "the arc must not touch phases outside the pilot"
         );
     }
 }
