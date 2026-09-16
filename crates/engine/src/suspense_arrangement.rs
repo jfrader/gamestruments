@@ -1042,17 +1042,31 @@ fn bar_has_pitch_class(section: &PortableSection, start: u32, end: u32, pitch_cl
 /// Tilt the pool's own velocities so the mid/high material does not sit as loud
 /// as the low end. Delicate and local: it never touches the presets, the synth
 /// or the master chain, and the low pedal keeps exactly the level it had.
+/// Keep the pool under a register ceiling. A note that lands in the piercing
+/// register is folded down an octave (its pitch class, and so the harmony, is
+/// preserved) and then tilted, so a development figure can never squeal over
+/// the rest of the mix. The tilt also applies to anything above the pivot that
+/// is already under the ceiling.
 fn tilt_high_register(section: &mut PortableSection, root: u8) {
     let pivot = i32::from(root) + 10;
+    let ceiling = i32::from(root) + 14;
     for event in &mut section.events {
         if let MusicEvent::Note {
             pitch, velocity, ..
         } = event
         {
-            let above = i32::from(*pitch) - pivot;
+            let original = i32::from(*pitch);
+            let mut value = original;
+            while value > ceiling {
+                value -= 12;
+            }
+            *pitch = u8::try_from(value.max(0)).unwrap_or(*pitch);
+            // Tilt by the register the note wanted, not only where it landed,
+            // so a piercing note stays quieter after it folds down.
+            let above = (original - pivot).max(value - pivot);
             if above > 0 {
-                let steps = (above / 3).min(4) as f64;
-                *velocity *= 1.0 - 0.06 * steps;
+                let steps = (above / 2).min(6) as f64;
+                *velocity *= 1.0 - 0.08 * steps;
             }
         }
     }
