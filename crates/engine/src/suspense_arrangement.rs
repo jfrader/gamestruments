@@ -128,7 +128,6 @@ fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, S
         normalize_pool_percussion(section, bar);
         tilt_high_register(section, root);
         strip_confirmed_glass_cell(section);
-        apply_development_arc(section, bar, seed);
         anchor_phase_edges(section, root, bar);
     }
     Ok(score)
@@ -172,38 +171,48 @@ fn layer_rank(event: &MusicEvent) -> u8 {
     }
 }
 
-/// The pilot musical pass (GURI-789): a phase stops holding one texture for its
-/// whole length. Layers enter one at a time, the phase takes a full-bar breath
-/// (drop to the bed+tick), re-enters on an impact, then releases. That is Mr.
-/// Robot's additive/subtractive layering plus Santaolalla's development by
-/// reduction, expressed only with the events the score already carries.
+/// The musical pass (GURI-789): a phase stops holding one texture for its whole
+/// length. Layers enter and leave across its 4-bar blocks, a material entry
+/// lands on an impact, and the closing bar is left intact so the seam still
+/// resolves. That is Mr. Robot's additive/subtractive layering plus
+/// Santaolalla's development by reduction, expressed only with the events the
+/// score already carries.
 ///
-/// Applied to `verse` and `solo` first so the other 25 phases can be A/B'd
-/// untouched; the bed (rank 0) is never masked, so the drone stays continuous.
+/// The shape follows the phase's role, so the pool does not breathe in lockstep.
+/// The bed (rank 0) is never masked, so the drone stays continuous.
 fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
-    if !matches!(section.id.as_str(), "verse" | "solo") || bar == 0 {
+    if bar == 0 {
+        return;
+    }
+    let Some(spec) = phase_spec(&section.id) else {
+        return;
+    };
+    // A break or a wait state is the drop itself; it carries its own shape.
+    if is_break_or_wait(spec) {
         return;
     }
     let bars = section.length_ticks / bar;
     let blocks = (bars / 4) as usize;
-    // A two-block phase (8 bars) has no room for an arc.
-    if blocks < 3 {
+    if blocks < 2 {
         return;
     }
     let id = section.id.clone();
-    // Exposure -> peak -> release; a long phase also takes a breath before its
-    // final peak, the way a build drops out and re-enters.
-    let schedule: Vec<u8> = if blocks >= 6 {
-        const ARC: [u8; 8] = [1, 2, 3, 4, 1, 4, 3, 2];
-        (0..blocks)
-            .map(|block| ARC[(block * ARC.len()) / blocks])
-            .collect()
-    } else {
-        const ARC: [u8; 4] = [1, 2, 4, 3];
-        (0..blocks)
-            .map(|block| ARC[(block * ARC.len()) / blocks])
-            .collect()
+    // The shape follows the job the phase does, so the pool does not breathe in
+    // lockstep. Rank 1 is bed+tick only, 2 adds the kit, 3 the cell, 4 the arp.
+    //   Peak / Build  climb out of a sparse exposition to a full peak
+    //   Groove / Loop keep the kit and develop the melodic layers
+    //   Bridge        stays light in the middle
+    //   Intro / Outro grow out of the bed and settle back
+    let arc: &[u8] = match spec.role {
+        PhaseRole::Peak | PhaseRole::Build => &[1, 2, 3, 4],
+        PhaseRole::Groove | PhaseRole::Loop => &[2, 3, 4, 3],
+        PhaseRole::Bridge => &[3, 2, 3, 4],
+        PhaseRole::Intro | PhaseRole::Outro => &[1, 2, 4, 3],
+        PhaseRole::Break => return,
     };
+    let schedule: Vec<u8> = (0..blocks)
+        .map(|block| arc[(block * arc.len()) / blocks])
+        .collect();
     let block_ticks = bar * 4;
     let last_bar_start = section.length_ticks.saturating_sub(bar);
     section.events.retain(|event| {
@@ -239,6 +248,7 @@ fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore
     let mut score = build_pool_score(input, take)?;
     score.form = Some(all_phases_form());
     apply_surface_variation(&mut score, input, take);
+    apply_development_pass(&mut score, pool_seed(input, take))?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
@@ -257,6 +267,7 @@ fn generate_seeded(
     let mut score = build_pool_score(input, take)?;
     score.form = Some(compose(form_seed, intent));
     apply_surface_variation(&mut score, input, take);
+    apply_development_pass(&mut score, pool_seed(input, take))?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
@@ -519,6 +530,22 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
 }
 
 /// Re-time a composed score's surface without touching its harmony, timbre, or
+/// Run the development arc over the whole pool. It runs after the surface pass
+/// so the ghost hats land on the arranged material instead of refilling the
+/// blocks the arc just emptied, and the edge anchors are re-applied afterwards
+/// so a masked first/last bar still carries the shared root.
+fn apply_development_pass(score: &mut PortableScore, seed: u32) -> Result<(), String> {
+    let bar = score.bar_ticks();
+    let root = arrangement_root(score)?;
+    for section in &mut score.sections {
+        apply_development_arc(section, bar, seed);
+    }
+    for section in &mut score.sections {
+        anchor_phase_edges(section, root, bar);
+    }
+    Ok(())
+}
+
 /// identity: seeded hat drops, ghost hats, velocity jitter (figures now drive
 /// base rhythm onsets). The reel index (when non-zero) derives its own surface
 /// domain so each take gets a distinct surface too.
@@ -855,12 +882,9 @@ fn phase_bars(spec: &PhaseSpec, seed: u32) -> u32 {
             }
         }
     };
-    // The two development-pilot phases need room for their arc to be judged; the
-    // other 25 keep the take-chosen length.
-    if matches!(spec.id, "verse" | "solo") {
-        return bars.max(16);
-    }
-    bars.max(4)
+    // Every arc phase needs at least two 4-bar blocks for its development to be
+    // audible; breaks and waits (which returned above) keep their 1-2 bars.
+    bars.max(8)
 }
 
 /// Rebuild a base section so it develops across its bars: the low drone is
@@ -3826,8 +3850,10 @@ mod tests {
     /// The development pilot: the two pilot phases stop holding one texture for
     /// their whole length, and every other phase is left untouched.
     #[test]
-    fn the_pilot_phases_develop_in_blocks() {
-        let score = build_pool_score(&input("dev-arc"), 0).unwrap();
+    fn the_pool_phases_develop_in_blocks() {
+        let score =
+            generate_suspense_arrangement(&input("dev-arc"), SuspenseArrangement::AllPhases)
+                .unwrap();
         let bar = score.bar_ticks();
         let block_ticks = bar * 4;
         let has_kit = |section: &PortableSection, block: u32| {
@@ -3837,24 +3863,37 @@ mod tests {
                         && start_tick / block_ticks == block)
             })
         };
+        let has_melody = |section: &PortableSection, block: u32| {
+            section.events.iter().any(|event| {
+                matches!(event, MusicEvent::Note { lane, start_tick, .. }
+                    if (lane.ends_with("-cell") || lane.ends_with("-arp"))
+                        && start_tick / block_ticks == block)
+            })
+        };
 
+        // A groove keeps its kit and develops its melodic layers.
         let verse = score.section("verse").unwrap();
         let blocks = verse.length_ticks / block_ticks;
-        assert!(blocks >= 4, "the pilot verse needs room for its arc");
+        assert!(blocks >= 2, "the arc needs two 4-bar blocks");
+        assert!(has_kit(verse, 0), "a groove keeps its kit from the start");
         assert!(
-            !has_kit(verse, 0),
-            "the arc must expose verse without its drum kit"
+            !has_melody(verse, 0),
+            "the groove must expose without its melodic layer"
         );
         assert!(
-            has_kit(verse, blocks - 1),
-            "the arc must release verse with its kit back in"
+            (1..blocks).any(|block| has_melody(verse, block)),
+            "the groove must develop its melodic layer"
         );
 
-        // A non-pilot phase keeps its kit from the first block.
+        // A peak climbs out of a sparse exposition.
         let chorus = score.section("chorus").unwrap();
         assert!(
-            has_kit(chorus, 0),
-            "the arc must not touch phases outside the pilot"
+            !has_kit(chorus, 0),
+            "a peak must build from a block without the kit"
         );
+
+        // A break is the drop itself: it is left alone and stays short.
+        let brk = score.section("break").unwrap();
+        assert!(brk.length_ticks / bar <= 4, "a break stays short");
     }
 }
