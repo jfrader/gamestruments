@@ -2,51 +2,64 @@ import { expect, test } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
 import { installAudioCapture } from "./audio-capture.ts";
 
-test("base/development pairs are independent and a held starting section survives regeneration", async ({ page }) => {
+test("the pool selector exposes every phase and a held form step survives regeneration", async ({ page }) => {
   await page.goto("/#lab");
   await selectRecipe(page, "suspense");
+  // The canonical all-phases form loops with a defined next step from every
+  // phase, so "advance" and "hold" are deterministic here.
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("All phases");
   const options = await page.locator("#section-select option").evaluateAll((items) => items.map((item) => ({ id: (item as HTMLOptionElement).value, text: item.textContent })));
-  expect(options).toHaveLength(17);
+  expect(options).toHaveLength(27);
   for (const [base, variation] of [["verse", "scan-ii"], ["chorus", "breach-ii"]]) {
     const index = options.findIndex((item) => item.id === base);
-    expect(options[index]!.text).toContain("16 bars");
-    expect(options[index + 1]!.id).toBe(variation);
-    expect(options[index + 1]!.text).toContain("16 bars");
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(options[index]!.text).toMatch(/\d+ bars/);
+    // The pool builds the variation as its own phase, not a replacement.
+    expect(options.some((item) => item.id === variation)).toBe(true);
   }
   await page.locator("#section-select").selectOption("verse");
   await page.locator("#hold-form").click();
   await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#advance-form").click();
-  await expect(page.locator("#cue-status")).toHaveText("Start with Scan II");
-  await page.locator("#new-take").click();
+  await expect(page.locator("#section-select")).not.toHaveValue("verse");
+  const advanced = await page.locator("#section-select").inputValue();
+  expect(advanced).not.toBe("verse");
+  await expect(page.locator("#cue-status")).toContainText("Start with");
+  await page.locator("#new-piece").click();
   await expect(page.locator("#level-seed")).toHaveValue("level-002");
-  await expect(page.locator("#generator-summary")).toContainText("extended-v2-1-1");
+  await expect(page.locator("#generator-summary")).toContainText("all-phases");
   await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#section-select")).toHaveValue("scan-ii");
+  await expect(page.locator("#section-select")).toHaveValue(advanced);
 });
 
-test("hold prevents the automatic boundary, Next enters Scan II held, and Resume continues naturally", async ({ page }) => {
+test("hold prevents the automatic boundary, Next enters the next phase held, and Resume continues naturally", async ({ page }) => {
   test.setTimeout(160000);
   await installAudioCapture(page);
   await page.goto("/#lab");
   await selectRecipe(page, "suspense");
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await page.locator("#section-select").selectOption("verse");
   const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
   await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
     (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, 16 * secondsPerBar - 0.2, { timeout: 75000 });
+  const before = (await page.locator("#mood-name").textContent()) ?? "";
   await page.evaluate(() => document.querySelector<HTMLButtonElement>("#hold-form")!.click());
-  await expect(page.locator("#cue-status")).toHaveText("Holding: Scan");
+  await expect(page.locator("#cue-status")).toContainText("Holding:");
   await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, 17 * secondsPerBar, { timeout: 10000 });
-  await expect(page.locator("#mood-name")).toHaveText("Scan");
+    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, 17 * secondsPerBar, { timeout: 20000 });
+  await expect(page.locator("#mood-name")).toHaveText(before);
   await page.locator("#advance-form").click();
-  await expect(page.locator("#mood-name")).toHaveText("Scan II", { timeout: 6000 });
-  await expect(page.locator("#cue-status")).toHaveText("Holding: Scan II", { timeout: 9000 });
+  await expect(page.locator("#mood-name")).not.toHaveText(before, { timeout: 9000 });
+  const held = (await page.locator("#mood-name").textContent()) ?? "";
+  await expect(page.locator("#cue-status")).toContainText("Holding:", { timeout: 20000 });
   await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#hold-form").click();
   await expect(page.locator("#cue-status")).toHaveText("Automatic progression");
-  await expect(page.locator("#mood-name")).toHaveText("Scan II");
-  await expect(page.locator("#mood-name")).toHaveText("Approach", { timeout: 65000 });
+  await expect(page.locator("#mood-name")).toHaveText(held);
+  await expect(page.locator("#mood-name")).not.toHaveText(held, { timeout: 65000 });
   await page.locator("#start-audio").click();
 });

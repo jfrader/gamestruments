@@ -18,12 +18,13 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   With autoplay off, both recipes stay state-driven and byte-for-byte unchanged.
   The adapter attaches a form only when autoplay is explicitly true; otherwise
   the wrapper output keeps its empty (`None`) form.
-- Suspense additionally accepts `"arrangement": "original" | "extended" | "theme"`.
-  The lab defaults to Extended; omitting the field in the engine API retains
-  Original byte-for-byte for compatibility. `suspense_arrangement` builds 16-bar Extended main beds with
-  subdued felt/dusk textures, a continuous rhythm and occasional seeded tom
-  details. The existing `generate_suspense` API remains Original. Godot exposes the same `arrangement`
-  property, defaulting to `"original"`.
+- Suspense accepts `"arrangement": "all-phases" | "seeded"`. The phase pool is
+  its only authority; the retired `original`/`extended`/`theme` names still
+  parse but resolve to the seeded default, as does an omitted or empty field.
+  `all-phases` plays every pool phase once in canonical order; `seeded` lets the
+  composer choose the count, roles, order and loop point from the seed.
+  Godot exposes the same `arrangement` property, defaulting to the recipe's own
+  choice (Racing → original, Suspense → seeded).
 - Racing additionally accepts `"arrangement": "original" | "extended"`. `original`
   (the default, and returned for an omitted or empty field) is the approved
   six-section race, byte-for-byte unchanged. `extended` keeps those six sections
@@ -38,17 +39,20 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   dispatches Original to `generate_racing` and Extended to `generate_extended`;
   the autoplay adapter is applied afterward and leaves Original untouched.
   Native and WASM default to Original; the Audio Lab defaults Racing to Extended.
+- The pool has 27 phases: the fourteen base sections, `scan-ii` (Scan II) and
+  `breach-ii` (Breach II) developed past their base phase, `anomaly`, and ten
+  pool-authored phases (`half-time`, `sparse`, `sub-groove`, `syncopated`,
+  `drive`, `drum-break`, `false-stop`, `filter-break`, `harmonic-bridge`,
+  `step-up-bridge`).
 - Scan → Scan II and Breach → Breach II are independent, cueable 16-bar sections.
-  The II variations begin with Anomaly-inspired textures, then develop response
-  phrases instead of repeating eight bars twice. Scan and Breach retain their
-  approved base material; Anomaly itself is unchanged.
-- Extended retains the original motifs, with four-bar melodic spotlights only in
-  Decrypt and Other Hall, and maintains its kick/hat grid through normal sections. Full drum dropouts are limited to
-  the opening, Break, Disconnect and Closed Session.
-- Seeded reverse-cymbal swells and air impacts are optional (at most one random
-  effect per ordinary section, in addition to Breach II's quiet closing swell).
-  Anomaly is a single eight-bar detour after Decrypt: staggered
-  tonal pulses over the same drum grid, with an authored swell/impact pair.
+  Their response phrases come from the set's shared harmonic arc, so a join is a
+  cadence rather than a reset.
+- The pool's drum kits are seeded: most phases play the pool groove, and a seeded
+  mode borrows the full kick–snare–kick–snare backbeat. Fills and licks vary per
+  seed and per reel take.
+- Seeded reverse-cymbal swells and air impacts stay optional; the transition pass
+  picks a fill, riser, lift or tail — plus a landing — for every join, so no two
+  unions are treated identically. Layers stay under the approved mix ceilings.
 - Exposed to the lab via WASM: `gamestruments_score_json` (see `crates/engine/src/wasm.rs`).
 - The Rust engine is the single generation authority; there is no TypeScript generator pipeline. `@gamestruments/runtime` is the Lab's TS transport only.
 
@@ -61,11 +65,10 @@ Transport / section selection + transition planning:
 - For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).
 - The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) mirror the behavior for Godot/games.
 - This small state machine duplication is accepted and documented. Native/WASM parity covers Rust score identity and synthesis; transport implementations have their own behavior tests.
-- Extended declares `form.origin = "transitionStart"`: the incoming fade counts
-  toward the section duration instead of replaying two opening bars before
-  the next handoff. Original omits this field to retain its checkpoint
-  behavior. The Godot aligned-form renderer uses a sample-count clock,
-  overlapping tonal synths and a single percussion owner through the fade.
+- Pool forms leave `form.origin` unset: the incoming fade overlaps the previous
+  section instead of replaying two opening bars before the next handoff. The
+  Godot aligned-form renderer uses a sample-count clock, overlapping tonal synths
+  and a single percussion owner through the fade.
 
 Game-controlled form (after `generate` succeeds):
 - `cue_section(id)` cues a musical section on a bar boundary. Existing blends
@@ -97,16 +100,16 @@ The lab exposes the same behavior for every score that has a form — Suspense,
 and Racing/Adventure when autoplay is on — with a "Hold auto tour" / "Resume
 auto tour" toggle, a "Next" button that names the upcoming section, and
 per-section Cue buttons. These are playback controls, not additional
-arrangements or gameplay phase names. Suspense's Original, Extended, and Theme
-remain its only arrangement choices; autoplay is a separate opt-in flag.
+  arrangements or gameplay phase names. The pool is Suspense's only authority;
+  the retired Original/Extended/Theme presets are gone, and autoplay is a
+  separate opt-in flag.
 
 The lab's arrangement selector is per recipe and remembered separately: Racing
-offers Original/Extended (default Extended), Suspense offers
-Original/Extended/Theme (default Extended), so switching a Suspense Theme never
-leaks into Racing. Adventure hides the arrangement control. When a Racing score
-switches from Extended to Original while a new phase (`ignition`, `slipstream`,
-`redline`, or `cooldown`) is playing, the lab falls back to `garage`, since
-Original has no such section.
+offers Original/Extended (default Extended), Suspense offers All phases/Seeded
+(default Seeded), so a Suspense pool switch never leaks into Racing. Adventure
+hides the arrangement control. When a Racing score switches from Extended to
+Original while a new phase (`ignition`, `slipstream`, `redline`, or `cooldown`)
+is playing, the lab falls back to `garage`, since Original has no such section.
 
 Audio synthesis / sound stage:
 - The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.

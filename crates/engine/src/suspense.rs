@@ -648,7 +648,6 @@ pub(crate) struct TraceSpec {
     focus_min: Option<f64>,
     progress_min: Option<f64>,
     phase: Option<&'static str>,
-    base: bool,
 }
 
 const TRACE_SPECS: &[TraceSpec] = &[
@@ -660,7 +659,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: None,
         progress_min: None,
         phase: Some("complete"),
-        base: true,
     },
     TraceSpec {
         section: "coda",
@@ -670,7 +668,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: None,
         progress_min: Some(0.95),
         phase: None,
-        base: true,
     },
     TraceSpec {
         section: "outro",
@@ -680,7 +677,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: None,
         progress_min: None,
         phase: Some("extract"),
-        base: true,
     },
     TraceSpec {
         section: "bridge",
@@ -690,7 +686,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: None,
         progress_min: None,
         phase: None,
-        base: true,
     },
     TraceSpec {
         section: "bridge",
@@ -700,17 +695,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: None,
         progress_min: None,
         phase: Some("alert"),
-        base: true,
-    },
-    TraceSpec {
-        section: "outro",
-        hold: true,
-        priority: 65,
-        heat_min: None,
-        focus_min: None,
-        progress_min: Some(0.8),
-        phase: None,
-        base: false,
     },
     TraceSpec {
         section: "chorus",
@@ -720,7 +704,6 @@ const TRACE_SPECS: &[TraceSpec] = &[
         focus_min: Some(0.7),
         progress_min: None,
         phase: Some("exploit"),
-        base: true,
     },
 ];
 
@@ -803,10 +786,12 @@ fn trace_rule_matches(rule: &AdaptiveRule, state: &TraceState) -> bool {
     true
 }
 
-fn rules_from_specs(include_extended: bool) -> Vec<AdaptiveRule> {
+/// The Suspense trace rules serialized into every generated score (base rules
+/// only now that the Extended preset — and its `progress >= 0.8 -> outro` rule
+/// — is retired).
+fn default_rules() -> Vec<AdaptiveRule> {
     TRACE_SPECS
         .iter()
-        .filter(|spec| include_extended || spec.base)
         .map(|spec| {
             let mut numeric = serde_json::Map::new();
             if let Some(min) = spec.heat_min {
@@ -832,14 +817,6 @@ fn rules_from_specs(include_extended: bool) -> Vec<AdaptiveRule> {
             }
         })
         .collect()
-}
-
-fn default_rules() -> Vec<AdaptiveRule> {
-    rules_from_specs(false)
-}
-
-pub(crate) fn extended_trace_rules() -> Vec<AdaptiveRule> {
-    rules_from_specs(true)
 }
 
 fn song_form() -> SongForm {

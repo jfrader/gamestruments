@@ -49,13 +49,13 @@ Any missing, skipped, or failing job blocks the candidate.
 Run each scene fresh (close and reopen it) and check:
 
 - **01 Playback:** a non-empty `project_secret`, `recipe = "suspense"`,
-  `style = "terminal"`, `arrangement = "theme"`, and a successful `generate()`.
+  `style = "terminal"`, `arrangement = "seeded"`, and a successful `generate()`.
   Music plays; restart replays from the first section; the section readout updates.
 - **02 Game signals:** the racing scene generates, then the controls produce
   `set_race_state` requests for grid, cruise, attack, final lap, and victory.
   Confirm requested vs currently playing are reported separately and that changes
   wait for bar boundaries.
-- **03 Song form:** the suspense scene generates with `arrangement = "extended"`,
+- **03 Song form:** the suspense scene generates with `arrangement = "all-phases"`,
   `set_trace_state` drives sections, `cue_section("chorus")` is accepted, and
   `set_form_hold`, `advance_form`, and `is_form_held` behave as documented.
   Holding the form must not stop sound.
@@ -73,8 +73,8 @@ Then, on every supported OS family:
 - In a fresh-project API integration, try supported voice overrides such as
   `pluck`, `organ`, `supersaw`, and `chip`.
 - In the fresh-project API integration, generate the Suspense recipe
-  (`recipe = "suspense"`, styles terminal/cipher/noir, arrangements original and
-  extended), drive `set_trace_state` through boot/scan/exploit/alert/extract/
+  (`recipe = "suspense"`, styles terminal/cipher/noir, arrangements all-phases and
+  seeded), drive `set_trace_state` through boot/scan/exploit/alert/extract/
   complete, and confirm sections change on bar boundaries without errors.
 - Confirm Suspense form controls: `set_form_hold`, `advance_form`,
   `is_form_held`, `cue_section`, and `get_current_section` behave as documented;
@@ -118,10 +118,10 @@ still fail the harness. This does not replace native-platform listening checks.
 Confirm directly from the extracted archive and examples:
 
 - [ ] Product is described as Gamestruments with named recipes (Racing, Suspense, Adventure), not as a racing-only engine.
-- [ ] `kit/examples/` is described as three independent integration references (PlaybackTheme, GameSignalsOriginalRacing, SongFormSuspenseExtended), not a playable game or a four-circuit race series.
+- [ ] `kit/examples/` is described as three independent integration references (PlaybackSeededPool, GameSignalsOriginalRacing, SongFormAllPhases), not a playable game or a four-circuit race series.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
 - [ ] `generate(seed) -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, `set_adventure_state(...) -> bool`, and the form methods match runtime behavior.
-- [ ] The six Racing sections (original) and the fourteen base Suspense sections are reachable; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`. Adventure's eight sections are reachable via `set_adventure_state`.
+- [ ] The six Racing sections (original) and the 27-phase Suspense pool are reachable via `all-phases` and `seeded`. Adventure's eight sections are reachable via `set_adventure_state`.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
 - [ ] The exact-runtime sound is accurately represented by proposed storefront media.
 - [ ] Complete Rust rebuild inputs, changelog, licenses, and third-party notices are present.

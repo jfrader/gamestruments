@@ -16,9 +16,13 @@ import {
   ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
-import { LAB_RECIPES, labRecipeInfo, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
+import { phaseName } from "./phase-names.ts";
+import { APPLY_PIECE, NEW_PIECE, NEW_VERSION, PIECE_AXIS, versionLabel } from "./lab-copy.ts";
+import { LAB_RECIPES, labRecipeInfo, nextVersionNumber, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
+
+const RACING_PHASES = ["garage", "grid", "race", "finish"] as const;
 
 function getPartRings(): HTMLElement[] {
   // Re-query each frame: N=6 is trivial; survives DOM clones in tests (e.g. firefox compat)
@@ -58,22 +62,16 @@ const RACING_ARRANGEMENTS: readonly ArrangementOption[] = [
 
 const SUSPENSE_ARRANGEMENTS: readonly ArrangementOption[] = [
   {
-    id: "original",
-    label: "Original",
-    description: "Approved 8-bar version",
-    summary: "The current sound, unchanged.",
+    id: "all-phases",
+    label: "All phases",
+    description: "Whole song · canonical order",
+    summary: "Every pool phase once, intro to coda, looping back to the first groove.",
   },
   {
-    id: "extended",
-    label: "Extended",
-    description: "Atmosphere · continuous groove",
-    summary: "Scan → Scan II and Breach → Breach II are independent 16-bar sections. Hold, cue or advance them to match gameplay. Anomaly stays intact.",
-  },
-  {
-    id: "theme",
-    label: "Theme",
-    description: "Build · drop · hold",
-    summary: "Title-bed form: hats enter early, layers stay, and the drop holds instead of resetting.",
+    id: "seeded",
+    label: "Seeded",
+    description: "Composed from the phase pool",
+    summary: "A composer picks the count, roles, order, and loop point from the seed; step the seed reel to hear the variety.",
   },
 ];
 
@@ -225,22 +223,14 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
     : adventure
       ? ADVENTURE_SCENE_SECTIONS
       : null;
-  const phases: readonly (readonly [string, string])[] = phaseSections === null
-    ? ([
-        ["garage", "Garage"],
-        ["grid", "Grid"],
-        ["race", "Race"],
-        ["finish", "Finish"],
-      ] as const)
-    : Object.keys(phaseSections).map((id) => [
-        id,
-        id.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
-      ] as const);
-  const buttons = phases.map(([id, label]) => {
+  const phaseIds: readonly string[] = phaseSections === null
+    ? RACING_PHASES
+    : Object.keys(phaseSections);
+  const buttons = phaseIds.map((id) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.phase = id;
-    button.textContent = label;
+    button.textContent = phaseName(id);
     button.setAttribute("aria-pressed", String(id === phase));
     return button;
   });
@@ -299,7 +289,6 @@ export function renderScoreIdentity(
   score: PortableScore,
   levelSeed: string,
   generationTraits: NormalizedMusicTraits,
-  comparisonBaseSeed: string,
   soloMode: SoloMode,
   recipe: LabRecipe,
   presets: readonly { style: string; label?: string }[],
@@ -315,7 +304,7 @@ export function renderScoreIdentity(
   document.title = `Gamestruments Audio Lab — ${score.title}`;
   renderScoreButtons(activeExperimentIndex, presets, recipe);
   createSectionRows(score);
-  renderAuditionControls(levelSeed, comparisonBaseSeed, soloMode);
+  renderAuditionControls(levelSeed, soloMode);
 }
 
 export function renderGenerationControls(
@@ -341,6 +330,7 @@ export function renderGenerationControls(
       generationTraits.syncopation,
     ],
   ] as const;
+  renderAxisCopy();
   elements.levelSeed.value = levelSeed;
   elements.variationValue.value = levelSeed;
   for (const [input, output, value] of traitControls) {
@@ -358,16 +348,27 @@ export function announceAudition(message: string): void {
   elements.auditionStatus.value = message;
 }
 
-export function renderAuditionControls(levelSeed: string, comparisonBaseSeed: string, soloMode: SoloMode): void {
+/** The two axis words and their control labels come from `lab-copy.ts`, so the
+ *  Lab never names the same axis two ways. */
+function renderAxisCopy(): void {
+  elements.pieceLabel.textContent = PIECE_AXIS;
+  elements.applySeed.textContent = APPLY_PIECE;
+  elements.newPieceLabel.textContent = NEW_PIECE;
+  elements.newVersionLabel.textContent = NEW_VERSION;
+}
+
+export function renderAuditionControls(levelSeed: string, soloMode: SoloMode): void {
   for (const button of elements.soloButtons.querySelectorAll<HTMLButtonElement>(
     "button[data-solo]",
   )) {
     button.setAttribute("aria-pressed", String(button.dataset.solo === soloMode));
   }
-  const showingComparison = levelSeed !== comparisonBaseSeed;
-  const nextSeed = showingComparison ? comparisonBaseSeed : `${comparisonBaseSeed}:B`;
-  elements.compareTake.setAttribute("aria-pressed", String(showingComparison));
-  elements.compareValue.value = `${showingComparison ? "Play A" : "Play B"} ${nextSeed}`;
+  renderVersion(levelSeed);
+}
+
+/** The version readout: `level-001 · Versión 3`. */
+export function renderVersion(levelSeed: string): void {
+  elements.versionValue.value = versionLabel(levelSeed, nextVersionNumber());
 }
 
 export function setStartButton(running: boolean): void {

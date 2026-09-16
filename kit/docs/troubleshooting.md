@@ -33,7 +33,7 @@ of crashing when the class is unavailable.
 Read the accompanying Godot error. Common causes are:
 
 - Empty `project_secret`.
-- Unsupported `style` (empty string for Racing), arrangement, or voice name.
+- Unsupported `style` (empty string for Racing), arrangement, or voice name. Suspense arrangements are `all-phases` or `seeded`; Racing's are `original` or `extended`.
 - Non-finite trait input can fail (Racing may reject later; Suspense and Adventure fall back 0.5 for non-finite).
 - An internal score invariant failed. This should not occur with an unmodified release; report the complete error and input tuple.
 

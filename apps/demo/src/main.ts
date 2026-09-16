@@ -1,6 +1,9 @@
 import "./style.css";
 import type { SectionId } from "../../../packages/runtime/src/index.ts";
 import type { SoloMode } from "./audio-engine.ts";
+import { phaseName } from "./phase-names.ts";
+import { versionLabel } from "./lab-copy.ts";
+import { isRacingArrangement, isSuspenseArrangement, type Arrangement } from "./wasm-engine.ts";
 import {
   elements,
   setStartButton,
@@ -16,7 +19,6 @@ import {
   activeExperimentIndex,
   pendingCue,
   audio,
-  comparisonBaseSeed,
   generationTraits,
   generationPreset,
   initializeLab,
@@ -44,7 +46,9 @@ import {
   requestExperiment,
   nextLevelSeed,
   traitsFromControls,
-  setComparisonBaseSeed,
+  resetVersion,
+  advanceVersion,
+  nextVersionNumber,
   setPhase,
   setLabRecipe,
   isLabRecipe,
@@ -55,13 +59,20 @@ import {
 
 await initializeLab();
 
+/** The one status line per arrangement, for both recipes. */
+const ARRANGEMENT_READY: Record<Arrangement, string> = {
+  original: "Original arrangement restored",
+  extended: "Extended arrangement restored",
+  "all-phases": "All phases arrangement ready",
+  seeded: "Seeded arrangement ready",
+};
+
 function renderCurrentScore(): void {
   renderScoreIdentity(
     activeExperimentIndex,
     score,
     levelSeed,
     generationTraits,
-    comparisonBaseSeed,
     soloMode,
     labRecipe,
     currentPresets(),
@@ -100,10 +111,10 @@ function animate(): void {
 function renderRuntimeSignal(): void {
   elements.runtimeSignal.textContent =
     labRecipe === "suspense"
-      ? `recipe: suspense  /  tracePhase: ${phase}`
+      ? `recipe: suspense  /  tracePhase: ${phaseName(phase)}`
       : labRecipe === "adventure"
-        ? `recipe: adventure  /  areaPhase: ${phase}`
-        : `racePhase: ${phase}`;
+        ? `recipe: adventure  /  areaPhase: ${phaseName(phase)}`
+        : `racePhase: ${phaseName(phase)}`;
 }
 
 renderGenreIndex();
@@ -171,16 +182,16 @@ elements.scoreButtons.addEventListener("click", (event) => {
   applyGenerationRequest(requestExperiment(index, levelSeed, {
     ...generationPreset(index).traits,
   }), () => {
-    setComparisonBaseSeed(levelSeed);
+    resetVersion();
     renderCurrentScore();
     announceAudition(`Generated ${score.title}`);
   });
 });
 
-elements.newTake.addEventListener("click", () => {
-  const nextSeed = nextLevelSeed(comparisonBaseSeed);
+elements.newPiece.addEventListener("click", () => {
+  const nextSeed = nextLevelSeed(levelSeed);
   applyGenerationRequest(requestExperiment(activeExperimentIndex, nextSeed), () => {
-    setComparisonBaseSeed(levelSeed);
+    resetVersion();
     renderCurrentScore();
     announceAudition(`Generated level ${levelSeed}`);
   });
@@ -194,7 +205,7 @@ elements.applySeed.addEventListener("click", () => {
     return;
   }
   applyGenerationRequest(requestExperiment(activeExperimentIndex, requestedSeed), () => {
-    setComparisonBaseSeed(levelSeed);
+    resetVersion();
     renderCurrentScore();
     announceAudition(`Generated level ${levelSeed}`);
   });
@@ -217,7 +228,7 @@ for (const [input, output] of [
   });
   input.addEventListener("change", () => {
     applyGenerationRequest(requestExperiment(activeExperimentIndex, levelSeed, traitsFromControls()), () => {
-      setComparisonBaseSeed(levelSeed);
+      resetVersion();
       renderCurrentScore();
       announceAudition(`Regenerated ${score.title}`);
     });
@@ -233,18 +244,29 @@ elements.soloButtons.addEventListener("click", (event) => {
     return;
   }
   setSoloMode(requested);
-  renderAuditionControls(levelSeed, comparisonBaseSeed, soloMode);
+  renderAuditionControls(levelSeed, soloMode);
   announceAudition(soloMode === "full" ? "Full mix on" : `${soloMode} solo on`);
 });
 
-elements.compareTake.addEventListener("click", () => {
-  const nextSeed =
-    levelSeed === comparisonBaseSeed ? `${comparisonBaseSeed}:B` : comparisonBaseSeed;
-  applyGenerationRequest(requestExperiment(activeExperimentIndex, nextSeed), () => {
-    renderCurrentScore();
-    const side = levelSeed === comparisonBaseSeed ? "A" : "B";
-    announceAudition(`Playing seed ${side}: ${levelSeed}`);
-  });
+elements.newVersion.addEventListener("click", () => {
+  const take = nextVersionNumber();
+  applyGenerationRequest(
+    requestExperiment(
+      activeExperimentIndex,
+      levelSeed,
+      generationTraits,
+      currentArrangement(),
+      take,
+    ),
+    async () => {
+      advanceVersion();
+      renderCurrentScore();
+      if (!audio.running) {
+        setStartButton(await toggleEngine());
+      }
+      announceAudition(versionLabel(levelSeed, take));
+    },
+  );
 });
 
 elements.sectionList.addEventListener("click", (event) => {
@@ -272,7 +294,7 @@ elements.genreIndex.addEventListener("click", (event) => {
   applyGenerationRequest(requestExperiment(index, levelSeed, {
     ...generationPreset(index).traits,
   }), () => {
-    setComparisonBaseSeed(levelSeed);
+    resetVersion();
     renderCurrentScore();
     window.location.hash = "lab";
     announceAudition(`Generated ${score.title}`);
@@ -282,17 +304,23 @@ elements.genreIndex.addEventListener("click", (event) => {
 elements.arrangementButtons.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-arrangement]");
   const value = button?.dataset.arrangement;
-  if (value !== "original" && value !== "extended" && value !== "theme") {
+  if (value === undefined) {
     return;
   }
-  applyGenerationRequest(setArrangement(value), () => {
+  // Every recipe's own arrangements are clickable; a stale value from another
+  // recipe (e.g. a Suspense pool id left in a Racing container) is ignored.
+  if (labRecipe === "racing" && !isRacingArrangement(value as Arrangement)) {
+    return;
+  }
+  if (labRecipe === "suspense" && !isSuspenseArrangement(value as Arrangement)) {
+    return;
+  }
+  if (labRecipe === "adventure") {
+    return;
+  }
+  applyGenerationRequest(setArrangement(value as Arrangement), () => {
     renderCurrentScore();
-    const messages = {
-      original: "Original arrangement restored",
-      extended: "Extended arrangement ready",
-      theme: "Theme arrangement ready",
-    };
-    announceAudition(messages[value]);
+    announceAudition(ARRANGEMENT_READY[value as Arrangement]);
   });
 });
 

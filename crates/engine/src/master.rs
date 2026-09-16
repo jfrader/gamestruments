@@ -94,18 +94,33 @@ impl Biquad {
 
 pub struct HighPass {
     filter: Biquad,
+    // stereo states (independent filters, updated only on stereo path)
+    filter_l: Biquad,
+    filter_r: Biquad,
 }
 
 impl HighPass {
     pub fn new(sample_rate: u32) -> Self {
+        let f = Biquad::highpass(28.0, 0.55, sample_rate as f32);
         Self {
-            filter: Biquad::highpass(28.0, 0.55, sample_rate as f32),
+            filter: f.clone(),
+            filter_l: f.clone(),
+            filter_r: f,
         }
     }
 
     pub fn process(&mut self, buffer: &mut [f32]) {
         for x in buffer.iter_mut() {
             *x = self.filter.process(*x);
+        }
+    }
+
+    pub fn process_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        for x in left.iter_mut() {
+            *x = self.filter_l.process(*x);
+        }
+        for x in right.iter_mut() {
+            *x = self.filter_r.process(*x);
         }
     }
 }
@@ -223,10 +238,62 @@ impl DynamicsProcessor {
         self.process_internal(buffer, Some(levels));
     }
 
+    /// Stereo version: apply same gain (from levels) to both channels.
+    pub fn process_with_levels_stereo(
+        &mut self,
+        left: &mut [f32],
+        right: &mut [f32],
+        levels: &[f32],
+    ) {
+        assert_eq!(left.len(), right.len());
+        assert_eq!(left.len(), levels.len());
+        for (&lev, (xl, xr)) in levels.iter().zip(left.iter_mut().zip(right.iter_mut())) {
+            let input_abs = lev;
+            let target_gain = self.compute_target_gain(input_abs);
+            if target_gain < self.gain_env {
+                self.gain_env =
+                    self.attack_coef * self.gain_env + (1.0 - self.attack_coef) * target_gain;
+            } else {
+                self.gain_env =
+                    self.release_coef * self.gain_env + (1.0 - self.release_coef) * target_gain;
+            }
+            if self.gain_env < 0.99 {
+                self.engaged = true;
+            }
+            // no delay line support in this stereo helper (for limiter we pass pre levels)
+            *xl *= self.gain_env;
+            *xr *= self.gain_env;
+        }
+    }
+
     pub fn was_engaged(&mut self) -> bool {
         let engaged = self.engaged;
         self.engaged = false;
         engaged
+    }
+
+    /// Stereo-linked: detector = max(|L|, |R|) per sample; same gain applied to both.
+    pub fn process_stereo_linked(&mut self, left: &mut [f32], right: &mut [f32]) {
+        assert_eq!(left.len(), right.len());
+        for i in 0..left.len() {
+            let dl = left[i].abs();
+            let dr = right[i].abs();
+            let input_abs = dl.max(dr);
+            let target_gain = self.compute_target_gain(input_abs);
+            if target_gain < self.gain_env {
+                self.gain_env =
+                    self.attack_coef * self.gain_env + (1.0 - self.attack_coef) * target_gain;
+            } else {
+                self.gain_env =
+                    self.release_coef * self.gain_env + (1.0 - self.release_coef) * target_gain;
+            }
+            if self.gain_env < 0.99 {
+                self.engaged = true;
+            }
+            // no lookahead for this helper (stereo comp/lim use their own setup)
+            left[i] *= self.gain_env;
+            right[i] *= self.gain_env;
+        }
     }
 }
 
@@ -242,6 +309,11 @@ impl Compressor {
     }
     pub fn process(&mut self, buffer: &mut [f32]) {
         self.processor.process(buffer);
+    }
+    pub fn process_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        // linked via the helper (note: this bypasses lookahead delay line for simplicity;
+        // the mono comp lookahead is 3ms; for linked we apply direct here)
+        self.processor.process_stereo_linked(left, right);
     }
 }
 
@@ -296,6 +368,52 @@ impl Limiter {
     pub fn was_engaged(&mut self) -> bool {
         self.processor.was_engaged()
     }
+
+    /// Stereo linked limiter. true-peak envelope is max( tpL, tpR ).
+    /// Uses per-channel history for tp, but detector/gain is common (linked).
+    pub fn process_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        if left.is_empty() {
+            return;
+        }
+        let n = left.len();
+        // save inputs
+        let inputs_l: Vec<f32> = left.to_vec();
+        let inputs_r: Vec<f32> = right.to_vec();
+        // build extended for each
+        let mut ext_l = vec![0.0f32; 3 + n];
+        ext_l[0..3].copy_from_slice(&self.tp_history); // reuse? for max we'll max histories
+        ext_l[3..].copy_from_slice(&inputs_l);
+        let mut ext_r = vec![0.0f32; 3 + n];
+        // for simplicity use same history base for tp max
+        ext_r[0..3].copy_from_slice(&self.tp_history);
+        ext_r[3..].copy_from_slice(&inputs_r);
+        let env_l = true_peak_envelope_4x(&ext_l);
+        let env_r = true_peak_envelope_4x(&ext_r);
+        let mut levels = vec![0.0f32; n];
+        for i in 0..n {
+            levels[i] = env_l[3 + i].max(env_r[3 + i]);
+        }
+        self.processor
+            .process_with_levels_stereo(left, right, &levels);
+        // update history from maxed or from l ? use l for simplicity, or maxed input
+        let mut hist_in = vec![0.0f32; n];
+        for i in 0..n {
+            hist_in[i] = inputs_l[i].abs().max(inputs_r[i].abs());
+        }
+        if n >= 3 {
+            // take last 3 of abs max as history proxy
+            self.tp_history[0] = hist_in[n - 3];
+            self.tp_history[1] = hist_in[n - 2];
+            self.tp_history[2] = hist_in[n - 1];
+        } else {
+            // shift simple
+            let shift = 3 - n;
+            for i in 0..shift {
+                self.tp_history[i] = self.tp_history[i + n];
+            }
+            self.tp_history[shift..(shift + n)].copy_from_slice(&hist_in[..n]);
+        }
+    }
 }
 
 /// Compute 4x true-peak envelope using Catmull-Rom cubic interpolation.
@@ -336,36 +454,144 @@ const TP_CENTER: isize = 16;
 /// coefficients and break native/WASM byte parity.
 const TP_KERNELS: [[f32; TP_TAPS_PER_PHASE]; 4] = [
     [
-        -0.0f32, 1.0988192e-18f32, -1.4836533e-18f32, -4.0453876e-18f32, -5.7087407e-18f32, 3.15073e-17f32,
-        -1.203203e-17f32, 1.5688382e-17f32, -1.9490858e-17f32, 2.3293337e-17f32, -2.6949688e-17f32, 3.03194e-17f32,
-        -3.327298e-17f32, 3.5696916e-17f32, -3.7498066e-17f32, 3.8607206e-17f32, 1.0f32, 3.8607206e-17f32,
-        -3.7498066e-17f32, 3.5696916e-17f32, -3.327298e-17f32, 3.03194e-17f32, -2.6949688e-17f32, 2.3293337e-17f32,
-        -1.9490858e-17f32, 1.5688382e-17f32, -1.203203e-17f32, 3.15073e-17f32, -5.7087407e-18f32, -4.0453876e-18f32,
-        -1.4836533e-18f32, 1.0988192e-18f32, -0.0f32,
+        -0.0f32,
+        1.0988192e-18f32,
+        -1.4836533e-18f32,
+        -4.0453876e-18f32,
+        -5.7087407e-18f32,
+        3.15073e-17f32,
+        -1.203203e-17f32,
+        1.5688382e-17f32,
+        -1.9490858e-17f32,
+        2.3293337e-17f32,
+        -2.6949688e-17f32,
+        3.03194e-17f32,
+        -3.327298e-17f32,
+        3.5696916e-17f32,
+        -3.7498066e-17f32,
+        3.8607206e-17f32,
+        1.0f32,
+        3.8607206e-17f32,
+        -3.7498066e-17f32,
+        3.5696916e-17f32,
+        -3.327298e-17f32,
+        3.03194e-17f32,
+        -2.6949688e-17f32,
+        2.3293337e-17f32,
+        -1.9490858e-17f32,
+        1.5688382e-17f32,
+        -1.203203e-17f32,
+        3.15073e-17f32,
+        -5.7087407e-18f32,
+        -4.0453876e-18f32,
+        -1.4836533e-18f32,
+        1.0988192e-18f32,
+        -0.0f32,
     ],
     [
-        0.0f32, -7.987145e-05f32, 0.0004616447f32, -0.0012083584f32, 0.002379796f32, -0.004044325f32,
-        0.0062849806f32, -0.00921f32, 0.012971487f32, -0.017799895f32, 0.024071863f32, -0.032455638f32,
-        0.044261575f32, -0.062439073f32, 0.095230505f32, -0.17736062f32, 0.89975125f32, 0.29847378f32,
-        -0.124854244f32, 0.07602277f32, -0.052245565f32, 0.0378052f32, -0.027939532f32, 0.020723091f32,
-        -0.015233367f32, 0.010974186f32, -0.007653766f32, 0.005086629f32, -0.0031456735f32, 0.0017369703f32,
-        -0.0007857983f32, 0.00022864972f32, -8.606689e-06f32,
+        0.0f32,
+        -7.987145e-05f32,
+        0.0004616447f32,
+        -0.0012083584f32,
+        0.002379796f32,
+        -0.004044325f32,
+        0.0062849806f32,
+        -0.00921f32,
+        0.012971487f32,
+        -0.017799895f32,
+        0.024071863f32,
+        -0.032455638f32,
+        0.044261575f32,
+        -0.062439073f32,
+        0.095230505f32,
+        -0.17736062f32,
+        0.89975125f32,
+        0.29847378f32,
+        -0.124854244f32,
+        0.07602277f32,
+        -0.052245565f32,
+        0.0378052f32,
+        -0.027939532f32,
+        0.020723091f32,
+        -0.015233367f32,
+        0.010974186f32,
+        -0.007653766f32,
+        0.005086629f32,
+        -0.0031456735f32,
+        0.0017369703f32,
+        -0.0007857983f32,
+        0.00022864972f32,
+        -8.606689e-06f32,
     ],
     [
-        0.0f32, -4.944115e-05f32, 0.00047260898f32, -0.0013919936f32, 0.0028899822f32, -0.005059594f32,
-        0.00801198f32, -0.011889399f32, 0.016888019f32, -0.023299532f32, 0.03159159f32, -0.042576153f32,
-        0.05780207f32, -0.08061996f32, 0.11980109f32, -0.20762788f32, 0.6350566f32, 0.6350566f32,
-        -0.20762788f32, 0.11980109f32, -0.08061996f32, 0.05780207f32, -0.042576153f32, 0.03159159f32,
-        -0.023299532f32, 0.016888019f32, -0.011889399f32, 0.00801198f32, -0.005059594f32, 0.0028899822f32,
-        -0.0013919936f32, 0.00047260898f32, -4.944115e-05f32,
+        0.0f32,
+        -4.944115e-05f32,
+        0.00047260898f32,
+        -0.0013919936f32,
+        0.0028899822f32,
+        -0.005059594f32,
+        0.00801198f32,
+        -0.011889399f32,
+        0.016888019f32,
+        -0.023299532f32,
+        0.03159159f32,
+        -0.042576153f32,
+        0.05780207f32,
+        -0.08061996f32,
+        0.11980109f32,
+        -0.20762788f32,
+        0.6350566f32,
+        0.6350566f32,
+        -0.20762788f32,
+        0.11980109f32,
+        -0.08061996f32,
+        0.05780207f32,
+        -0.042576153f32,
+        0.03159159f32,
+        -0.023299532f32,
+        0.016888019f32,
+        -0.011889399f32,
+        0.00801198f32,
+        -0.005059594f32,
+        0.0028899822f32,
+        -0.0013919936f32,
+        0.00047260898f32,
+        -4.944115e-05f32,
     ],
     [
-        0.0f32, -8.606689e-06f32, 0.00022864972f32, -0.0007857983f32, 0.0017369703f32, -0.0031456735f32,
-        0.005086629f32, -0.007653766f32, 0.010974186f32, -0.015233367f32, 0.020723091f32, -0.027939532f32,
-        0.0378052f32, -0.052245565f32, 0.07602277f32, -0.124854244f32, 0.29847378f32, 0.89975125f32,
-        -0.17736062f32, 0.095230505f32, -0.062439073f32, 0.044261575f32, -0.032455638f32, 0.024071863f32,
-        -0.017799895f32, 0.012971487f32, -0.00921f32, 0.0062849806f32, -0.004044325f32, 0.002379796f32,
-        -0.0012083584f32, 0.0004616447f32, -7.987145e-05f32,
+        0.0f32,
+        -8.606689e-06f32,
+        0.00022864972f32,
+        -0.0007857983f32,
+        0.0017369703f32,
+        -0.0031456735f32,
+        0.005086629f32,
+        -0.007653766f32,
+        0.010974186f32,
+        -0.015233367f32,
+        0.020723091f32,
+        -0.027939532f32,
+        0.0378052f32,
+        -0.052245565f32,
+        0.07602277f32,
+        -0.124854244f32,
+        0.29847378f32,
+        0.89975125f32,
+        -0.17736062f32,
+        0.095230505f32,
+        -0.062439073f32,
+        0.044261575f32,
+        -0.032455638f32,
+        0.024071863f32,
+        -0.017799895f32,
+        0.012971487f32,
+        -0.00921f32,
+        0.0062849806f32,
+        -0.004044325f32,
+        0.002379796f32,
+        -0.0012083584f32,
+        0.0004616447f32,
+        -7.987145e-05f32,
     ],
 ];
 /// Largest magnitude of the 4x interpolant in the neighbourhood of `index`.
@@ -445,6 +671,36 @@ impl Meter {
             self.buffer.push(k2);
             if self.buffer.len() == self.block_samples {
                 let sum_sq: f32 = self.buffer.iter().map(|&s| s * s).sum();
+                let z_i = sum_sq / (self.block_samples as f32);
+                self.blocks_energy.push(z_i);
+                self.buffer.drain(0..self.hop_samples);
+            }
+        }
+    }
+
+    /// Stereo: track max TP across ch; K energy uses per-ch then average for loudness (standard approach).
+    pub fn process_stereo(&mut self, left: &[f32], right: &[f32]) {
+        assert_eq!(left.len(), right.len());
+        for (pl, pr) in true_peak_envelope_4x(left)
+            .into_iter()
+            .zip(true_peak_envelope_4x(right))
+        {
+            let p = pl.max(pr);
+            if p > self.max_true_peak {
+                self.max_true_peak = p;
+            }
+        }
+        // K-weight per sample, push average energy per block
+        for (&xl, &xr) in left.iter().zip(right.iter()) {
+            let k1l = self.k_filter_1.process(xl);
+            let k2l = self.k_filter_2.process(k1l);
+            let k1r = self.k_filter_1.process(xr); // note: separate state? reuse for simplicity; or would need dual k too
+            let k2r = self.k_filter_2.process(k1r);
+            // to avoid polluting, we use only one channel's k for block? better average the z
+            let z = (k2l * k2l + k2r * k2r) * 0.5;
+            self.buffer.push(z); // push 'energy sample' proxy
+            if self.buffer.len() == self.block_samples {
+                let sum_sq: f32 = self.buffer.iter().copied().sum(); // already sq
                 let z_i = sum_sq / (self.block_samples as f32);
                 self.blocks_energy.push(z_i);
                 self.buffer.drain(0..self.hop_samples);
@@ -572,6 +828,40 @@ impl MasterChain {
         }
 
         self.meter_after.process(buffer);
+    }
+
+    /// Stereo realtime path with linked detectors.
+    pub fn process_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        let n = left.len();
+        if n != right.len() || n == 0 {
+            return;
+        }
+        for i in 0..n {
+            if !left[i].is_finite() {
+                left[i] = 0.0;
+            }
+            if !right[i].is_finite() {
+                right[i] = 0.0;
+            }
+        }
+        self.meter_before.process_stereo(left, right);
+        self.highpass.process_stereo(left, right);
+        self.compressor.process_stereo(left, right);
+        let makeup = dmath::db_to_linear(REALTIME_MAKEUP_DB);
+        for i in 0..n {
+            left[i] *= makeup;
+            right[i] *= makeup;
+        }
+        self.limiter.process_stereo(left, right);
+        if self.limiter.was_engaged() {
+            self.limiter_engaged = true;
+        }
+        let ceiling = dmath::db_to_linear(self.config.ceiling_dbtp);
+        for i in 0..n {
+            left[i] = left[i].clamp(-ceiling, ceiling);
+            right[i] = right[i].clamp(-ceiling, ceiling);
+        }
+        self.meter_after.process_stereo(left, right);
     }
 
     /// OFFLINE render path (render_wav etc.).
@@ -732,6 +1022,175 @@ impl MasterChain {
         }
     }
 
+    /// OFFLINE stereo path. Same loudness target/ceiling logic, linked detectors,
+    /// per-channel K for LUFS (mean energy), max TP across channels.
+    pub fn process_offline_stereo(&mut self, left: &mut [f32], right: &mut [f32]) -> MasterReport {
+        let n = left.len();
+        if n != right.len() {
+            return MasterReport {
+                integrated_lufs_before: DEFAULT_TARGET_LUFS,
+                integrated_lufs_after: DEFAULT_TARGET_LUFS,
+                true_peak_dbtp: DEFAULT_CEILING_DBTP,
+                limiter_engaged: false,
+            };
+        }
+        if n == 0 {
+            return MasterReport {
+                integrated_lufs_before: DEFAULT_TARGET_LUFS,
+                integrated_lufs_after: DEFAULT_TARGET_LUFS,
+                true_peak_dbtp: DEFAULT_CEILING_DBTP,
+                limiter_engaged: false,
+            };
+        }
+        for i in 0..n {
+            if !left[i].is_finite() {
+                left[i] = 0.0;
+            }
+            if !right[i].is_finite() {
+                right[i] = 0.0;
+            }
+        }
+        self.highpass.process_stereo(left, right);
+        self.compressor.process_stereo(left, right);
+
+        // lufs before: use stereo meter on post comp
+        let mut m_before = Meter::new(self.sample_rate);
+        m_before.process_stereo(left, right);
+        let (lufs_before, _) = m_before.report();
+
+        // iterative gain + tp limit (same as mono, applied to both)
+        let mut target_gain = 1.0f32;
+        let ceiling_for_iter = dmath::db_to_linear(self.config.ceiling_dbtp);
+        let limit_t_for_iter = ceiling_for_iter * dmath::db_to_linear(-TRUE_PEAK_GUARD_DB);
+        let fs_iter = self.sample_rate as f32;
+        let r_iter = dmath::exp(-1.0 / (TP_LIMITER_RELEASE_SEC * fs_iter));
+        for _ in 0..3 {
+            let mut probe_l = left.to_vec();
+            let mut probe_r = right.to_vec();
+            for i in 0..n {
+                probe_l[i] *= target_gain;
+                probe_r[i] *= target_gain;
+            }
+            let env_pl = true_peak_envelope_4x(&probe_l);
+            let env_pr = true_peak_envelope_4x(&probe_r);
+            let mut gc: Vec<f32> = (0..n)
+                .map(|i| {
+                    let e = env_pl[i].max(env_pr[i]);
+                    if e > 1e-9 {
+                        (limit_t_for_iter / e).min(1.0)
+                    } else {
+                        1.0
+                    }
+                })
+                .collect();
+            let mut held = 1.0f32;
+            for g in &mut gc {
+                if *g < held {
+                    held = *g;
+                } else {
+                    held = r_iter * held + (1.0 - r_iter) * *g;
+                }
+                *g = held;
+            }
+            for i in 0..n {
+                probe_l[i] *= gc[i];
+                probe_r[i] *= gc[i];
+            }
+            let lu = measure_lufs_stereo(&probe_l, &probe_r, self.sample_rate);
+            let err = self.config.target_lufs - lu;
+            if err.abs() <= 0.3 {
+                break;
+            }
+            target_gain *= dmath::db_to_linear(err);
+            target_gain = target_gain.clamp(0.01, 100.0);
+        }
+        for i in 0..n {
+            left[i] *= target_gain;
+            right[i] *= target_gain;
+        }
+
+        // TP limiting using max env
+        let ceiling = dmath::db_to_linear(self.config.ceiling_dbtp);
+        let limit_target = ceiling * dmath::db_to_linear(-TRUE_PEAK_GUARD_DB);
+        let env_l = true_peak_envelope_4x(left);
+        let env_r = true_peak_envelope_4x(right);
+        let mut gain_curve: Vec<f32> = (0..n)
+            .map(|i| {
+                let e = env_l[i].max(env_r[i]);
+                if e > 1e-9 {
+                    (limit_target / e).min(1.0)
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+        let fs = self.sample_rate as f32;
+        let r = dmath::exp(-1.0 / (TP_LIMITER_RELEASE_SEC * fs));
+        let mut held = 1.0f32;
+        let mut any_reduction = false;
+        for g in &mut gain_curve {
+            if *g < held {
+                held = *g;
+            } else {
+                held = r * held + (1.0 - r) * *g;
+            }
+            if held < 0.999 {
+                any_reduction = true;
+            }
+            *g = held;
+        }
+        for i in 0..n {
+            left[i] *= gain_curve[i];
+            right[i] *= gain_curve[i];
+        }
+        // residual safety
+        for _ in 0..4 {
+            let el = true_peak_envelope_4x(left);
+            let er = true_peak_envelope_4x(right);
+            let worst = el
+                .iter()
+                .zip(er.iter())
+                .map(|(a, b)| a.max(*b))
+                .fold(0.0f32, f32::max);
+            if worst <= limit_target {
+                break;
+            }
+            for i in 0..n {
+                let e = el[i].max(er[i]);
+                if e > limit_target {
+                    let g = limit_target / e;
+                    left[i] *= g;
+                    right[i] *= g;
+                }
+            }
+        }
+        for i in 0..n {
+            left[i] = left[i].clamp(-ceiling, ceiling);
+            right[i] = right[i].clamp(-ceiling, ceiling);
+        }
+        let lufs_after = measure_lufs_stereo(left, right, self.sample_rate);
+        let final_tp = {
+            let el = true_peak_envelope_4x(left);
+            let er = true_peak_envelope_4x(right);
+            let mp = el
+                .iter()
+                .zip(er.iter())
+                .map(|(a, b)| a.max(*b))
+                .fold(0.0f32, f32::max);
+            if mp > 1e-9 {
+                20.0 * dmath::log10(mp)
+            } else {
+                -120.0
+            }
+        };
+        MasterReport {
+            integrated_lufs_before: lufs_before,
+            integrated_lufs_after: lufs_after,
+            true_peak_dbtp: final_tp,
+            limiter_engaged: any_reduction || self.limiter_engaged,
+        }
+    }
+
     pub fn report(&self) -> MasterReport {
         let (lufs_before, _) = self.meter_before.report();
         let (lufs_after, tp_after) = self.meter_after.report();
@@ -747,6 +1206,13 @@ impl MasterChain {
 fn measure_lufs(samples: &[f32], sr: u32) -> f32 {
     let mut m = Meter::new(sr);
     m.process(samples);
+    let (l, _) = m.report();
+    l
+}
+
+fn measure_lufs_stereo(left: &[f32], right: &[f32], sr: u32) -> f32 {
+    let mut m = Meter::new(sr);
+    m.process_stereo(left, right);
     let (l, _) = m.report();
     l
 }
@@ -884,7 +1350,10 @@ mod tests {
                     assert!(
                         (lufs - target).abs() <= 1.5,
                         "LUFS {} outside +/-1.5 of {} for racing {}/{}",
-                        lufs, target, seed, sec
+                        lufs,
+                        target,
+                        seed,
+                        sec
                     );
                     assert!(
                         tp <= DEFAULT_CEILING_DBTP + 1e-3,

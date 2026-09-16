@@ -54,8 +54,8 @@ test("central setup selectors work and do not overlap the player", async ({ brow
     await selectRecipe(page, "suspense");
     await page.locator('.stage-setup button[data-experiment-index="2"]').click();
     await expect(page.locator("#score-title")).toContainText("Noir");
-    await page.locator('.stage-setup button[data-arrangement="original"]').click();
-    await expect(page.locator('#arrangement-buttons button[data-arrangement="original"]')).toHaveAttribute("aria-pressed", "true");
+    await page.locator('.stage-setup button[data-arrangement="all-phases"]').click();
+    await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
     const bounds = await page.evaluate(() => {
       const rect = (selector: string) => {
         const box = document.querySelector(selector)!.getBoundingClientRect();

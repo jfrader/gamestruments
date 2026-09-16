@@ -55,14 +55,14 @@
           <fieldset class="generator-control">
             <legend>Procedural Level</legend>
             <label class="seed-control" for="level-seed">
-              <span>Level seed</span>
+              <span id="piece-label"></span>
               <span class="seed-editor">
                 <input id="level-seed" type="text" value="level-001" autocomplete="off" spellcheck="false" />
-                <button id="apply-seed" type="button">Generate</button>
+                <button id="apply-seed" type="button"></button>
               </span>
             </label>
-            <button class="new-take" id="new-take" type="button">
-              Next seed
+            <button class="piece-control" id="new-piece" type="button">
+              <span id="new-piece-label"></span>
               <output id="variation-value">level-001</output>
             </button>
             <div class="generation-traits">
@@ -96,8 +96,8 @@
             <div class="phase-control" role="group" aria-label="Game phase">
               <div class="phase-buttons" id="phase-buttons">
                 <button type="button" data-phase="garage" aria-pressed="true">Garage</button>
-                <button type="button" data-phase="grid" aria-pressed="false">Grid</button>
-                <button type="button" data-phase="race" aria-pressed="false">Race</button>
+                <button type="button" data-phase="grid" aria-pressed="false">Starting Grid</button>
+                <button type="button" data-phase="race" aria-pressed="false">Race Flow</button>
                 <button type="button" data-phase="finish" aria-pressed="false">Finish</button>
               </div>
             </div>
@@ -131,9 +131,9 @@
               <button type="button" data-solo="melody" aria-pressed="false">Melody</button>
               <button type="button" data-solo="rhythm" aria-pressed="false">Rhythm</button>
             </div>
-            <button class="compare-take" id="compare-take" type="button" aria-pressed="false">
-              Compare seed
-              <output id="compare-value">Play B</output>
+            <button class="version-control" id="new-version" type="button">
+              <span id="new-version-label"></span>
+              <output id="version-value"></output>
             </button>
             <output class="sr-only" id="audition-status" aria-live="polite"></output>
           </fieldset>
@@ -182,9 +182,8 @@
             <fieldset class="sound-world-control" id="arrangement-control" hidden>
               <legend>Arrangement</legend>
               <div class="score-buttons" id="arrangement-buttons">
-                <button type="button" data-arrangement="original" aria-pressed="false"><strong>Original</strong><span>Approved 8-bar version</span></button>
-                <button type="button" data-arrangement="extended" aria-pressed="true"><strong>Extended</strong><span>Atmosphere · continuous groove</span></button>
-                <button type="button" data-arrangement="theme" aria-pressed="false"><strong>Theme</strong><span>Build · drop · hold</span></button>
+                <button type="button" data-arrangement="all-phases" aria-pressed="false"><strong>All phases</strong><span>Whole song · canonical order</span></button>
+                <button type="button" data-arrangement="seeded" aria-pressed="true"><strong>Seeded</strong><span>Composed from the phase pool</span></button>
               </div>
             </fieldset>
             <output class="generator-summary" id="arrangement-summary">Longer development with a continuous rhythm.</output>
@@ -234,7 +233,7 @@
           <ol class="section-list" id="section-list"></ol>
           <div class="signal-note">
             <span>Runtime signal</span>
-            <code id="runtime-signal">racePhase: garage</code>
+            <code id="runtime-signal">racePhase: Garage</code>
           </div>
         </aside>
       </section>

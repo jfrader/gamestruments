@@ -18,7 +18,7 @@ piece you need.
 
 | Example | Scene | Script | What it shows |
 |---|---|---|---|
-| 01 Playback | `01-playback/playback.tscn` | `01-playback/playback.gd` | Generate and play a Suspense Theme title bed; check `generate()`; restart; live section readout. |
+| 01 Playback | `01-playback/playback.tscn` | `01-playback/playback.gd` | Generate and play a Suspense title bed from the seeded pool; check `generate()`; restart; live section readout. |
 | 02 Game signals | `02-game-signals/game_signals.tscn` | `02-game-signals/game_signals.gd` | Map simulated race events to `set_race_state` requests (original Racing); see requested vs currently playing. |
 | 03 Song form | `03-song-form/song_form.tscn` | `03-song-form/song_form.gd` | Suspense form: `set_trace_state`, `cue_section`, `set_form_hold`, `advance_form`. |
 

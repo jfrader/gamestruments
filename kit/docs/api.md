@@ -18,7 +18,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`.
-- `arrangement: String` — per recipe: Racing `original` (default) or `extended` (ten-section race; the Audio Lab's Racing default); Suspense `original` (default), `extended` (gameplay form with every phase), or `theme` (additive title bed: hats enter early, layers stay, drop holds). Ignored by Adventure.
+- `arrangement: String` — per recipe: Racing `original` (default) or `extended` (ten-section race; the Audio Lab's Racing default); Suspense `all-phases` (the whole 27-phase pool in canonical order) or `seeded` (default — the composer picks count, roles, order and loop point from the seed). Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`. Ignored by Adventure.
 - `autoplay: bool` — Racing and Adventure only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, generation is state-driven. The Audio Lab uses `true` for Racing/Adventure. Ignored by Suspense.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; unset (or default init) is `funk`. Explicit empty string for Racing fails generation.
@@ -125,14 +125,12 @@ Native selection priority:
 | `phase = "extract"` | `outro` (Disconnect) | Holds |
 | `heat >= 0.75` | `bridge` (Complication) | One-shot cue |
 | `phase = "alert"` | `bridge` (Complication) | One-shot cue |
-| `progress >= 0.8` | `outro` (Disconnect) | Holds |
 | `phase = "exploit"` and `focus >= 0.7` | `chorus` (Breach) | One-shot cue |
 
-- `progress >= 0.8` selects `outro` (Extended only; Original/Theme require explicit `extract`/`complete` or `progress >= 0.95`).
 - If no rule matches, the current section continues unchanged.
 - One-shot cues re-arm once the form leaves the cued section, so a later `alert` can fire again.
 - Holds stay until another state changes them.
-- `original` is the default form; `extended` adds longer beds; `theme` is a title bed that builds into a looping drop.
+- `all-phases` is the canonical tour of the pool; `seeded` composes the form from the seed. There is no per-preset rule set any more.
 - Changes commit on a bar boundary.
 
 ## Form Controls
@@ -158,26 +156,43 @@ var section: String = player.get_current_section()
 
 ## Suspense Sections
 
-Base sections (`original`):
+The Suspense pool has 27 phases. `all-phases` plays every one once in this
+canonical order; `seeded` picks a subset and loop point from the seed.
 
 | Id | Label |
 |---|---|
 | `intro` | Handshake |
 | `verse` | Scan |
+| `half-time` | Half-Time |
+| `scan-ii` | Scan II |
+| `sparse` | Sparse |
+| `sub-groove` | Sub-Groove |
 | `pre-chorus` | Approach |
 | `chorus` | Breach |
+| `breach-ii` | Breach II |
+| `syncopated` | Syncopated |
 | `break` | Break |
+| `drum-break` | Drum Break |
 | `verse-b` | Second Pass |
+| `drive` | Drive |
 | `post-chorus` | Echo |
+| `false-stop` | False Stop |
 | `interlude` | Wait State |
+| `filter-break` | Filter Break |
 | `bridge` | Complication |
+| `harmonic-bridge` | Harmonic Bridge |
 | `bridge-b` | Other Hall |
+| `step-up-bridge` | Step-Up Bridge |
 | `solo` | Decrypt |
+| `anomaly` | Anomaly |
 | `chorus-final` | Full Breach |
 | `outro` | Disconnect |
 | `coda` | Closed Session |
 
-`extended` keeps every base section and adds `scan-ii` (Scan II), `breach-ii` (Breach II), and `anomaly` (Anomaly), with longer beds for verse, verse-b, chorus, chorus-final, bridge, and solo.
+Phase lengths are chosen per take (4 / half / authored / double), so the same
+pool breathes differently on each seed and version. Breaks and wait states may
+shrink to 1–2 bars, and momentum phases may stretch to 24/32 bars — the same
+longer arc Adventure and Racing use — instead of every phase resolving at 16.
 
 ## Adventure — `set_adventure_state`
 
@@ -208,7 +223,7 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
-- Suspense scores contain the base sections above; `extended` adds `scan-ii`, `breach-ii`, and `anomaly`.
+- Suspense scores contain the 27 pool phases above; `all-phases` and `seeded` are the only arrangements.
 - Adventure scores contain the eight sections above and default to `camp`; `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars, and `explore`, `town`, `combat`, and `victory` are 32.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
 - Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.

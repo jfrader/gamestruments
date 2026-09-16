@@ -31,12 +31,13 @@ test("generation controls remain functional before and during playback", async (
   await expect(neon).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toContainText("Generated");
 
-  await page.locator("#new-take").click();
+  await page.locator("#new-piece").click();
   await expect(page.locator("#variation-value")).toHaveText("level-002");
 
   await page.locator("#level-seed").fill("release-e2e");
   await page.locator("#apply-seed").click();
   await expect(page.locator("#variation-value")).toHaveText("release-e2e");
+  await expect(page.locator("#version-value")).toHaveText("release-e2e · Versión 1");
 
   await page.locator("#generation-energy").evaluate((input: HTMLInputElement) => {
     input.value = "0.91";
@@ -46,10 +47,11 @@ test("generation controls remain functional before and during playback", async (
   await expect(page.locator("#generation-energy-value")).toHaveText("91%");
   await expect(page.locator("#audition-status")).toContainText("Regenerated");
 
-  await page.locator("#compare-take").click();
-  await expect(page.locator("#compare-take")).toHaveAttribute("aria-pressed", "true");
-
-  await page.locator("#center-play").click();
+  // The version axis is a second performance of the same piece. It starts the
+  // engine when idle, so playback is asserted directly here.
+  await page.locator("#new-version").click();
+  await expect(page.locator("#version-value")).toHaveText("release-e2e · Versión 2");
+  await expect(page.locator("#audition-status")).toContainText("Versión 1");
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
 
@@ -112,7 +114,7 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
   await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");
 
-  await page.getByRole("button", { name: "Combat", exact: true }).click();
+  await page.locator('#phase-buttons button[data-phase="combat"]').click();
   await page.locator("#center-play").click();
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await expect(page.locator("#mood-name")).toHaveText("Steel and Shadow");
@@ -121,42 +123,34 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   expect(runtimeErrors).toEqual([]);
 });
 
-test("Extended adds longer beds and Original restores the same seed and score", async ({ page }) => {
+test("All phases and Seeded are the only Suspense arrangements and keep the same seed", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
   await expect(page.locator("#arrangement-control")).toBeVisible();
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
   await selectRecipe(page, "suspense");
   await expect(page.locator("#score-title")).toContainText("Terminal");
-  const original = page.locator('#arrangement-buttons button[data-arrangement="original"]');
-  const extended = page.locator('#arrangement-buttons button[data-arrangement="extended"]');
-  await expect(extended).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await original.click();
-  await expect(original).toHaveAttribute("aria-pressed", "true");
-  const summary = await page.locator("#generator-summary").textContent();
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  const seeded = page.locator('#arrangement-buttons button[data-arrangement="seeded"]');
+  const allPhases = page.locator('#arrangement-buttons button[data-arrangement="all-phases"]');
+  await expect(seeded).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("Seeded");
   const seed = await page.locator("#level-seed").inputValue();
-  await extended.click();
-  await expect(extended).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#score-title")).toContainText("Extended");
-    await expect(page.locator("#section-list li").filter({ has: page.getByRole("button", { name: "Cue Scan", exact: true }) })).toContainText("16 bars");
-  await expect(page.locator("#section-list li").first()).toContainText("Handshake · 8 bars");
-  await page.locator("#center-play").click();
-  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
-  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
-  await original.click();
-  await expect(original).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
+  await allPhases.click();
+  await expect(allPhases).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("All phases");
+  const summary = await page.locator("#generator-summary").textContent();
+  await seeded.click();
+  await expect(seeded).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("Seeded");
+  await allPhases.click();
+  await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
   await expect(page.locator("#generator-summary")).toHaveText(summary!);
   await expect(page.locator("#level-seed")).toHaveValue(seed);
-  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
-  await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
-  await page.locator("#start-audio").click();
   expect(errors).toEqual([]);
 });
 
-test("Anomaly can be auditioned directly and safely rolled back to Original", async ({ page }) => {
+test("Anomaly can be auditioned directly and survives an arrangement switch", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
@@ -164,9 +158,12 @@ test("Anomaly can be auditioned directly and safely rolled back to Original", as
   await page.getByRole("button", { name: "Cue Anomaly", exact: true }).click();
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Anomaly");
-  await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
-  await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
-  await expect(page.locator("#mood-name")).toHaveText("Handshake");
+  // Both pool arrangements carry every phase, so the switch is safe and keeps
+  // the current section playing instead of falling back to the opening.
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
+  await expect(page.locator("#mood-name")).toHaveText("Anomaly");
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
   await page.locator("#start-audio").click();
@@ -182,21 +179,21 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
   await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Suspense adds Theme and picks it up without touching Racing's selection.
+  // Suspense defaults to Seeded and picks it up without touching Racing.
   await selectRecipe(page, "suspense");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await page.locator('#arrangement-buttons button[data-arrangement="theme"]').click();
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="theme"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Switching to Racing shows Extended again — Theme must not leak over.
+  // Switching to Racing shows Extended again — the pool selection must not leak.
   await selectRecipe(page, "racing");
   await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Back to Suspense: the Theme selection is preserved.
+  // Back to Suspense: the all-phases selection is preserved.
   await selectRecipe(page, "suspense");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="theme"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });
 
@@ -269,7 +266,7 @@ test("rapid recipe switches settle on the final recipe without errors", async ({
   await selectRecipe(page, "suspense");
 
   await expect(page.locator("#runtime-signal")).toContainText("recipe: suspense");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });

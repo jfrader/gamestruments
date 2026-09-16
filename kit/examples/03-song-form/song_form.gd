@@ -1,6 +1,6 @@
 extends Control
 
-## 03 — Song form: drive the Suspense Extended arrangement with trace-state
+## 03 — Song form: drive the Suspense all-phases pool with trace-state
 ## requests, section cues, and hold/advance form controls.
 
 @onready var status_label: Label = $ScrollContainer/Margin/Main/StatusLabel
@@ -52,7 +52,7 @@ func _ready() -> void:
 	player.set("project_secret", PROJECT_SECRET)
 	player.set("recipe", "suspense")
 	player.set("style", "terminal")
-	player.set("arrangement", "extended")
+	player.set("arrangement", "all-phases")
 
 	status_label.text = "Generating..."
 	if not bool(player.call("generate", SEED)):

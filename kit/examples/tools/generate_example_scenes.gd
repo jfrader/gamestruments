@@ -185,7 +185,7 @@ func _build_playback() -> Control:
 	var root := _make_scene_root("Playback")
 	var main := root.get_node("ScrollContainer/Margin/Main")
 
-	_add_label(main, "01 — Playback (Suspense Theme)", 18, "TitleLabel")
+	_add_label(main, "01 — Playback (Suspense seeded pool)", 18, "TitleLabel")
 	_add_label(main, "Title music: generate once at load, not per frame. Set project_secret + recipe + style + arrangement before generate().", 11, "HintLabel")
 	_add_label(main, "Status: (pending)", 12, "StatusLabel")
 	_add_label(main, "Current section: (none)", 16, "SectionLabel")
@@ -256,7 +256,7 @@ func _build_song_form() -> Control:
 	var root := _make_scene_root("SongForm")
 	var main := root.get_node("ScrollContainer/Margin/Main")
 
-	_add_label(main, "03 — Song Form (suspense / terminal / extended)", 18, "TitleLabel")
+	_add_label(main, "03 — Song Form (suspense / terminal / all-phases)", 18, "TitleLabel")
 	_add_label(main, "set_trace_state + cue_section + set_form_hold + advance_form. Check returns + is_form_held + get_current_section.", 11, "HintLabel")
 	_add_label(main, "Status: (pending)", 12, "StatusLabel")
 

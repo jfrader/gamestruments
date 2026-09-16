@@ -63,7 +63,9 @@ impl INode for GamestrumentsPlayer {
         Self {
             project_secret: GString::new(),
             recipe: "racing".into(),
-            arrangement: "original".into(),
+            // Empty means "the recipe's own default": Racing → original,
+            // Suspense → the phase pool's seeded composer.
+            arrangement: GString::new(),
             autoplay: false,
             style: "funk".into(),
             melody_voice: GString::new(),
@@ -242,7 +244,10 @@ impl GamestrumentsPlayer {
                 };
                 let Ok(arrangement) = SuspenseArrangement::parse(&self.arrangement.to_string())
                 else {
-                    godot_error!("Unknown Gamestruments suspense arrangement");
+                    godot_error!(
+                        "Unknown Gamestruments suspense arrangement \"{}\"; use all-phases or seeded",
+                        self.arrangement
+                    );
                     return false;
                 };
                 (

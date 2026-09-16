@@ -11,6 +11,7 @@ import {
 import {
   generateScore,
   isRacingArrangement,
+  isSuspenseArrangement,
   type Arrangement,
   type RacingArrangement,
   type SuspenseArrangement,
@@ -127,7 +128,7 @@ export const ADVENTURE_PRESETS = [
 
 export let labRecipe: LabRecipe = "racing";
 export let racingArrangement: RacingArrangement = "extended";
-export let suspenseArrangement: SuspenseArrangement = "extended";
+export let suspenseArrangement: SuspenseArrangement = "seeded";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
@@ -136,8 +137,23 @@ export let score!: PortableScore;
 export let transport!: AdaptiveTransport;
 export let audio!: DemoAudioEngine;
 export let soloMode: SoloMode = "full";
-export let comparisonBaseSeed = levelSeed;
 let manualCue: SectionId | null = null;
+
+/** Version axis: steps the current piece (seed) through an unbounded run of
+ *  takes. The engine derives each take's seed from the project secret, the
+ *  piece seed, and a take index (not a chained hash), so the control can
+ *  advance forever and jump straight to any version. The version is a second
+ *  axis hashed *inside* the piece, not a different piece. */
+export let versionIndex = 0;
+
+export function advanceVersion(): void {
+  versionIndex += 1;
+}
+
+/** The 1-based version number for the next step; unbounded. */
+export function nextVersionNumber(): number {
+  return versionIndex + 1;
+}
 
 let switchingScore = false;
 let switchingAudio = false;
@@ -157,14 +173,17 @@ export function currentPresets(): readonly GenerationPreset[] {
 }
 
 /** The arrangement for the active recipe, tracked per recipe so switching
- *  game types never leaks one recipe's choice (e.g. Theme) into another. */
+ *  game types never leaks one recipe's choice (e.g. a Suspense pool pick) into
+ *  another. */
 export function currentArrangement(): Arrangement {
   return labRecipe === "suspense" ? suspenseArrangement : racingArrangement;
 }
 
 /** A recipe accepts an arrangement only if that value is legal for it. */
 function recipeArrangementValid(recipe: LabRecipe, value: Arrangement): boolean {
-  return recipe !== "racing" || isRacingArrangement(value);
+  if (recipe === "racing") return isRacingArrangement(value);
+  if (recipe === "suspense") return isSuspenseArrangement(value);
+  return true;
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -191,6 +210,7 @@ async function generateRequestedScore(
   requestedTraits: NormalizedMusicTraits,
   recipe: LabRecipe,
   arrangement: Arrangement,
+  reelIndex = 0,
 ): Promise<PortableScore> {
   const preset = presetsFor(recipe)[index];
   if (preset === undefined) {
@@ -210,6 +230,7 @@ async function generateRequestedScore(
     heat: requestedTraits.complexity,
     mystery: requestedTraits.brightness,
     pulse: requestedTraits.syncopation,
+    reelIndex,
   });
 }
 
@@ -379,6 +400,7 @@ export async function activateExperiment(
   nextTraits: NormalizedMusicTraits,
   nextArrangement: Arrangement,
   requestId: number,
+  reelIndex = 0,
 ): Promise<boolean> {
   const requestedRecipe = labRecipe;
   if (
@@ -406,6 +428,7 @@ export async function activateExperiment(
       nextTraits,
       requestedRecipe,
       nextArrangement,
+      reelIndex,
     );
     if (requestId !== latestGenerationRequest) {
       return false;
@@ -425,7 +448,7 @@ export async function activateExperiment(
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
-    if (requestedRecipe === "suspense") {
+    if (requestedRecipe === "suspense" && isSuspenseArrangement(nextArrangement)) {
       suspenseArrangement = nextArrangement;
     } else if (requestedRecipe === "racing" && isRacingArrangement(nextArrangement)) {
       racingArrangement = nextArrangement;
@@ -445,11 +468,12 @@ export function requestExperiment(
   nextSeed = levelSeed,
   nextTraits: NormalizedMusicTraits = generationTraits,
   nextArrangement: Arrangement = currentArrangement(),
+  reelIndex = 0,
 ): Promise<boolean> {
   const request = ++latestGenerationRequest;
   const pending = generationQueue.then(() =>
     request === latestGenerationRequest
-      ? activateExperiment(index, nextSeed, nextTraits, nextArrangement, request)
+      ? activateExperiment(index, nextSeed, nextTraits, nextArrangement, request, reelIndex)
       : false,
   );
   generationQueue = pending.then(
@@ -507,8 +531,9 @@ export async function toggleEngine(): Promise<boolean> {
   }
 }
 
-export function setComparisonBaseSeed(value: string): void {
-  comparisonBaseSeed = value;
+/** A new piece (seed/style/traits) restarts the version axis at 1. */
+export function resetVersion(): void {
+  versionIndex = 0;
 }
 
 export function setPhase(value: string): void {

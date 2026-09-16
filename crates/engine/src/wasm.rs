@@ -69,10 +69,11 @@ use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
-use crate::render::render_wav;
+use crate::render::{render_wav, render_wav_stereo};
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
-use crate::suspense_arrangement::{generate_suspense_arrangement, SuspenseArrangement};
+use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
+use crate::suspense_pool::Intent;
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
@@ -137,6 +138,10 @@ fn default_generation_trait() -> f64 {
     0.5
 }
 
+fn default_intent() -> String {
+    "arc".to_string()
+}
+
 #[no_mangle]
 pub extern "C" fn gamestruments_output_len() -> usize {
     unsafe { OUT_LEN }
@@ -178,6 +183,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
         recipe: String,
         #[serde(default)]
         arrangement: String,
+        #[serde(default = "default_intent")]
+        intent: String,
         #[serde(default)]
         autoplay: bool,
         secret: String,
@@ -201,6 +208,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
         mystery: f64,
         #[serde(default = "default_generation_trait")]
         pulse: f64,
+        #[serde(default, rename = "reelIndex")]
+        reel_index: u32,
     }
 
     let inp: Inp = match serde_json::from_str(json_str) {
@@ -247,7 +256,14 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
-            generate_suspense_arrangement(
+            let intent = match Intent::parse(&inp.intent) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_suspense_arrangement_take(
                 &SuspenseInput {
                     secret: inp.secret,
                     seed: inp.seed,
@@ -258,6 +274,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     pulse: inp.pulse,
                 },
                 arrangement,
+                intent,
+                inp.reel_index,
             )
         }
         "" | "racing" => {
@@ -351,6 +369,46 @@ pub unsafe extern "C" fn gamestruments_render_wav(
 
     // Hardcode 48000 to match all golden/render tests and native parity_ref
     let wav = render_wav(&score, section, phrases, 48000);
+    write_output(&wav);
+    unsafe { OUT_PTR }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_render_wav_stereo(
+    score_ptr: *const u8,
+    score_len: usize,
+    section_ptr: *const u8,
+    section_len: usize,
+    phrases: usize,
+) -> *const u8 {
+    let score_slice = slice::from_raw_parts(score_ptr, score_len);
+    let score: PortableScore = match serde_json::from_slice(score_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("score JSON must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if let Err(error) = score.validate() {
+        write_error(format!("invalid score: {error}"));
+        return unsafe { OUT_PTR };
+    }
+
+    let section_slice = slice::from_raw_parts(section_ptr, section_len);
+    let section = match core::str::from_utf8(section_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("section must be valid UTF-8: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if score.section(section).is_none() {
+        write_error(format!("unknown score section: {section}"));
+        return unsafe { OUT_PTR };
+    }
+
+    // Hardcode 48000; stereo WAV (interleaved L R 16-bit PCM)
+    let wav = render_wav_stereo(&score, section, phrases, 48000);
     write_output(&wav);
     unsafe { OUT_PTR }
 }

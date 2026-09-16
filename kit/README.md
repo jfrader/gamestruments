@@ -74,8 +74,8 @@ fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
 rules are in `kit/docs/api.md`; complete Racing and Suspense scripts are in
 `kit/docs/quickstart.md`.
 
-`arrangement` is `original` (default) or `extended` for Racing, and `original`
-(default), `extended`, or `theme` for Suspense; Adventure ignores it. `autoplay`
+`arrangement` is `original` (default) or `extended` for Racing, and `all-phases`
+or `seeded` (default) for Suspense; Adventure ignores it. `autoplay`
 is Racing/Adventure only, defaults to `false` (state-driven), and when `true`
 tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
 `extended`; the native examples use the state-driven defaults.

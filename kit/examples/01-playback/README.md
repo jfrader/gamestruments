@@ -1,7 +1,7 @@
 # 01 — Playback
 
-Generates a Suspense **Theme** score for title music and plays it through the
-native addon.
+Generates a Suspense **seeded** pool score for title music and plays it through
+the native addon.
 
 ## What it teaches
 
@@ -20,7 +20,7 @@ addon; source-checkout setup is covered in [the examples README](../README.md).
 
 Read [`playback.gd`](playback.gd) to see configuration, checked generation, and
 restart. For your own scene, use the complete [Suspense quickstart script](../../docs/quickstart.md#suspense-recipe-complete-script)
-and set `arrangement = "theme"`. You do not need the example's UI bindings.
+and set `arrangement = "seeded"` (the default). You do not need the example's UI bindings.
 
 ## Where your game callbacks plug in
 
@@ -30,7 +30,7 @@ see `02-game-signals/` and `03-song-form/`.
 ## Expected result
 
 Title music starts after a successful `generate()`. Restart replays from the
-first section ("intro" for theme). The section readout is coarse: during a
+first section (`intro`). The section readout is coarse: during a
 crossfade it may report the entering section rather than a precise bar or mix
 position. The small controls demonstrate playback; the separate browser Audio
 Lab is the full interactive showcase.

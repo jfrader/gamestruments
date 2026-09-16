@@ -817,6 +817,14 @@ export class DemoAudioEngine {
     const filter = context.createBiquadFilter();
     const envelope = context.createGain();
 
+    let out: AudioNode = destination;
+    if (voice === "felt" || voice === "dusk" || voice === "glass" || voice === "pluck") {
+      const p = context.createStereoPanner();
+      p.pan.value = { felt: 0.5625, dusk: -0.5625, glass: 0.625, pluck: 0.3125 }[voice]!;
+      p.connect(destination);
+      out = p;
+    }
+
     primary.type = settings.primary;
     secondary.type = settings.secondary;
     primary.detune.value = -settings.detuneCents;
@@ -862,7 +870,7 @@ export class DemoAudioEngine {
 
     primary.connect(primaryGain).connect(primaryPan).connect(filter);
     secondary.connect(secondaryGain).connect(secondaryPan).connect(filter);
-    filter.connect(envelope).connect(destination);
+    filter.connect(envelope).connect(out);
     const echoNodes: AudioNode[] = [];
     if (settings.echoGain !== undefined) {
       const delay = context.createDelay(1);
@@ -890,6 +898,7 @@ export class DemoAudioEngine {
       ...echoNodes,
       filter,
       envelope,
+      ...(out !== destination ? [out] : []),
     ]);
   }
 
@@ -943,7 +952,10 @@ export class DemoAudioEngine {
       oscillator.stop(stop);
       return { oscillator, modeGain };
     });
-    mix.connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.1875;
+    pan.connect(destination);
+    mix.connect(pan);
     this.#scheduleNoise(
       peak * 0.12,
       start,
@@ -951,7 +963,7 @@ export class DemoAudioEngine {
       "bandpass",
       clamp(frequency * 5.5, 900, 3200),
       0.7,
-      destination,
+      pan,
       `${event.id}:harp-finger`,
     );
     const lead = oscillators[0];
@@ -962,6 +974,7 @@ export class DemoAudioEngine {
           modeGain,
         ]),
         mix,
+        pan,
       ]);
     }
   }
@@ -1023,7 +1036,10 @@ export class DemoAudioEngine {
       0.12,
       0.24,
     );
-    mix.connect(filter).connect(envelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.25;
+    pan.connect(destination);
+    mix.connect(filter).connect(envelope).connect(pan);
     this.#scheduleSustainedNoise(
       0.002 * Math.pow(Math.max(0.02, velocity), 0.84),
       start,
@@ -1033,7 +1049,7 @@ export class DemoAudioEngine {
       "bandpass",
       clamp(frequency * 7, 1800, 4200),
       0.55,
-      destination,
+      pan,
       `${event.id}:recorder-breath`,
     );
     vibrato.start(start);
@@ -1050,6 +1066,7 @@ export class DemoAudioEngine {
         envelope,
         vibrato,
         vibratoDepth,
+        pan,
       ]);
     }
   }
@@ -1113,7 +1130,10 @@ export class DemoAudioEngine {
       0.45,
       0.45,
     );
-    mix.connect(envelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = -0.25;
+    pan.connect(destination);
+    mix.connect(envelope).connect(pan);
     this.#scheduleSustainedNoise(
       0.00205 * Math.pow(Math.max(0.02, velocity), 0.84),
       start,
@@ -1123,7 +1143,7 @@ export class DemoAudioEngine {
       "bandpass",
       clamp(frequency * 5, 1150, 2800),
       0.48,
-      destination,
+      pan,
       `${event.id}:vielle-bow`,
     );
     vibrato.start(start);
@@ -1139,6 +1159,7 @@ export class DemoAudioEngine {
         envelope,
         vibrato,
         vibratoDepth,
+        pan,
       ]);
     }
   }
@@ -1188,7 +1209,10 @@ export class DemoAudioEngine {
       oscillator.stop(stop);
       return { oscillator, modeGain };
     });
-    mix.connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.375;
+    pan.connect(destination);
+    mix.connect(pan);
     const lead = oscillators[0];
     if (lead !== undefined) {
       this.#cleanupAfter(lead.oscillator, [
@@ -1197,6 +1221,7 @@ export class DemoAudioEngine {
           modeGain,
         ]),
         mix,
+        pan,
       ]);
     }
   }
@@ -1331,7 +1356,10 @@ export class DemoAudioEngine {
     bodyLeft.connect(bodyLeftGain).connect(bodyLeftPan).connect(filter);
     bodyRight.connect(bodyRightGain).connect(bodyRightPan).connect(filter);
     tine.connect(tineGain).connect(filter);
-    filter.connect(envelope).connect(tremolo).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.25;
+    pan.connect(destination);
+    filter.connect(envelope).connect(tremolo).connect(pan);
     bodyLeft.start(start);
     bodyRight.start(start);
     tine.start(start);
@@ -1354,6 +1382,7 @@ export class DemoAudioEngine {
       envelope,
       tremolo,
       tremoloDepth,
+      pan,
     ]);
   }
 
@@ -1462,7 +1491,10 @@ export class DemoAudioEngine {
       0.14,
       0.16,
     );
-    mix.connect(filter).connect(envelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.6875;
+    pan.connect(destination);
+    mix.connect(filter).connect(envelope).connect(pan);
     if (this.#echoSend !== null) {
       envelope.connect(this.#echoSend);
     }
@@ -1470,7 +1502,7 @@ export class DemoAudioEngine {
     if (lead === undefined) {
       return;
     }
-    this.#cleanupAfter(lead, [...oscillators, mix, filter, envelope]);
+    this.#cleanupAfter(lead, [...oscillators, mix, filter, envelope, pan]);
   }
 
   #scheduleTriangleBass(
@@ -1550,7 +1582,10 @@ export class DemoAudioEngine {
     );
     primary.connect(crush);
     octave.connect(octaveGain).connect(crush);
-    crush.connect(envelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = -0.3125;
+    pan.connect(destination);
+    crush.connect(envelope).connect(pan);
     primary.start(start);
     octave.start(start);
     vibrato.start(start);
@@ -1565,6 +1600,7 @@ export class DemoAudioEngine {
       envelope,
       vibrato,
       vibratoDepth,
+      pan,
     ]);
   }
 
@@ -1632,7 +1668,10 @@ export class DemoAudioEngine {
       oscillator.stop(stop);
       return { oscillator, modeGain };
     });
-    mix.connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = -0.125;
+    pan.connect(destination);
+    mix.connect(pan);
     this.#scheduleNoise(
       0.026 * Math.pow(Math.max(0.02, velocity), 0.82),
       start,
@@ -1640,7 +1679,7 @@ export class DemoAudioEngine {
       "bandpass",
       1350 + frequency * 3,
       0.72,
-      destination,
+      pan,
       `${seed}:frame-drum-strike`,
     );
     const lead = oscillators[0];
@@ -1651,6 +1690,7 @@ export class DemoAudioEngine {
           modeGain,
         ]),
         mix,
+        pan,
       ]);
     }
   }
@@ -1681,6 +1721,7 @@ export class DemoAudioEngine {
         0.32,
         destination,
         `${seed}:tambourine-rattle:${index}`,
+        -0.625,
       );
     }
   }
@@ -1708,10 +1749,13 @@ export class DemoAudioEngine {
       envelope.gain.linearRampToValueAtTime(peak, start + 0.006);
       envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + duration);
     }
-    source.connect(filter).connect(envelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = event.voice === "reverse-cymbal" ? -0.8125 : 0.8125;
+    pan.connect(destination);
+    source.connect(filter).connect(envelope).connect(pan);
     source.start(start, deterministicUnit(event.id) * this.#noiseBuffer.duration);
     source.stop(start + duration + 0.13);
-    this.#cleanupAfter(source, [source, filter, envelope]);
+    this.#cleanupAfter(source, [source, filter, envelope, pan]);
   }
 
   #scheduleKick(
@@ -1769,7 +1813,10 @@ export class DemoAudioEngine {
       start,
     );
     toneEnvelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + 0.12);
-    tone.connect(toneEnvelope).connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = 0.125;
+    pan.connect(destination);
+    tone.connect(toneEnvelope).connect(pan);
     tone.start(start);
     tone.stop(start + 0.125);
     this.#scheduleNoise(
@@ -1779,10 +1826,10 @@ export class DemoAudioEngine {
       "bandpass",
       2350,
       0.72,
-      destination,
+      pan,
       `${seed}:snare`,
     );
-    this.#cleanupAfter(tone, [tone, toneEnvelope]);
+    this.#cleanupAfter(tone, [tone, toneEnvelope, pan]);
   }
 
   #scheduleHat(
@@ -1805,6 +1852,7 @@ export class DemoAudioEngine {
       0.35,
       destination,
       `${seed}:hat`,
+      0.8125,
     );
   }
 
@@ -1838,7 +1886,10 @@ export class DemoAudioEngine {
     envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + 0.19);
     body.connect(envelope);
     overtone.connect(overtoneGain).connect(envelope);
-    envelope.connect(destination);
+    const pan = context.createStereoPanner();
+    pan.pan.value = -0.25;
+    pan.connect(destination);
+    envelope.connect(pan);
     body.start(start);
     overtone.start(start);
     body.stop(start + 0.195);
@@ -1850,10 +1901,10 @@ export class DemoAudioEngine {
       "bandpass",
       1750,
       0.8,
-      destination,
+      pan,
       `${seed}:tom`,
     );
-    this.#cleanupAfter(body, [body, overtone, overtoneGain, envelope]);
+    this.#cleanupAfter(body, [body, overtone, overtoneGain, envelope, pan]);
   }
 
   #scheduleSustainedNoise(
@@ -1906,6 +1957,7 @@ export class DemoAudioEngine {
     resonance: number,
     destination: AudioNode,
     seed: string,
+    panValue?: number,
   ): void {
     const context = this.#context;
     if (context === null || this.#noiseBuffer === null) {
@@ -1922,14 +1974,24 @@ export class DemoAudioEngine {
     filter.Q.value = resonance;
     envelope.gain.setValueAtTime(Math.max(MIN_GAIN, gain), start);
     envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + duration);
-    source.connect(filter).connect(envelope).connect(destination);
+    // Pure-noise percussion (hat, tambourine) reaches the stage only through
+    // this helper, so its pan belongs here too. Values mirror the Rust engine's
+    // `voice_type_pan`: hat +0.8125, tambourine -0.625.
+    const panner = panValue === undefined ? null : context.createStereoPanner();
+    if (panner === null) {
+      source.connect(filter).connect(envelope).connect(destination);
+    } else {
+      panner.pan.value = panValue ?? 0;
+      panner.connect(destination);
+      source.connect(filter).connect(envelope).connect(panner);
+    }
     const availableOffset = Math.max(
       0,
       this.#noiseBuffer.duration - duration - 0.005,
     );
     source.start(start, deterministicUnit(seed) * availableOffset);
     source.stop(start + duration);
-    this.#cleanupAfter(source, [source, filter, envelope]);
+    this.#cleanupAfter(source, panner === null ? [source, filter, envelope] : [source, filter, envelope, panner]);
   }
 
   #schedulePitch(

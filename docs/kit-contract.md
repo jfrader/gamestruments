@@ -34,13 +34,14 @@ The archive contains no Strudel code, TypeScript authoring packages, browser Aud
 The kit generates deterministic scores from three shipped recipes, each from a per-title namespace, level seed, style, voice palette (Racing), traits, and generator version:
 
 - **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` (original); `extended` adds four more (ignition/slipstream/redline/cooldown) — driven by `set_race_state`. Native default arrangement original.
-- **Suspense (song-form):** fourteen base sections from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`; the `extended` arrangement adds `scan-ii`, `breach-ii`, and `anomaly`; `theme` is additive title bed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
+- **Suspense (song-form):** a 27-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
 - **Adventure:** eight sections (camp, explore, town, dungeon, combat, boss, sanctuary, victory) driven by `set_adventure_state`. 3 styles. 8 real phases.
 
 The `kit/examples/` project is three independent reference scenes, not a
-playable game. `01-playback` generates and plays a Suspense Theme title bed,
-`02-game-signals` maps simulated race events to `set_race_state` requests (Original Racing),
-and `03-song-form` exercises the Suspense form controls and trace events. They share
+playable game. `01-playback` generates and plays a Suspense title bed from the
+seeded pool, `02-game-signals` maps simulated race events to `set_race_state`
+requests (Original Racing), and `03-song-form` exercises the Suspense form
+controls and trace events. They share
 one addon copy and need no browser or network. The browser Audio Lab is a
 separate preview, not the examples' UI or runtime. See `kit/examples/README.md`. Adventure
 integration uses `set_adventure_state` (documented in API).
@@ -53,7 +54,7 @@ Exported properties:
 
 - `project_secret: String`
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`
-- `arrangement: String` — Racing: `original` (default) or `extended`; Suspense: `original` (default), `extended`, or `theme`; ignored by Adventure
+- `arrangement: String` — Racing: `original` (default) or `extended`; Suspense: `all-phases` or `seeded` (default); ignored by Adventure. Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`
 - `autoplay: bool` — Racing and Adventure (default `false`); when true attaches form tour (arrangement tour, not audio autostart). Ignored by Suspense. Native default false.
 - `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`; Adventure `folk`, `dark`, `orchestral`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only

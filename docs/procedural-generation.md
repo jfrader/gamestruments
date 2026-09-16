@@ -43,10 +43,11 @@ autoplay adapter is explicitly enabled.
 Suspense is a third interaction model for long tense sessions (Arkhos and
 similar infiltration games). Form still auto-advances, but the writing is
 texture, not pop: a drone, a 2–3 note cell (Santaolalla), and a machine pulse
-(Mr. Robot). Harmony stays on one minor sonority. Outro and coda are hold
-interrupts. Alert/heat cues the bridge once. Styles are `terminal`, `cipher`,
-and `noir`. Generation traits are tension, heat, mystery, and pulse. Runtime
-state is `tracePhase`, heat, focus, and progress.
+(Mr. Robot). The 27-phase pool is the only authority: one seed picks a shared
+harmonic arc, seeded figure/drum/length choices, a transition gesture per join,
+and — for `seeded` — the form itself. Styles are `terminal`, `cipher`, and
+`noir`. Generation traits are tension, heat, mystery, and pulse. Runtime state is
+`tracePhase`, heat, focus, and progress.
 
 Adventure is a third interaction model for fantasy and exploration games. In
 gameplay mode it is area-selected: eight sections (`camp`, `explore`, `town`,

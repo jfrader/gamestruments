@@ -6,6 +6,91 @@ use std::f32::consts::TAU;
 const NOTE_TAIL_SECONDS: f32 = 0.16;
 const MIN_GAIN: f32 = 0.0001;
 
+/// Baked equal-power pan table, 33 entries for pan steps of 1/16 from -1 to +1.
+/// gL = cos(θ), gR = sin(θ), θ = (pan + 1) * π/4.
+/// Centre (pan=0) gives −3.01 dB per side (constant power).
+/// Computed once; lookup only — no sin/cos/dmath calls on the audio path.
+#[allow(clippy::excessive_precision, clippy::approx_constant)]
+const PAN_TABLE: [[f32; 2]; 33] = [
+    [1.00000000e+00f32, 0.00000000e+00f32],
+    [9.98795456e-01f32, 4.90676743e-02f32],
+    [9.95184727e-01f32, 9.80171403e-02f32],
+    [9.89176510e-01f32, 1.46730474e-01f32],
+    [9.80785280e-01f32, 1.95090322e-01f32],
+    [9.70031253e-01f32, 2.42980180e-01f32],
+    [9.56940336e-01f32, 2.90284677e-01f32],
+    [9.41544065e-01f32, 3.36889853e-01f32],
+    [9.23879533e-01f32, 3.82683432e-01f32],
+    [9.03989293e-01f32, 4.27555093e-01f32],
+    [8.81921264e-01f32, 4.71396737e-01f32],
+    [8.57728610e-01f32, 5.14102744e-01f32],
+    [8.31469612e-01f32, 5.55570233e-01f32],
+    [8.03207531e-01f32, 5.95699304e-01f32],
+    [7.73010453e-01f32, 6.34393284e-01f32],
+    [7.40951125e-01f32, 6.71558955e-01f32],
+    [7.07106781e-01f32, 7.07106781e-01f32],
+    [6.71558955e-01f32, 7.40951125e-01f32],
+    [6.34393284e-01f32, 7.73010453e-01f32],
+    [5.95699304e-01f32, 8.03207531e-01f32],
+    [5.55570233e-01f32, 8.31469612e-01f32],
+    [5.14102744e-01f32, 8.57728610e-01f32],
+    [4.71396737e-01f32, 8.81921264e-01f32],
+    [4.27555093e-01f32, 9.03989293e-01f32],
+    [3.82683432e-01f32, 9.23879533e-01f32],
+    [3.36889853e-01f32, 9.41544065e-01f32],
+    [2.90284677e-01f32, 9.56940336e-01f32],
+    [2.42980180e-01f32, 9.70031253e-01f32],
+    [1.95090322e-01f32, 9.80785280e-01f32],
+    [1.46730474e-01f32, 9.89176510e-01f32],
+    [9.80171403e-02f32, 9.95184727e-01f32],
+    [4.90676743e-02f32, 9.98795456e-01f32],
+    [6.12323400e-17f32, 1.00000000e+00f32],
+];
+
+fn pan_gains(pan: f32) -> (f32, f32) {
+    let idx = ((pan + 1.0) * 16.0).round().clamp(0.0, 32.0) as usize;
+    let [gl, gr] = PAN_TABLE[idx];
+    (gl, gr)
+}
+
+/// Fixed per-VoiceType pan (quantised to 1/16 steps). Centre for low anchors;
+/// small spreads for body, larger for highs/air. Echoes get opposite at call site.
+fn voice_type_pan(vt: VoiceType) -> f32 {
+    match vt {
+        // centre (0.0)
+        VoiceType::Kick
+        | VoiceType::Bass
+        | VoiceType::Organ
+        | VoiceType::Warm
+        | VoiceType::Pulse
+        | VoiceType::Triangle => 0.0,
+        // ±0.15
+        VoiceType::Snare => 0.125,
+        VoiceType::FrameDrum => -0.125,
+        // ±0.25
+        VoiceType::Epiano => 0.25,
+        VoiceType::Tom => -0.25,
+        VoiceType::Recorder => 0.25,
+        VoiceType::Vielle => -0.25,
+        VoiceType::Harp => 0.1875,
+        // ±0.35
+        VoiceType::Pluck => 0.3125,
+        VoiceType::Chip => -0.3125,
+        VoiceType::Bell => 0.375,
+        // ±0.55 for atmosphere + echoes (echo sign flipped at creation)
+        VoiceType::Felt => 0.5625,
+        VoiceType::Dusk => -0.5625,
+        // ±0.65
+        VoiceType::Glass => 0.625,
+        VoiceType::Tambourine => -0.625,
+        VoiceType::Supersaw => 0.6875,
+        // ±0.8
+        VoiceType::Hat => 0.8125,
+        VoiceType::ReverseCymbal => -0.8125,
+        VoiceType::AirImpact => 0.8125,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum VoiceType {
     Warm,
@@ -116,6 +201,13 @@ struct Voice {
     vib_phase: f32,
     trem_phase: f32,
     filt: Biquad,
+    // pan is quantised at creation; used only by stereo accumulation path.
+    // mono fill path ignores it completely.
+    pan: f32,
+    // dedicated filter states for stereo split on twin-osc voices (Epiano/Supersaw);
+    // mono path and non-twin voices only ever touch `filt` (state kept in sync).
+    filt_l: Biquad,
+    filt_r: Biquad,
 }
 
 pub struct Synth {
@@ -179,7 +271,7 @@ impl Synth {
             } else {
                 0x1234_5678
             };
-            let voice = Voice {
+            let mut voice = Voice {
                 voice_type: vtype,
                 base_freq,
                 velocity: velocity.clamp(0.0, 1.0),
@@ -195,11 +287,17 @@ impl Synth {
                 vib_phase: 0.0,
                 trem_phase: 0.0,
                 filt: Biquad::new(),
+                pan: 0.0,
+                filt_l: Biquad::new(),
+                filt_r: Biquad::new(),
             };
+            voice.pan = voice_type_pan(voice.voice_type);
             if matches!(vtype, VoiceType::Felt | VoiceType::Dusk) {
                 let mut echo = voice.clone();
                 echo.start_phase += 0.42;
                 echo.velocity *= 0.16;
+                echo.pan = -echo.pan;
+                // echo gets fresh filter states (clone zeros them); opposite pan already set.
                 self.voices.push(echo);
             }
             self.voices.push(voice);
@@ -280,7 +378,7 @@ impl Synth {
             }
             noise_state = s;
         }
-        self.voices.push(Voice {
+        let mut perc = Voice {
             voice_type: vtype,
             base_freq,
             velocity: velocity.clamp(0.0, 1.0),
@@ -300,7 +398,12 @@ impl Synth {
             vib_phase: 0.0,
             trem_phase: 0.0,
             filt: Biquad::new(),
-        });
+            pan: 0.0,
+            filt_l: Biquad::new(),
+            filt_r: Biquad::new(),
+        };
+        perc.pan = voice_type_pan(perc.voice_type);
+        self.voices.push(perc);
     }
 
     pub fn fill(&mut self, buffer: &mut [f32]) {
@@ -326,6 +429,52 @@ impl Synth {
                 j += 1;
             }
             buffer[i] = mix.clamp(-4.0, 4.0);
+            self.phase += dt;
+            i += 1;
+        }
+    }
+
+    /// Stereo accumulation path. Applies per-voice pan via baked table.
+    /// The mono `fill` body above is left **byte-for-byte identical** in source and arithmetic.
+    /// Twin-osc voices (Epiano, Supersaw) split their detuned oscillators L/R for free width;
+    /// Felt/Dusk echoes are already opposite-pan voices so get opposite placement automatically.
+    pub fn fill_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        assert_eq!(left.len(), right.len(), "stereo buffers must match length");
+        let sr = self.sample_rate;
+        let dt = 1.0 / sr;
+        let mut i = 0;
+        while i < left.len() {
+            let t = self.phase;
+            let mut mix_l = 0.0f32;
+            let mut mix_r = 0.0f32;
+            let mut j = 0;
+            while j < self.voices.len() {
+                if t < self.voices[j].start_phase {
+                    j += 1;
+                    continue;
+                }
+                let age = (t - self.voices[j].start_phase).max(0.0);
+                if age >= self.voices[j].life {
+                    self.voices.swap_remove(j);
+                    continue;
+                }
+                let vpan = self.voices[j].pan;
+                let (cl, cr) = if matches!(
+                    self.voices[j].voice_type,
+                    VoiceType::Epiano | VoiceType::Supersaw
+                ) {
+                    Synth::generate_voice_sample_stereo(&mut self.voices[j], age, sr, dt)
+                } else {
+                    let c = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt);
+                    (c, c)
+                };
+                let (gl, gr) = pan_gains(vpan);
+                mix_l += cl * gl;
+                mix_r += cr * gr;
+                j += 1;
+            }
+            left[i] = mix_l.clamp(-4.0, 4.0);
+            right[i] = mix_r.clamp(-4.0, 4.0);
             self.phase += dt;
             i += 1;
         }
@@ -457,7 +606,8 @@ impl Synth {
                     _ => unreachable!(),
                 };
                 let f1 = compute_freq(base, age, pd) * dmath::powf(2.0, -det_c / 1200.0);
-                let f2 = compute_freq(base * sec_r, age, pd * 0.5) * dmath::powf(2.0, det_c / 1200.0);
+                let f2 =
+                    compute_freq(base * sec_r, age, pd * 0.5) * dmath::powf(2.0, det_c / 1200.0);
                 let s1 = generate_osc(v.phase1, primary);
                 v.phase1 += TAU * f1 * dt;
                 let s2 = generate_osc(v.phase2, secondary);
@@ -911,6 +1061,114 @@ impl Synth {
                 let n = noise(&mut v.noise_state);
                 let nf = v.filt.process(n, 1750.0, 0.8, sr, FilterMode::Bandpass);
                 tone + nf * ng
+            }
+        }
+    }
+
+    /// Stereo sample generator. For non-twin voices returns (c, c) after calling the
+    /// mono generator (so mono filter state updated exactly). For Epiano/Supersaw,
+    /// duplicates the (small) twin-osc arm so we can split the detuned before/around
+    /// the (shared) filter update; we also drive the mono `filt` with the sum pre
+    /// so that a subsequent mono fill sees identical filter state.
+    /// The original generate_voice_sample arms are never edited.
+    fn generate_voice_sample_stereo(v: &mut Voice, age: f32, sr: f32, dt: f32) -> (f32, f32) {
+        let vel = v.velocity;
+        let is_mel = v.is_melody;
+        let base = v.base_freq;
+        match v.voice_type {
+            VoiceType::Epiano => {
+                // exact copy of osc/phase/tine pre-filter logic from the mono arm (untouched)
+                let det = 7.0 / 1200.0;
+                let f_l = base * dmath::powf(2.0, -det);
+                let f_r = base * dmath::powf(2.0, det);
+                let s_l = generate_osc(v.phase1, Wave::Sine);
+                v.phase1 += TAU * f_l * dt;
+                let s_r = generate_osc(v.phase2, Wave::Sine);
+                v.phase2 += TAU * f_r * dt;
+                let tine_f = base * (2.001 + vel * 0.003) * dmath::powf(2.0, 3.0 / 1200.0);
+                let s_t = generate_osc(v.phase3, Wave::Sine);
+                v.phase3 += TAU * tine_f * dt;
+                let bg = 0.62;
+                let mut pre_l = s_l * bg;
+                let mut pre_r = s_r * bg;
+                // tine pre gain ramp (exact copy)
+                let tine_peak = 0.11 + dmath::powf(vel, 1.7) * 0.38;
+                let tine_dec = 0.09 + (1.0 - vel) * 0.08;
+                let tine_d_t = v.duration.min(tine_dec);
+                let mut tg = 0.012;
+                if age < 0.004 {
+                    let fr = age / 0.004;
+                    let tgt = tine_peak * 0.7;
+                    tg = MIN_GAIN * dmath::powf(tgt / MIN_GAIN, fr);
+                } else if age < tine_d_t {
+                    let fr = (age - 0.004) / (tine_d_t - 0.004).max(1e-6);
+                    let tgt = tine_peak * 0.7;
+                    tg = tgt * dmath::powf(0.012 / tgt, fr);
+                }
+                pre_l += s_t * tg;
+                pre_r += s_t * tg;
+                // filter coefs (exact)
+                let mut fc = 1100.0 + dmath::powf(vel, 1.4) * 2200.0;
+                let end_fc = 780.0 + vel * 420.0;
+                let ramp_d = v.duration.min(0.28);
+                if ramp_d > 0.0 && age < ramp_d {
+                    let fr = age / ramp_d;
+                    fc *= dmath::powf(end_fc / fc, fr);
+                } else if age >= ramp_d {
+                    fc = end_fc;
+                }
+                let q = 0.45 + vel * 0.35;
+                // keep mono filt state identical to what mono path would do
+                let pre_sum = pre_l + pre_r;
+                let _ = v.filt.process(pre_sum, fc, q, sr, FilterMode::Lowpass);
+                // split filters get their own pre (for independent IIR history on sides)
+                let y_l = v.filt_l.process(pre_l, fc, q, sr, FilterMode::Lowpass);
+                let y_r = v.filt_r.process(pre_r, fc, q, sr, FilterMode::Lowpass);
+                let peak = 0.12 * velocity_curve(vel, 0.78);
+                let sus = 0.48 + (1.0 - vel) * 0.12;
+                let att = 0.012;
+                let dec = 0.18 + (1.0 - vel) * 0.08;
+                let rel = 0.16;
+                let env = compute_envelope(age, v.duration, peak, sus, att, dec, rel);
+                let tr = 0.975 + dmath::sin(v.trem_phase) * (0.018 + vel * 0.008);
+                v.trem_phase += TAU * (4.65 + ((v.pitch as i32 % 5) as f32) * 0.07) * dt;
+                (y_l * env * tr, y_r * env * tr)
+            }
+            VoiceType::Supersaw => {
+                let dets = [-11.0f32, 0.0, 13.0];
+                let s0 = saw_phase(v.phase1);
+                let f0 = base * dmath::powf(2.0, dets[0] / 1200.0);
+                v.phase1 += TAU * f0 * dt;
+                let s1 = saw_phase(v.phase2);
+                let f1 = base * dmath::powf(2.0, dets[1] / 1200.0);
+                v.phase2 += TAU * f1 * dt;
+                let s2 = saw_phase(v.phase3);
+                let f2 = base * dmath::powf(2.0, dets[2] / 1200.0);
+                v.phase3 += TAU * f2 * dt;
+                let bg = 1.0; // the mix in mono is just sum of saws
+                let pre_l = (s0 + s1 * 0.5) * bg;
+                let pre_r = (s2 + s1 * 0.5) * bg;
+                let pre_sum = (s0 + s1 + s2) * bg;
+                let mut fc = 2400.0 + vel * 900.0;
+                let end_fc = 1100.0;
+                let ramp_d = v.duration.min(0.22);
+                if ramp_d > 0.0 && age < ramp_d {
+                    let fr = age / ramp_d;
+                    fc *= dmath::powf(end_fc / fc, fr);
+                } else if age >= ramp_d {
+                    fc = end_fc;
+                }
+                let q = 0.4;
+                let _ = v.filt.process(pre_sum, fc, q, sr, FilterMode::Lowpass);
+                let y_l = v.filt_l.process(pre_l, fc, q, sr, FilterMode::Lowpass);
+                let y_r = v.filt_r.process(pre_r, fc, q, sr, FilterMode::Lowpass);
+                let peak = (if is_mel { 0.034 } else { 0.016 }) * velocity_curve(vel, 0.8);
+                let env = compute_envelope(age, v.duration, peak, 0.62, 0.02, 0.14, 0.16);
+                (y_l * env, y_r * env)
+            }
+            _ => {
+                let c = Synth::generate_voice_sample(v, age, sr, dt);
+                (c, c)
             }
         }
     }

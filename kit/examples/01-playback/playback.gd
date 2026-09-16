@@ -1,6 +1,6 @@
 extends Control
 
-## 01 — Playback: generate a Suspense Theme title bed once at load, play it,
+## 01 — Playback: generate a Suspense seeded-pool title bed once at load, play it,
 ## restart with a fixed seed, and read the current section. Plain reference:
 ## copy the generate/restart flow, not the widget layout.
 
@@ -30,7 +30,7 @@ func _ready() -> void:
 	player.set("project_secret", PROJECT_SECRET)
 	player.set("recipe", "suspense")
 	player.set("style", "terminal")
-	player.set("arrangement", "theme")
+	player.set("arrangement", "seeded")
 
 	status_label.text = "Generating (at load)..."
 	if not bool(player.call("generate", SEED)):

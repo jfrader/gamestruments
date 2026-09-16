@@ -60,11 +60,15 @@ function readOutput(ptr: number): Uint8Array {
 }
 
 export type RacingArrangement = "original" | "extended";
-export type SuspenseArrangement = "original" | "extended" | "theme";
+export type SuspenseArrangement = "all-phases" | "seeded";
 export type Arrangement = RacingArrangement | SuspenseArrangement;
 
 export function isRacingArrangement(value: Arrangement): value is RacingArrangement {
   return value === "original" || value === "extended";
+}
+
+export function isSuspenseArrangement(value: Arrangement): value is SuspenseArrangement {
+  return value === "all-phases" || value === "seeded";
 }
 
 export interface GenerateScoreParams {
@@ -76,11 +80,15 @@ export interface GenerateScoreParams {
   syncopation: number;
   recipe?: "racing" | "suspense" | "adventure";
   arrangement?: Arrangement;
+  intent?: "loop" | "arc" | "long" | "surprise";
   autoplay?: boolean;
   tension?: number;
   heat?: number;
   mystery?: number;
   pulse?: number;
+  /** Seed-reel take index (1-based, unbounded). The engine derives the take
+   *  seed from `secret` + `seed` + this index, so takes jump directly. */
+  reelIndex?: number;
 }
 
 export async function generateScore(params: GenerateScoreParams): Promise<PortableScore> {
@@ -88,12 +96,17 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
   const exp = getExports();
   (exp.gamestruments_reset as () => void)();
 
+  const recipe = params.recipe ?? "racing";
   const input = {
     secret: "",
     seed: params.seed,
     style: params.style,
-    recipe: params.recipe ?? "racing",
-    arrangement: params.arrangement ?? "original",
+    recipe,
+    // The pool is the only Suspense authority now, so an unspecified Suspense
+    // arrangement defaults to its seeded composer rather than a retired preset.
+    arrangement:
+      params.arrangement ?? (recipe === "suspense" ? "seeded" : "original"),
+    intent: params.intent ?? "arc",
     autoplay: params.autoplay ?? false,
     palette: { melody: "", harmony: "", drive: "", bass: "" },
     energy: params.energy,
@@ -104,6 +117,7 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     heat: params.heat ?? params.complexity,
     mystery: params.mystery ?? params.brightness,
     pulse: params.pulse ?? params.syncopation,
+    reelIndex: params.reelIndex ?? 0,
   };
   const { ptr, len } = allocAndWrite(JSON.stringify(input));
   const outPtr = (exp.gamestruments_score_json as (p: number, l: number) => number)(ptr, len);
@@ -127,6 +141,28 @@ export async function renderWav(
   const s = allocAndWrite(scoreBytes);
   const sec = allocAndWrite(section);
   const outPtr = (exp.gamestruments_render_wav as (
+    sp: number,
+    sl: number,
+    secp: number,
+    secl: number,
+    ph: number,
+  ) => number)(s.ptr, s.len, sec.ptr, sec.len, phrases);
+  return readOutput(outPtr);
+}
+
+export async function renderWavStereo(
+  score: PortableScore,
+  section: string,
+  phrases: number,
+): Promise<Uint8Array> {
+  await ensureLoaded();
+  const exp = getExports();
+  (exp.gamestruments_reset as () => void)();
+
+  const scoreBytes = new TextEncoder().encode(JSON.stringify(score));
+  const s = allocAndWrite(scoreBytes);
+  const sec = allocAndWrite(section);
+  const outPtr = (exp.gamestruments_render_wav_stereo as (
     sp: number,
     sl: number,
     secp: number,

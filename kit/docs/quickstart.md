@@ -116,7 +116,7 @@ func _ready() -> void:
     music.project_secret = "my-game"
     music.recipe = "suspense"
     music.style = "terminal"        # terminal, cipher, or noir
-    music.arrangement = "extended"  # original, extended, or theme
+    music.arrangement = "all-phases"  # all-phases (canonical tour) or seeded (composer)
 
     music_ready = music.generate("chapter-001")
     if not music_ready:
@@ -160,9 +160,8 @@ combine hold + advance + cue inside one callback. The form auto-advances;
 `set_form_hold(true)` freezes it, `advance_form` steps it, `cue_section` jumps
 (and works on any generated score, form or not). `set_trace_state` accepts any
 phase string (known ones affect selection); numeric args are 0..1 finite. See
-`api.md` for exact native selection rules (e.g. `progress >= 0.8` selects
-`outro` for extended Suspense only; original and theme need an explicit
-`extract`/`complete` or `progress >= 0.95`).
+`api.md` for exact native selection rules (there is no `progress`-only outro
+rule; `extract`/`complete` or `progress >= 0.95` drive the endings).
 
 `get_current_section()` is coarse (may report target during crossfade). No time
 guarantees (no "X minutes", no "never mid-phrase" beyond the bar-aligned rule).

@@ -739,8 +739,8 @@ legend {
   color: rgba(17, 18, 15, 0.7);
 }
 
-.new-take,
-.compare-take {
+.piece-control,
+.version-control {
   width: 100%;
   min-height: 36px;
   display: flex;
@@ -760,13 +760,13 @@ legend {
   white-space: nowrap;
 }
 
-.new-take:hover,
-.compare-take:hover {
+.piece-control:hover,
+.version-control:hover {
   color: var(--signal);
 }
 
-.new-take output,
-.compare-take output {
+.piece-control output,
+.version-control output {
   min-width: 0;
   max-width: 62%;
   overflow: hidden;
@@ -774,7 +774,7 @@ legend {
   font-variant-numeric: tabular-nums;
 }
 
-.generator-control .new-take {
+.generator-control .piece-control {
   margin-top: 0;
 }
 
@@ -1630,8 +1630,8 @@ footer p {
     min-height: 32px;
   }
 
-  .new-take,
-  .compare-take,
+  .piece-control,
+  .version-control,
   .seed-editor input,
   .seed-editor button {
     padding: 6px 8px;
@@ -1915,7 +1915,7 @@ footer p {
     height: 1px;
   }
   .race-state .seed-control span,
-  .race-state .new-take {
+  .race-state .piece-control {
     font-size: 10px;
   }
 

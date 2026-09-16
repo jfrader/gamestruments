@@ -429,13 +429,13 @@ func _direct_player_bus_fallback_smoke() -> void:
 		p.set("project_secret", "examples-direct-smoke")
 		p.set("recipe", "suspense")
 		p.set("style", "terminal")
-		p.set("arrangement", "theme")
-		var gok: bool = p.call("generate", "direct-theme-%d" % cycle)
-		_check(gok, "direct theme generate")
+		p.set("arrangement", "seeded")
+		var gok: bool = p.call("generate", "direct-seeded-%d" % cycle)
+		_check(gok, "direct seeded generate")
 		for _f in range(15):
 			await process_frame
 		var sec := String(p.call("get_current_section"))
-		_check(sec.length() > 0, "direct theme section")
+		_check(sec.length() > 0, "direct seeded section")
 		p.queue_free()
 		for _f in range(8):
 			await process_frame
@@ -444,10 +444,10 @@ func _direct_player_bus_fallback_smoke() -> void:
 # --- Native-player positive smoke (Node-only, no scene UI) -----------------
 # Exercises the native extension directly with fresh players so a queued
 # crossfade from a previous action can never mask a later one. The Suspense
-# progress-parity checks run against the freshly built .so: the extended
-# progress >= 0.8 -> outro rule is serialized into the Extended score only, so
-# Original/Theme must NOT land on outro. A stale .so that hardcodes that cue
-# for every arrangement fails the Original/Theme "no outro" assertions below.
+# progress-parity checks run against the freshly built .so: the retired Extended
+# preset's `progress >= 0.8 -> outro` rule is gone, so neither pool arrangement
+# may land on outro for progress alone. A stale .so that still hardcodes that
+# cue fails the "no outro" assertions below.
 
 const NO_OUTRO_WAIT_SEC := 8.0
 
@@ -523,7 +523,7 @@ func _native_adventure_folk() -> void:
 
 
 func _native_suspense_progress_parity() -> void:
-	for arrangement in ["original", "extended", "theme"]:
+	for arrangement in ["all-phases", "seeded"]:
 		await _native_suspense_case(arrangement)
 
 
@@ -534,14 +534,11 @@ func _native_suspense_case(arrangement: String) -> void:
 		return
 	_check(bool(p.call("generate", "native-suspense-" + arrangement)), "%s: generate" % tag)
 	_check(bool(p.call("set_trace_state", "scan", 0.1, 0.2, 0.85)), "%s: set_trace_state" % tag)
-	if arrangement == "extended":
-		_check(await _wait_section(p, "outro"), "%s: progress 0.85 -> outro" % tag)
-	else:
-		# Give the bar boundary + crossfade enough real time to commit a stray
-		# outro cue before asserting it never landed; the form auto-advances
-		# (intro -> verse -> ...), so we only require that outro was not reached.
-		await create_timer(NO_OUTRO_WAIT_SEC).timeout
-		var sec := String(p.call("get_current_section"))
-		_check(sec.length() > 0, "%s: section reporting after %.0fs" % [tag, NO_OUTRO_WAIT_SEC])
-		_check(sec != "outro", "%s: no outro at progress 0.85 (got %s)" % [tag, sec])
+	# Give the bar boundary + crossfade enough real time to commit a stray outro
+	# cue before asserting it never landed; the form auto-advances, so we only
+	# require that outro was not reached.
+	await create_timer(NO_OUTRO_WAIT_SEC).timeout
+	var sec := String(p.call("get_current_section"))
+	_check(sec.length() > 0, "%s: section reporting after %.0fs" % [tag, NO_OUTRO_WAIT_SEC])
+	_check(sec != "outro", "%s: no outro at progress 0.85 (got %s)" % [tag, sec])
 	await _native_free(p)

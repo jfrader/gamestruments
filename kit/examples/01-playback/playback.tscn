@@ -32,7 +32,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
-text = "01 — Playback (Suspense Theme)"
+text = "01 — Playback (Suspense seeded pool)"
 autowrap_mode = 3
 
 [node name="HintLabel" type="Label" parent="ScrollContainer/Margin/Main"]

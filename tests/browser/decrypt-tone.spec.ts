@@ -38,7 +38,7 @@ test("Decrypt plays its backing without the confirmed first-beat glass oscillato
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Decrypt");
   await page.waitForFunction(() => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + 4);
+    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + 8);
   const result = await page.evaluate(async () => ({
     frequencies: window.decryptToneStarts,
     kicks: window.scanAudio.kicks.length,

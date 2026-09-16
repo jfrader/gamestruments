@@ -444,63 +444,69 @@ mod tests {
         assert_eq!(transport.current_section(), "cruise");
     }
 
-    #[test]
-    fn game_hold_advances_to_the_variation_and_resumes_on_a_future_loop_boundary() {
-        let score = crate::generate_suspense_arrangement(
+    fn suspense_pool(seed: &str) -> crate::score::PortableScore {
+        crate::generate_suspense_arrangement(
             &SuspenseInput {
                 secret: "qa".into(),
-                seed: "game-controls".into(),
+                seed: seed.into(),
                 style: SuspenseStyle::Terminal,
                 tension: 0.62,
                 heat: 0.48,
                 mystery: 0.72,
                 pulse: 0.55,
             },
-            crate::SuspenseArrangement::Extended,
+            crate::SuspenseArrangement::AllPhases,
         )
-        .unwrap();
+        .unwrap()
+    }
+
+    #[test]
+    fn game_hold_advances_to_the_next_form_step_and_resumes_on_a_boundary() {
+        let score = suspense_pool("game-controls");
         let bar = score.bar_ticks();
+        let form = score.form.as_ref().unwrap().steps.clone();
         let length = score.section("verse").unwrap().length_ticks;
+        let verse_index = form
+            .iter()
+            .position(|step| step.section == "verse")
+            .expect("the pool form plays verse");
+        let expected_next = form[verse_index + 1].section.clone();
+        let following = form[verse_index + 2].section.clone();
+        let next_len = score.section(&expected_next).unwrap().length_ticks;
         let mut transport = AdaptiveTransport::new(score, Some("verse")).unwrap();
         transport.set_form_held(true, 0);
         transport.advance(5 * length);
         assert_eq!(transport.current_section(), "verse");
         assert!(transport.transition.is_none());
         let plan = transport.advance_form(5 * length + 100).unwrap();
-        assert_eq!(plan.to, "scan-ii");
+        assert_eq!(plan.to, expected_next);
         assert_eq!(plan.start_tick % bar, 0);
         transport.advance(plan.end_tick);
         assert!(transport.is_form_held());
-        assert_eq!(transport.current_section(), "scan-ii");
-        let now = 20 * length + 100;
+        assert_eq!(transport.current_section(), expected_next);
+        let now = transport.section_entered_at + 100;
         transport.advance(now);
         transport.set_form_held(false, now);
         transport.advance(now);
         assert!(transport.transition.is_none());
         let boundary = transport.section_entered_at
-            + (now - transport.section_entered_at).div_ceil(length) * length;
+            + (now - transport.section_entered_at).div_ceil(next_len) * next_len;
         transport.advance(boundary - 1);
         assert!(transport.transition.is_none());
         transport.advance(boundary);
         assert_eq!(transport.transition.as_ref().unwrap().start_tick, boundary);
-        assert_eq!(transport.transition.as_ref().unwrap().to, "pre-chorus");
+        assert_eq!(transport.transition.as_ref().unwrap().to, following);
     }
 
     #[test]
     fn holding_during_an_automatic_blend_keeps_the_incoming_section() {
-        let score = crate::generate_suspense_arrangement(
-            &SuspenseInput {
-                secret: "qa".into(),
-                seed: "hold-blend".into(),
-                style: SuspenseStyle::Terminal,
-                tension: 0.62,
-                heat: 0.48,
-                mystery: 0.72,
-                pulse: 0.55,
-            },
-            crate::SuspenseArrangement::Extended,
-        )
-        .unwrap();
+        let score = suspense_pool("hold-blend");
+        let form = score.form.as_ref().unwrap().steps.clone();
+        let verse_index = form
+            .iter()
+            .position(|step| step.section == "verse")
+            .expect("the pool form plays verse");
+        let expected_next = form[verse_index + 1].section.clone();
         let length = score.section("verse").unwrap().length_ticks;
         let mut transport = AdaptiveTransport::new(score, Some("verse")).unwrap();
         transport.advance(length);
@@ -508,7 +514,7 @@ mod tests {
         assert!(transport.set_form_held(true, length + 1).is_none());
         transport.advance(end);
         transport.advance(10 * length);
-        assert_eq!(transport.current_section(), "scan-ii");
+        assert_eq!(transport.current_section(), expected_next);
         assert!(transport.transition.is_none());
     }
 
@@ -549,7 +555,6 @@ mod tests {
     }
 
     type TraceContractCase = (
-        crate::SuspenseArrangement,
         &'static str,
         f64,
         f64,
@@ -557,137 +562,35 @@ mod tests {
         Option<(&'static str, bool)>,
     );
 
-    /// Hardcoded contract for `select_trace_section`: (arrangement, phase, heat,
-    /// focus, progress) -> expected (section, hold). Base rules: complete→coda
-    /// (hold), progress≥0.95→coda (hold), extract→outro (hold), heat≥0.75→bridge,
-    /// alert→bridge, exploit&focus≥0.7→chorus. Extended adds progress≥0.8→outro
-    /// (hold), which heat≥0.75 and progress≥0.95 both outrank.
+    /// Hardcoded contract for `select_trace_section`: (phase, heat, focus,
+    /// progress) -> expected (section, hold). The retired Extended preset used to
+    /// add a `progress >= 0.8 -> outro` rule; the pool only serializes the base
+    /// rules, so progress alone never cues outro.
     #[test]
     fn trace_selector_obeys_the_serialized_rule_contract() {
         use crate::suspense::select_trace_section;
-        type Arr = crate::SuspenseArrangement;
         let cases: &[TraceContractCase] = &[
             // complete wins everywhere
-            (
-                Arr::Original,
-                "complete",
-                0.1,
-                0.1,
-                1.0,
-                Some(("coda", true)),
-            ),
-            (
-                Arr::Extended,
-                "complete",
-                0.1,
-                0.1,
-                1.0,
-                Some(("coda", true)),
-            ),
-            (Arr::Theme, "complete", 0.1, 0.1, 1.0, Some(("coda", true))),
-            // extract routes to outro (hold) everywhere
-            (
-                Arr::Original,
-                "extract",
-                0.1,
-                0.1,
-                0.2,
-                Some(("outro", true)),
-            ),
-            (
-                Arr::Extended,
-                "extract",
-                0.1,
-                0.1,
-                0.2,
-                Some(("outro", true)),
-            ),
-            (Arr::Theme, "extract", 0.1, 0.1, 0.2, Some(("outro", true))),
-            // alert routes to bridge (no hold) everywhere
-            (
-                Arr::Original,
-                "alert",
-                0.5,
-                0.2,
-                0.1,
-                Some(("bridge", false)),
-            ),
-            (
-                Arr::Extended,
-                "alert",
-                0.5,
-                0.2,
-                0.1,
-                Some(("bridge", false)),
-            ),
-            (Arr::Theme, "alert", 0.5, 0.2, 0.1, Some(("bridge", false))),
-            // exploit with focus >= 0.7 routes to chorus; below the focus bound it does not
-            (
-                Arr::Original,
-                "exploit",
-                0.4,
-                0.71,
-                0.1,
-                Some(("chorus", false)),
-            ),
-            (
-                Arr::Extended,
-                "exploit",
-                0.4,
-                0.71,
-                0.1,
-                Some(("chorus", false)),
-            ),
-            (
-                Arr::Theme,
-                "exploit",
-                0.4,
-                0.71,
-                0.1,
-                Some(("chorus", false)),
-            ),
-            (Arr::Original, "exploit", 0.4, 0.69, 0.1, None),
-            (Arr::Extended, "exploit", 0.4, 0.69, 0.1, None),
-            (Arr::Theme, "exploit", 0.4, 0.69, 0.1, None),
-            // progress-only 0.8/0.94: Original/Theme have no outro rule; Extended does
-            (Arr::Original, "scan", 0.5, 0.5, 0.8, None),
-            (Arr::Theme, "scan", 0.5, 0.5, 0.8, None),
-            (Arr::Extended, "scan", 0.5, 0.5, 0.8, Some(("outro", true))),
-            (Arr::Original, "scan", 0.5, 0.5, 0.94, None),
-            (Arr::Theme, "scan", 0.5, 0.5, 0.94, None),
-            (Arr::Extended, "scan", 0.5, 0.5, 0.94, Some(("outro", true))),
-            // progress 0.79 is below even the extended outro threshold
-            (Arr::Original, "scan", 0.5, 0.5, 0.79, None),
-            (Arr::Theme, "scan", 0.5, 0.5, 0.79, None),
-            (Arr::Extended, "scan", 0.5, 0.5, 0.79, None),
-            // progress 0.95 reaches coda everywhere (outranks the extended outro rule)
-            (Arr::Original, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
-            (Arr::Extended, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
-            (Arr::Theme, "scan", 0.5, 0.5, 0.95, Some(("coda", true))),
-            // heat >= 0.75 outranks the extended outro rule; heat 0.74 does not
-            (
-                Arr::Original,
-                "scan",
-                0.75,
-                0.5,
-                0.8,
-                Some(("bridge", false)),
-            ),
-            (
-                Arr::Extended,
-                "scan",
-                0.75,
-                0.5,
-                0.8,
-                Some(("bridge", false)),
-            ),
-            (Arr::Theme, "scan", 0.75, 0.5, 0.8, Some(("bridge", false))),
-            (Arr::Original, "scan", 0.74, 0.5, 0.8, None),
-            (Arr::Extended, "scan", 0.74, 0.5, 0.8, Some(("outro", true))),
-            (Arr::Theme, "scan", 0.74, 0.5, 0.8, None),
+            ("complete", 0.1, 0.1, 1.0, Some(("coda", true))),
+            // extract routes to outro (hold)
+            ("extract", 0.1, 0.1, 0.2, Some(("outro", true))),
+            // alert routes to bridge (no hold)
+            ("alert", 0.5, 0.2, 0.1, Some(("bridge", false))),
+            // exploit with focus >= 0.7 routes to chorus; below the bound it does not
+            ("exploit", 0.4, 0.71, 0.1, Some(("chorus", false))),
+            ("exploit", 0.4, 0.69, 0.1, None),
+            // progress alone has no rule: 0.8/0.94/0.79 all fall through
+            ("scan", 0.5, 0.5, 0.8, None),
+            ("scan", 0.5, 0.5, 0.94, None),
+            ("scan", 0.5, 0.5, 0.79, None),
+            // progress 0.95 reaches coda
+            ("scan", 0.5, 0.5, 0.95, Some(("coda", true))),
+            // heat >= 0.75 cues bridge; heat 0.74 does not (and has no outro net)
+            ("scan", 0.75, 0.5, 0.8, Some(("bridge", false))),
+            ("scan", 0.74, 0.5, 0.8, None),
         ];
-        for &(arrangement, phase, heat, focus, progress, expected) in cases {
-            let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
+        let score = suspense_pool("trace-rules");
+        for &(phase, heat, focus, progress, expected) in cases {
             let state = TraceState {
                 phase: phase.into(),
                 heat,
@@ -698,46 +601,37 @@ mod tests {
             assert_eq!(
                 selected,
                 expected.map(|(section, hold)| (section.to_string(), hold)),
-                "{arrangement:?} {phase} heat={heat} focus={focus} progress={progress}"
+                "{phase} heat={heat} focus={focus} progress={progress}"
             );
         }
     }
 
     #[test]
     fn trace_transport_progress_and_heat_obey_serialized_rules() {
-        // A neutral phase plus progress 0.8/0.94: only the Extended outro rule fires.
-        for progress in [0.8, 0.94] {
-            let progress_only = TraceState {
-                phase: "scan".into(),
-                heat: 0.5,
-                focus: 0.5,
-                progress,
-            };
-            for arrangement in [
-                crate::SuspenseArrangement::Original,
-                crate::SuspenseArrangement::Theme,
-            ] {
+        // A neutral phase plus progress 0.8/0.94 never cues outro: the retired
+        // Extended rule is gone, so neither pool arrangement carries it.
+        for arrangement in [
+            crate::SuspenseArrangement::Seeded,
+            crate::SuspenseArrangement::AllPhases,
+        ] {
+            for progress in [0.8, 0.94] {
+                let progress_only = TraceState {
+                    phase: "scan".into(),
+                    heat: 0.5,
+                    focus: 0.5,
+                    progress,
+                };
                 let score =
                     crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
                 let mut transport = AdaptiveTransport::new(score, None).unwrap();
                 assert!(
                     transport.request_trace_state(&progress_only, 0).is_none(),
-                    "{arrangement:?} serializes no outro progress rule, so progress {progress} must not cue outro"
+                    "{arrangement:?} has no outro progress rule, so progress {progress} must not cue outro"
                 );
             }
-            let extended = crate::generate_suspense_arrangement(
-                &trace_input(),
-                crate::SuspenseArrangement::Extended,
-            )
-            .unwrap();
-            let mut extended_transport = AdaptiveTransport::new(extended, None).unwrap();
-            let plan = extended_transport
-                .request_trace_state(&progress_only, 0)
-                .expect("Extended outro progress rule must cue outro");
-            assert_eq!(plan.to, "outro", "progress {progress}");
         }
 
-        // Heat >= 0.75 outranks the extended outro rule in every arrangement.
+        // Heat >= 0.75 still outranks everything and cues bridge.
         let hot = TraceState {
             phase: "scan".into(),
             heat: 0.8,
@@ -745,25 +639,23 @@ mod tests {
             progress: 0.8,
         };
         for arrangement in [
-            crate::SuspenseArrangement::Original,
-            crate::SuspenseArrangement::Extended,
-            crate::SuspenseArrangement::Theme,
+            crate::SuspenseArrangement::Seeded,
+            crate::SuspenseArrangement::AllPhases,
         ] {
             let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
             let mut transport = AdaptiveTransport::new(score, None).unwrap();
             let plan = transport
                 .request_trace_state(&hot, 0)
                 .expect("heat rule must cue bridge");
-            assert_eq!(plan.to, "bridge", "{arrangement:?} heat overrides outro");
+            assert_eq!(plan.to, "bridge", "{arrangement:?} heat cues bridge");
         }
     }
 
     #[test]
     fn trace_transport_holds_and_rearms_across_arrangements() {
         for arrangement in [
-            crate::SuspenseArrangement::Original,
-            crate::SuspenseArrangement::Extended,
-            crate::SuspenseArrangement::Theme,
+            crate::SuspenseArrangement::Seeded,
+            crate::SuspenseArrangement::AllPhases,
         ] {
             let score = crate::generate_suspense_arrangement(&trace_input(), arrangement).unwrap();
 
@@ -825,6 +717,7 @@ mod tests {
         }
     }
 
+
     #[test]
     fn a_stale_alert_cue_does_not_swallow_later_alerts() {
         let score = crate::generate_suspense_arrangement(
@@ -837,7 +730,7 @@ mod tests {
                 mystery: 0.72,
                 pulse: 0.55,
             },
-            crate::SuspenseArrangement::Extended,
+            crate::SuspenseArrangement::AllPhases,
         )
         .unwrap();
         let bar = score.bar_ticks();
