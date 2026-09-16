@@ -1159,13 +1159,13 @@ fn develop_pulse(
     for bar_index in 0..bars {
         let degree = degrees[bar_index as usize % degrees.len()];
         let tonic = aeolian(root, degree);
-        let fifth = aeolian(root, degree + 4);
         let arc = arc_factor(bar_index, bars);
         for &s in figure.steps {
             let start = bar_index * bar + (s as u32) * sixteenth;
             let dur = bar / (figure.subdivision as u32);
-            let use_tonic = ((s as u32) / 2).is_multiple_of(2);
-            let pitch = if use_tonic { tonic } else { fifth };
+            // The pulse is a machine tick, not a melody: it holds the bar's
+            // degree. Alternating the root and the fifth at 16ths read as a
+            // ringtone, which is exactly what it should not sound like.
             push_dev_note(
                 events,
                 id,
@@ -1173,7 +1173,7 @@ fn develop_pulse(
                 start,
                 dur,
                 (0.22 * arc).clamp(0.08, 0.72),
-                pitch,
+                tonic,
                 voice,
                 false,
             );

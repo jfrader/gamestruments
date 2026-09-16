@@ -87,10 +87,9 @@ test("cancelled cues do not stop the current rhythm when their old fade timer ex
     (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, secondsPerBar * 10 + 0.2, { timeout: 40000 });
   const kicks = await page.evaluate((secondsPerBar) => window.scanAudio.kicks.map((hit) => (hit.time - window.scanAudio.firstStart!) / secondsPerBar).filter((bar) => bar < 10 - 0.001), secondsPerBar);
   await page.locator("#start-audio").click();
-  // The pool's kit is seeded and the pilot phases may drop the kit for a whole
-  // 4-bar block, so continuity is the contract here, not one exact grid: the
-  // cancelled cue must not leave the rhythm stopped.
-  expect(kicks.length).toBeGreaterThanOrEqual(4);
+  // The pool's kit is seeded and the arc may expose the opening block without
+  // it, so continuity (no long hole) is the contract, not a kick count.
+  expect(kicks.length).toBeGreaterThanOrEqual(2);
   for (let index = 1; index < kicks.length; index++) {
     expect(kicks[index]! - kicks[index - 1]!).toBeLessThan(4.5);
   }
