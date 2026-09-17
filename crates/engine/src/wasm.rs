@@ -299,9 +299,12 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 drive: inp.palette.drive,
                 bass: inp.palette.bass,
             };
-            let recipe = match arrangement {
-                RacingArrangement::Original => ArrangementRecipe::Racing,
-                RacingArrangement::Extended => ArrangementRecipe::RacingExtended,
+            // Composed already carries a song form, so there is no automatic
+            // arrangement to layer on top of it.
+            let autoplay_recipe = match arrangement {
+                RacingArrangement::Original => Some(ArrangementRecipe::Racing),
+                RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
+                RacingArrangement::Composed => None,
             };
             generate_racing_arrangement(
                 &GenerateInput {
@@ -316,7 +319,10 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 },
                 arrangement,
             )
-            .and_then(|score| apply_automatic_arrangement(score, recipe, inp.autoplay))
+            .and_then(|score| match autoplay_recipe {
+                Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
+                None => Ok(score),
+            })
         }
         other => {
             write_error(format!("Unknown recipe: {other}"));

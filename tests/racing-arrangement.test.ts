@@ -225,4 +225,41 @@ describe("Racing arrangements through the shipped WASM", () => {
       /Unknown racing arrangement: missing/,
     );
   });
+
+  it("Composed builds a song form over the six sections and loops to a groove", () => {
+    const { score } = generate({ recipe: "racing", style: "funk", arrangement: "composed" });
+
+    assert.match(score.id, /-composed-v\d/);
+    assert.equal(score.sections.length, 6);
+    const form = formOf(score);
+    assert.ok(form.steps.length >= 6);
+    for (const step of form.steps) {
+      assert.ok(
+        score.sections.some((section) => section.id === step.section),
+        `composed step references unknown section ${step.section}`,
+      );
+    }
+    assert.equal(form.steps[0]!.section, "garage");
+    assert.equal(form.steps[form.steps.length - 1]!.section, "victory");
+    assert.ok(form.loopFrom !== undefined, "composed form must have a loopFrom");
+    assert.equal(form.steps[form.loopFrom!]!.section, "cruise");
+  });
+
+  it("Composed is deterministic and varies with the seed", () => {
+    const first = generate({ recipe: "racing", style: "funk", arrangement: "composed" }).score;
+    const repeat = generate({ recipe: "racing", style: "funk", arrangement: "composed" }).score;
+    const reseeded = generate({
+      recipe: "racing",
+      style: "funk",
+      arrangement: "composed",
+      seed: "composed-other-seed",
+    }).score;
+
+    assert.deepEqual(first, repeat);
+    assert.notEqual(reseeded.id, first.id);
+    assert.deepEqual(
+      reseeded.sections.map((section) => section.id),
+      first.sections.map((section) => section.id),
+    );
+  });
 });

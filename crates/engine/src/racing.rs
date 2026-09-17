@@ -167,6 +167,38 @@ const PLANS: [SectionPlan; 6] = [
 
 const DRIVE_PHASES: [&str; 3] = ["grid", "attack", "final-lap"];
 
+/// The role a Racing section plays when it is composed into a song form. It is
+/// derived from the section's authored `development` index in [`PLANS`] — it
+/// describes the material, it never changes how that material is generated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RacingPhaseRole {
+    Intro,
+    Build,
+    Groove,
+    Peak,
+    Outro,
+}
+
+/// The role of a Racing section, read back from its authored plan. Pure,
+/// additive metadata used only by the composed arrangement.
+pub fn racing_phase_role(id: &str) -> Option<RacingPhaseRole> {
+    PLANS.iter().find(|plan| plan.id == id).map(|plan| match plan.development {
+        0 => RacingPhaseRole::Intro,
+        1 => RacingPhaseRole::Build,
+        2 => RacingPhaseRole::Groove,
+        3 | 4 => RacingPhaseRole::Peak,
+        _ => RacingPhaseRole::Outro,
+    })
+}
+
+/// The energy band of a Racing section on a 0-100 scale, derived from its
+/// authored `intensity`. `final-lap` (intensity 1.08) saturates at 100.
+pub fn racing_phase_energy(id: &str) -> Option<u32> {
+    PLANS.iter()
+        .find(|plan| plan.id == id)
+        .map(|plan| ((plan.intensity * 100.0).round() as u32).min(100))
+}
+
 struct StyleKit {
     melody: &'static str,
     bright_melody: &'static str,

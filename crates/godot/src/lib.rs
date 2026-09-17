@@ -277,8 +277,11 @@ impl GamestrumentsPlayer {
                     return false;
                 };
                 let recipe = match arrangement {
-                    RacingArrangement::Original => ArrangementRecipe::Racing,
-                    RacingArrangement::Extended => ArrangementRecipe::RacingExtended,
+                    RacingArrangement::Original => Some(ArrangementRecipe::Racing),
+                    RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
+                    // Composed already carries its own song form; no automatic
+                    // arrangement layers on top of it.
+                    RacingArrangement::Composed => None,
                 };
                 (
                     generate_racing_arrangement(
@@ -299,7 +302,7 @@ impl GamestrumentsPlayer {
                         },
                         arrangement,
                     ),
-                    Some(recipe),
+                    recipe,
                 )
             }
             other => {
