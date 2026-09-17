@@ -414,8 +414,7 @@ export async function activateExperiment(
   switchingScore = true;
   const previousAudio = audio;
   const wasRunning = previousAudio.running;
-  const previousVisual = wasRunning ? previousAudio.currentVisualTick() : 0;
-  const currentTick = Math.floor(previousVisual);
+  const currentTick = previousAudio.currentTick();
   const previousSnapshot = transport.snapshot();
   const requestedSection =
     (previousSnapshot.transition !== null &&
@@ -434,38 +433,15 @@ export async function activateExperiment(
     if (requestId !== latestGenerationRequest) {
       return false;
     }
-    const targetSection = wasRunning
-      ? (() => {
-          const liveTick = Math.floor(previousAudio.currentVisualTick());
-          const liveSnap = transport.snapshot();
-          return liveSnap.transition !== null && liveTick >= liveSnap.transition.startTick
-            ? liveSnap.transition.to
-            : liveSnap.currentSection;
-        })()
-      : requestedSection;
-    const initialSection = playbackSectionOnScore(nextScore, targetSection);
+    const initialSection = playbackSectionOnScore(nextScore, requestedSection);
     const nextTransport = new AdaptiveTransport(nextScore, initialSection);
-    let startAtTick = 0;
-    let phaseOffset = 0;
-    if (wasRunning) {
-      const nowVisual = previousAudio.currentVisualTick();
-      startAtTick = Math.floor(nowVisual);
-      const phaseFloat = previousAudio.sectionVisualTick(initialSection, nowVisual);
-      phaseOffset = Math.floor(phaseFloat);
-      const enteredAt = Math.max(0, startAtTick - phaseOffset);
-      nextTransport.jumpSection(initialSection, enteredAt);
-      nextTransport.setFormHeld(transport.formHeld, enteredAt);
-    } else {
-      nextTransport.setFormHeld(transport.formHeld, 0);
-    }
+    nextTransport.setFormHeld(transport.formHeld, 0);
     const nextAudio = new DemoAudioEngine(nextScore);
     nextAudio.soloMode = soloMode;
     const startNext = wasRunning
       ? nextAudio.start(
           initialSection,
           nextScore.form === undefined ? undefined : nextTransport.advance.bind(nextTransport),
-          startAtTick,
-          phaseOffset,
         )
       : Promise.resolve();
     await Promise.all([startNext, previousAudio.stop()]);
@@ -548,8 +524,6 @@ export async function toggleEngine(): Promise<boolean> {
     await audio.start(
       transport.snapshot().currentSection,
       score.form === undefined ? undefined : transport.advance.bind(transport),
-      0,
-      0,
     );
     return true;
   } finally {

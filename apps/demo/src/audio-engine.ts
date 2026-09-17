@@ -322,8 +322,6 @@ export class DemoAudioEngine {
   async start(
     initialSection: SectionId,
     advanceTransport?: (atTick: number, lookaheadTicks: number) => TransitionPlan | null,
-    startAtTick = 0,
-    phaseOffset = 0,
   ): Promise<void> {
     this.#advanceTransport = advanceTransport;
     if (this.#context !== null) {
@@ -417,10 +415,9 @@ export class DemoAudioEngine {
 
     this.#context = context;
     this.#noiseBuffer = this.#createNoiseBuffer(context);
-    const loopOrigin = startAtTick - phaseOffset;
     this.#activeSections.add(initialSection);
-    this.#scheduledUntilBySection.set(initialSection, startAtTick);
-    this.#loopOriginBySection.set(initialSection, loopOrigin);
+    this.#scheduledUntilBySection.set(initialSection, 0);
+    this.#loopOriginBySection.set(initialSection, 0);
     this.#applySoloMode();
     if (context.state === "suspended") {
       await context.resume();
@@ -428,7 +425,7 @@ export class DemoAudioEngine {
     if (this.#context !== context) {
       return;
     }
-    this.#originTime = context.currentTime + 0.08 - startAtTick * this.#secondsPerTick;
+    this.#originTime = context.currentTime + 0.08;
     this.#schedule();
     this.#timer = window.setInterval(
       () => this.#schedule(),
