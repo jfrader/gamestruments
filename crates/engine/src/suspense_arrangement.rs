@@ -1752,6 +1752,7 @@ fn build_new_phases(root: u8, bar: u32, seed: u32) -> Vec<(String, PortableSecti
             "step-up-bridge".into(),
             build_step_up_bridge(root, bar, seed),
         ),
+        ("theme-ride".into(), build_theme_ride(root, bar, seed)),
     ]
 }
 
@@ -2377,6 +2378,128 @@ fn build_step_up_bridge(root: u8, bar: u32, seed: u32) -> PortableSection {
     section
 }
 
+/// Theme Ride (GURI-907): the Suspense Theme's rock-backbeat ending, brought
+/// back as a pool phase rather than a frozen preset. It is the Decrypt solo's
+/// high-register cell over the Full Breach late hook, a steady eighth-note
+/// pulse, and a pinned 4/4 rock backbeat — the only "rock" element, so the rest
+/// of the recipe identity (static minor harmony, drone + short cell) holds.
+fn build_theme_ride(root: u8, bar: u32, seed: u32) -> PortableSection {
+    let mut section = new_phase_section(
+        "theme-ride",
+        "Theme Ride",
+        "full four-on-the-floor rock ride",
+        "#d9735f",
+        8 * bar,
+    );
+    let degrees = progression_degrees(8, seed, false);
+    let pulse = bar / 8;
+    // The ride keeps an even eighth-note pulse (never a syncopated figure), so
+    // the rock backbeat always has a steady harmonic tick under it.
+    let ride_fig = figure_spec("straight-8").unwrap_or(&FIGURE_POOL[0]);
+
+    // Bed: the Decrypt low pedal, plus a fifth drone that fades in over the
+    // second half so the ride lifts instead of sitting on one chord.
+    develop_drone(
+        &mut section.events,
+        "theme-ride",
+        (root - 12, "warm".into(), 0.15),
+        bar,
+        8,
+        "drone",
+        0,
+    );
+    develop_drone(
+        &mut section.events,
+        "theme-ride",
+        (root + 7, "warm".into(), 0.10),
+        bar,
+        8,
+        "drone-upper",
+        2,
+    );
+
+    // Steady pulse: the machine tick on the shared arc's chord, even eighths.
+    develop_pulse(
+        &mut section.events,
+        "theme-ride",
+        "pulse",
+        root,
+        bar,
+        8,
+        &degrees,
+        ride_fig,
+    );
+
+    // The Decrypt cell, an octave up (root + 12), short and moving through the
+    // arc's statement / answer / sequence / release.
+    develop_cell(
+        &mut section.events,
+        "theme-ride",
+        ("glass".into(), 0.18),
+        root + 12,
+        bar,
+        8,
+        &degrees,
+        PhaseRole::Groove,
+        ride_fig,
+    );
+
+    // The Full Breach late hook: the cell register (root + 7) returns as a
+    // short dusk line in the closing bars, so the ride ends on the hook rather
+    // than repeating the opening cell.
+    for phrase in 2..4u32 {
+        let degree = degrees[(phrase * 2) as usize % degrees.len()];
+        let transpose = i32::from(aeolian(root + 7, degree)) - i32::from(root + 7);
+        let start = phrase * 2 * bar + 6 * pulse;
+        push_dev_note(
+            &mut section.events,
+            "theme-ride",
+            "hook",
+            start,
+            pulse * 2,
+            0.15,
+            clamp_pitch(i32::from(root + 7) + transpose),
+            "dusk",
+            true,
+        );
+    }
+
+    // The pinned rock backbeat, then the seeded ghost/flam/fill detail on top.
+    theme_ride_backbeat(&mut section.events, "theme-ride", bar, 8);
+    develop_pilot_percussion(&mut section.events, "theme-ride", bar, 8, seed, ride_fig);
+
+    section.events.sort_by_key(MusicEvent::start_tick);
+    section
+}
+
+/// Theme Ride's kit: a full 4/4 rock backbeat on every bar — kick on beats 1
+/// and 3, snare on 2 and 4, offbeat hats — at the Theme's own velocities. This
+/// is deterministic, unlike [`develop_drums`]'s seeded backbeat mode, and it is
+/// authored in its own stream so no other phase's kit choice is touched.
+fn theme_ride_backbeat(events: &mut Vec<MusicEvent>, id: &str, bar: u32, bars: u32) {
+    let pulse = bar / 8;
+    for index in 0..bars {
+        // Kick on 1 and 3 (the entrance accent on bar 1, then the approved
+        // under-melody level).
+        push_dev_perc(
+            events,
+            id,
+            index * bar,
+            pulse,
+            if index == 0 { 0.42 } else { 0.28 },
+            "kick",
+        );
+        push_dev_perc(events, id, index * bar + 4 * pulse, pulse, 0.22, "kick");
+        // Snare on 2 and 4.
+        push_dev_perc(events, id, index * bar + 2 * pulse, pulse, 0.40, "snare");
+        push_dev_perc(events, id, index * bar + 6 * pulse, pulse, 0.32, "snare");
+        // Offbeat hats.
+        for step in [1u32, 3, 5, 7] {
+            push_dev_perc(events, id, index * bar + step * pulse, pulse / 3, 0.16, "hat");
+        }
+    }
+}
+
 fn arrangement_root(score: &PortableScore) -> Result<u8, String> {
     score
         .section("intro")
@@ -2941,6 +3064,118 @@ mod tests {
         assert!(
             without > 0,
             "every pool phase uses the backbeat; it is not a seeded mode"
+        );
+    }
+
+    /// Theme Ride pins the full 4/4 rock backbeat on every bar — kick on 1 and
+    /// 3, snare on 2 and 4, offbeat hats — for every seed, unlike the seeded
+    /// mode that other phases draw from `develop_drums`. The pattern is checked
+    /// at the authored level (`build_pool_score`), before the surface pass can
+    /// jitter a hat away.
+    #[test]
+    fn theme_ride_pins_the_rock_backbeat_on_every_bar() {
+        for take in 0..8u32 {
+            let score = build_pool_score(&input("ride"), take).unwrap();
+            let bar = score.bar_ticks();
+            let section = score.section("theme-ride").unwrap();
+            let bars_in = section.length_ticks / bar;
+            assert_eq!(bars_in, 8, "theme-ride is authored at eight bars");
+            let pulse = bar / 8;
+            let has = |voice: &str, start: u32| {
+                section.events.iter().any(|event| {
+                    matches!(event, MusicEvent::Percussion { voice: v, start_tick, .. }
+                        if v == voice && *start_tick == start)
+                })
+            };
+            for index in 0..bars_in {
+                let base = index * bar;
+                assert!(
+                    has("kick", base) && has("kick", base + 4 * pulse),
+                    "theme-ride kick must land on beats 1 and 3 in bar {index}"
+                );
+                assert!(
+                    has("snare", base + 2 * pulse) && has("snare", base + 6 * pulse),
+                    "theme-ride snare must land on beats 2 and 4 in bar {index}"
+                );
+                for step in [1u32, 3, 5, 7] {
+                    assert!(
+                        has("hat", base + step * pulse),
+                        "theme-ride hat must land on the offbeat at step {step} in bar {index}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Theme Ride is a developed phase, not a cloned loop: it holds the recipe's
+    /// drone + short cell + steady pulse identity, but its last bar reads
+    /// differently from its first (layers arrive, the harmony moves, a hook and
+    /// a fill land).
+    #[test]
+    fn theme_ride_develops_across_its_bars() {
+        let score = build_pool_score(&input("ride-dev"), 0).unwrap();
+        let bar = score.bar_ticks();
+        let section = score.section("theme-ride").unwrap();
+        let bars_in = section.length_ticks / bar;
+        assert!(bars_in >= 4);
+
+        // Identity: a continuous low drone, a short melodic cell, a steady
+        // eighth-note pulse, and the backbeat all present.
+        let has_drone = section.events.iter().any(|event| {
+            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-drone"))
+        });
+        let has_cell = section.events.iter().any(|event| {
+            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-cell"))
+        });
+        let has_pulse = section.events.iter().any(|event| {
+            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-pulse"))
+        });
+        let has_hook = section.events.iter().any(|event| {
+            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-hook"))
+        });
+        assert!(has_drone, "theme-ride needs a drone");
+        assert!(has_cell, "theme-ride needs a short cell");
+        assert!(has_pulse, "theme-ride needs a steady pulse");
+        assert!(has_hook, "theme-ride needs the Full Breach late hook");
+
+        // No flat over-long sustain: the cell is short, not a held beep.
+        for event in &section.events {
+            if let MusicEvent::Note {
+                lane, duration_ticks, ..
+            } = event
+            {
+                if lane.ends_with("-cell") || lane.ends_with("-hook") {
+                    assert!(
+                        *duration_ticks <= bar / 4,
+                        "{} holds {duration_ticks} ticks — a flat sustain",
+                        lane
+                    );
+                }
+            }
+        }
+
+        // Development: the first bar and the last bar are not the same material.
+        let signature = |bar_index: u32| -> Vec<(String, u32, Option<u8>)> {
+            let start = bar_index * bar;
+            let mut entries: Vec<_> = section
+                .events
+                .iter()
+                .filter(|event| event.start_tick() >= start && event.start_tick() < start + bar)
+                .map(|event| {
+                    (
+                        event.voice().to_string(),
+                        event.start_tick() - start,
+                        event.pitch(),
+                    )
+                })
+                .collect();
+            entries.sort();
+            entries
+        };
+        assert_ne!(
+            signature(0),
+            signature(bars_in - 1),
+            "theme-ride first bar must not equal its last"
         );
     }
 
@@ -3846,6 +4081,7 @@ mod tests {
             "filter-break",
             "harmonic-bridge",
             "step-up-bridge",
+            "theme-ride",
         ] {
             assert!(
                 seen.contains(new_phase),

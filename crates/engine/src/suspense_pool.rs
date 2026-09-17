@@ -205,7 +205,7 @@ impl PhaseMeta for PhaseSpec {
 /// The pool, in canonical play order (the natural song arc, Extended phases
 /// slotted where `generate_extended` would place them, new grooves and
 /// breaks/bridges interleaved by energy, then `outro` / `coda`).
-pub const PHASE_POOL: &[PhaseSpec; 27] = &[
+pub const PHASE_POOL: &[PhaseSpec; 28] = &[
     PhaseSpec {
         id: "intro",
         role: PhaseRole::Intro,
@@ -405,6 +405,14 @@ pub const PHASE_POOL: &[PhaseSpec; 27] = &[
         one_shot: false,
         bars: 8,
         figure: "double-time",
+    },
+    PhaseSpec {
+        id: "theme-ride",
+        role: PhaseRole::Groove,
+        energy: 68,
+        one_shot: false,
+        bars: 8,
+        figure: "straight-8",
     },
     PhaseSpec {
         id: "outro",
@@ -890,6 +898,38 @@ mod tests {
                 .collect();
             assert!(picks.len() >= 2, "{id} always gets {picks:?}");
         }
+    }
+
+    /// `theme-ride` must be a real, reachable phase: a non-one-shot groove with
+    /// legal predecessors and successors, so both the canonical tour and the
+    /// seeded composer can place it.
+    #[test]
+    fn theme_ride_is_a_reachable_groove() {
+        let ride = phase_spec("theme-ride").expect("theme-ride must be in the pool");
+        assert_eq!(ride.role, PhaseRole::Groove);
+        assert!(!ride.one_shot, "a ride the composer can loop must not be one-shot");
+        assert_eq!(ride.bars, 8);
+        assert!(ride.energy <= 100);
+
+        let predecessors = PHASE_POOL
+            .iter()
+            .filter(|spec| {
+                SuspensePool::role_legal(**spec, *ride) && SuspensePool::energy_legal(**spec, *ride)
+            })
+            .count();
+        let successors = PHASE_POOL
+            .iter()
+            .filter(|spec| {
+                SuspensePool::role_legal(*ride, **spec) && SuspensePool::energy_legal(*ride, **spec)
+            })
+            .count();
+        assert!(predecessors >= 1, "no phase can precede theme-ride");
+        assert!(successors >= 1, "theme-ride cannot precede any phase");
+
+        // Its preferred figure must be a legal match for its role and energy.
+        let figure = figure_for_composition("theme-ride", 0x51ed_0000);
+        assert!(figure.roles.contains(&PhaseRole::Groove));
+        assert!(ride.energy >= figure.energy.0 && ride.energy <= figure.energy.1);
     }
 
     /// Adjacent Grooves stay inside the contrast budget: at most one of
