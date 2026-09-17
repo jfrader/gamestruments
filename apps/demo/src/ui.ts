@@ -58,6 +58,12 @@ const RACING_ARRANGEMENTS: readonly ArrangementOption[] = [
     description: "Ten-section race · ignition → cooldown",
     summary: "Ten-section race: ignition, slipstream, redline, and cooldown extend the tour.",
   },
+  {
+    id: "composed",
+    label: "Composed",
+    description: "Six phases composed into a song form",
+    summary: "A seeded composer orders the six phases into a song form, re-times them by role, and loops the tour back to cruise.",
+  },
 ];
 
 const SUSPENSE_ARRANGEMENTS: readonly ArrangementOption[] = [

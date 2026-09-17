@@ -64,6 +64,7 @@ await initializeLab();
 const ARRANGEMENT_READY: Record<Arrangement, string> = {
   original: "Original arrangement restored",
   extended: "Extended arrangement restored",
+  composed: "Composed arrangement ready",
   "all-phases": "All phases arrangement ready",
   seeded: "Seeded arrangement ready",
 };

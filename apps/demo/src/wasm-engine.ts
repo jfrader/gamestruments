@@ -59,12 +59,12 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
-export type RacingArrangement = "original" | "extended";
+export type RacingArrangement = "original" | "extended" | "composed";
 export type SuspenseArrangement = "all-phases" | "seeded";
 export type Arrangement = RacingArrangement | SuspenseArrangement;
 
 export function isRacingArrangement(value: Arrangement): value is RacingArrangement {
-  return value === "original" || value === "extended";
+  return value === "original" || value === "extended" || value === "composed";
 }
 
 export function isSuspenseArrangement(value: Arrangement): value is SuspenseArrangement {

@@ -175,8 +175,8 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
 
-  // Racing defaults to Extended and offers only Original/Extended.
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  // Racing defaults to Extended and offers Original, Extended, and Composed.
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
 
   // Suspense defaults to Seeded and picks it up without touching Racing.
@@ -187,13 +187,31 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
 
   // Switching to Racing shows Extended again — the pool selection must not leak.
   await selectRecipe(page, "racing");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
   await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
 
   // Back to Suspense: the all-phases selection is preserved.
   await selectRecipe(page, "suspense");
   await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
+
+test("Racing Composed composes a song form over the six phases and announces it", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  await page.goto("/#lab");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+
+  await page.locator('#arrangement-buttons button[data-arrangement="composed"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="composed"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("Composed arrangement ready");
+  await expect(page.locator("#score-title")).toContainText("Composed");
+  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-control")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
