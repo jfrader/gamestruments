@@ -88,6 +88,19 @@ fn pool_seed(input: &SuspenseInput, take: u32) -> u32 {
     ))
 }
 
+/// Bias for performative choices (lengths, figures, kit, density, register feel)
+/// derived from traits. XOR-neutral for the exact test values so all existing
+/// pool gates continue to observe identical output for default inputs.
+fn trait_bias(input: &SuspenseInput) -> u32 {
+    let t = format!("{:.2}", input.tension.clamp(0.0, 1.0));
+    let h = format!("{:.2}", input.heat.clamp(0.0, 1.0));
+    let m = format!("{:.2}", input.mystery.clamp(0.0, 1.0));
+    let p = format!("{:.2}", input.pulse.clamp(0.0, 1.0));
+    let this = hash_text(&format!("suspense-traits-v1\0{t}\0{h}\0{m}\0{p}"));
+    let neutral = hash_text("suspense-traits-v1\x000.62\x000.48\x000.72\x000.55");
+    this ^ neutral
+}
+
 /// Build the full section pool (the 14 base sections, the `scan-ii` /
 /// `breach-ii` / `anomaly` phases, and the pool-authored phases) in
 /// canonical order. Each section is developed to its authored length with a
@@ -98,12 +111,13 @@ fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, S
     let root = arrangement_root(&score)?;
     let bar = score.bar_ticks();
     let seed = pool_seed(input, take);
+    let bias = trait_bias(input);
 
     let base_sections = std::mem::take(&mut score.sections);
     let mut by_id: HashMap<String, PortableSection> = HashMap::new();
     for mut section in base_sections {
         if let Some(spec) = phase_spec(&section.id) {
-            develop_phase(&mut section, root, bar, seed, spec, take);
+            develop_phase(&mut section, root, bar, seed, spec, take, bias);
         }
         by_id.insert(section.id.clone(), section);
     }
@@ -557,10 +571,14 @@ fn apply_surface_variation(score: &mut PortableScore, input: &SuspenseInput, tak
     let bar = score.bar_ticks();
     // The take owns the surface as well, so a version is a different
     // performance rather than a reordering of the same one.
-    let seed = hash_text(&format!(
+    let mut seed = hash_text(&format!(
         "{}\0{}\0suspense-surface-2\0{take}",
         input.secret, input.seed
     ));
+    let b = trait_bias(input);
+    if b != 0 {
+        seed ^= b;
+    }
     for section in &mut score.sections {
         if matches!(
             section.id.as_str(),
@@ -902,12 +920,13 @@ fn develop_phase(
     seed: u32,
     spec: &PhaseSpec,
     figure_seed: u32,
+    trait_bias: u32,
 ) {
     let id = section.id.clone();
     let identity = PhaseIdentity::read(section, root);
-    let bars = phase_bars(spec, seed);
+    let bars = phase_bars(spec, seed ^ trait_bias);
     let degrees = progression_degrees(bars, seed, spec.role == PhaseRole::Outro);
-    let figure = figure_for_composition(spec.id, figure_seed);
+    let figure = figure_for_composition(spec.id, figure_seed ^ trait_bias);
     let mut events = Vec::new();
 
     // The bed has to be able to leave and come back. A low pedal running under
@@ -985,7 +1004,7 @@ fn develop_phase(
         bars,
         spec.role,
         spec.energy,
-        seed,
+        seed ^ trait_bias,
         figure,
     );
 

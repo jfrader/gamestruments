@@ -55,6 +55,7 @@ import {
   labRecipeInfo,
   type LabRecipe,
   setSoloMode,
+  versionIndex,
 } from "./state";
 
 await initializeLab();
@@ -227,8 +228,9 @@ for (const [input, output] of [
     output.value = `${Math.round(Number(input.value) * 100)}%`;
   });
   input.addEventListener("change", () => {
-    applyGenerationRequest(requestExperiment(activeExperimentIndex, levelSeed, traitsFromControls()), () => {
-      resetVersion();
+    applyGenerationRequest(requestExperiment(activeExperimentIndex, levelSeed, traitsFromControls(), currentArrangement(), versionIndex), () => {
+      // keep same take (reel) and do not resetVersion; activate keeps current section if present
+      // so trait change flows without restarting to intro
       renderCurrentScore();
       announceAudition(`Regenerated ${score.title}`);
     });
