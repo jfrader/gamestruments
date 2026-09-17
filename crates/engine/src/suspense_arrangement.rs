@@ -2387,7 +2387,7 @@ fn build_theme_ride(root: u8, bar: u32, seed: u32) -> PortableSection {
     let mut section = new_phase_section(
         "theme-ride",
         "Theme Ride",
-        "full four-on-the-floor rock ride",
+        "the cell rides the rock backbeat",
         "#d9735f",
         8 * bar,
     );
