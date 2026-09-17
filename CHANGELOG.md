@@ -15,6 +15,7 @@
 - Audio Lab: added a prominent play/pause control to the unobstructed center of a music-reactive orbit, with beat, rhythm, melody, and bar motion; clear icon-label spacing; synchronized header controls; and a Space shortcut outside form fields.
 
 ### Changed
+- Racing Composed now develops and hands off like Suspense: each phase's layers enter and leave across its blocks (the bass bed stays continuous), every join gets a seeded transition gesture over a shared pitch class drawn from Racing's own harmony, and the generation traits reshape the composed lengths, density and seams while staying neutral at the Lab default. A register ceiling keeps composed Racing from producing piercing highs. Original and Extended stay byte-identical.
 - Suspense now has one authority: the phase pool. The frozen Original, Extended, and Theme presets are retired; the Audio Lab and Godot offer `all-phases` and `seeded` (default). The retired `original`/`extended`/`theme` names still parse, but they resolve to the seeded pool, so scores requested by those names change. The per-preset `progress`-only Disconnect cue is gone.
 - Audio Lab: the hi-hat and tambourine now carry their fixed stereo placement (hat right, tambourine left), matching the engine's per-voice pans instead of sitting unpanned as pure-noise voices.
 - Suspense phases breathe more: breaks and wait states can shrink to 1–2 bars, and momentum phases can stretch to 24/32 bars, so a version's progression runs longer the way Adventure and Racing sections do instead of every strong phase resolving at 16.

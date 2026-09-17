@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::development::{development_schedule, mask_to_schedule};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
 use crate::suspense::{generate_suspense, SuspenseInput};
@@ -202,13 +203,6 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
         return;
     };
     let bars = section.length_ticks / bar;
-    // Short phases get 2-bar blocks so they still have room for a shape; long
-    // ones keep 4-bar blocks so the layers do not flutter.
-    let block_bars = if bars <= 8 { 2 } else { 4 };
-    let blocks = (bars / block_bars) as usize;
-    if blocks < 2 {
-        return;
-    }
     let id = section.id.clone();
     // The shape follows the job the phase does, so the pool does not breathe in
     // lockstep. Rank 1 is bed+tick only, 2 adds the kit, 3 the cell, 4 the arp.
@@ -224,24 +218,14 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
         PhaseRole::Intro | PhaseRole::Outro => &[1, 2, 4, 3],
         PhaseRole::Break => return,
     };
-    let schedule: Vec<u8> = (0..blocks)
-        .map(|block| arc[(block * arc.len()) / blocks])
-        .collect();
+    let Some((block_bars, schedule)) = development_schedule(arc, bars) else {
+        return;
+    };
     let block_ticks = bar * block_bars;
-    let last_bar_start = section.length_ticks.saturating_sub(bar);
-    section.events.retain(|event| {
-        let start = event.start_tick();
-        // The closing bar is the release: it stays intact so the phase still
-        // lands on the seam the shared arc expects.
-        if start >= last_bar_start {
-            return true;
-        }
-        let block = (start / block_ticks) as usize;
-        layer_rank(event) <= schedule.get(block).copied().unwrap_or(4)
-    });
+    mask_to_schedule(section, bar, block_ticks, &schedule, layer_rank);
     // Every time the arc adds a layer, the block lands on an impact. Ids get
     // their own prefix so they never collide with the kit's `:kit:dev:` onsets.
-    for block in 0..blocks.saturating_sub(1) {
+    for block in 0..schedule.len().saturating_sub(1) {
         if schedule[block + 1] > schedule[block] && schedule[block + 1] >= 3 {
             let start = (block as u32 + 1) * block_ticks;
             // Never let an impact run past the phase, whatever the block math.

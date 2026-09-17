@@ -199,6 +199,46 @@ pub fn racing_phase_energy(id: &str) -> Option<u32> {
         .map(|plan| ((plan.intensity * 100.0).round() as u32).min(100))
 }
 
+/// The harmony facts the composed arrangement re-derives from an input so its
+/// seam and register passes agree with the generated material.
+///
+/// The base sections each resolve their own treatment (pressure, dominant,
+/// parallel-major) from the one shared [`HarmonyDna`], so the composed passes
+/// need the shared DNA itself rather than anything read back out of events.
+/// Re-derived (not stashed during generation) so it is a pure function of the
+/// input and stays identical to what `generate_racing` produced.
+pub(crate) struct RacingHarmony {
+    pub(crate) root_pitch_class: i32,
+    pub(crate) progression_degrees: Vec<i32>,
+    pub(crate) scale_intervals: Vec<i32>,
+}
+
+pub(crate) fn racing_harmony(input: &GenerateInput) -> RacingHarmony {
+    let traits = normalize_traits(
+        input.energy,
+        input.complexity,
+        input.brightness,
+        input.syncopation,
+    );
+    let palette_key = input.palette.fingerprint();
+    let palette_empty = input.palette.melody.is_empty()
+        && input.palette.harmony.is_empty()
+        && input.palette.drive.is_empty()
+        && input.palette.bass.is_empty();
+    let pal_for_seed = if palette_empty {
+        "".to_string()
+    } else {
+        palette_key
+    };
+    let domain_h = subseed(&input.secret, &input.seed, "harmony", &pal_for_seed);
+    let dna = create_harmony_dna(domain_h, &traits);
+    RacingHarmony {
+        root_pitch_class: dna.root_pitch_class,
+        progression_degrees: dna.progression_degrees,
+        scale_intervals: dna.scale_intervals,
+    }
+}
+
 struct StyleKit {
     melody: &'static str,
     bright_melody: &'static str,
