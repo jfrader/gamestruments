@@ -9,9 +9,9 @@ import { validatePortableScore, type PortableScore } from "../packages/runtime/s
 // (`""`, `original`, `extended`, `theme`) resolves to the seeded default, which
 // these digests freeze byte-for-byte.
 const seededDigests = {
-  terminal: "945dbb08d3807331ffc2ec6ac1535731907b364277103e399c7fac7874dbf7c6",
-  cipher: "57178ea1162261e0b0c14c5e81792fd5f6f47566c7158572b21fe2cf804f4f2f",
-  noir: "436f44746f095b925bd49791046cd37571ea111cf463b73d20e7b12ba1353ab5",
+  terminal: "dff2b1436fb8cfabf024d5ad12ee38c9c99eeb1a530a1c278ada25b97734df61",
+  cipher: "47f387079f3789f7368c6cd913071a7b4be797e19b3957a74da8c5eab67329d8",
+  noir: "baf725167e228bf7214ec77fb17660cb68c22a00211bfe186a9480579a6fad73",
 };
 
 const { instance } = await WebAssembly.instantiate(new Uint8Array(await readFile(
@@ -92,10 +92,10 @@ function generateWith(overrides: Record<string, unknown>): { bytes: Uint8Array; 
 describe("Suspense pool arrangements through the shipped WASM", () => {
   it("all-phases plays the full pool once and loops from the first groove", () => {
     const { score } = generateWith({ arrangement: "all-phases" });
-    assert.equal(score.sections.length, 27);
+    assert.equal(score.sections.length, 28);
     const steps = score.form!.steps;
-    assert.equal(steps.length, 27);
-    assert.equal(new Set(steps.map((step) => step.section)).size, 27);
+    assert.equal(steps.length, 28);
+    assert.equal(new Set(steps.map((step) => step.section)).size, 28);
     assert.equal(steps[score.form!.loopFrom!]!.section, "verse");
     assert.match(score.id, /-all-phases$/);
   });
