@@ -110,6 +110,7 @@ fn generate_seeded(input: &GenerateInput) -> Result<PortableScore, String> {
     // gesture over a shared pitch class, and nothing pierces the register.
     for section in &mut score.sections {
         apply_racing_development_arc(section, bar, form_seed, traits.complexity);
+        apply_racing_race_bed(section, bar);
     }
     apply_racing_transition_pass(&mut score, &harmony, form_seed);
     for section in &mut score.sections {
@@ -247,6 +248,152 @@ fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u
         1
     };
     develop_section(section, bar, arc, racing_layer_rank, seed, true, bias, floor);
+}
+
+/// The rhythmic bed a race-groove phase gets on the seeded path, so its
+/// harmony and bass pulse like the build (`grid`) instead of holding one
+/// whole-note pad per bar. Keyed by section, not by role, so each phase keeps
+/// its own groove: the flow and the slipstream comp a steady quarter pulse,
+/// the peaks attack and redline syncopate, the final lap pushes the fullest,
+/// and the ignition builds from a sparse two-step. `grid` itself is already
+/// rhythmic and is deliberately absent, so it is never double-processed.
+fn race_bed_pattern(id: &str) -> Option<(&'static [u32], &'static [u32])> {
+    match id {
+        "cruise" | "slipstream" => Some((&[0, 2, 4, 6], &[0, 2, 4, 6])),
+        "attack" | "redline" => Some((&[0, 3, 4, 6], &[0, 3, 4, 6])),
+        "final-lap" => Some((&[0, 2, 3, 4, 6, 7], &[0, 2, 4, 6])),
+        "ignition" => Some((&[0, 4], &[0, 4])),
+        _ => None,
+    }
+}
+
+/// Re-build a race phase's whole-note harmony and bass as rhythmic stabs on the
+/// eighth grid. The chord tones and bass pitches are re-triggered from the
+/// material already present (so the harmony, register and voices are untouched);
+/// only their onsets and durations change. An authored rest at the top of a bar
+/// (redline's full stop) survives because a stab never fires before the lane's
+/// earliest onset in that bar, and a bar whose harmony was removed by a break
+/// (redline's breakdown) keeps no stabs.
+fn apply_racing_race_bed(section: &mut PortableSection, bar: u32) {
+    let Some((harmony_steps, bass_steps)) = race_bed_pattern(&section.id) else {
+        return;
+    };
+    if bar == 0 {
+        return;
+    }
+    let pulse = bar / 8;
+    let bars = (section.length_ticks / bar) as usize;
+
+    // Gather the authored bed per bar: harmony chord tones (pitch, velocity)
+    // and the bass line (pitch, velocity), plus each lane's voice and earliest
+    // onset step so a deliberate rest at the top of a bar is preserved.
+    let mut harmony_voice: Option<String> = None;
+    let mut bass_voice: Option<String> = None;
+    let mut tones: Vec<Vec<(u8, f64)>> = vec![Vec::new(); bars];
+    let mut bass_line: Vec<Vec<(u8, f64)>> = vec![Vec::new(); bars];
+    let mut harmony_first: Vec<u32> = vec![8; bars];
+    let mut bass_first: Vec<u32> = vec![8; bars];
+
+    for event in &section.events {
+        let MusicEvent::Note {
+            lane,
+            start_tick,
+            pitch,
+            velocity,
+            voice,
+            ..
+        } = event
+        else {
+            continue;
+        };
+        let bar_index = (start_tick / bar) as usize;
+        if bar_index >= bars {
+            continue;
+        }
+        let step = (start_tick % bar) / pulse;
+        if lane.ends_with("-harmony") {
+            harmony_voice.get_or_insert_with(|| voice.clone());
+            if !tones[bar_index].iter().any(|(p, _)| *p == *pitch) {
+                tones[bar_index].push((*pitch, *velocity));
+            }
+            harmony_first[bar_index] = harmony_first[bar_index].min(step);
+        } else if lane.ends_with("-bass") {
+            bass_voice.get_or_insert_with(|| voice.clone());
+            bass_line[bar_index].push((*pitch, *velocity));
+            bass_first[bar_index] = bass_first[bar_index].min(step);
+        }
+    }
+
+    let (Some(harmony_voice), Some(bass_voice)) = (harmony_voice, bass_voice) else {
+        return;
+    };
+
+    // Drop the whole-note bed; it is rebuilt below as stabs.
+    section.events.retain(|event| match event {
+        MusicEvent::Note { lane, .. } => !lane.ends_with("-harmony") && !lane.ends_with("-bass"),
+        _ => true,
+    });
+
+    let id = section.id.clone();
+    let mut bed: Vec<MusicEvent> = Vec::new();
+    for bar_index in 0..bars {
+        let bar_start = bar_index as u32 * bar;
+        let bar_end = (bar_start + bar).min(section.length_ticks);
+
+        // Harmony comp: every chord tone re-triggered at each stab step.
+        for (tone_index, &(pitch, vel)) in tones[bar_index].iter().enumerate() {
+            for &step in harmony_steps {
+                if step < harmony_first[bar_index] {
+                    continue;
+                }
+                let start = bar_start + step * pulse;
+                if start >= bar_end {
+                    continue;
+                }
+                let duration = (pulse / 2).min(bar_end - start).max(1);
+                bed.push(MusicEvent::Note {
+                    id: format!("{id}:bed:h:{bar_index}:{tone_index}:{step}"),
+                    section: id.clone(),
+                    lane: format!("{id}-harmony"),
+                    start_tick: start,
+                    duration_ticks: duration,
+                    velocity: vel.clamp(0.08, 0.96),
+                    pitch,
+                    voice: harmony_voice.clone(),
+                    role: None,
+                });
+            }
+        }
+
+        // Bass pulse: cycle the authored bass line across the pulse steps.
+        if !bass_line[bar_index].is_empty() {
+            for (note_index, &step) in bass_steps.iter().enumerate() {
+                if step < bass_first[bar_index] {
+                    continue;
+                }
+                let start = bar_start + step * pulse;
+                if start >= bar_end {
+                    continue;
+                }
+                let (pitch, vel) = bass_line[bar_index][note_index % bass_line[bar_index].len()];
+                let duration = pulse.min(bar_end - start).max(1);
+                bed.push(MusicEvent::Note {
+                    id: format!("{id}:bed:b:{bar_index}:{note_index}"),
+                    section: id.clone(),
+                    lane: format!("{id}-bass"),
+                    start_tick: start,
+                    duration_ticks: duration,
+                    velocity: vel.clamp(0.08, 0.96),
+                    pitch,
+                    voice: bass_voice.clone(),
+                    role: None,
+                });
+            }
+        }
+    }
+
+    section.events.extend(bed);
+    section.events.sort_by_key(MusicEvent::start_tick);
 }
 
 /// The seam vocabulary: how one seeded phase hands the music to the next.
@@ -2705,6 +2852,65 @@ mod tests {
                             "{style:?} {seed} {id} block {block} dropped the kit"
                         );
                     }
+                }
+            }
+        }
+    }
+
+    /// Every race-groove phase must pulse like the build (`grid`): its harmony
+    /// comps rhythmically (two or more eighth-grid onsets per bar) instead of
+    /// holding one static whole-note pad, so the gap between `grid` and the
+    /// flow/peak phases cannot silently reopen. Bars that carry no harmony at
+    /// all (redline's authored breakdown) are permitted, but at least one bar
+    /// must carry the rhythmic bed.
+    #[test]
+    fn seeded_race_phases_comp_harmony_rhythmically_like_grid() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
+                    .expect("seeded");
+                let bar = score.bar_ticks();
+                let pulse = bar / 8;
+                for id in [
+                    "ignition",
+                    "grid",
+                    "cruise",
+                    "slipstream",
+                    "attack",
+                    "redline",
+                    "final-lap",
+                ] {
+                    let section = score.section(id).expect(id);
+                    let bars = section.length_ticks / bar;
+                    let mut harmony_bars = 0;
+                    for bar_index in 0..bars {
+                        let from = bar_index * bar;
+                        let to = from + bar;
+                        let mut steps: Vec<u32> = section
+                            .events
+                            .iter()
+                            .filter(|event| {
+                                matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-harmony"))
+                            })
+                            .filter(|event| event.start_tick() >= from && event.start_tick() < to)
+                            .map(|event| (event.start_tick() % bar) / pulse)
+                            .collect();
+                        steps.sort_unstable();
+                        steps.dedup();
+                        if steps.is_empty() {
+                            continue; // redline's authored breakdown
+                        }
+                        harmony_bars += 1;
+                        assert!(
+                            steps.len() >= 2,
+                            "{style:?} {seed} {id} bar {bar_index} holds a static harmony pad"
+                        );
+                    }
+                    assert!(
+                        harmony_bars > 0,
+                        "{style:?} {seed} {id} lost its harmony bed"
+                    );
                 }
             }
         }
