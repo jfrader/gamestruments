@@ -17,6 +17,7 @@ import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
 import {
   playbackSectionOnScore,
+  isDebugBarSection,
   ADVENTURE_SCENE_SECTIONS,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
@@ -341,17 +342,18 @@ export function cueSection(target: SectionId): void {
 
 // Cue the previous (-1) or next (+1) section in the score order, wrapping at the ends.
 export function stepSection(delta: number): void {
-  if (cueControlsBusy() || score.sections.length === 0) return;
+  const phases = score.sections.filter((section) => !isDebugBarSection(section.id));
+  if (cueControlsBusy() || phases.length === 0) return;
   const tick = audio.currentTick();
   const snapshot = transport.snapshot();
   const active =
     snapshot.transition !== null && tick >= snapshot.transition.startTick
       ? snapshot.transition.to
       : snapshot.currentSection;
-  const index = score.sections.findIndex((section) => section.id === active);
+  const index = phases.findIndex((section) => section.id === active);
   const base = index === -1 ? 0 : index;
-  const nextIndex = (base + delta + score.sections.length) % score.sections.length;
-  const next = score.sections[nextIndex];
+  const nextIndex = (base + delta + phases.length) % phases.length;
+  const next = phases[nextIndex];
   if (next === undefined) return;
   cueSection(next.id);
 }

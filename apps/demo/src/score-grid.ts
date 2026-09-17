@@ -8,9 +8,11 @@ import {
   cueSection,
   setFormHold,
   setSoloMode,
+  soloMode,
   toggleEngine,
   audio,
 } from "./state.ts";
+import { isDebugBarSection } from "./playback-section.ts";
 
 function formatVoice(voice: string): string {
   return voice.replace(/-/g, " ");
@@ -21,7 +23,7 @@ export function renderDebuggerGrid(): void {
   const content = document.getElementById("debugger-content");
   if (!phaseSelect || !content || !score) return;
 
-  const currentSections = score.sections.map((s) => s.id).filter(id => !id.includes("-bar-"));
+  const currentSections = score.sections.map((s) => s.id).filter((id) => !isDebugBarSection(id));
   const existingOptions = Array.from(phaseSelect.options).map((o) => o.value);
 
   if (existingOptions.join(",") !== currentSections.join(",")) {
@@ -134,13 +136,25 @@ function renderPhaseGrid(
       const soloBtn = document.createElement("button");
       soloBtn.type = "button";
       soloBtn.textContent = "Solo";
-      soloBtn.onclick = () => setSoloMode({ voice, mute: false });
-      
+
       const muteBtn = document.createElement("button");
       muteBtn.type = "button";
       muteBtn.textContent = "Mute";
-      muteBtn.onclick = () => setSoloMode({ voice, mute: true });
-      
+
+      const voiceSolo = typeof soloMode === "object" ? soloMode : null;
+      const soloed = voiceSolo !== null && voiceSolo.voice === voice && !voiceSolo.mute;
+      const muted = voiceSolo !== null && voiceSolo.voice === voice && voiceSolo.mute;
+      soloBtn.setAttribute("aria-pressed", String(soloed));
+      muteBtn.setAttribute("aria-pressed", String(muted));
+
+      const apply = (mute: boolean): void => {
+        setSoloMode({ voice, mute });
+        soloBtn.setAttribute("aria-pressed", String(!mute));
+        muteBtn.setAttribute("aria-pressed", String(mute));
+      };
+      soloBtn.onclick = () => apply(false);
+      muteBtn.onclick = () => apply(true);
+
       controlsCell.appendChild(soloBtn);
       controlsCell.appendChild(muteBtn);
       row.appendChild(controlsCell);
@@ -236,7 +250,7 @@ function playBar(sectionId: SectionId, barIndex: number): void {
   // live there. Keep exactly one: drop whatever a previous Play bar injected.
   for (let index = sections.length - 1; index >= 0; index -= 1) {
     const candidate = sections[index];
-    if (candidate !== undefined && candidate.id.includes("-bar-")) {
+    if (candidate !== undefined && isDebugBarSection(candidate.id)) {
       sections.splice(index, 1);
     }
   }
