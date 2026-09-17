@@ -65,7 +65,9 @@
 
 use core::slice;
 
-use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
+use crate::adventure::{
+    generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
+};
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
@@ -228,17 +230,34 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
-            generate_adventure(&AdventureInput {
-                secret: inp.secret,
-                seed: inp.seed,
-                style,
-                wonder: inp.brightness,
-                danger: inp.energy,
-                mystery: inp.complexity,
-                motion: inp.syncopation,
-            })
-            .and_then(|score| {
-                apply_automatic_arrangement(score, ArrangementRecipe::Adventure, inp.autoplay)
+            let arrangement = match AdventureArrangement::parse(&inp.arrangement) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            // Composed already carries a song form, so there is no automatic
+            // arrangement to layer on top of it.
+            let autoplay_recipe = match arrangement {
+                AdventureArrangement::Original => Some(ArrangementRecipe::Adventure),
+                AdventureArrangement::Composed => None,
+            };
+            generate_adventure_arrangement(
+                &AdventureInput {
+                    secret: inp.secret,
+                    seed: inp.seed,
+                    style,
+                    wonder: inp.brightness,
+                    danger: inp.energy,
+                    mystery: inp.complexity,
+                    motion: inp.syncopation,
+                },
+                arrangement,
+            )
+            .and_then(|score| match autoplay_recipe {
+                Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
+                None => Ok(score),
             })
         }
         "suspense" => {

@@ -20,7 +20,10 @@ pub mod transport;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use adventure::{generate_adventure, AdventureInput, AdventureStyle};
+pub use adventure::{
+    generate_adventure, generate_adventure_arrangement, AdventureArrangement, AdventureInput,
+    AdventureStyle,
+};
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 pub use form_audio::FormAudio;
 pub use racing::{generate_racing, GenerateInput, InstrumentPalette, RacingPhaseRole, Style};

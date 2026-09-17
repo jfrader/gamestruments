@@ -97,6 +97,38 @@ pub(super) const SECTION_PLANS: &[SectionPlan; 8] = &[
     },
 ];
 
+/// The role an Adventure section plays when it is composed into a song form,
+/// derived from its authored [`Scene`]. It describes the material, it never
+/// changes how that material is generated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum AdventurePhaseRole {
+    Intro,
+    Groove,
+    Build,
+    Peak,
+    Break,
+    Outro,
+}
+
+/// The role of an Adventure scene, read back from its authored plan. Pure,
+/// additive metadata used only by the composed arrangement.
+pub(super) fn adventure_phase_role(scene: Scene) -> AdventurePhaseRole {
+    match scene {
+        Scene::Camp => AdventurePhaseRole::Intro,
+        Scene::Explore | Scene::Town => AdventurePhaseRole::Groove,
+        Scene::Dungeon => AdventurePhaseRole::Build,
+        Scene::Combat | Scene::Boss => AdventurePhaseRole::Peak,
+        Scene::Sanctuary => AdventurePhaseRole::Break,
+        Scene::Victory => AdventurePhaseRole::Outro,
+    }
+}
+
+/// The energy band of an Adventure scene on a 0-100 scale, derived from its
+/// authored [`scene_energy`]. Boss (0.9) reads as the climax at 90.
+pub(super) fn adventure_phase_energy(scene: Scene) -> u32 {
+    (scene_energy(scene) * 100.0).round() as u32
+}
+
 const TONIC_PITCH_CLASSES: [i32; 7] = [0, 2, 3, 5, 7, 9, 10];
 const MOTIFS: [[i32; 6]; 6] = [
     [0, 2, 1, 3, 2, 0],
@@ -1381,5 +1413,50 @@ fn build_section(
         color: plan.color.to_string(),
         length_ticks: plan.bars * bar_ticks,
         events,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{adventure_phase_energy, adventure_phase_role, AdventurePhaseRole, Scene};
+
+    #[test]
+    fn metadata_derives_role_and_energy_from_scene() {
+        for (scene, role, energy) in [
+            (Scene::Camp, AdventurePhaseRole::Intro, 25),
+            (Scene::Explore, AdventurePhaseRole::Groove, 48),
+            (Scene::Town, AdventurePhaseRole::Groove, 58),
+            (Scene::Dungeon, AdventurePhaseRole::Build, 20),
+            (Scene::Combat, AdventurePhaseRole::Peak, 82),
+            (Scene::Boss, AdventurePhaseRole::Peak, 90),
+            (Scene::Sanctuary, AdventurePhaseRole::Break, 34),
+            (Scene::Victory, AdventurePhaseRole::Outro, 70),
+        ] {
+            assert_eq!(adventure_phase_role(scene), role, "role for {scene:?}");
+            assert_eq!(adventure_phase_energy(scene), energy, "energy for {scene:?}");
+        }
+    }
+
+    #[test]
+    fn metadata_is_total_and_stays_in_the_energy_band() {
+        for scene in [
+            Scene::Camp,
+            Scene::Explore,
+            Scene::Town,
+            Scene::Dungeon,
+            Scene::Combat,
+            Scene::Boss,
+            Scene::Sanctuary,
+            Scene::Victory,
+        ] {
+            let energy = adventure_phase_energy(scene);
+            assert!(energy <= 100, "{scene:?} energy {energy}");
+        }
+        // The quest arc is framed by a single intro and a single outro.
+        assert_eq!(adventure_phase_role(Scene::Camp), AdventurePhaseRole::Intro);
+        assert_eq!(
+            adventure_phase_role(Scene::Victory),
+            AdventurePhaseRole::Outro
+        );
     }
 }

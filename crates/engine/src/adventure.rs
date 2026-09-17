@@ -3,7 +3,11 @@
 //! Eight long-form sections share one seeded modal identity while changing
 //! phrase, orchestration, and pulse to follow a complete fantasy quest arc.
 
+mod arrangement;
 mod composition;
+mod pool;
+
+pub use arrangement::{generate_adventure_arrangement, AdventureArrangement};
 
 use crate::rng::hash_text;
 use crate::score::{
