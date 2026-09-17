@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-kit/
 *.local
 .DS_Store
 .vite/
