@@ -9,9 +9,9 @@ import { validatePortableScore, type PortableScore } from "../packages/runtime/s
 // (`""`, `original`, `extended`, `theme`) resolves to the seeded default, which
 // these digests freeze byte-for-byte.
 const seededDigests = {
-  terminal: "afef5b00d377e32891126998aa11f3b70fea76d594e005f22a70e940639ffc5c",
-  cipher: "aba0ce3970acaa5096800e86e7ea7ec0c93bd923abc8bb01d1dac027ec203fb8",
-  noir: "08acd262642fc6437db5dda7994a0bc4b9cfd31b34ca3d35d629bbe14a915e8b",
+  terminal: "945dbb08d3807331ffc2ec6ac1535731907b364277103e399c7fac7874dbf7c6",
+  cipher: "57178ea1162261e0b0c14c5e81792fd5f6f47566c7158572b21fe2cf804f4f2f",
+  noir: "436f44746f095b925bd49791046cd37571ea111cf463b73d20e7b12ba1353ab5",
 };
 
 const { instance } = await WebAssembly.instantiate(new Uint8Array(await readFile(

@@ -11,7 +11,7 @@ const LOOKAHEAD_SECONDS = 0.3;
 const MIN_GAIN = 0.0001;
 const NOTE_TAIL_SECONDS = 0.16;
 
-// Ambience send gain (verse/solo only). Set to 0.0 to A/B the room/ambience prototype completely off.
+// Ambience send gain, applied to every phase and every recipe. Set to 0.0 to A/B it off.
 const AMBIENCE = 1.0;
 
 type NoteEvent = Extract<MusicEvent, { kind: "note" }>;
@@ -2040,7 +2040,6 @@ export class DemoAudioEngine {
 
   #scheduleAmbienceSend(event: MusicEvent, start: number): void {
     if (AMBIENCE <= 0) return;
-    if (event.section !== "verse" && event.section !== "solo") return;
     const context = this.#context;
     if (context === null || this.#noiseBuffer === null || this.#masterGain === null) {
       return;

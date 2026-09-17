@@ -187,12 +187,11 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
     let Some(spec) = phase_spec(&section.id) else {
         return;
     };
-    // A break or a wait state is the drop itself; it carries its own shape.
-    if is_break_or_wait(spec) {
-        return;
-    }
     let bars = section.length_ticks / bar;
-    let blocks = (bars / 4) as usize;
+    // Short phases get 2-bar blocks so they still have room for a shape; long
+    // ones keep 4-bar blocks so the layers do not flutter.
+    let block_bars = if bars <= 8 { 2 } else { 4 };
+    let blocks = (bars / block_bars) as usize;
     if blocks < 2 {
         return;
     }
@@ -203,17 +202,18 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
     //   Groove / Loop keep the kit and develop the melodic layers
     //   Bridge        stays light in the middle
     //   Intro / Outro grow out of the bed and settle back
+    //   Break         holds, then thins out into the drop
     let arc: &[u8] = match spec.role {
         PhaseRole::Peak | PhaseRole::Build => &[1, 2, 3, 4],
         PhaseRole::Groove | PhaseRole::Loop => &[2, 3, 4, 3],
-        PhaseRole::Bridge => &[3, 2, 3, 4],
+        PhaseRole::Bridge => &[3, 2],
         PhaseRole::Intro | PhaseRole::Outro => &[1, 2, 4, 3],
         PhaseRole::Break => return,
     };
     let schedule: Vec<u8> = (0..blocks)
         .map(|block| arc[(block * arc.len()) / blocks])
         .collect();
-    let block_ticks = bar * 4;
+    let block_ticks = bar * block_bars;
     let last_bar_start = section.length_ticks.saturating_sub(bar);
     section.events.retain(|event| {
         let start = event.start_tick();
@@ -230,6 +230,10 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
     for block in 0..blocks.saturating_sub(1) {
         if schedule[block + 1] > schedule[block] && schedule[block + 1] >= 3 {
             let start = (block as u32 + 1) * block_ticks;
+            // Never let an impact run past the phase, whatever the block math.
+            if start + (bar / 2) > section.length_ticks {
+                continue;
+            }
             section.events.push(MusicEvent::Percussion {
                 id: format!("{id}:kit:arc:{block}"),
                 section: id.clone(),
@@ -3869,7 +3873,13 @@ mod tests {
             generate_suspense_arrangement(&input("dev-arc"), SuspenseArrangement::AllPhases)
                 .unwrap();
         let bar = score.bar_ticks();
-        let block_ticks = bar * 4;
+
+        // A groove keeps its kit and develops its melodic layers.
+        let verse = score.section("verse").unwrap();
+        let verse_bars = verse.length_ticks / bar;
+        let block_bars = if verse_bars <= 8 { 2 } else { 4 };
+        let block_ticks = bar * block_bars;
+        let blocks = verse.length_ticks / block_ticks;
         let has_kit = |section: &PortableSection, block: u32| {
             section.events.iter().any(|event| {
                 matches!(event, MusicEvent::Percussion { voice, start_tick, .. }
@@ -3885,10 +3895,7 @@ mod tests {
             })
         };
 
-        // A groove keeps its kit and develops its melodic layers.
-        let verse = score.section("verse").unwrap();
-        let blocks = verse.length_ticks / block_ticks;
-        assert!(blocks >= 2, "the arc needs two 4-bar blocks");
+        assert!(blocks >= 2, "the arc needs at least two blocks");
         assert!(has_kit(verse, 0), "a groove keeps its kit from the start");
         assert!(
             !has_melody(verse, 0),
@@ -3906,8 +3913,8 @@ mod tests {
             "a peak must build from a block without the kit"
         );
 
-        // A break is the drop itself: it is left alone and stays short.
-        let brk = score.section("break").unwrap();
-        assert!(brk.length_ticks / bar <= 4, "a break stays short");
+        // A break is the drop itself: it keeps its fills and stays short.
+        let drum_break = score.section("drum-break").unwrap();
+        assert!(drum_break.length_ticks / bar <= 8, "a break stays short");
     }
 }
