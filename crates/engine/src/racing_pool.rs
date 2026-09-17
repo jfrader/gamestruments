@@ -170,13 +170,25 @@ fn racing_energy_legal(prev: &RacingPhaseSpec, next: &RacingPhaseSpec) -> bool {
 /// authored four bars, grooves and builds land at four or eight, and peaks
 /// stretch to eight or twelve so the climax actually climbs. Bars are always a
 /// multiple of the authored four-bar block, so a section re-times by tiling.
-pub fn racing_phase_bars(spec: &RacingPhaseSpec, seed: u32) -> u32 {
+///
+/// The `energy` trait (0..1) biases the stretch band continuously: at the
+/// extremes it forces the short or the long band, and in the middle it leaves
+/// the seeded choice in place, so the knob moves the section lengths instead of
+/// re-rolling them.
+pub fn racing_phase_bars(spec: &RacingPhaseSpec, seed: u32, energy: f64) -> u32 {
     let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{}:bars", spec.id)));
     let authored = spec.bars.max(4);
+    let band = if energy >= 0.66 {
+        1
+    } else if energy < 0.33 {
+        0
+    } else {
+        rng.integer(2)
+    };
     match spec.role {
         RacingPhaseRole::Intro | RacingPhaseRole::Outro => authored,
-        RacingPhaseRole::Build | RacingPhaseRole::Groove => authored + authored * rng.integer(2),
-        RacingPhaseRole::Peak => authored * 2 + authored * rng.integer(2),
+        RacingPhaseRole::Build | RacingPhaseRole::Groove => authored + authored * band,
+        RacingPhaseRole::Peak => authored * 2 + authored * band,
     }
 }
 
@@ -319,7 +331,7 @@ mod tests {
         for seed in 0..64u32 {
             for id in RACING_SECTION_IDS {
                 let spec = racing_phase_spec(id).unwrap();
-                let bars = racing_phase_bars(&spec, seed);
+                let bars = racing_phase_bars(&spec, seed, 0.5);
                 assert_eq!(bars % 4, 0, "{id} bars {bars} not tile-aligned");
                 match spec.role {
                     RacingPhaseRole::Intro | RacingPhaseRole::Outro => {

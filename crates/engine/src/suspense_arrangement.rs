@@ -89,17 +89,48 @@ fn pool_seed(input: &SuspenseInput, take: u32) -> u32 {
     ))
 }
 
-/// Bias for performative choices (lengths, figures, kit, density, register feel)
-/// derived from traits. XOR-neutral for the exact test values so all existing
-/// pool gates continue to observe identical output for default inputs.
-fn trait_bias(input: &SuspenseInput) -> u32 {
-    let t = format!("{:.2}", input.tension.clamp(0.0, 1.0));
-    let h = format!("{:.2}", input.heat.clamp(0.0, 1.0));
-    let m = format!("{:.2}", input.mystery.clamp(0.0, 1.0));
-    let p = format!("{:.2}", input.pulse.clamp(0.0, 1.0));
-    let this = hash_text(&format!("suspense-traits-v1\0{t}\0{h}\0{m}\0{p}"));
-    let neutral = hash_text("suspense-traits-v1\x000.62\x000.48\x000.72\x000.55");
-    this ^ neutral
+/// The continuous magnitude response of the four Suspense traits (0..1), used by
+/// the composed path. Each trait deviates from the Lab's default preset (the
+/// neutral point); the deviation drives concrete parameters so a knob move
+/// changes magnitude, never a branch. At the neutral preset every deviation is
+/// exactly zero, so the frozen seeded output is byte-identical.
+#[derive(Clone, Copy)]
+struct SuspenseTraits {
+    tension: f64,
+    heat: f64,
+    mystery: f64,
+    pulse: f64,
+}
+
+impl SuspenseTraits {
+    fn from_input(input: &SuspenseInput) -> Self {
+        Self {
+            tension: input.tension.clamp(0.0, 1.0),
+            heat: input.heat.clamp(0.0, 1.0),
+            mystery: input.mystery.clamp(0.0, 1.0),
+            pulse: input.pulse.clamp(0.0, 1.0),
+        }
+    }
+
+    /// Signed deviation from the neutral preset (0.62).
+    fn tension_dev(self) -> f64 {
+        self.tension - 0.62
+    }
+
+    /// Signed deviation from the neutral preset (0.48).
+    fn heat_dev(self) -> f64 {
+        self.heat - 0.48
+    }
+
+    /// Signed deviation from the neutral preset (0.72).
+    fn mystery_dev(self) -> f64 {
+        self.mystery - 0.72
+    }
+
+    /// Signed deviation from the neutral preset (0.55).
+    fn pulse_dev(self) -> f64 {
+        self.pulse - 0.55
+    }
 }
 
 /// Build the full section pool (the 14 base sections, the `scan-ii` /
@@ -112,13 +143,12 @@ fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, S
     let root = arrangement_root(&score)?;
     let bar = score.bar_ticks();
     let seed = pool_seed(input, take);
-    let bias = trait_bias(input);
 
     let base_sections = std::mem::take(&mut score.sections);
     let mut by_id: HashMap<String, PortableSection> = HashMap::new();
     for mut section in base_sections {
         if let Some(spec) = phase_spec(&section.id) {
-            develop_phase(&mut section, root, bar, seed, spec, take, bias);
+            develop_phase(&mut section, root, bar, seed, spec, take);
         }
         by_id.insert(section.id.clone(), section);
     }
@@ -195,7 +225,7 @@ fn layer_rank(event: &MusicEvent) -> u8 {
 ///
 /// The shape follows the phase's role, so the pool does not breathe in lockstep.
 /// The bed (rank 0) is never masked, so the drone stays continuous.
-fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
+fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, tension: f64) {
     if bar == 0 {
         return;
     }
@@ -218,9 +248,28 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
         PhaseRole::Intro | PhaseRole::Outro => &[1, 2, 4, 3],
         PhaseRole::Break => return,
     };
-    let Some((block_bars, schedule)) = development_schedule(arc, bars) else {
+    let Some((block_bars, mut schedule)) = development_schedule(arc, bars) else {
         return;
     };
+    // tension → arc layer count: high tension keeps more layers audible, low
+    // tension thins them. A one-rank bias applied to every block after the
+    // first, so the head anchor (rank 2) in the opening block is never newly
+    // masked by the bias (the bed, rank 0, is never masked regardless).
+    let bias: i32 = if tension >= 0.66 {
+        1
+    } else if tension < 0.35 {
+        -1
+    } else {
+        0
+    };
+    if bias != 0 {
+        for (index, rank) in schedule.iter_mut().enumerate() {
+            if index == 0 {
+                continue;
+            }
+            *rank = ((i32::from(*rank)) + bias).clamp(1, 4) as u8;
+        }
+    }
     let block_ticks = bar * block_bars;
     mask_to_schedule(section, bar, block_ticks, &schedule, layer_rank);
     // Every time the arc adds a layer, the block lands on an impact. Ids get
@@ -248,10 +297,12 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32) {
 
 fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
     let mut score = build_pool_score(input, take)?;
+    let traits = SuspenseTraits::from_input(input);
     score.form = Some(all_phases_form());
     apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take))?;
+    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
+    apply_trait_response(&mut score, &traits);
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
     score.validate()?;
@@ -267,10 +318,12 @@ fn generate_seeded(
     // is a different piece arrangement, not a reordering of the same one.
     let form_seed = take;
     let mut score = build_pool_score(input, take)?;
+    let traits = SuspenseTraits::from_input(input);
     score.form = Some(compose(form_seed, intent));
     apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take))?;
+    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
+    apply_trait_response(&mut score, &traits);
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
     score.validate()?;
@@ -536,11 +589,11 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
 /// so the ghost hats land on the arranged material instead of refilling the
 /// blocks the arc just emptied, and the edge anchors are re-applied afterwards
 /// so a masked first/last bar still carries the shared root.
-fn apply_development_pass(score: &mut PortableScore, seed: u32) -> Result<(), String> {
+fn apply_development_pass(score: &mut PortableScore, seed: u32, traits: SuspenseTraits) -> Result<(), String> {
     let bar = score.bar_ticks();
     let root = arrangement_root(score)?;
     for section in &mut score.sections {
-        apply_development_arc(section, bar, seed);
+        apply_development_arc(section, bar, seed, traits.tension);
     }
     for section in &mut score.sections {
         anchor_phase_edges(section, root, bar);
@@ -555,14 +608,10 @@ fn apply_surface_variation(score: &mut PortableScore, input: &SuspenseInput, tak
     let bar = score.bar_ticks();
     // The take owns the surface as well, so a version is a different
     // performance rather than a reordering of the same one.
-    let mut seed = hash_text(&format!(
+    let seed = hash_text(&format!(
         "{}\0{}\0suspense-surface-2\0{take}",
         input.secret, input.seed
     ));
-    let b = trait_bias(input);
-    if b != 0 {
-        seed ^= b;
-    }
     for section in &mut score.sections {
         if matches!(
             section.id.as_str(),
@@ -633,6 +682,183 @@ fn apply_surface_variation(score: &mut PortableScore, input: &SuspenseInput, tak
                 velocity: 0.09,
                 voice: "hat".into(),
             });
+        }
+
+        section.events.sort_by_key(MusicEvent::start_tick);
+    }
+}
+
+/// The continuous trait response for the composed Suspense pool. Runs after the
+/// development arc and the seam pass so the added material is not masked away.
+/// Every effect is exactly identity at the Lab's neutral preset, so the frozen
+/// seeded output stays byte-for-byte identical.
+///
+/// - `tension` scales seam intensity and harmonic pressure and folds the cell
+///   register (the arc layer count is applied inside [`apply_development_arc`]);
+/// - `heat` scales kit velocity and adds kit density plus a final-bar lick;
+/// - `mystery` stretches the melodic cell (sustain) and lowers its register;
+/// - `pulse` widens the tempo and thickens the tick.
+fn apply_trait_response(score: &mut PortableScore, traits: &SuspenseTraits) {
+    let bar = score.bar_ticks();
+    if bar == 0 {
+        return;
+    }
+    let pulse = bar / 8;
+    let sixteenth = bar / 16;
+
+    // pulse → tempo: a continuous widen beyond the base span.
+    if traits.pulse_dev().abs() > 0.0 {
+        score.bpm = (score.bpm + traits.pulse_dev() * 16.0).clamp(52.0, 100.0);
+    }
+
+    for section in &mut score.sections {
+        let id = section.id.clone();
+        let mut serial = 0usize;
+
+        // tension → harmonic pressure (drone/pulse velocity) and seam intensity.
+        let tension_scale = 1.0 + traits.tension_dev() * 0.5;
+        // mystery → cell sustain: stretch or shrink the melodic cell.
+        let mystery_sustain = (1.0 + traits.mystery_dev() * 2.0).clamp(0.25, 2.0);
+        // heat → kit velocity.
+        let heat_scale = 1.0 + traits.heat_dev() * 0.5;
+
+        for event in &mut section.events {
+            match event {
+                MusicEvent::Note {
+                    lane,
+                    velocity,
+                    duration_ticks,
+                    pitch,
+                    start_tick,
+                    ..
+                } => {
+                    if lane.ends_with("-drone") || lane.ends_with("-pulse") {
+                        *velocity = (*velocity * tension_scale).clamp(0.05, 0.9);
+                    }
+                    if lane.ends_with("-seam") {
+                        *velocity = (*velocity * tension_scale).clamp(0.05, 0.9);
+                    }
+                    if lane.ends_with("-cell") || lane.ends_with("-answer") {
+                        let end = section.length_ticks;
+                        *duration_ticks =
+                            ((*duration_ticks as f64) * mystery_sustain).round() as u32;
+                        *duration_ticks = (*duration_ticks)
+                            .clamp(1, end.saturating_sub(*start_tick))
+                            .max(1);
+                        // mystery → register: dark mystery folds the cell down an
+                        // octave, bright clears it (pitch class preserved).
+                        if traits.mystery_dev() > 0.18 {
+                            let folded = i32::from(*pitch) - 12;
+                            if folded >= 28 {
+                                *pitch = folded as u8;
+                            }
+                        } else if traits.mystery_dev() < -0.18 {
+                            let lifted = i32::from(*pitch) + 12;
+                            if lifted <= 91 {
+                                *pitch = lifted as u8;
+                            }
+                        }
+                    }
+                }
+                MusicEvent::Percussion { velocity, .. } => {
+                    *velocity = (*velocity * heat_scale).clamp(0.05, 0.9);
+                }
+            }
+        }
+
+        // heat → kit density: add hats/kicks on empty sixteenths; the count
+        // grows with the knob.
+        let heat_extra = (traits.heat_dev() * 12.0).round() as i32;
+        if heat_extra > 0 {
+            let mut placed = 0i32;
+            for start in (0..section.length_ticks).step_by(sixteenth as usize) {
+                if start + sixteenth > section.length_ticks {
+                    continue;
+                }
+                if section
+                    .events
+                    .iter()
+                    .any(|e| e.start_tick() == start)
+                {
+                    continue;
+                }
+                let voice = if start % pulse == 0 { "kick" } else { "hat" };
+                section.events.push(MusicEvent::Percussion {
+                    id: format!("{id}:trait:kit:{serial}"),
+                    section: id.clone(),
+                    lane: format!("{id}-kit"),
+                    start_tick: start,
+                    duration_ticks: sixteenth / 2,
+                    velocity: 0.14,
+                    voice: voice.to_string(),
+                });
+                serial += 1;
+                placed += 1;
+                if placed >= heat_extra {
+                    break;
+                }
+            }
+        }
+
+        // heat → licks: a rising final-bar tom fill whose velocity grows with
+        // the knob, so a hot take closes with a real fill.
+        if traits.heat_dev() > 0.1 {
+            let licks = (traits.heat_dev() * 4.0).round() as usize;
+            let fill_bar = section.length_ticks.saturating_sub(bar);
+            for (index, step) in [0u32, 2, 4, 6, 7].iter().enumerate() {
+                if index >= licks {
+                    break;
+                }
+                let start = fill_bar + step * pulse;
+                if start + pulse / 2 > section.length_ticks {
+                    continue;
+                }
+                section.events.push(MusicEvent::Percussion {
+                    id: format!("{id}:trait:lick:{serial}"),
+                    section: id.clone(),
+                    lane: format!("{id}-kit"),
+                    start_tick: start,
+                    duration_ticks: pulse / 2,
+                    velocity: 0.16 + 0.05 * index as f64,
+                    voice: "tom".to_string(),
+                });
+                serial += 1;
+            }
+        }
+
+        // pulse → tick density: extra pulse ticks on empty sixteenths.
+        let tick_extra = (traits.pulse_dev() * 8.0).round() as i32;
+        if tick_extra > 0 {
+            let mut placed = 0i32;
+            for start in (0..section.length_ticks).step_by(sixteenth as usize) {
+                if start + pulse > section.length_ticks {
+                    continue;
+                }
+                if section
+                    .events
+                    .iter()
+                    .any(|e| e.start_tick() == start)
+                {
+                    continue;
+                }
+                let voice = "pulse";
+                section.events.push(MusicEvent::Note {
+                    id: format!("{id}:trait:tick:{serial}"),
+                    section: id.clone(),
+                    lane: format!("{id}-pulse"),
+                    start_tick: start,
+                    duration_ticks: pulse / 2,
+                    velocity: 0.18,
+                    pitch: 48,
+                    voice: voice.to_string(),
+                    role: None,
+                });
+                serial += 1;
+                placed += 1;
+                if placed >= tick_extra {
+                    break;
+                }
+            }
         }
 
         section.events.sort_by_key(MusicEvent::start_tick);
@@ -904,13 +1130,12 @@ fn develop_phase(
     seed: u32,
     spec: &PhaseSpec,
     figure_seed: u32,
-    trait_bias: u32,
 ) {
     let id = section.id.clone();
     let identity = PhaseIdentity::read(section, root);
-    let bars = phase_bars(spec, seed ^ trait_bias);
+    let bars = phase_bars(spec, seed);
     let degrees = progression_degrees(bars, seed, spec.role == PhaseRole::Outro);
-    let figure = figure_for_composition(spec.id, figure_seed ^ trait_bias);
+    let figure = figure_for_composition(spec.id, figure_seed);
     let mut events = Vec::new();
 
     // The bed has to be able to leave and come back. A low pedal running under
@@ -988,7 +1213,7 @@ fn develop_phase(
         bars,
         spec.role,
         spec.energy,
-        seed ^ trait_bias,
+        seed,
         figure,
     );
 
@@ -3919,5 +4144,103 @@ mod tests {
         // A break is the drop itself: it keeps its fills and stays short.
         let drum_break = score.section("drum-break").unwrap();
         assert!(drum_break.length_ticks / bar <= 8, "a break stays short");
+    }
+
+    fn seeded(seed: &str, tension: f64, heat: f64, mystery: f64, pulse: f64) -> PortableScore {
+        let mut inp = input(seed);
+        inp.tension = tension;
+        inp.heat = heat;
+        inp.mystery = mystery;
+        inp.pulse = pulse;
+        generate_suspense_arrangement_take(
+            &inp,
+            SuspenseArrangement::Seeded,
+            Intent::Arc,
+            0,
+        )
+        .expect("seeded")
+    }
+
+    #[test]
+    fn trait_tension_moves_layer_count_monotonically() {
+        // tension biases the development arc, so the total event count is
+        // strictly ordered across a low/mid/high sweep.
+        let count = |tension| {
+            seeded("mono-tension", tension, 0.48, 0.72, 0.55)
+                .sections
+                .iter()
+                .map(|s| s.events.len())
+                .sum::<usize>()
+        };
+        let low = count(0.2);
+        let mid = count(0.5);
+        let high = count(0.9);
+        assert!(
+            low < mid && mid < high,
+            "tension layer count must be strictly ordered, got {low}/{mid}/{high}"
+        );
+    }
+
+    #[test]
+    fn trait_heat_moves_kit_intensity_monotonically() {
+        // heat scales kit velocity, so the mean percussion velocity is strictly
+        // ordered across a sweep.
+        let vel = |heat| {
+            let score = seeded("mono-heat", 0.62, heat, 0.72, 0.55);
+            let velocities: Vec<f64> = score
+                .sections
+                .iter()
+                .flat_map(|s| s.events.iter())
+                .filter(|e| matches!(e, MusicEvent::Percussion { .. }))
+                .map(|e| e.velocity())
+                .collect();
+            velocities.iter().sum::<f64>() / velocities.len().max(1) as f64
+        };
+        let low = vel(0.2);
+        let mid = vel(0.48);
+        let high = vel(0.9);
+        assert!(
+            low < mid && mid < high,
+            "heat kit intensity must be strictly ordered, got {low}/{mid}/{high}"
+        );
+    }
+
+    #[test]
+    fn trait_mystery_moves_cell_sustain_monotonically() {
+        // mystery stretches the melodic cell, so the mean cell duration is
+        // strictly ordered across a sweep.
+        let dur = |mystery| {
+            let score = seeded("mono-mystery", 0.62, 0.48, mystery, 0.55);
+            let durations: Vec<u32> = score
+                .sections
+                .iter()
+                .flat_map(|s| s.events.iter())
+                .filter(|e| {
+                    matches!(e, MusicEvent::Note { lane, .. }
+                        if lane.ends_with("-cell") || lane.ends_with("-answer"))
+                })
+                .map(|e| e.duration_ticks())
+                .collect();
+            durations.iter().sum::<u32>() as f64 / durations.len().max(1) as f64
+        };
+        let low = dur(0.2);
+        let mid = dur(0.72);
+        let high = dur(0.9);
+        assert!(
+            low < mid && mid < high,
+            "mystery cell sustain must be strictly ordered, got {low}/{mid}/{high}"
+        );
+    }
+
+    #[test]
+    fn trait_pulse_moves_tempo_monotonically() {
+        let bpm = |pulse| seeded("mono-pulse", 0.62, 0.48, 0.72, pulse).bpm;
+        let low = bpm(0.1);
+        let mid = bpm(0.55);
+        let high = bpm(0.9);
+        assert!(
+            low < mid && mid < high,
+            "pulse tempo must be strictly ordered, got {low}/{mid}/{high}"
+        );
     }
 }
