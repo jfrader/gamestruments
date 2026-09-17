@@ -59,21 +59,10 @@ function readOutput(ptr: number): Uint8Array {
   return bytes;
 }
 
-export type RacingArrangement = "original" | "extended" | "composed";
-export type SuspenseArrangement = "all-phases" | "seeded";
-export type AdventureArrangement = "original" | "extended" | "composed";
-export type Arrangement = RacingArrangement | SuspenseArrangement | AdventureArrangement;
+export type Arrangement = "all-phases" | "seeded";
 
-export function isRacingArrangement(value: Arrangement): value is RacingArrangement {
-  return value === "original" || value === "extended" || value === "composed";
-}
-
-export function isSuspenseArrangement(value: Arrangement): value is SuspenseArrangement {
+export function isArrangement(value: string): value is Arrangement {
   return value === "all-phases" || value === "seeded";
-}
-
-export function isAdventureArrangement(value: Arrangement): value is AdventureArrangement {
-  return value === "original" || value === "extended" || value === "composed";
 }
 
 export interface GenerateScoreParams {
@@ -107,10 +96,9 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     seed: params.seed,
     style: params.style,
     recipe,
-    // The pool is the only Suspense authority now, so an unspecified Suspense
-    // arrangement defaults to its seeded composer rather than a retired preset.
-    arrangement:
-      params.arrangement ?? (recipe === "suspense" ? "seeded" : "original"),
+    // Every recipe's arrangements are `all-phases` or `seeded`, so an
+    // unspecified arrangement defaults to the seeded composer.
+    arrangement: params.arrangement ?? "seeded",
     intent: params.intent ?? "arc",
     autoplay: params.autoplay ?? false,
     palette: { melody: "", harmony: "", drive: "", bass: "" },

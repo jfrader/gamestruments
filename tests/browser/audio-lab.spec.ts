@@ -175,9 +175,9 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
 
-  // Racing defaults to Extended and offers Original, Extended, and Composed.
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  // Racing defaults to Seeded and offers All phases and Seeded.
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
   // Suspense defaults to Seeded and picks it up without touching Racing.
   await selectRecipe(page, "suspense");
@@ -185,10 +185,10 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Switching to Racing shows Extended again — the pool selection must not leak.
+  // Switching to Racing shows Seeded again — the pool selection must not leak.
   await selectRecipe(page, "racing");
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
   // Back to Suspense: the all-phases selection is preserved.
   await selectRecipe(page, "suspense");
@@ -197,42 +197,67 @@ test("Racing and Suspense keep independent arrangement selections", async ({ pag
   expect(errors).toEqual([]);
 });
 
-test("Racing Composed composes a song form over the six phases and announces it", async ({ page }) => {
+test("Racing All phases and Seeded offer the two arrangements and announce them", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   await page.goto("/#lab");
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
-  await page.locator('#arrangement-buttons button[data-arrangement="composed"]').click();
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="composed"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#audition-status")).toHaveText("Composed arrangement ready");
-  await expect(page.locator("#score-title")).toContainText("Composed");
+  // Seeded (the default) composes a song form over the six phases.
+  await expect(page.locator("#score-title")).toContainText("Seeded");
+  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-control")).toBeVisible();
+
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
+  await expect(page.locator("#score-title")).toContainText("All phases");
+  await expect(page.locator("#section-list li")).toHaveCount(10);
+
+  await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
+  await expect(page.locator("#score-title")).toContainText("Seeded");
   await expect(page.locator("#section-list li")).toHaveCount(6);
   await expect(page.locator("#section-control")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("Adventure offers composed as a third arrangement (control visible, 3 buttons)", async ({ page }) => {
+test("Adventure offers exactly two arrangements: All phases and Seeded", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
   await selectRecipe(page, "adventure");
   await expect(page.locator("#arrangement-control")).toBeVisible();
-  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="composed"]')).toBeVisible();
-  // composed is the third
-  const third = page.locator('#arrangement-buttons button').nth(2);
-  await expect(third).toHaveAttribute("data-arrangement", "composed");
-  await third.click();
-  await expect(third).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#audition-status")).toHaveText("Composed arrangement ready");
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("Seeded");
+
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
+  await expect(page.locator("#score-title")).toContainText("All phases");
+  await expect(page.locator("#section-list li")).toHaveCount(8);
   expect(errors).toEqual([]);
 });
 
-test("Extended to Original while a new phase is active falls back to Garage", async ({ page }) => {
+test("every recipe exposes exactly the All phases and Seeded arrangements", async ({ page }) => {
+  await page.goto("/#lab");
+  for (const recipe of ["racing", "suspense", "adventure"] as const) {
+    await selectRecipe(page, recipe);
+    await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
+    const ids = await page.locator("#arrangement-buttons button").evaluateAll(
+      (buttons) => buttons.map((button) => button.getAttribute("data-arrangement")).sort(),
+    );
+    expect(ids).toEqual(["all-phases", "seeded"]);
+    await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
+  }
+});
+
+test("All phases to Seeded while a new phase is active falls back to Garage", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -240,15 +265,18 @@ test("Extended to Original while a new phase is active falls back to Garage", as
   });
   await page.goto("/#lab");
 
-  // Racing defaults to Extended; cue and play a phase Original does not have.
+  // All phases is the ten-section tour; cue and play Ignition, a phase the
+  // seeded composer's six-section pool does not have.
+  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Cue Ignition", exact: true }).click();
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Ignition");
 
-  // Roll back to Original while Ignition is the active section.
-  await page.locator('#arrangement-buttons button[data-arrangement="original"]').click();
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="original"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#audition-status")).toHaveText("Original arrangement restored");
+  // Roll back to Seeded while Ignition is the active section.
+  await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
   await expect(page.locator("#mood-name")).toHaveText("Garage");
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await page.locator("#start-audio").click();
@@ -262,7 +290,7 @@ test("Racing rejects an invalid Theme selection without erroring", async ({ page
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   await page.goto("/#lab");
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
   // Simulate a stale/async Theme selection the Racing UI would normally hide.
   await page.evaluate(() => {
@@ -274,7 +302,7 @@ test("Racing rejects an invalid Theme selection without erroring", async ({ page
     button.click();
   });
 
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="extended"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });
 

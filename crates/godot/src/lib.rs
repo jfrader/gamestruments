@@ -279,9 +279,9 @@ impl GamestrumentsPlayer {
                 let recipe = match arrangement {
                     RacingArrangement::Original => Some(ArrangementRecipe::Racing),
                     RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
-                    // Composed already carries its own song form; no automatic
-                    // arrangement layers on top of it.
-                    RacingArrangement::Composed => None,
+                    // All phases and the seeded composer already carry their own
+                    // song form; no automatic arrangement layers on top of them.
+                    RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
                 };
                 (
                     generate_racing_arrangement(

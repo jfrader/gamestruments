@@ -5,32 +5,36 @@
 
 use crate::development::{development_schedule, mask_to_schedule};
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{MusicEvent, PortableScore, PortableSection};
+use crate::score::{MusicEvent, PortableScore, PortableSection, SongForm, SongFormStep};
 use crate::theory::{mode_intervals, scale_pitch};
 
 use super::composition::{AdventurePhaseRole, mode_for, Scene, SECTION_PLANS};
 use super::pool::{
     adventure_compose, adventure_compose_seed, adventure_phase_bars, adventure_phase_spec,
+    ADVENTURE_SECTION_IDS,
 };
 use super::{adventure_tonic_pitch_class, generate_adventure, AdventureInput, AdventureStyle};
-
-/// Version of the composed-arrangement wrapper itself.
-pub const COMPOSED_VERSION: &str = "1";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum AdventureArrangement {
     #[default]
     Original,
     Extended,
-    Composed,
+    AllPhases,
+    Seeded,
 }
 
 impl AdventureArrangement {
+    /// `""`/`"original"`/`"extended"` are the legacy values and stay
+    /// byte-identical. `"all-phases"` is the full eight-section quest arc in
+    /// canonical order; `"seeded"` is the seeded composer (today's composed
+    /// path), with `"composed"` kept as an alias.
     pub fn parse(value: &str) -> Result<Self, String> {
         match value {
             "" | "original" => Ok(Self::Original),
             "extended" => Ok(Self::Extended),
-            "composed" => Ok(Self::Composed),
+            "all-phases" => Ok(Self::AllPhases),
+            "seeded" | "composed" => Ok(Self::Seeded),
             other => Err(format!("Unknown adventure arrangement: {other}")),
         }
     }
@@ -39,7 +43,8 @@ impl AdventureArrangement {
         match self {
             Self::Original => "original",
             Self::Extended => "extended",
-            Self::Composed => "composed",
+            Self::AllPhases => "all-phases",
+            Self::Seeded => "seeded",
         }
     }
 }
@@ -50,7 +55,8 @@ pub fn generate_adventure_arrangement(
 ) -> Result<PortableScore, String> {
     match arrangement {
         AdventureArrangement::Original | AdventureArrangement::Extended => generate_adventure(input),
-        AdventureArrangement::Composed => generate_composed(input),
+        AdventureArrangement::AllPhases => generate_all_phases(input),
+        AdventureArrangement::Seeded => generate_seeded(input),
     }
 }
 
@@ -60,7 +66,7 @@ pub fn generate_adventure_arrangement(
 /// blocks, pedal continuous), seam gestures (deterministic per seed/pair with
 /// shared tonic pc at joins via Adventure's tonic/mode), XOR-neutral trait bias,
 /// and register ceiling (folds highs, default path pitches untouched).
-fn generate_composed(input: &AdventureInput) -> Result<PortableScore, String> {
+fn generate_seeded(input: &AdventureInput) -> Result<PortableScore, String> {
     let mut score = generate_adventure(input)?;
     let bar = score.bar_ticks();
     let form_seed = adventure_compose_seed(&input.secret, &input.seed);
@@ -94,10 +100,39 @@ fn generate_composed(input: &AdventureInput) -> Result<PortableScore, String> {
         apply_adventure_register_ceiling(section, ceiling);
     }
 
-    score.id.push_str(&format!("-composed-v{COMPOSED_VERSION}"));
-    score.title.push_str(" — Composed");
+    score.id.push_str("-seeded");
+    score.title.push_str(" — Seeded");
     score.validate()?;
     Ok(score)
+}
+
+/// The complete quest arc: every one of the eight sections once, in canonical
+/// order, looping back to the first groove (explore). The sections are the
+/// default Adventure output unchanged; only the attached form and the id/title
+/// suffix differ.
+fn generate_all_phases(input: &AdventureInput) -> Result<PortableScore, String> {
+    let mut score = generate_adventure(input)?;
+    score.form = Some(adventure_all_phases_form());
+    score.id.push_str("-all-phases");
+    score.title.push_str(" — All phases");
+    score.validate()?;
+    Ok(score)
+}
+
+/// The canonical all-phases tour over the Adventure pool.
+fn adventure_all_phases_form() -> SongForm {
+    let steps = ADVENTURE_SECTION_IDS
+        .iter()
+        .map(|id| SongFormStep {
+            section: (*id).to_string(),
+            repeats: 1,
+        })
+        .collect();
+    SongForm {
+        steps,
+        loop_from: Some(1),
+        origin: None,
+    }
 }
 
 /// Re-time a section to `bars` by tiling its authored block. Every event keeps
@@ -584,14 +619,23 @@ mod tests {
             AdventureArrangement::Extended
         );
         assert_eq!(
+            AdventureArrangement::parse("seeded").unwrap(),
+            AdventureArrangement::Seeded
+        );
+        assert_eq!(
             AdventureArrangement::parse("composed").unwrap(),
-            AdventureArrangement::Composed
+            AdventureArrangement::Seeded
+        );
+        assert_eq!(
+            AdventureArrangement::parse("all-phases").unwrap(),
+            AdventureArrangement::AllPhases
         );
         assert!(AdventureArrangement::parse("foo").is_err());
         assert!(AdventureArrangement::parse("Original").is_err());
         assert_eq!(AdventureArrangement::Original.as_str(), "original");
         assert_eq!(AdventureArrangement::Extended.as_str(), "extended");
-        assert_eq!(AdventureArrangement::Composed.as_str(), "composed");
+        assert_eq!(AdventureArrangement::Seeded.as_str(), "seeded");
+        assert_eq!(AdventureArrangement::AllPhases.as_str(), "all-phases");
         assert_eq!(
             AdventureArrangement::default(),
             AdventureArrangement::Original
@@ -627,7 +671,7 @@ mod tests {
     fn composed_produces_a_valid_score_with_a_real_form() {
         let input = sample("composed-shape", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         assert_eq!(score.sections.len(), 8);
         let form = score.form.as_ref().expect("composed must carry a form");
         assert!(!form.steps.is_empty());
@@ -641,15 +685,15 @@ mod tests {
         if let Some(loop_from) = form.loop_from {
             assert!(loop_from < form.steps.len() as u32);
         }
-        assert!(score.id.ends_with(&format!("-composed-v{COMPOSED_VERSION}")));
-        assert!(score.title.contains(" — Composed"));
+        assert!(score.id.ends_with("-seeded"));
+        assert!(score.title.contains(" — Seeded"));
     }
 
     #[test]
     fn composed_form_starts_camp_ends_victory_and_loops_to_a_groove() {
         let input = sample("composed-frame", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         let form = score.form.as_ref().expect("form");
         let loop_from = form.loop_from.expect("composed form must have a loopFrom");
         assert!((loop_from as usize) < form.steps.len());
@@ -666,7 +710,7 @@ mod tests {
     fn composed_role_aware_lengths_stretch_only_the_middle() {
         let input = sample("composed-lengths", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         let bar = score.bar_ticks();
         for id in [
             "camp",
@@ -699,7 +743,7 @@ mod tests {
     fn composed_event_ids_unique_and_in_bounds() {
         let input = sample("composed-bounds", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         let mut seen = HashSet::new();
         for sec in &score.sections {
             for ev in &sec.events {
@@ -721,9 +765,9 @@ mod tests {
         let i1 = sample("comp-det", AdventureStyle::Folk);
         let mut i2 = i1.clone();
         i2.seed = "trail-02".to_string();
-        let s1 = generate_adventure_arrangement(&i1, AdventureArrangement::Composed).expect("s1");
-        let s1b = generate_adventure_arrangement(&i1, AdventureArrangement::Composed).expect("s1b");
-        let s2 = generate_adventure_arrangement(&i2, AdventureArrangement::Composed).expect("s2");
+        let s1 = generate_adventure_arrangement(&i1, AdventureArrangement::Seeded).expect("s1");
+        let s1b = generate_adventure_arrangement(&i1, AdventureArrangement::Seeded).expect("s1b");
+        let s2 = generate_adventure_arrangement(&i2, AdventureArrangement::Seeded).expect("s2");
         assert_eq!(
             serde_json::to_vec(&s1).expect("s1s"),
             serde_json::to_vec(&s1b).expect("s1bs")
@@ -743,7 +787,7 @@ mod tests {
             let mut input = sample("comp-var", AdventureStyle::Folk);
             input.seed = format!("trail-var-{i}");
             let score =
-                generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("ok");
+                generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("ok");
             let steps: Vec<String> = score
                 .form
                 .expect("form")
@@ -766,7 +810,7 @@ mod tests {
             let input = sample("comp-iso", style);
             let original = generate_adventure(&input).expect("orig");
             let composed =
-                generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("comp");
+                generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("comp");
             assert_eq!(
                 serde_json::to_vec(&generate_adventure(&input).expect("orig-again")).expect("o"),
                 serde_json::to_vec(&original).expect("o2")
@@ -785,7 +829,7 @@ mod tests {
     fn composed_development_arc_varied_layers_across_blocks() {
         let input = sample("arc-vary", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         let bar = score.bar_ticks();
         for section in &score.sections {
             if section.length_ticks < bar * 8 {
@@ -824,7 +868,7 @@ mod tests {
     fn composed_seams_share_a_pitch_class() {
         let input = sample("seam-pc", AdventureStyle::Folk);
         let score =
-            generate_adventure_arrangement(&input, AdventureArrangement::Composed).expect("composed");
+            generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
         let tonic = adventure_tonic_pitch_class(&input.secret, &input.seed);
         let bar = score.bar_ticks();
         let form = score.form.as_ref().expect("form");
@@ -866,8 +910,8 @@ mod tests {
         assert_eq!(b_def, 0, "default traits must be XOR-neutral (bias 0)");
         assert_ne!(b_other, 0, "non-default must produce non-zero bias");
 
-        let s_def = generate_adventure_arrangement(&def, AdventureArrangement::Composed).expect("def");
-        let s_other = generate_adventure_arrangement(&other, AdventureArrangement::Composed).expect("other");
+        let s_def = generate_adventure_arrangement(&def, AdventureArrangement::Seeded).expect("def");
+        let s_other = generate_adventure_arrangement(&other, AdventureArrangement::Seeded).expect("other");
         assert_ne!(
             serde_json::to_vec(&s_def).expect("d"),
             serde_json::to_vec(&s_other).expect("o"),
@@ -875,5 +919,87 @@ mod tests {
         );
         // defaults neutral also means lengths use unperturbed seed for the form itself
         assert!(s_def.form.is_some());
+    }
+
+    #[test]
+    fn all_phases_produces_a_valid_eight_section_score_with_a_canonical_form() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let input = sample("all-phases-shape", style);
+            let score =
+                generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all-phases");
+            assert_eq!(score.sections.len(), 8);
+            assert_eq!(
+                score.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+                ADVENTURE_SECTION_IDS.to_vec()
+            );
+            let form = score.form.as_ref().expect("all-phases must carry a form");
+            assert_eq!(
+                form.steps.iter().map(|step| step.section.as_str()).collect::<Vec<_>>(),
+                ADVENTURE_SECTION_IDS.to_vec()
+            );
+            assert_eq!(form.loop_from, Some(1));
+            assert_eq!(form.steps[1].section, "explore");
+            assert!(score.id.ends_with("-all-phases"));
+            assert!(score.title.contains(" — All phases"));
+            score.validate().expect("all-phases must validate");
+        }
+    }
+
+    #[test]
+    fn all_phases_keeps_the_default_sections_byte_identical() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let input = sample("all-phases-iso", style);
+            let all = generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all");
+            let original = generate_adventure(&input).expect("orig");
+            for id in ADVENTURE_SECTION_IDS {
+                let as_ = all.section(id).expect(id);
+                let os = original.section(id).expect(id);
+                assert_eq!(
+                    serde_json::to_vec(as_).expect("as"),
+                    serde_json::to_vec(os).expect("os"),
+                    "section {} mutated for {style:?}",
+                    id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn all_phases_is_deterministic_and_varies_by_seed() {
+        let i1 = sample("all-det", AdventureStyle::Folk);
+        let mut i2 = i1.clone();
+        i2.seed = "trail-02".to_string();
+        let s1 = generate_adventure_arrangement(&i1, AdventureArrangement::AllPhases).expect("s1");
+        let s1b = generate_adventure_arrangement(&i1, AdventureArrangement::AllPhases).expect("s1b");
+        let s2 = generate_adventure_arrangement(&i2, AdventureArrangement::AllPhases).expect("s2");
+        assert_eq!(
+            serde_json::to_vec(&s1).expect("s1s"),
+            serde_json::to_vec(&s1b).expect("s1bs")
+        );
+        assert_ne!(s1.id, s2.id);
+        assert_eq!(
+            s1.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+            s2.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+        );
+    }
+
+    #[test]
+    fn seeded_is_byte_identical_to_the_composed_alias() {
+        let input = sample("seed-alias", AdventureStyle::Folk);
+        let seeded = generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("seeded");
+        let composed = generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("composed");
+        assert_eq!(
+            serde_json::to_vec(&seeded).expect("s"),
+            serde_json::to_vec(&composed).expect("c")
+        );
+        assert!(seeded.id.ends_with("-seeded"));
     }
 }

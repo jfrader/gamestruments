@@ -10,13 +10,8 @@ import {
 } from "../../../packages/runtime/src/index.ts";
 import {
   generateScore,
-  isRacingArrangement,
-  isSuspenseArrangement,
-  isAdventureArrangement,
+  isArrangement,
   type Arrangement,
-  type RacingArrangement,
-  type SuspenseArrangement,
-  type AdventureArrangement,
 } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
@@ -129,9 +124,9 @@ export const ADVENTURE_PRESETS = [
 ] as const satisfies readonly GenerationPreset[];
 
 export let labRecipe: LabRecipe = "racing";
-export let racingArrangement: RacingArrangement = "extended";
-export let suspenseArrangement: SuspenseArrangement = "seeded";
-export let adventureArrangement: AdventureArrangement = "original";
+export let racingArrangement: Arrangement = "seeded";
+export let suspenseArrangement: Arrangement = "seeded";
+export let adventureArrangement: Arrangement = "seeded";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
@@ -184,12 +179,9 @@ export function currentArrangement(): Arrangement {
   return racingArrangement;
 }
 
-/** A recipe accepts an arrangement only if that value is legal for it. */
-function recipeArrangementValid(recipe: LabRecipe, value: Arrangement): boolean {
-  if (recipe === "racing") return isRacingArrangement(value);
-  if (recipe === "suspense") return isSuspenseArrangement(value);
-  if (recipe === "adventure") return isAdventureArrangement(value);
-  return false;
+/** Every recipe accepts the same two arrangements: all-phases or seeded. */
+function recipeArrangementValid(_recipe: LabRecipe, value: Arrangement): boolean {
+  return isArrangement(value);
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -454,11 +446,11 @@ export async function activateExperiment(
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
-    if (requestedRecipe === "suspense" && isSuspenseArrangement(nextArrangement)) {
+    if (requestedRecipe === "suspense") {
       suspenseArrangement = nextArrangement;
-    } else if (requestedRecipe === "racing" && isRacingArrangement(nextArrangement)) {
+    } else if (requestedRecipe === "racing") {
       racingArrangement = nextArrangement;
-    } else if (requestedRecipe === "adventure" && isAdventureArrangement(nextArrangement)) {
+    } else if (requestedRecipe === "adventure") {
       adventureArrangement = nextArrangement;
     }
     score = nextScore;

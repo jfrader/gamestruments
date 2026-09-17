@@ -45,60 +45,18 @@ interface ArrangementOption {
   summary: string;
 }
 
-const RACING_ARRANGEMENTS: readonly ArrangementOption[] = [
-  {
-    id: "original",
-    label: "Original",
-    description: "Six original phases",
-    summary: "The original musical parts, unchanged.",
-  },
-  {
-    id: "extended",
-    label: "Extended",
-    description: "Ten-section race · ignition → cooldown",
-    summary: "Ten-section race: ignition, slipstream, redline, and cooldown extend the tour.",
-  },
-  {
-    id: "composed",
-    label: "Composed",
-    description: "Six phases composed into a song form",
-    summary: "A seeded composer orders the six phases into a song form, re-times them by role, and loops the tour back to cruise.",
-  },
-];
-
-const SUSPENSE_ARRANGEMENTS: readonly ArrangementOption[] = [
+const ARRANGEMENTS: readonly ArrangementOption[] = [
   {
     id: "all-phases",
     label: "All phases",
     description: "Whole song · canonical order",
-    summary: "Every pool phase once, intro to coda, looping back to the first groove.",
+    summary: "Every phase of the recipe once, in canonical order, looping back to the first groove.",
   },
   {
     id: "seeded",
     label: "Seeded",
     description: "Composed from the phase pool",
-    summary: "A composer picks the count, roles, order, and loop point from the seed; step the seed reel to hear the variety.",
-  },
-];
-
-const ADVENTURE_ARRANGEMENTS: readonly ArrangementOption[] = [
-  {
-    id: "original",
-    label: "Original",
-    description: "Eight original scenes",
-    summary: "The original quest arc, unchanged.",
-  },
-  {
-    id: "extended",
-    label: "Extended",
-    description: "Quest tour with extended timing",
-    summary: "Same scenes as Original (extended scenes planned for later).",
-  },
-  {
-    id: "composed",
-    label: "Composed",
-    description: "Eight scenes composed into a song form",
-    summary: "A seeded composer orders the scenes into a song form, re-times by role, arcs layers, and seams share a pitch class.",
+    summary: "A seeded composer picks the count, roles, order, and loop point from the seed.",
   },
 ];
 
@@ -285,20 +243,10 @@ export function renderGenreIndex(): void {
   elements.genreIndex.replaceChildren(...rows);
 }
 
-export function renderArrangementControl(recipe: LabRecipe, arrangement: Arrangement): void {
-  const visible = true;
-  elements.arrangementControl.hidden = !visible;
-  if (!visible) {
-    elements.arrangementSummary.value = "";
-    return;
-  }
-  const options = recipe === "suspense"
-    ? SUSPENSE_ARRANGEMENTS
-    : recipe === "adventure"
-    ? ADVENTURE_ARRANGEMENTS
-    : RACING_ARRANGEMENTS;
+export function renderArrangementControl(_recipe: LabRecipe, arrangement: Arrangement): void {
+  elements.arrangementControl.hidden = false;
   elements.arrangementButtons.replaceChildren(
-    ...options.map((option) => {
+    ...ARRANGEMENTS.map((option) => {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.arrangement = option.id;
@@ -312,7 +260,7 @@ export function renderArrangementControl(recipe: LabRecipe, arrangement: Arrange
     }),
   );
   elements.arrangementSummary.value =
-    options.find((option) => option.id === arrangement)?.summary ?? "";
+    ARRANGEMENTS.find((option) => option.id === arrangement)?.summary ?? "";
 }
 
 export function renderScoreIdentity(

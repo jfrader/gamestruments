@@ -76,7 +76,7 @@ async function measureKickLoop(
         seed: "level-001",
         style: "fusion",
         recipe: "racing",
-        arrangement: "original",
+        arrangement: "all-phases",
         autoplay: false,
         energy: traits.energy,
         complexity: traits.complexity,

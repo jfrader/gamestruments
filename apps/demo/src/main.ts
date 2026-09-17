@@ -3,7 +3,7 @@ import type { SectionId } from "../../../packages/runtime/src/index.ts";
 import type { SoloMode } from "./audio-engine.ts";
 import { phaseName } from "./phase-names.ts";
 import { versionLabel } from "./lab-copy.ts";
-import { isRacingArrangement, isSuspenseArrangement, isAdventureArrangement, type Arrangement } from "./wasm-engine.ts";
+import { isArrangement, type Arrangement } from "./wasm-engine.ts";
 import {
   elements,
   setStartButton,
@@ -60,11 +60,8 @@ import {
 
 await initializeLab();
 
-/** The one status line per arrangement, for both recipes. */
+/** The one status line per arrangement, for every recipe. */
 const ARRANGEMENT_READY: Record<Arrangement, string> = {
-  original: "Original arrangement restored",
-  extended: "Extended arrangement restored",
-  composed: "Composed arrangement ready",
   "all-phases": "All phases arrangement ready",
   seeded: "Seeded arrangement ready",
 };
@@ -310,20 +307,14 @@ elements.arrangementButtons.addEventListener("click", (event) => {
   if (value === undefined) {
     return;
   }
-  // Every recipe's own arrangements are clickable; a stale value from another
-  // recipe (e.g. a Suspense pool id left in a Racing container) is ignored.
-  if (labRecipe === "racing" && !isRacingArrangement(value as Arrangement)) {
+  // Every recipe shares the same two arrangements; a stale value from another
+  // recipe (e.g. a retired id left in the container) is ignored.
+  if (!isArrangement(value)) {
     return;
   }
-  if (labRecipe === "suspense" && !isSuspenseArrangement(value as Arrangement)) {
-    return;
-  }
-  if (labRecipe === "adventure" && !isAdventureArrangement(value as Arrangement)) {
-    return;
-  }
-  applyGenerationRequest(setArrangement(value as Arrangement), () => {
+  applyGenerationRequest(setArrangement(value), () => {
     renderCurrentScore();
-    announceAudition(ARRANGEMENT_READY[value as Arrangement]);
+    announceAudition(ARRANGEMENT_READY[value]);
   });
 });
 
