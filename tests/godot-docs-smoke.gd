@@ -87,6 +87,7 @@ func _run_snippet(path: String, initial: String, probes: Array) -> void:
 func _run_probe(holder: Node, player: Node, probe: Dictionary) -> void:
 	var method := String(probe.get("method"))
 	var args: Array = probe.get("args", [])
+	var t0 := Time.get_ticks_msec()
 	holder.callv(method, args)
 	if probe.has("held"):
 		for _f in range(4):
@@ -94,7 +95,9 @@ func _run_probe(holder: Node, player: Node, probe: Dictionary) -> void:
 		_check(bool(player.call("is_form_held")) == bool(probe["held"]), "probe %s held" % method)
 	if probe.has("section"):
 		var want := String(probe["section"])
-		_check(await _wait_section(player, want), "probe %s -> %s" % [method, want])
+		var got := await _wait_section(player, want)
+		print("[DIAG] probe %s -> %s : %s (%d ms, sec=%s)" % [method, want, "OK" if got else "FAIL", Time.get_ticks_msec() - t0, String(player.call("get_current_section"))])
+		_check(got, "probe %s -> %s" % [method, want])
 
 
 func _wait_section(player: Node, want: String) -> bool:
