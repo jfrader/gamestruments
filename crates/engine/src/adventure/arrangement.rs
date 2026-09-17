@@ -280,7 +280,7 @@ fn apply_adventure_development_arc(section: &mut PortableSection, bar: u32, seed
         return;
     };
     let arc = adventure_arc_for_role(spec.role);
-    develop_section(section, bar, arc, adventure_layer_rank, seed, true, 0);
+    develop_section(section, bar, arc, adventure_layer_rank, seed, true, 0, 1);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

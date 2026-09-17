@@ -177,6 +177,9 @@ pub enum RacingPhaseRole {
     Groove,
     Peak,
     Outro,
+    /// A composed-only drumless breather: no kit, resolved into the flow. Not
+    /// derived from a plan — the pool assigns it to the `breather` phase.
+    Breather,
 }
 
 /// The role of a Racing section, read back from its authored plan. Pure,

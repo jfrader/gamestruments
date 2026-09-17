@@ -86,6 +86,17 @@ fn generate_seeded(input: &GenerateInput) -> Result<PortableScore, String> {
     // so the tempo keeps climbing to the top of the knob.
     score.bpm = (score.bpm + traits.energy_dev() * 24.0).clamp(96.0, 160.0);
 
+    // The drumless breather is a composed-only phase: build it from the Race
+    // Flow source (kit stripped) and slot it into the score before the flow so
+    // the composer can tour it. It stays at its authored four bars.
+    let breather = build_breather(&score);
+    let insert_at = score
+        .sections
+        .iter()
+        .position(|section| section.id == "cruise")
+        .unwrap_or(score.sections.len());
+    score.sections.insert(insert_at, breather);
+
     // Re-time by role before composing the form so each step references the
     // final length. Sections not chosen by the composer still re-time; they are
     // carried in the score but simply not toured. energy biases the stretch.
@@ -180,11 +191,14 @@ fn racing_layer_rank(event: &MusicEvent) -> u8 {
 }
 
 /// The development arc shape for a Racing role, mirroring Suspense's own
-/// role → arc mapping. Racing has no Bridge or Break role.
+/// role → arc mapping. The Breather is drumless by construction (no kit lane),
+/// so its arc only shapes the pad and melody; Racing has no Bridge or Break
+/// role.
 fn racing_arc_for_role(role: RacingPhaseRole) -> &'static [u8] {
     match role {
         RacingPhaseRole::Peak | RacingPhaseRole::Build => &[1, 2, 3, 4],
         RacingPhaseRole::Groove => &[2, 3, 4, 3],
+        RacingPhaseRole::Breather => &[1, 2, 3, 2],
         RacingPhaseRole::Intro | RacingPhaseRole::Outro => &[1, 2, 4, 3],
     }
 }
@@ -205,7 +219,15 @@ fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u
     };
     let arc = racing_arc_for_role(spec.role);
     let bias = density_bias(complexity, 0.62, 0.4);
-    develop_section(section, bar, arc, racing_layer_rank, seed, true, bias);
+    // A flow/groove phase carries the race groove: the kit (rank 2) is present
+    // in every block, so a race loop never stops and restarts the drums. Other
+    // roles may still open on a sparse, drumless exposition (rank 1).
+    let floor = if spec.role == RacingPhaseRole::Groove {
+        2
+    } else {
+        1
+    };
+    develop_section(section, bar, arc, racing_layer_rank, seed, true, bias, floor);
 }
 
 /// The seam vocabulary: how one seeded phase hands the music to the next.
@@ -493,8 +515,14 @@ fn apply_racing_trait_surface(section: &mut PortableSection, bar: u32, traits: &
     }
 
     // energy → kit density: extra hats on empty sixteenths, count grows with the
-    // knob.
-    let extra_kit = (traits.energy * 4.0).round() as usize;
+    // knob. Drumless phases (the breather) skip this so they never gain a kit.
+    let drumless = racing_phase_spec(&section.id)
+        .is_some_and(|spec| spec.role == RacingPhaseRole::Breather);
+    let extra_kit = if drumless {
+        0
+    } else {
+        (traits.energy * 4.0).round() as usize
+    };
     if extra_kit > 0 {
         let mut placed = 0usize;
         for start in (0..section.length_ticks).step_by(sixteenth as usize) {
@@ -1229,6 +1257,51 @@ fn push_event(
             velocity: vel,
             voice: voice.to_string(),
         });
+    }
+}
+
+/// Build the drumless Breather from the Race Flow source: the Cruise material
+/// (melody, harmony, bass) with the kit stripped, so a drumless passage exists
+/// on purpose instead of as an accident inside a groove. Four bars, like the
+/// other pool sections; the composer can place it before a flow phase.
+fn build_breather(base: &PortableScore) -> PortableSection {
+    let source = base.section("cruise").expect("racing requires cruise");
+    let mut events = Vec::new();
+    for (kind, lane) in [
+        ("melody", harvest(source, "melody")),
+        ("harmony", harvest(source, "harmony")),
+        ("bass", harvest(source, "bass")),
+    ] {
+        for (index, event) in lane.iter().enumerate() {
+            push_event(
+                &mut events,
+                "breather",
+                kind,
+                0,
+                index as u32,
+                event.start_tick,
+                event.duration_ticks,
+                event.velocity,
+                event.pitch,
+                &event.voice,
+            );
+        }
+    }
+    events.sort_by(|a, b| {
+        let sa = a.start_tick();
+        let sb = b.start_tick();
+        if sa != sb {
+            return sa.cmp(&sb);
+        }
+        event_id(a).cmp(event_id(b))
+    });
+    PortableSection {
+        id: "breather".into(),
+        label: "Breather".into(),
+        feeling: "suspended / drums fall away".into(),
+        color: "#a9c8cc".into(),
+        length_ticks: source.length_ticks,
+        events,
     }
 }
 
@@ -2171,7 +2244,7 @@ mod tests {
         let score =
             generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         // generate_seeded validates internally; assert the visible shape.
-        assert_eq!(score.sections.len(), 6);
+        assert_eq!(score.sections.len(), 7);
         let form = score.form.as_ref().expect("seeded must carry a form");
         assert!(!form.steps.is_empty());
         for step in &form.steps {
@@ -2207,12 +2280,12 @@ mod tests {
         let score =
             generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         let bar = score.bar_ticks();
-        for id in ["garage", "grid", "cruise", "attack", "final-lap", "victory"] {
+        for id in ["garage", "grid", "breather", "cruise", "attack", "final-lap", "victory"] {
             let sec = score.section(id).expect(id);
             let bars = sec.length_ticks / bar;
             assert_eq!(bars % 4, 0, "{id} length not tile-aligned");
             match id {
-                "garage" | "victory" => assert_eq!(bars, 4, "{id} should stay short"),
+                "garage" | "breather" | "victory" => assert_eq!(bars, 4, "{id} should stay short"),
                 "grid" | "cruise" => assert!((4..=8).contains(&bars), "{id} bars {bars}"),
                 "attack" | "final-lap" => assert!((8..=12).contains(&bars), "{id} bars {bars}"),
                 _ => unreachable!(),
@@ -2222,6 +2295,55 @@ mod tests {
                     ev.start_tick() + ev.duration_ticks() <= sec.length_ticks,
                     "{id} out-of-bounds event"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn seeded_flow_phase_keeps_kit_in_every_block() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
+                    .expect("seeded");
+                let bar = score.bar_ticks();
+                let cruise = score.section("cruise").expect("cruise");
+                let bars = cruise.length_ticks / bar;
+                let block_bars = if bars <= 8 { 2 } else { 4 };
+                let blocks = (bars / block_bars) as usize;
+                for block in 0..blocks {
+                    let from = block as u32 * block_bars * bar;
+                    let to = from + block_bars * bar;
+                    let has_kit = cruise.events.iter().any(|event| {
+                        matches!(event, MusicEvent::Percussion { lane, .. } if lane.ends_with("-kit"))
+                            && event.start_tick() >= from
+                            && event.start_tick() < to
+                    });
+                    assert!(
+                        has_kit,
+                        "{style:?} {seed} cruise block {block} dropped the kit"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn seeded_breather_has_no_kit() {
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
+                    .expect("seeded");
+                let breather = score.section("breather").expect("breather");
+                assert!(
+                    !breather.events.is_empty(),
+                    "{style:?} {seed} breather must carry material"
+                );
+                let kit = breather.events.iter().filter(|event| {
+                    matches!(event, MusicEvent::Percussion { lane, .. } if lane.ends_with("-kit"))
+                }).count();
+                assert_eq!(kit, 0, "{style:?} {seed} breather must carry no kit");
             }
         }
     }

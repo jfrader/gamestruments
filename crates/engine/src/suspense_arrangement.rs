@@ -253,7 +253,7 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
     // masked by the bias (the bed, rank 0, is never masked regardless).
     let bias = density_bias(tension, 0.66, 0.35);
     let Some((block_bars, schedule)) =
-        develop_section(section, bar, arc, layer_rank, _seed, false, bias)
+        develop_section(section, bar, arc, layer_rank, _seed, false, bias, 1)
     else {
         return;
     };

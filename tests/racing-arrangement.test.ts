@@ -230,7 +230,7 @@ describe("Racing arrangements through the shipped WASM", () => {
     const { score } = generate({ recipe: "racing", style: "funk", arrangement: "seeded" });
 
     assert.match(score.id, /-seeded$/);
-    assert.equal(score.sections.length, 6);
+    assert.equal(score.sections.length, 7);
     const form = formOf(score);
     assert.ok(form.steps.length >= 6);
     for (const step of form.steps) {

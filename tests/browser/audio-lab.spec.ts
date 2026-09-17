@@ -206,9 +206,10 @@ test("Racing All phases and Seeded offer the two arrangements and announce them"
   await page.goto("/#lab");
   await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Seeded (the default) composes a song form over the six phases.
+  // Seeded (the default) composes a song form over the six phases plus the
+  // drumless Breather.
   await expect(page.locator("#score-title")).toContainText("Seeded");
-  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-list li")).toHaveCount(7);
   await expect(page.locator("#section-control")).toBeVisible();
 
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
@@ -221,7 +222,7 @@ test("Racing All phases and Seeded offer the two arrangements and announce them"
   await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
   await expect(page.locator("#score-title")).toContainText("Seeded");
-  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-list li")).toHaveCount(7);
   await expect(page.locator("#section-control")).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -14,10 +14,13 @@ use crate::score::SongForm;
 /// Maximum allowed energy step between adjacent composed phases (0-100 scale).
 pub const MAX_ENERGY_DELTA: u32 = 35;
 
-/// The Racing phase pool in natural race order.
-pub const RACING_SECTION_IDS: [&str; 6] = [
+/// The Racing phase pool in natural race order. `breather` is a composed-only
+/// drumless phase (no kit) that resolves into the flow; the other six are the
+/// base sections derived from the authored plans.
+pub const RACING_SECTION_IDS: [&str; 7] = [
     "garage",
     "grid",
+    "breather",
     "cruise",
     "attack",
     "final-lap",
@@ -60,6 +63,17 @@ pub fn racing_phase_spec(id: &str) -> Option<RacingPhaseSpec> {
         .iter()
         .copied()
         .find(|candidate| *candidate == id)?;
+    // The breather has no authored plan: it is a composed-only drumless phase,
+    // so its role and energy live here rather than being derived from `PLANS`.
+    if pool_id == "breather" {
+        return Some(RacingPhaseSpec {
+            id: "breather",
+            role: RacingPhaseRole::Breather,
+            energy: 60,
+            bars: 4,
+            one_shot: false,
+        });
+    }
     Some(RacingPhaseSpec {
         id: pool_id,
         role: racing_phase_role(id)?,
@@ -103,8 +117,9 @@ impl PhasePool for RacingPool {
         use RacingPhaseRole::*;
         match prev.role {
             Intro => matches!(next.role, Build | Groove),
-            Build => next.role == Groove,
-            Groove => matches!(next.role, Groove | Build | Peak),
+            Build => matches!(next.role, Groove | Breather),
+            Breather => matches!(next.role, Groove),
+            Groove => matches!(next.role, Groove | Build | Peak | Breather),
             Peak => matches!(next.role, Peak | Groove | Outro),
             Outro => false,
         }
@@ -127,10 +142,11 @@ impl PhasePool for RacingPool {
     }
 }
 
-/// Role-aware length for the composed path: intros and outros stay at the
-/// authored four bars, grooves and builds land at four or eight, and peaks
-/// stretch to eight or twelve so the climax actually climbs. Bars are always a
-/// multiple of the authored four-bar block, so a section re-times by tiling.
+/// Role-aware length for the composed path: intros, outros and breathers stay
+/// at the authored four bars, grooves and builds land at four or eight, and
+/// peaks stretch to eight or twelve so the climax actually climbs. Bars are
+/// always a multiple of the authored four-bar block, so a section re-times by
+/// tiling.
 ///
 /// The `energy` trait (0..1) biases the stretch band continuously: at the
 /// extremes it forces the short or the long band, and in the middle it leaves
@@ -147,7 +163,7 @@ pub fn racing_phase_bars(spec: &RacingPhaseSpec, seed: u32, energy: f64) -> u32 
         rng.integer(2)
     };
     match spec.role {
-        RacingPhaseRole::Intro | RacingPhaseRole::Outro => authored,
+        RacingPhaseRole::Intro | RacingPhaseRole::Outro | RacingPhaseRole::Breather => authored,
         RacingPhaseRole::Build | RacingPhaseRole::Groove => authored + authored * band,
         RacingPhaseRole::Peak => authored * 2 + authored * band,
     }
@@ -239,14 +255,57 @@ mod tests {
                 .iter()
                 .filter_map(|&id| racing_phase_spec(id))
                 .count(),
-            6
+            7
         );
         assert!(racing_phase_spec("garage").unwrap().one_shot);
         assert!(racing_phase_spec("victory").unwrap().one_shot);
-        for id in ["grid", "cruise", "attack", "final-lap"] {
+        for id in ["grid", "breather", "cruise", "attack", "final-lap"] {
             assert!(!racing_phase_spec(id).unwrap().one_shot, "{id} repeats");
         }
         assert!(racing_phase_spec("attack").unwrap().energy > racing_phase_spec("cruise").unwrap().energy);
+    }
+
+    #[test]
+    fn breather_is_drumless_and_legal_before_the_flow() {
+        let breather = racing_phase_spec("breather").expect("breather must be in the pool");
+        let cruise = racing_phase_spec("cruise").expect("cruise must be in the pool");
+        assert_eq!(breather.role, RacingPhaseRole::Breather);
+        assert_eq!(cruise.role, RacingPhaseRole::Groove);
+        assert!(!breather.one_shot, "breather may repeat");
+        assert_eq!(breather.bars, 4, "breather stays at its authored four bars");
+        // The breather is transition-legal into the flow phase (Groove).
+        assert!(
+            RacingPool::role_legal(breather, cruise),
+            "breather must be legal before the flow phase"
+        );
+        // And it is reachable from the build and from the groove.
+        assert!(RacingPool::role_legal(
+            racing_phase_spec("grid").unwrap(),
+            breather
+        ));
+        assert!(RacingPool::role_legal(cruise, breather));
+        // Its energy sits within the step bound of its neighbours.
+        for neighbour in ["grid", "cruise"] {
+            assert!(
+                RacingPool::energy_legal(breather, racing_phase_spec(neighbour).unwrap()),
+                "breather -> {neighbour} must stay within the energy bound"
+            );
+        }
+        // The composer can actually choose it: across many seeds at least one
+        // form places the breather directly before the flow phase.
+        let mut saw_breather_before_flow = false;
+        for seed in 0..512u32 {
+            let form = racing_compose(seed);
+            let ids: Vec<&str> = form.steps.iter().map(|step| step.section.as_str()).collect();
+            if ids.windows(2).any(|w| w == ["breather", "cruise"]) {
+                saw_breather_before_flow = true;
+                break;
+            }
+        }
+        assert!(
+            saw_breather_before_flow,
+            "the composer must be able to place breather before cruise"
+        );
     }
 
     #[test]
@@ -296,7 +355,7 @@ mod tests {
                 let bars = racing_phase_bars(&spec, seed, 0.5);
                 assert_eq!(bars % 4, 0, "{id} bars {bars} not tile-aligned");
                 match spec.role {
-                    RacingPhaseRole::Intro | RacingPhaseRole::Outro => {
+                    RacingPhaseRole::Intro | RacingPhaseRole::Outro | RacingPhaseRole::Breather => {
                         assert_eq!(bars, 4, "{id}")
                     }
                     RacingPhaseRole::Build | RacingPhaseRole::Groove => {

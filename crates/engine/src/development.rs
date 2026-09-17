@@ -103,9 +103,10 @@ pub(crate) fn density_bias(value: f64, high: f64, low: f64) -> i32 {
 
 /// Run the shared development arc for one section: derive the block schedule
 /// from the role's `arc`, apply an optional seeded jitter and an optional
-/// one-rank density bias, then mask the section's layers to the schedule using
-/// `rank`. Returns `(block_bars, schedule)` so a recipe can add its own
-/// embellishments afterwards (Suspense's impact onsets).
+/// one-rank density bias, clamp every block to at least `floor`, then mask the
+/// section's layers to the schedule using `rank`. Returns `(block_bars,
+/// schedule)` so a recipe can add its own embellishments afterwards (Suspense's
+/// impact onsets).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn develop_section(
     section: &mut PortableSection,
@@ -115,6 +116,7 @@ pub(crate) fn develop_section(
     seed: u32,
     jitter: bool,
     bias: i32,
+    floor: u8,
 ) -> Option<(u32, Vec<u8>)> {
     if bar == 0 {
         return None;
@@ -126,6 +128,9 @@ pub(crate) fn develop_section(
         jitter_schedule(&mut rng, &mut schedule);
     }
     bias_schedule(&mut schedule, bias);
+    for block_rank in &mut schedule {
+        *block_rank = (*block_rank).max(floor);
+    }
     let block_ticks = bar * block_bars;
     mask_to_schedule(section, bar, block_ticks, &schedule, rank);
     section.events.sort_by_key(MusicEvent::start_tick);
