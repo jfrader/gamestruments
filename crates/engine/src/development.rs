@@ -32,7 +32,8 @@ pub(crate) fn development_schedule(arc: &[u8], bars: u32) -> Option<(u32, Vec<u8
 /// Mask a section's events to the block schedule: keep only layers whose rank
 /// is at or below the block's scheduled rank. The closing bar is left intact so
 /// the phase still resolves on the seam, and the bed (rank 0) sits below every
-/// schedule so it is never masked.
+/// schedule so it is never masked. Seam gestures (`-seam` lanes) are transition
+/// material, not a layer, so they are exempt from the mask and always survive.
 pub(crate) fn mask_to_schedule(
     section: &mut PortableSection,
     bar: u32,
@@ -44,6 +45,13 @@ pub(crate) fn mask_to_schedule(
     section.events.retain(|event| {
         let start = event.start_tick();
         if start >= last_bar_start {
+            return true;
+        }
+        if matches!(
+            event,
+            MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. }
+                if lane.ends_with("-seam")
+        ) {
             return true;
         }
         let block = (start / block_ticks) as usize;

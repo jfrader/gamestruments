@@ -4243,4 +4243,52 @@ mod tests {
             "pulse tempo must be strictly ordered, got {low}/{mid}/{high}"
         );
     }
+
+    #[test]
+    fn seam_lanes_survive_the_development_mask() {
+        let bar = 4 * 960;
+        let block_ticks = bar * 2;
+        let schedule = [1u8]; // first block masked to rank 1
+        let mut section = PortableSection {
+            id: "probe".into(),
+            label: "probe".into(),
+            feeling: "probe".into(),
+            color: "#000000".into(),
+            length_ticks: bar * 4,
+            events: vec![
+                MusicEvent::Percussion {
+                    id: "seam".into(),
+                    section: "probe".into(),
+                    lane: "probe-seam".into(),
+                    start_tick: 0,
+                    duration_ticks: bar / 8,
+                    velocity: 0.1,
+                    voice: "kick".into(),
+                },
+                MusicEvent::Note {
+                    id: "arp".into(),
+                    section: "probe".into(),
+                    lane: "probe-arp".into(),
+                    start_tick: 0,
+                    duration_ticks: bar,
+                    velocity: 0.2,
+                    pitch: 60,
+                    voice: "warm".into(),
+                    role: None,
+                },
+            ],
+        };
+        mask_to_schedule(&mut section, bar, block_ticks, &schedule, layer_rank);
+        let lanes: Vec<&str> = section
+            .events
+            .iter()
+            .map(|event| match event {
+                MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => {
+                    lane.as_str()
+                }
+            })
+            .collect();
+        assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
+        assert!(!lanes.contains(&"probe-arp"), "the arp layer must be masked");
+    }
 }

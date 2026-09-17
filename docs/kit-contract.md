@@ -54,7 +54,7 @@ Exported properties:
 
 - `project_secret: String`
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`
-- `arrangement: String` — Racing: `original` (default) or `extended`; Suspense: `all-phases` or `seeded` (default); ignored by Adventure. Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`
+- `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (default) and `extended`. Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
 - `autoplay: bool` — Racing and Adventure (default `false`); when true attaches form tour (arrangement tour, not audio autostart). Ignored by Suspense. Native default false.
 - `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`; Adventure `folk`, `dark`, `orchestral`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only

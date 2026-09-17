@@ -237,12 +237,11 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
-            // Composed already carries a song form, so there is no automatic
-            // arrangement to layer on top of it. Extended for Adventure is
-            // currently an alias to Original; all-phases and seeded carry their
-            // own forms.
+            // Seeded and all-phases already carry a song form, so there is no
+            // automatic arrangement to layer on top of them; Original layers
+            // the default Adventure tour on top.
             let autoplay_recipe = match arrangement {
-                AdventureArrangement::Original | AdventureArrangement::Extended => Some(ArrangementRecipe::Adventure),
+                AdventureArrangement::Original => Some(ArrangementRecipe::Adventure),
                 AdventureArrangement::AllPhases | AdventureArrangement::Seeded => None,
             };
             generate_adventure_arrangement(
@@ -320,7 +319,7 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 drive: inp.palette.drive,
                 bass: inp.palette.bass,
             };
-            // Composed already carries a song form, so there is no automatic
+            // Seeded already carries a song form, so there is no automatic
             // arrangement to layer on top of it; all-phases carries its own form.
             let autoplay_recipe = match arrangement {
                 RacingArrangement::Original => Some(ArrangementRecipe::Racing),

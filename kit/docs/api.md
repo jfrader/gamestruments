@@ -18,7 +18,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`.
-- `arrangement: String` — per recipe: Racing `original` (default) or `extended` (ten-section race; the Audio Lab's Racing default); Suspense `all-phases` (the whole 27-phase pool in canonical order) or `seeded` (default — the composer picks count, roles, order and loop point from the seed). Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`. Ignored by Adventure.
+- `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (its native default) and `extended` (ten-section race). Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
 - `autoplay: bool` — Racing and Adventure only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, generation is state-driven. The Audio Lab uses `true` for Racing/Adventure. Ignored by Suspense.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; unset (or default init) is `funk`. Explicit empty string for Racing fails generation.

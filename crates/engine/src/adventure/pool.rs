@@ -73,13 +73,11 @@ pub(super) fn adventure_compose(seed: u32) -> SongForm {
     let mut used_one_shot: Vec<&'static str> = Vec::new();
     let found = adventure_search(&mut rng, &mut chosen, &mut used_one_shot, count);
     if !found {
-        // Unreachable for this pool (the grammar is live); kept as a guard so a
-        // future pool edit degrades to the canonical quest arc instead of
-        // looping forever.
-        chosen = ADVENTURE_SECTION_IDS
-            .iter()
-            .filter_map(|&id| adventure_phase_spec(id))
-            .collect();
+        // Unreachable for this pool (the grammar is live); retried so a future
+        // pool edit prefers any legal form over the canonical fallback.
+        chosen.clear();
+        used_one_shot.clear();
+        adventure_search(&mut rng, &mut chosen, &mut used_one_shot, count);
     }
     let groove_indices: Vec<u32> = chosen
         .iter()
@@ -87,12 +85,39 @@ pub(super) fn adventure_compose(seed: u32) -> SongForm {
         .filter(|(_, spec)| spec.role == AdventurePhaseRole::Groove)
         .map(|(index, _)| index as u32)
         .collect();
-    let loop_from = if groove_indices.is_empty() {
-        None
-    } else {
-        Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize])
-    };
+    if chosen.len() < count || groove_indices.is_empty() {
+        // Guard: never emit a short or grooveless form; degrade to the
+        // canonical quest arc (every section once, looping from the first
+        // groove).
+        return adventure_canonical_form();
+    }
+    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
     let steps = chosen.into_iter().map(adventure_step).collect();
+    SongForm {
+        steps,
+        loop_from,
+        origin: None,
+    }
+}
+
+/// The canonical Adventure form: every pool section once, in natural quest
+/// order, looping from the first groove (explore). The seeded search can only
+/// fall short if a future pool edit breaks the live grammar, so this is the
+/// guaranteed-valid fallback.
+fn adventure_canonical_form() -> SongForm {
+    let steps = ADVENTURE_SECTION_IDS
+        .iter()
+        .map(|id| SongFormStep {
+            section: (*id).to_string(),
+            repeats: 1,
+        })
+        .collect();
+    let loop_from = ADVENTURE_SECTION_IDS
+        .iter()
+        .position(|id| {
+            adventure_phase_spec(id).is_some_and(|spec| spec.role == AdventurePhaseRole::Groove)
+        })
+        .map(|index| index as u32);
     SongForm {
         steps,
         loop_from,

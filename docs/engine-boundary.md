@@ -38,7 +38,8 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   `generate_racing_arrangement` in `crates/engine/src/racing_arrangement.rs`
   dispatches Original to `generate_racing` and Extended to `generate_extended`;
   the autoplay adapter is applied afterward and leaves Original untouched.
-  Native and WASM default to Original; the Audio Lab defaults Racing to Extended.
+  Native and WASM default to Original for Racing; the Audio Lab defaults every
+  recipe to Seeded.
 - The pool has 27 phases: the fourteen base sections, `scan-ii` (Scan II) and
   `breach-ii` (Breach II) developed past their base phase, `anomaly`, and ten
   pool-authored phases (`half-time`, `sparse`, `sub-groove`, `syncopated`,
@@ -104,12 +105,12 @@ per-section Cue buttons. These are playback controls, not additional
   the retired Original/Extended/Theme presets are gone, and autoplay is a
   separate opt-in flag.
 
-The lab's arrangement selector is per recipe and remembered separately: Racing
-offers Original/Extended (default Extended), Suspense offers All phases/Seeded
-(default Seeded), so a Suspense pool switch never leaks into Racing. Adventure
-hides the arrangement control. When a Racing score switches from Extended to
-Original while a new phase (`ignition`, `slipstream`, `redline`, or `cooldown`)
-is playing, the lab falls back to `garage`, since Original has no such section.
+The lab's arrangement selector is per recipe and remembered separately: Racing,
+Suspense and Adventure each offer All phases/Seeded (default Seeded), so a
+Suspense pool switch never leaks into Racing. When a Racing score switches from
+Seeded to Original while a new phase (`ignition`, `slipstream`, `redline`, or
+`cooldown`) is playing, the lab falls back to `garage`, since Original has no
+such section.
 
 Audio synthesis / sound stage:
 - The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.

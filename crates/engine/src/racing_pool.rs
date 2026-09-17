@@ -67,8 +67,8 @@ pub fn racing_compose(seed: u32) -> SongForm {
     let mut used_one_shot: Vec<&'static str> = Vec::new();
     let found = racing_search(&mut rng, &mut chosen, &mut used_one_shot, count);
     if !found {
-        // Unreachable for this pool (the grammar is live); kept as a guard so a
-        // future pool edit degrades to a short form instead of looping forever.
+        // Unreachable for this pool (the grammar is live); retried so a future
+        // pool edit prefers any legal form over the canonical fallback.
         chosen.clear();
         used_one_shot.clear();
         racing_search(&mut rng, &mut chosen, &mut used_one_shot, count);
@@ -79,10 +79,38 @@ pub fn racing_compose(seed: u32) -> SongForm {
         .filter(|(_, spec)| spec.role == RacingPhaseRole::Groove)
         .map(|(index, _)| index as u32)
         .collect();
-    let loop_from = groove_indices
-        .get(rng.integer(groove_indices.len() as u32) as usize)
-        .copied();
+    if chosen.len() < count || groove_indices.is_empty() {
+        // Guard: never emit a short or grooveless form; degrade to the
+        // canonical tour (every pool phase once, looping from the groove).
+        return racing_canonical_form();
+    }
+    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
     let steps = chosen.into_iter().map(racing_step).collect();
+    SongForm {
+        steps,
+        loop_from,
+        origin: None,
+    }
+}
+
+/// The canonical Racing form: every pool phase once, in natural race order,
+/// looping from the first groove (cruise). The seeded search can only fall
+/// short if a future pool edit breaks the live grammar, so this is the
+/// guaranteed-valid fallback.
+fn racing_canonical_form() -> SongForm {
+    let steps = RACING_SECTION_IDS
+        .iter()
+        .map(|id| SongFormStep {
+            section: (*id).to_string(),
+            repeats: 1,
+        })
+        .collect();
+    let loop_from = RACING_SECTION_IDS
+        .iter()
+        .position(|id| {
+            racing_phase_spec(id).is_some_and(|spec| spec.role == RacingPhaseRole::Groove)
+        })
+        .map(|index| index as u32);
     SongForm {
         steps,
         loop_from,
@@ -309,6 +337,7 @@ mod tests {
                 "seed {seed}: count {}",
                 ids.len()
             );
+            assert!(form.loop_from.is_some(), "seed {seed}: missing loop point");
             distinct.insert(ids);
         }
         assert!(distinct.len() > 20, "only {} distinct forms", distinct.len());

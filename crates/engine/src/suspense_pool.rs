@@ -513,11 +513,13 @@ pub fn compose(seed: u32, intent: Intent) -> SongForm {
         .filter(|(_, spec)| spec.role == PhaseRole::Groove)
         .map(|(index, _)| index as u32)
         .collect();
-    let loop_from = if groove_indices.is_empty() {
-        None
-    } else {
-        Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize])
-    };
+    if chosen.len() < count || groove_indices.is_empty() {
+        // Guard: never emit a short or grooveless form; degrade to the
+        // canonical all-phases tour (every pool phase once, looping from the
+        // first groove).
+        return all_phases_form();
+    }
+    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
     let steps = chosen.into_iter().map(step).collect();
     SongForm {
         steps,
@@ -925,6 +927,10 @@ mod tests {
                     (low..=high).contains(&(ids.len() as u32)),
                     "{intent:?} seed {seed}: count {}",
                     ids.len()
+                );
+                assert!(
+                    form.loop_from.is_some(),
+                    "{intent:?} seed {seed}: missing loop point"
                 );
                 counts.insert(ids.iter().map(|id| (*id).to_string()).collect::<Vec<_>>());
             }
