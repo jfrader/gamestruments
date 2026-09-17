@@ -62,7 +62,11 @@ are wonder, danger, mystery, and motion. Runtime state is `areaPhase` plus
 discovery, threat, and quest progress; quest completion always wins, and a high
 threat escalates combat into `boss`. The voices are harp, recorder, vielle, and
 bell plus frame-drum and tambourine percussion — synthesized, acoustic-inspired
-timbres rather than sample recordings. When `autoplay` is set, an attached song
+timbres rather than sample recordings. The seeded pool adds a combat set
+(`skirmish`, `assault`, `chase`, riding the peak band with combat/boss) and a
+happiness set (`festival`, `reunion`, `dawn`, riding the groove and break bands
+with town/sanctuary), so the seeded composer can interleave brighter and more
+driving material into the same quest. When `autoplay` is set, an attached song
 form tours the eight sections and loops from `explore`.
 
 ## API

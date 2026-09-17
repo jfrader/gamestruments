@@ -110,7 +110,7 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   await selectRecipe(page, "adventure");
   await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
   await expect(page.locator("#score-title")).toContainText(/Folk|Dark|Orchestral/);
-  await expect(page.locator("#section-list li")).toHaveCount(8);
+  await expect(page.locator("#section-list li")).toHaveCount(14);
   await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
   await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");
 
@@ -241,7 +241,7 @@ test("Adventure offers exactly two arrangements: All phases and Seeded", async (
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
   await expect(page.locator("#score-title")).toContainText("All phases");
-  await expect(page.locator("#section-list li")).toHaveCount(8);
+  await expect(page.locator("#section-list li")).toHaveCount(14);
   expect(errors).toEqual([]);
 });
 

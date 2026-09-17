@@ -775,7 +775,7 @@ mod tests {
         let input = sample("composed-shape", AdventureStyle::Folk);
         let score =
             generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("seeded");
-        assert_eq!(score.sections.len(), 8);
+        assert_eq!(score.sections.len(), 14);
         let form = score.form.as_ref().expect("seeded must carry a form");
         assert!(!form.steps.is_empty());
         for step in &form.steps {
@@ -804,7 +804,7 @@ mod tests {
         assert_eq!(form.steps.last().unwrap().section, "victory");
         let loop_section = &form.steps[loop_from as usize].section;
         assert!(
-            loop_section == "explore" || loop_section == "town",
+            ["explore", "town", "festival", "reunion"].contains(&loop_section.as_str()),
             "loop point must target a groove, got {loop_section}"
         );
     }
@@ -824,19 +824,27 @@ mod tests {
             "boss",
             "sanctuary",
             "victory",
+            "skirmish",
+            "assault",
+            "chase",
+            "festival",
+            "reunion",
+            "dawn",
         ] {
             let sec = score.section(id).expect(id);
             let bars = sec.length_ticks / bar;
             assert_eq!(bars % 16, 0, "{id} length not block-aligned");
             match id {
-                "camp" | "sanctuary" => {
+                "camp" | "sanctuary" | "dawn" => {
                     assert_eq!(bars, 16, "{id} should stay at 16");
                 }
                 "victory" => assert_eq!(bars, 32, "{id} should stay at its authored 32"),
-                "explore" | "town" | "combat" => {
+                "explore" | "town" | "combat" | "chase" | "festival" | "reunion" => {
                     assert!((32..=48).contains(&bars), "{id} bars {bars}");
                 }
-                "dungeon" | "boss" => assert!((16..=32).contains(&bars), "{id} bars {bars}"),
+                "dungeon" | "boss" | "skirmish" | "assault" => {
+                    assert!((16..=32).contains(&bars), "{id} bars {bars}")
+                }
                 _ => unreachable!(),
             }
         }
@@ -1107,7 +1115,7 @@ mod tests {
     }
 
     #[test]
-    fn all_phases_produces_a_valid_eight_section_score_with_a_canonical_form() {
+    fn all_phases_produces_a_valid_fourteen_section_score_with_a_canonical_form() {
         for style in [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -1116,7 +1124,7 @@ mod tests {
             let input = sample("all-phases-shape", style);
             let score =
                 generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all-phases");
-            assert_eq!(score.sections.len(), 8);
+            assert_eq!(score.sections.len(), 14);
             assert_eq!(
                 score.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
                 ADVENTURE_SECTION_IDS.to_vec()

@@ -4,12 +4,16 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 - Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
   `adventure`, and score). WASM `gamestruments_score_json` accepts
   `"recipe": "racing" | "suspense" | "adventure"` (default racing).
-- Adventure accepts styles `folk`, `dark`, and `orchestral` and generates eight
-  sections selected from area phase plus discovery, threat, and quest progress.
-  `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars; `explore`, `town`,
-  `combat`, and `victory` are 32. `crates/engine/src/adventure.rs` owns the
-  plans, rules, and `select_adventure_section`; the Rust `AdaptiveTransport`
-  exposes `request_adventure_state`.
+- Adventure accepts styles `folk`, `dark`, and `orchestral` and generates
+  fourteen sections: the eight selected from area phase plus discovery, threat,
+  and quest progress (`camp`, `explore`, `town`, `dungeon`, `combat`, `boss`,
+  `sanctuary`, `victory`), plus a combat set (`skirmish`, `assault`, `chase`)
+  and a happiness set (`festival`, `reunion`, `dawn`) that join the seeded
+  composer's pool. `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`,
+  `assault`, and `dawn` are 16 bars; the rest are 32.
+  `crates/engine/src/adventure.rs` owns the plans, rules, and
+  `select_adventure_section`; the Rust `AdaptiveTransport` exposes
+  `request_adventure_state`.
 - Racing and Adventure optionally attach a song form through
   `apply_automatic_arrangement` when `autoplay` is set (default `false`).
   Racing `original` tours garage, grid, cruise (×2), attack, final-lap, victory,

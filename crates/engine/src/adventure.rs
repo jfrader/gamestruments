@@ -15,7 +15,7 @@ use crate::score::{
 };
 use crate::theory::NOTE_NAMES;
 
-pub const GENERATOR_VERSION: &str = "4.0.0";
+pub const GENERATOR_VERSION: &str = "5.0.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -302,7 +302,7 @@ mod tests {
     }
 
     #[test]
-    fn generates_the_eight_requested_long_sections_without_a_default_form() {
+    fn generates_the_fourteen_requested_long_sections_without_a_default_form() {
         let score = generate_adventure(&sample("lengths", AdventureStyle::Folk)).unwrap();
         let bar_ticks = score.bar_ticks();
         assert_eq!(score.default_section, "camp");
@@ -316,6 +316,12 @@ mod tests {
             ("boss", 16),
             ("sanctuary", 16),
             ("victory", 32),
+            ("skirmish", 16),
+            ("assault", 16),
+            ("chase", 32),
+            ("festival", 32),
+            ("reunion", 32),
+            ("dawn", 16),
         ];
         assert_eq!(score.sections.len(), expected.len());
         for (id, bars) in expected {
@@ -637,7 +643,7 @@ mod tests {
 
     #[test]
     fn many_seeds_are_valid_and_varied() {
-        assert_eq!(GENERATOR_VERSION, "4.0.0");
+        assert_eq!(GENERATOR_VERSION, "5.0.0");
         let styles = [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -825,6 +831,9 @@ mod tests {
                 Scene::Town,
                 Scene::Sanctuary,
                 Scene::Victory,
+                Scene::Festival,
+                Scene::Reunion,
+                Scene::Dawn,
             ] {
                 assert_eq!(
                     triad_quality(mode_for(style, scene), 0),
@@ -832,7 +841,14 @@ mod tests {
                     "{style:?} {scene:?} safe phase tonic must be major"
                 );
             }
-            for scene in [Scene::Dungeon, Scene::Combat, Scene::Boss] {
+            for scene in [
+                Scene::Dungeon,
+                Scene::Combat,
+                Scene::Boss,
+                Scene::Skirmish,
+                Scene::Assault,
+                Scene::Chase,
+            ] {
                 assert_eq!(
                     triad_quality(mode_for(style, scene), 0),
                     "minor",
@@ -840,7 +856,8 @@ mod tests {
                 );
             }
         }
-        // Dark stays bittersweet everywhere except the earned release of victory.
+        // Dark stays bittersweet everywhere except the earned release of victory
+        // and the first light of dawn.
         for scene in [
             Scene::Camp,
             Scene::Explore,
@@ -849,6 +866,11 @@ mod tests {
             Scene::Combat,
             Scene::Boss,
             Scene::Sanctuary,
+            Scene::Skirmish,
+            Scene::Assault,
+            Scene::Chase,
+            Scene::Festival,
+            Scene::Reunion,
         ] {
             assert_eq!(
                 triad_quality(mode_for(AdventureStyle::Dark, scene), 0),
@@ -858,6 +880,10 @@ mod tests {
         }
         assert_eq!(
             triad_quality(mode_for(AdventureStyle::Dark, Scene::Victory), 0),
+            "major"
+        );
+        assert_eq!(
+            triad_quality(mode_for(AdventureStyle::Dark, Scene::Dawn), 0),
             "major"
         );
     }
@@ -960,5 +986,142 @@ mod tests {
             avg_duration(&orch_melody) > avg_duration(&folk_melody),
             "orchestral lead should sing legato while folk lilts"
         );
+    }
+
+    #[test]
+    fn new_phases_carry_their_own_material_and_stay_in_mode_and_register() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let input = sample("new-phases", style);
+            let dna = PieceDna::new(subseed(&input.secret, &input.seed, "piece"));
+            let tonic = dna.tonic_pitch_class;
+            let score = generate_adventure(&input).unwrap();
+            let mut ids = HashSet::new();
+            for id in [
+                "skirmish",
+                "assault",
+                "chase",
+                "festival",
+                "reunion",
+                "dawn",
+            ] {
+                let section = score.section(id).unwrap_or_else(|| panic!("missing {id}"));
+                assert!(!section.events.is_empty(), "{id} must carry music");
+                let pitch_classes: HashSet<i32> =
+                    mode_intervals(mode_for(style, section_scene_for(id).unwrap()))
+                        .into_iter()
+                        .map(|interval| (tonic + interval).rem_euclid(12))
+                        .collect();
+                for event in &section.events {
+                    // Unique ids and safe registers across the new material.
+                    assert!(ids.insert(event_id(event)), "duplicate id in {id}");
+                    if let Some(pitch) = event.pitch() {
+                        assert!(
+                            (36..=84).contains(&i32::from(pitch)),
+                            "{id} unsafe pitch {pitch}"
+                        );
+                        assert!(
+                            pitch_classes.contains(&(i32::from(pitch) % 12)),
+                            "{id} pitch {pitch} left its mode"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn section_scene_for(id: &str) -> Option<Scene> {
+        SECTION_PLANS.iter().find(|plan| plan.id == id).map(|plan| plan.scene)
+    }
+
+    #[test]
+    fn new_phases_are_distinct_from_their_family_and_from_each_other() {
+        let score = generate_adventure(&sample("new-distinct", AdventureStyle::Folk)).unwrap();
+        let signature = |id: &str| {
+            let section = score.section(id).expect(id);
+            musical_signature(section, 0, section.length_ticks)
+        };
+        // Each new phase must not clone the existing phase in its family.
+        for (new_id, parent_id) in [
+            ("skirmish", "combat"),
+            ("assault", "boss"),
+            ("chase", "combat"),
+            ("festival", "town"),
+            ("reunion", "town"),
+            ("dawn", "sanctuary"),
+        ] {
+            assert_ne!(
+                signature(new_id),
+                signature(parent_id),
+                "{new_id} must not clone {parent_id}"
+            );
+        }
+        // And the six new phases are pairwise distinct from each other.
+        let new_ids = [
+            "skirmish",
+            "assault",
+            "chase",
+            "festival",
+            "reunion",
+            "dawn",
+        ];
+        for left in 0..new_ids.len() {
+            for right in left + 1..new_ids.len() {
+                assert_ne!(
+                    signature(new_ids[left]),
+                    signature(new_ids[right]),
+                    "{} must differ from {}",
+                    new_ids[left],
+                    new_ids[right]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn combat_set_drives_and_the_happy_set_brightens_without_noising_the_calm_phases() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let score = generate_adventure(&sample("liveliness", style)).unwrap();
+            let density = |id: &str| {
+                let section = score.section(id).unwrap();
+                let bars = section.length_ticks / score.bar_ticks();
+                let count = section
+                    .events
+                    .iter()
+                    .filter(|event| matches!(event, MusicEvent::Percussion { .. }))
+                    .count();
+                count as f64 / f64::from(bars)
+            };
+            // Combat drives: every combat phase is denser than the calm break.
+            for combat in ["skirmish", "assault", "chase"] {
+                assert!(
+                    density(combat) > density("sanctuary"),
+                    "{style:?} {combat} must drive harder than sanctuary"
+                );
+                assert!(
+                    density(combat) > density("camp"),
+                    "{style:?} {combat} must drive harder than camp"
+                );
+            }
+            // Happy brightens: every happy phase is more rhythmic than the calm
+            // break, and never noisier than the assault.
+            for happy in ["festival", "reunion", "dawn"] {
+                assert!(
+                    density(happy) > density("sanctuary"),
+                    "{style:?} {happy} must be livelier than sanctuary"
+                );
+                assert!(
+                    density(happy) <= density("assault"),
+                    "{style:?} {happy} must not out-drum the assault"
+                );
+            }
+        }
     }
 }

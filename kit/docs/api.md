@@ -213,18 +213,31 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 | `camp` | Trailhead Camp | 16 | hearthlight / the road ahead |
 | `explore` | The Old Forest | 32 | open paths / old wonders |
 | `town` | Hearth and Hall | 32 | market dance / crowded tables |
+| `festival` | The Green Market | 32 | dancing feet / raised cups |
+| `reunion` | Homecoming Hearth | 32 | warm embraces / old names |
 | `dungeon` | The Deep Halls | 16 | cold stone / distant steps |
+| `skirmish` | Steel in the Brush | 16 | blades flash / first blood |
 | `combat` | Steel and Shadow | 32 | measured pursuit / battle joined |
+| `chase` | Pursuit | 32 | hearts pound / ground blurs |
 | `boss` | No Retreat | 16 | ancient dread / final challenge |
+| `assault` | The Red Charge | 16 | full charge / no quarter |
 | `sanctuary` | The Hidden Glade | 16 | clear water / shelter found |
+| `dawn` | First Light | 16 | soft gold / the long night breaks |
 | `victory` | Lanterns at Dawn | 32 | homecoming / earned release |
+
+The six added phases (a combat set — skirmish, assault, chase — and a happiness
+set — festival, reunion, dawn) join the pool the seeded composer draws from:
+combat phases share the Peak role with combat/boss, the happiness phases ride the
+groove and break bands with town/sanctuary, so the seeded arrangement interleaves
+them with their matching scenes. State-driven selection is unchanged and still
+returns only the eight original sections above.
 
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
 - Suspense scores contain the 27 pool phases above; `all-phases` and `seeded` are the only arrangements.
-- Adventure scores contain the eight sections above and default to `camp`; `camp`, `dungeon`, `boss`, and `sanctuary` are 16 bars, and `explore`, `town`, `combat`, and `victory` are 32.
+- Adventure scores contain the fourteen sections above and default to `camp`; `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`, `assault`, and `dawn` are 16 bars, and `explore`, `town`, `festival`, `reunion`, `combat`, `chase`, and `victory` are 32.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
 - Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 

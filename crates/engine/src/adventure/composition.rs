@@ -19,6 +19,14 @@ pub(super) enum Scene {
     Boss,
     Sanctuary,
     Victory,
+    // Combat set — the skirmish / assault / chase family of driving phases.
+    Skirmish,
+    Assault,
+    Chase,
+    // Happiness set — the festival / reunion / dawn family of bright phases.
+    Festival,
+    Reunion,
+    Dawn,
 }
 
 pub(super) struct SectionPlan {
@@ -30,7 +38,7 @@ pub(super) struct SectionPlan {
     pub(super) scene: Scene,
 }
 
-pub(super) const SECTION_PLANS: &[SectionPlan; 8] = &[
+pub(super) const SECTION_PLANS: &[SectionPlan; 14] = &[
     SectionPlan {
         id: "camp",
         label: "Trailhead Camp",
@@ -56,12 +64,36 @@ pub(super) const SECTION_PLANS: &[SectionPlan; 8] = &[
         scene: Scene::Town,
     },
     SectionPlan {
+        id: "festival",
+        label: "The Green Market",
+        feeling: "dancing feet / raised cups",
+        color: "#d9a441",
+        bars: 32,
+        scene: Scene::Festival,
+    },
+    SectionPlan {
+        id: "reunion",
+        label: "Homecoming Hearth",
+        feeling: "warm embraces / old names",
+        color: "#d59a66",
+        bars: 32,
+        scene: Scene::Reunion,
+    },
+    SectionPlan {
         id: "dungeon",
         label: "The Deep Halls",
         feeling: "cold stone / distant steps",
         color: "#59616c",
         bars: 16,
         scene: Scene::Dungeon,
+    },
+    SectionPlan {
+        id: "skirmish",
+        label: "Steel in the Brush",
+        feeling: "blades flash / first blood",
+        color: "#b5543f",
+        bars: 16,
+        scene: Scene::Skirmish,
     },
     SectionPlan {
         id: "combat",
@@ -72,6 +104,14 @@ pub(super) const SECTION_PLANS: &[SectionPlan; 8] = &[
         scene: Scene::Combat,
     },
     SectionPlan {
+        id: "chase",
+        label: "Pursuit",
+        feeling: "hearts pound / ground blurs",
+        color: "#a8602e",
+        bars: 32,
+        scene: Scene::Chase,
+    },
+    SectionPlan {
         id: "boss",
         label: "No Retreat",
         feeling: "ancient dread / final challenge",
@@ -80,12 +120,28 @@ pub(super) const SECTION_PLANS: &[SectionPlan; 8] = &[
         scene: Scene::Boss,
     },
     SectionPlan {
+        id: "assault",
+        label: "The Red Charge",
+        feeling: "full charge / no quarter",
+        color: "#8f2f34",
+        bars: 16,
+        scene: Scene::Assault,
+    },
+    SectionPlan {
         id: "sanctuary",
         label: "The Hidden Glade",
         feeling: "clear water / shelter found",
         color: "#9bc78b",
         bars: 16,
         scene: Scene::Sanctuary,
+    },
+    SectionPlan {
+        id: "dawn",
+        label: "First Light",
+        feeling: "soft gold / the long night breaks",
+        color: "#cfe3a0",
+        bars: 16,
+        scene: Scene::Dawn,
     },
     SectionPlan {
         id: "victory",
@@ -120,6 +176,11 @@ pub(super) fn adventure_phase_role(scene: Scene) -> AdventurePhaseRole {
         Scene::Combat | Scene::Boss => AdventurePhaseRole::Peak,
         Scene::Sanctuary => AdventurePhaseRole::Break,
         Scene::Victory => AdventurePhaseRole::Outro,
+        // Combat set lands in the Peak band; the happiness set spreads across the
+        // groove (festival, reunion) and break (dawn) bands.
+        Scene::Skirmish | Scene::Assault | Scene::Chase => AdventurePhaseRole::Peak,
+        Scene::Festival | Scene::Reunion => AdventurePhaseRole::Groove,
+        Scene::Dawn => AdventurePhaseRole::Break,
     }
 }
 
@@ -165,12 +226,12 @@ impl PieceDna {
 
 pub(super) fn tempo(style: AdventureStyle, traits: NormalizedTraits) -> f64 {
     let base = match style {
-        AdventureStyle::Folk => 82.0,
-        AdventureStyle::Dark => 68.0,
-        AdventureStyle::Orchestral => 90.0,
+        AdventureStyle::Folk => 92.0,
+        AdventureStyle::Dark => 78.0,
+        AdventureStyle::Orchestral => 100.0,
     };
-    (base + traits.motion * 16.0 - traits.mystery * 5.0)
-        .clamp(58.0, 112.0)
+    (base + traits.motion * 20.0 - traits.mystery * 5.0)
+        .clamp(70.0, 126.0)
         .round()
 }
 
@@ -183,17 +244,36 @@ pub(super) fn mode_for(style: AdventureStyle, scene: Scene) -> &'static str {
         (AdventureStyle::Folk, Scene::Sanctuary) => "lydian",
         (AdventureStyle::Folk, Scene::Dungeon | Scene::Boss) => "aeolian",
         (AdventureStyle::Folk, Scene::Combat) => "dorian",
+        // Folk combat set: skirmish and chase keep the combat's dorian snap,
+        // assault hardens to aeolian like the boss.
+        (AdventureStyle::Folk, Scene::Skirmish | Scene::Chase) => "dorian",
+        (AdventureStyle::Folk, Scene::Assault) => "aeolian",
+        // Folk happiness set: bright mixolydian/ionian for the dance, lydian dawn.
+        (AdventureStyle::Folk, Scene::Festival) => "mixolydian",
+        (AdventureStyle::Folk, Scene::Reunion) => "ionian",
+        (AdventureStyle::Folk, Scene::Dawn) => "lydian",
         // Dark — low, spacious, drone-driven. Bittersweet (dorian) where safe,
         // phrygian/aeolian where dangerous.
         (AdventureStyle::Dark, Scene::Dungeon | Scene::Boss) => "phrygian",
         (AdventureStyle::Dark, Scene::Explore | Scene::Combat) => "aeolian",
         (AdventureStyle::Dark, Scene::Victory) => "mixolydian",
+        (AdventureStyle::Dark, Scene::Skirmish | Scene::Chase) => "aeolian",
+        (AdventureStyle::Dark, Scene::Assault) => "phrygian",
+        // Dark happiness set: festival and reunion stay bittersweet (dorian),
+        // dawn earns the bright mixolydian release like victory.
+        (AdventureStyle::Dark, Scene::Festival | Scene::Reunion) => "dorian",
+        (AdventureStyle::Dark, Scene::Dawn) => "mixolydian",
         (AdventureStyle::Dark, _) => "dorian",
         // Orchestral — broad bowed strings, heroic and warm. Major through the
         // safe arc, rising to a triumphant Lydian victory.
         (AdventureStyle::Orchestral, Scene::Dungeon | Scene::Boss) => "aeolian",
         (AdventureStyle::Orchestral, Scene::Combat) => "dorian",
         (AdventureStyle::Orchestral, Scene::Victory) => "lydian",
+        (AdventureStyle::Orchestral, Scene::Skirmish | Scene::Chase) => "dorian",
+        (AdventureStyle::Orchestral, Scene::Assault) => "aeolian",
+        // Orchestral happiness set: ionian for the celebration, lydian dawn.
+        (AdventureStyle::Orchestral, Scene::Festival | Scene::Reunion) => "ionian",
+        (AdventureStyle::Orchestral, Scene::Dawn) => "lydian",
         (AdventureStyle::Orchestral, _) => "ionian",
     }
 }
@@ -451,6 +531,12 @@ fn scene_index(scene: Scene) -> usize {
         Scene::Boss => 5,
         Scene::Sanctuary => 6,
         Scene::Victory => 7,
+        Scene::Skirmish => 8,
+        Scene::Assault => 9,
+        Scene::Chase => 10,
+        Scene::Festival => 11,
+        Scene::Reunion => 12,
+        Scene::Dawn => 13,
     }
 }
 
@@ -498,11 +584,14 @@ pub(super) fn voice_chord(
 
 fn melody_voice(style: AdventureStyle, scene: Scene) -> &'static str {
     match (style, scene) {
-        // Folk — recorder leads; the vielle adds fiddle color in town and boss scenes.
-        (AdventureStyle::Folk, Scene::Town | Scene::Boss) => "vielle",
+        // Folk — recorder leads; the vielle adds fiddle color in town, boss,
+        // and the heavy combat scenes.
+        (AdventureStyle::Folk, Scene::Town | Scene::Boss | Scene::Assault | Scene::Chase) => {
+            "vielle"
+        }
         (AdventureStyle::Folk, _) => "recorder",
-        // Dark — bowed vielle leads, recorder for the sparse camp/sanctuary.
-        (AdventureStyle::Dark, Scene::Camp | Scene::Sanctuary) => "recorder",
+        // Dark — bowed vielle leads, recorder for the sparse camp/sanctuary/dawn.
+        (AdventureStyle::Dark, Scene::Camp | Scene::Sanctuary | Scene::Dawn) => "recorder",
         (AdventureStyle::Dark, _) => "vielle",
         // Orchestral — the bowed string (vielle) is always the singing lead.
         (AdventureStyle::Orchestral, _) => "vielle",
@@ -522,6 +611,10 @@ fn melody_center(style: AdventureStyle, scene: Scene) -> i32 {
             Scene::Boss => -1,
             Scene::Explore | Scene::Sanctuary => 2,
             Scene::Victory => 3,
+            Scene::Skirmish | Scene::Chase => 0,
+            Scene::Assault => -1,
+            Scene::Festival | Scene::Dawn => 2,
+            Scene::Reunion => 1,
         }
 }
 
@@ -535,6 +628,12 @@ fn scene_energy(scene: Scene) -> f64 {
         Scene::Boss => 0.9,
         Scene::Sanctuary => 0.34,
         Scene::Victory => 0.7,
+        Scene::Skirmish => 0.76,
+        Scene::Assault => 0.87,
+        Scene::Chase => 0.8,
+        Scene::Festival => 0.62,
+        Scene::Reunion => 0.54,
+        Scene::Dawn => 0.36,
     }
 }
 
@@ -551,9 +650,11 @@ fn texture_gain(kind: PhraseKind, phrase_index: u32) -> f64 {
 
 fn pedal_start(scene: Scene, style: AdventureStyle, phrase: u32) -> bool {
     match (style, scene) {
-        (AdventureStyle::Dark, Scene::Dungeon | Scene::Boss) => phrase.is_multiple_of(2),
+        (AdventureStyle::Dark, Scene::Dungeon | Scene::Boss | Scene::Assault) => {
+            phrase.is_multiple_of(2)
+        }
         (_, Scene::Dungeon) => phrase == 0 || phrase == 2,
-        (AdventureStyle::Folk, Scene::Camp | Scene::Sanctuary) => phrase == 0,
+        (AdventureStyle::Folk, Scene::Camp | Scene::Sanctuary | Scene::Dawn) => phrase == 0,
         (AdventureStyle::Orchestral, Scene::Sanctuary) => phrase == 2,
         _ => false,
     }
@@ -604,10 +705,22 @@ fn bass_onsets(style: AdventureStyle, scene: Scene, final_bar: bool) -> &'static
     match (style, scene) {
         (AdventureStyle::Folk, Scene::Town | Scene::Combat) => &[(0, 0), (4, 4)],
         (AdventureStyle::Folk, Scene::Boss) => &[(0, 0), (6, 0)],
+        // Folk combat set: skirmish/chase bounce like combat, assault hammers.
+        (AdventureStyle::Folk, Scene::Skirmish | Scene::Chase) => &[(0, 0), (4, 4)],
+        (AdventureStyle::Folk, Scene::Assault) => &[(0, 0), (4, 4), (6, 0)],
+        // Folk happiness set: festival and reunion bounce like the town dance.
+        (AdventureStyle::Folk, Scene::Festival | Scene::Reunion) => &[(0, 0), (4, 4)],
         (AdventureStyle::Dark, Scene::Combat | Scene::Boss) => &[(0, 0), (3, 4), (6, 0)],
+        (AdventureStyle::Dark, Scene::Skirmish | Scene::Assault | Scene::Chase) => {
+            &[(0, 0), (3, 4), (6, 0)]
+        }
+        (AdventureStyle::Dark, Scene::Festival | Scene::Reunion) => &[(0, 0), (5, 4)],
         (AdventureStyle::Orchestral, Scene::Town | Scene::Combat | Scene::Victory) => {
             &[(0, 0), (4, 4)]
         }
+        (AdventureStyle::Orchestral, Scene::Skirmish | Scene::Chase) => &[(0, 0), (4, 4)],
+        (AdventureStyle::Orchestral, Scene::Assault) => &[(0, 0), (6, 0)],
+        (AdventureStyle::Orchestral, Scene::Festival | Scene::Reunion) => &[(0, 0), (4, 4)],
         (AdventureStyle::Orchestral, _) => &[(0, 0), (6, 4)],
         _ => &[(0, 0)],
     }
@@ -663,7 +776,7 @@ fn add_bass(
             &mut counters.bass,
             bar * bar_ticks + u32::from(onset) * pulse,
             duration,
-            0.19 + scene_energy(plan.scene) * 0.11 + traits.danger * 0.04,
+            0.22 + scene_energy(plan.scene) * 0.13 + traits.danger * 0.04,
             pitch,
             voice,
             false,
@@ -727,7 +840,7 @@ fn add_harmony(
             &mut counters.harmony,
             bar * bar_ticks,
             duration,
-            (0.11 + traits.wonder * 0.05 + scene_energy(plan.scene) * 0.035)
+            (0.13 + traits.wonder * 0.06 + scene_energy(plan.scene) * 0.05)
                 * phrase_gain(bar)
                 * backing_weight,
             pitch,
@@ -779,9 +892,18 @@ fn harp_pattern(
                     vec![(0, 0), (2, 2), (4, 4), (6, 2)]
                 }
             }
+            // Combat set: driving ostinato, denser than the safe phases.
+            Scene::Skirmish => vec![(0, 0), (2, 4), (3, 2), (5, 4), (7, 0)],
+            Scene::Assault => vec![(0, 0), (1, 4), (3, 2), (4, 4), (6, 2), (7, 0)],
+            Scene::Chase => vec![(0, 0), (2, 4), (4, 2), (6, 4)],
+            // Happiness set: bright dance for the festival, warm for the reunion,
+            // a gentle morning shimmer for dawn.
+            Scene::Festival => vec![(0, 0), (2, 4), (3, 2), (4, 4), (6, 2), (7, 4)],
+            Scene::Reunion => vec![(0, 0), (3, 2), (4, 4), (6, 2)],
+            Scene::Dawn => vec![(0, 0), (3, 4), (7, 2)],
         },
         AdventureStyle::Dark => match scene {
-            Scene::Combat | Scene::Boss => {
+            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
                 if bar.is_multiple_of(2) {
                     vec![(0, 0), (3, 4), (4, 0), (7, 2)]
                 } else {
@@ -795,7 +917,7 @@ fn harp_pattern(
                     Vec::new()
                 }
             }
-            Scene::Town => vec![(0, 0), (5, 4)],
+            Scene::Town | Scene::Festival | Scene::Reunion => vec![(0, 0), (5, 4)],
             _ => {
                 if bar.is_multiple_of(2) {
                     vec![(0, 0), (6, 4)]
@@ -810,7 +932,11 @@ fn harp_pattern(
             match scene {
                 Scene::Camp | Scene::Dungeon => vec![(0, 0), (6, 4)],
                 Scene::Town => vec![(0, 0), (3, 2), (6, 4)],
-                Scene::Combat | Scene::Boss => vec![(0, 0), (4, 4)],
+                Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
+                    vec![(0, 0), (4, 4)]
+                }
+                Scene::Festival => vec![(0, 0), (3, 2), (6, 4)],
+                Scene::Reunion | Scene::Dawn => vec![(0, 0), (2, 2), (6, 4)],
                 Scene::Explore | Scene::Sanctuary | Scene::Victory => vec![(0, 0), (2, 2), (6, 4)],
             }
         }
@@ -867,7 +993,7 @@ fn add_harp(
             &mut counters.harp,
             bar * bar_ticks + u32::from(*onset) * pulse,
             duration,
-            (0.13 + traits.wonder * 0.07 + scene_energy(plan.scene) * 0.035) * phrase_gain(bar),
+            (0.15 + traits.wonder * 0.08 + scene_energy(plan.scene) * 0.05) * phrase_gain(bar),
             pitch,
             "harp",
             false,
@@ -901,7 +1027,7 @@ fn melody_onsets(
     }
     let mut onsets = match style {
         AdventureStyle::Folk => {
-            if scene == Scene::Town {
+            if matches!(scene, Scene::Town | Scene::Festival) {
                 match (local_bar as usize + variant) % 3 {
                     0 => vec![0, 3, 4, 6],
                     1 => vec![0, 2, 5, 7],
@@ -1033,7 +1159,7 @@ fn add_melody(
         };
         let articulation = if note == 0 { 0.02 } else { 0.0 };
         let velocity =
-            (0.22 + traits.wonder * 0.055 + scene_energy(plan.scene) * 0.08 + articulation)
+            (0.28 + traits.wonder * 0.06 + scene_energy(plan.scene) * 0.1 + articulation)
                 * phrase_gain(bar)
                 * texture_gain(kind, phrase);
         push_note(
@@ -1071,7 +1197,14 @@ fn add_recorder_answer(
     // echo lands on the second bar of each phrase in the warm scenes.
     let warm = matches!(
         plan.scene,
-        Scene::Camp | Scene::Explore | Scene::Town | Scene::Sanctuary | Scene::Victory
+        Scene::Camp
+            | Scene::Explore
+            | Scene::Town
+            | Scene::Sanctuary
+            | Scene::Victory
+            | Scene::Festival
+            | Scene::Reunion
+            | Scene::Dawn
     );
     if style != AdventureStyle::Orchestral || !warm || local_bar != 1 {
         return;
@@ -1092,7 +1225,7 @@ fn add_recorder_answer(
         &mut counters.recorder,
         bar * bar_ticks + 4 * pulse,
         pulse,
-        0.14 + scene_energy(plan.scene) * 0.05,
+        0.17 + scene_energy(plan.scene) * 0.06,
         pitch,
         "recorder",
         false,
@@ -1131,11 +1264,43 @@ fn percussion_pattern(
             Scene::Victory if phrase < 6 => {
                 &[("frame-drum", 0), ("tambourine", 3), ("tambourine", 6)]
             }
+            // Combat set: driving frame-drum work, the assault densest of all.
+            Scene::Skirmish => &[
+                ("frame-drum", 0),
+                ("frame-drum", 3),
+                ("tambourine", 5),
+                ("frame-drum", 6),
+            ],
+            Scene::Assault => &[
+                ("frame-drum", 0),
+                ("frame-drum", 2),
+                ("tambourine", 3),
+                ("frame-drum", 4),
+                ("frame-drum", 6),
+                ("tambourine", 7),
+            ],
+            Scene::Chase => &[
+                ("frame-drum", 0),
+                ("frame-drum", 2),
+                ("frame-drum", 4),
+                ("tambourine", 5),
+                ("frame-drum", 6),
+            ],
+            // Happiness set: bright tambourine/frame-drum for the dance and the
+            // hearth, a single shimmer for dawn.
+            Scene::Festival => &[
+                ("frame-drum", 0),
+                ("tambourine", 2),
+                ("frame-drum", 4),
+                ("tambourine", 6),
+            ],
+            Scene::Reunion => &[("frame-drum", 0), ("tambourine", 3), ("tambourine", 6)],
+            Scene::Dawn => &[("tambourine", 4)],
             _ => &[],
         },
         AdventureStyle::Dark => match scene {
             Scene::Town => &[("frame-drum", 0), ("tambourine", 6)],
-            Scene::Combat | Scene::Boss => &[
+            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => &[
                 ("frame-drum", 0),
                 ("frame-drum", 3),
                 ("frame-drum", 6),
@@ -1143,6 +1308,8 @@ fn percussion_pattern(
             ],
             Scene::Dungeon if phrase >= 2 => &[("frame-drum", 0)],
             Scene::Victory if phrase < 4 => &[("frame-drum", 0), ("frame-drum", 6)],
+            Scene::Festival | Scene::Reunion => &[("frame-drum", 0), ("tambourine", 6)],
+            Scene::Dawn => &[("tambourine", 4)],
             _ => &[],
         },
         AdventureStyle::Orchestral => match scene {
@@ -1154,7 +1321,7 @@ fn percussion_pattern(
                 ("frame-drum", 4),
                 ("tambourine", 6),
             ],
-            Scene::Combat | Scene::Boss => &[
+            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => &[
                 ("frame-drum", 0),
                 ("tambourine", 2),
                 ("frame-drum", 3),
@@ -1163,6 +1330,13 @@ fn percussion_pattern(
                 ("frame-drum", 6),
                 ("tambourine", 7),
             ],
+            Scene::Festival | Scene::Reunion => &[
+                ("frame-drum", 0),
+                ("tambourine", 2),
+                ("frame-drum", 4),
+                ("tambourine", 6),
+            ],
+            Scene::Dawn => &[("tambourine", 4)],
             Scene::Sanctuary if phrase == 2 => &[("tambourine", 4)],
             _ => &[],
         },
@@ -1190,7 +1364,7 @@ fn add_percussion(
             &mut counters.percussion,
             bar * bar_ticks + u32::from(onset) * pulse,
             if is_frame { pulse } else { pulse / 2 },
-            0.16 + scene_energy(plan.scene) * 0.13
+            0.2 + scene_energy(plan.scene) * 0.15
                 + traits.danger * 0.08
                 + if is_frame { 0.035 } else { 0.0 },
             voice,
@@ -1245,7 +1419,7 @@ fn add_bell_accent(
         &mut counters.bell,
         bar * bar_ticks,
         bar_ticks / 2,
-        0.13 + scene_energy(plan.scene) * 0.04,
+        0.15 + scene_energy(plan.scene) * 0.05,
         pitch,
         "bell",
         false,
@@ -1431,6 +1605,12 @@ mod tests {
             (Scene::Boss, AdventurePhaseRole::Peak, 90),
             (Scene::Sanctuary, AdventurePhaseRole::Break, 34),
             (Scene::Victory, AdventurePhaseRole::Outro, 70),
+            (Scene::Skirmish, AdventurePhaseRole::Peak, 76),
+            (Scene::Assault, AdventurePhaseRole::Peak, 87),
+            (Scene::Chase, AdventurePhaseRole::Peak, 80),
+            (Scene::Festival, AdventurePhaseRole::Groove, 62),
+            (Scene::Reunion, AdventurePhaseRole::Groove, 54),
+            (Scene::Dawn, AdventurePhaseRole::Break, 36),
         ] {
             assert_eq!(adventure_phase_role(scene), role, "role for {scene:?}");
             assert_eq!(adventure_phase_energy(scene), energy, "energy for {scene:?}");
@@ -1448,6 +1628,12 @@ mod tests {
             Scene::Boss,
             Scene::Sanctuary,
             Scene::Victory,
+            Scene::Skirmish,
+            Scene::Assault,
+            Scene::Chase,
+            Scene::Festival,
+            Scene::Reunion,
+            Scene::Dawn,
         ] {
             let energy = adventure_phase_energy(scene);
             assert!(energy <= 100, "{scene:?} energy {energy}");

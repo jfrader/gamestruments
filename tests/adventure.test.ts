@@ -15,7 +15,10 @@ const exports = instance.exports;
 const memory = exports.memory;
 assert.ok(memory instanceof WebAssembly.Memory);
 
-const SECTIONS = ["camp", "explore", "town", "dungeon", "combat", "boss", "sanctuary", "victory"];
+const SECTIONS = [
+  "camp", "explore", "town", "festival", "reunion", "dungeon", "skirmish",
+  "combat", "chase", "boss", "assault", "sanctuary", "dawn", "victory",
+];
 function generate(style: string, autoplay?: boolean): { bytes: Uint8Array; score: PortableScore } {
   assert.ok(memory instanceof WebAssembly.Memory);
   const input = new TextEncoder().encode(JSON.stringify({

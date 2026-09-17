@@ -21,14 +21,20 @@ use super::composition::{
 pub(super) const MAX_ENERGY_DELTA: u32 = 40;
 
 /// The Adventure phase pool in natural quest order.
-pub(super) const ADVENTURE_SECTION_IDS: [&str; 8] = [
+pub(super) const ADVENTURE_SECTION_IDS: [&str; 14] = [
     "camp",
     "explore",
     "town",
+    "festival",
+    "reunion",
     "dungeon",
+    "skirmish",
     "combat",
+    "chase",
     "boss",
+    "assault",
     "sanctuary",
+    "dawn",
     "victory",
 ];
 
@@ -70,7 +76,16 @@ pub(super) fn adventure_phase_spec(id: &str) -> Option<AdventurePhaseSpec> {
         role: adventure_phase_role(plan.scene),
         energy: adventure_phase_energy(plan.scene),
         bars: plan.bars,
-        one_shot: !matches!(plan.scene, Scene::Explore | Scene::Town | Scene::Combat),
+        one_shot: !matches!(
+            plan.scene,
+            Scene::Explore
+                | Scene::Town
+                | Scene::Combat
+                | Scene::Festival
+                | Scene::Reunion
+                | Scene::Skirmish
+                | Scene::Chase
+        ),
     })
 }
 
@@ -233,6 +248,12 @@ mod tests {
             ("boss", AdventurePhaseRole::Peak, 90, 16, true),
             ("sanctuary", AdventurePhaseRole::Break, 34, 16, true),
             ("victory", AdventurePhaseRole::Outro, 70, 32, true),
+            ("skirmish", AdventurePhaseRole::Peak, 76, 16, false),
+            ("assault", AdventurePhaseRole::Peak, 87, 16, true),
+            ("chase", AdventurePhaseRole::Peak, 80, 32, false),
+            ("festival", AdventurePhaseRole::Groove, 62, 32, false),
+            ("reunion", AdventurePhaseRole::Groove, 54, 32, false),
+            ("dawn", AdventurePhaseRole::Break, 36, 16, true),
         ] {
             let spec = adventure_phase_spec(id).unwrap();
             assert_eq!(spec.role, role, "role for {id}");
@@ -250,7 +271,7 @@ mod tests {
                 .iter()
                 .filter_map(|&id| adventure_phase_spec(id))
                 .count(),
-            8
+            14
         );
     }
 
@@ -279,6 +300,58 @@ mod tests {
             distinct.insert(ids);
         }
         assert!(distinct.len() > 20, "only {} distinct forms", distinct.len());
+    }
+
+    /// The combat set (skirmish/assault/chase) and happiness set
+    /// (festival/reunion/dawn) are real pool members: transition-legal against
+    /// their matching scenes and actually chosen by the composer across seeds.
+    #[test]
+    fn new_phase_sets_are_transition_legal_and_reachable() {
+        // Combat set rides the Peak band with combat/boss.
+        for combat in ["skirmish", "assault", "chase"] {
+            let spec = adventure_phase_spec(combat).unwrap();
+            assert_eq!(spec.role, AdventurePhaseRole::Peak, "{combat}");
+            for neighbour in ["combat", "boss"] {
+                let other = adventure_phase_spec(neighbour).unwrap();
+                assert!(
+                    AdventurePool::role_legal(spec, other),
+                    "{combat} -> {neighbour}"
+                );
+                assert!(
+                    AdventurePool::energy_legal(spec, other),
+                    "{combat} -> {neighbour} energy"
+                );
+            }
+        }
+        // Happiness set rides the groove band with town and the break with
+        // sanctuary.
+        for happy in ["festival", "reunion"] {
+            let spec = adventure_phase_spec(happy).unwrap();
+            assert_eq!(spec.role, AdventurePhaseRole::Groove, "{happy}");
+            let town = adventure_phase_spec("town").unwrap();
+            assert!(AdventurePool::role_legal(spec, town), "{happy} -> town");
+            assert!(AdventurePool::energy_legal(spec, town), "{happy} -> town energy");
+        }
+        let dawn = adventure_phase_spec("dawn").unwrap();
+        assert_eq!(dawn.role, AdventurePhaseRole::Break, "dawn");
+        assert!(AdventurePool::role_legal(
+            adventure_phase_spec("sanctuary").unwrap(),
+            adventure_phase_spec("victory").unwrap()
+        ));
+        assert!(AdventurePool::role_legal(dawn, adventure_phase_spec("victory").unwrap()));
+
+        // The composer actually places both sets: across many seeds every new
+        // phase id appears in at least one form.
+        let mut seen: HashSet<String> = HashSet::new();
+        for seed in 0..2000u32 {
+            let form = adventure_compose(0x4a11_ce00 ^ seed);
+            for step in &form.steps {
+                seen.insert(step.section.clone());
+            }
+        }
+        for id in ["skirmish", "assault", "chase", "festival", "reunion", "dawn"] {
+            assert!(seen.contains(id), "composer never chose {id}");
+        }
     }
 
     #[test]
