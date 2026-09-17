@@ -3,7 +3,12 @@
 //! seam gestures with shared tonic pitch class, trait bias, and register
 //! ceiling.
 
-use crate::development::{development_schedule, mask_to_schedule};
+use crate::development::{
+    clear_seams, develop_section, fold_register_ceiling, plan_joins, push_seam_note,
+    push_seam_perc,
+};
+#[cfg(test)]
+use crate::development::mask_to_schedule;
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection, SongForm, SongFormStep};
 use crate::theory::{mode_intervals, scale_pitch};
@@ -271,29 +276,11 @@ fn adventure_arc_for_role(role: AdventurePhaseRole) -> &'static [u8] {
 /// Apply development arc to one section: mask layers by block schedule derived
 /// from role arc (seeded density jitter). Pedal stays; last bar untouched.
 fn apply_adventure_development_arc(section: &mut PortableSection, bar: u32, seed: u32) {
-    if bar == 0 {
-        return;
-    }
     let Some(spec) = adventure_phase_spec(&section.id) else {
         return;
     };
-    let bars = section.length_ticks / bar;
     let arc = adventure_arc_for_role(spec.role);
-    let Some((block_bars, schedule)) = development_schedule(arc, bars) else {
-        return;
-    };
-    let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{}:arc", section.id)));
-    let mut schedule = schedule;
-    for rank in &mut schedule {
-        match rng.integer(3) {
-            0 => *rank = rank.saturating_sub(1).max(1),
-            2 => *rank = (*rank + 1).min(4),
-            _ => {}
-        }
-    }
-    let block_ticks = bar * block_bars;
-    mask_to_schedule(section, bar, block_ticks, &schedule, adventure_layer_rank);
-    section.events.sort_by_key(MusicEvent::start_tick);
+    develop_section(section, bar, arc, adventure_layer_rank, seed, true, 0);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -303,60 +290,6 @@ enum AdventureSeamGesture {
     Lift,
     Both,
     Tail,
-}
-
-fn adventure_seam_lane(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => lane,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_adventure_seam_note(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    pitch: u8,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Note {
-        id: format!("{section}:seam-note:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.4),
-        pitch,
-        voice: voice.to_string(),
-        role: None,
-    });
-}
-
-fn push_adventure_seam_perc(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:seam-perc:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.3),
-        voice: voice.to_string(),
-    });
 }
 
 fn adventure_seam_pitch(tonic: i32, degree: i32, base: i32, intervals: &[i32]) -> u8 {
@@ -379,21 +312,8 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
     let Some(form) = score.form.clone() else {
         return;
     };
-    let mut pairs: Vec<(String, String)> = form
-        .steps
-        .windows(2)
-        .map(|window| (window[0].section.clone(), window[1].section.clone()))
-        .collect();
-    if let (Some(loop_from), Some(last)) = (form.loop_from, form.steps.last()) {
-        if let Some(first) = form.steps.get(loop_from as usize) {
-            pairs.push((last.section.clone(), first.section.clone()));
-        }
-    }
-    for section in &mut score.sections {
-        section
-            .events
-            .retain(|event| !adventure_seam_lane(event).ends_with("-seam"));
-    }
+    let pairs = plan_joins(&form);
+    clear_seams(score);
     let mut serial = 0usize;
     for (out_id, in_id) in pairs {
         let out_role = adventure_phase_spec(&out_id).map(|spec| spec.role);
@@ -443,7 +363,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
             AdventureSeamGesture::Fill => {
                 for (index, step) in [8u32, 10, 12, 14, 15].iter().enumerate() {
                     let offset = (step * bar / 16).min(out_span.saturating_sub(bar / 16));
-                    push_adventure_seam_perc(
+                    push_seam_perc(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -455,7 +375,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 }
             }
             AdventureSeamGesture::Riser => {
-                push_adventure_seam_perc(
+                push_seam_perc(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -470,7 +390,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                     let degree = [0, 2, 4][index % 3];
                     let offset = (index as u32 * out_span / 3)
                         .min(out_span.saturating_sub(bar / 4));
-                    push_adventure_seam_note(
+                    push_seam_note(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -483,7 +403,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 }
             }
             AdventureSeamGesture::Both => {
-                push_adventure_seam_perc(
+                push_seam_perc(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -496,7 +416,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                     let degree = [0, 2, 4][index % 3];
                     let offset = (index as u32 * out_span / 3)
                         .min(out_span.saturating_sub(bar / 4));
-                    push_adventure_seam_note(
+                    push_seam_note(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -510,7 +430,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
             }
             AdventureSeamGesture::Tail => {
                 let degree = 0;
-                push_adventure_seam_note(
+                push_seam_note(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -523,7 +443,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
             }
         }
         match landing {
-            1 => push_adventure_seam_perc(
+            1 => push_seam_perc(
                 &mut in_events,
                 &mut serial,
                 &in_id,
@@ -532,7 +452,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 0.12,
                 "tambourine",
             ),
-            2 => push_adventure_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "frame-drum"),
+            2 => push_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "frame-drum"),
             _ => {}
         }
         if !out_events.is_empty() {
@@ -604,15 +524,7 @@ fn anchor_adventure_edges(section: &mut PortableSection, tonic: i32, bar: u32) {
 /// Fold piercing highs by octaves (pc preserved). Ceiling chosen per style so
 /// that default (non-biased) generation never moves a pitch.
 fn apply_adventure_register_ceiling(section: &mut PortableSection, ceiling: u8) {
-    for event in &mut section.events {
-        if let MusicEvent::Note { pitch, .. } = event {
-            let mut value = i32::from(*pitch);
-            while value > i32::from(ceiling) {
-                value -= 12;
-            }
-            *pitch = u8::try_from(value.max(0)).unwrap_or(*pitch);
-        }
-    }
+    fold_register_ceiling(section, ceiling);
 }
 
 /// The continuous trait response for a seeded Adventure section, applied on

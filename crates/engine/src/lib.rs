@@ -1,5 +1,6 @@
 pub mod adventure;
 pub mod arrangement;
+pub(crate) mod composer;
 pub(crate) mod dmath;
 pub(crate) mod development;
 pub mod form_audio;

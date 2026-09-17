@@ -7,8 +7,9 @@
 //! Composing an Adventure song is then choosing a [`SongForm`] over that pool;
 //! section generation is untouched.
 
+use crate::composer::{self, PhaseMeta, PhasePool};
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{SongForm, SongFormStep};
+use crate::score::SongForm;
 
 use super::composition::{
     adventure_phase_energy, adventure_phase_role, AdventurePhaseRole, Scene, SECTION_PLANS,
@@ -43,6 +44,24 @@ pub(super) struct AdventurePhaseSpec {
     pub(super) one_shot: bool,
 }
 
+impl PhaseMeta for AdventurePhaseSpec {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn one_shot(&self) -> bool {
+        self.one_shot
+    }
+
+    fn is_groove(&self) -> bool {
+        self.role == AdventurePhaseRole::Groove
+    }
+
+    fn is_outro(&self) -> bool {
+        self.role == AdventurePhaseRole::Outro
+    }
+}
+
 /// The phase spec for an Adventure section id, if it is part of the pool.
 pub(super) fn adventure_phase_spec(id: &str) -> Option<AdventurePhaseSpec> {
     let plan = SECTION_PLANS.iter().find(|plan| plan.id == id)?;
@@ -67,147 +86,60 @@ pub(super) fn adventure_compose_seed(secret: &str, seed: &str) -> u32 {
 /// moving). The Intro (camp) and Outro (victory) are one-shot; they frame the
 /// form exactly once.
 pub(super) fn adventure_compose(seed: u32) -> SongForm {
-    let mut rng = DeterministicRandom::new(seed);
-    let count = (8 + rng.integer(5)) as usize; // 8..=12 steps
-    let mut chosen: Vec<AdventurePhaseSpec> = Vec::with_capacity(count);
-    let mut used_one_shot: Vec<&'static str> = Vec::new();
-    let found = adventure_search(&mut rng, &mut chosen, &mut used_one_shot, count);
-    if !found {
-        // Unreachable for this pool (the grammar is live); retried so a future
-        // pool edit prefers any legal form over the canonical fallback.
-        chosen.clear();
-        used_one_shot.clear();
-        adventure_search(&mut rng, &mut chosen, &mut used_one_shot, count);
-    }
-    let groove_indices: Vec<u32> = chosen
-        .iter()
-        .enumerate()
-        .filter(|(_, spec)| spec.role == AdventurePhaseRole::Groove)
-        .map(|(index, _)| index as u32)
-        .collect();
-    if chosen.len() < count || groove_indices.is_empty() {
-        // Guard: never emit a short or grooveless form; degrade to the
-        // canonical quest arc (every section once, looping from the first
-        // groove).
-        return adventure_canonical_form();
-    }
-    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
-    let steps = chosen.into_iter().map(adventure_step).collect();
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
+    composer::compose::<AdventurePool>(seed, ())
 }
 
-/// The canonical Adventure form: every pool section once, in natural quest
-/// order, looping from the first groove (explore). The seeded search can only
-/// fall short if a future pool edit breaks the live grammar, so this is the
-/// guaranteed-valid fallback.
-fn adventure_canonical_form() -> SongForm {
-    let steps = ADVENTURE_SECTION_IDS
-        .iter()
-        .map(|id| SongFormStep {
-            section: (*id).to_string(),
-            repeats: 1,
-        })
-        .collect();
-    let loop_from = ADVENTURE_SECTION_IDS
-        .iter()
-        .position(|id| {
-            adventure_phase_spec(id).is_some_and(|spec| spec.role == AdventurePhaseRole::Groove)
-        })
-        .map(|index| index as u32);
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
-}
+/// The Adventure pool as the shared composer sees it: role/energy metadata
+/// derived from the authored plans, the Adventure role grammar, and the fixed
+/// 8..=12-step band with an always-outro ending.
+struct AdventurePool;
 
-fn adventure_step(spec: AdventurePhaseSpec) -> SongFormStep {
-    SongFormStep {
-        section: spec.id.to_string(),
-        repeats: 1,
-    }
-}
+impl PhasePool for AdventurePool {
+    type Spec = AdventurePhaseSpec;
+    type Request = ();
 
-fn adventure_search(
-    rng: &mut DeterministicRandom,
-    chosen: &mut Vec<AdventurePhaseSpec>,
-    used_one_shot: &mut Vec<&'static str>,
-    count: usize,
-) -> bool {
-    if chosen.len() == count {
-        return true;
-    }
-    let candidates = adventure_legal_next(rng, chosen, used_one_shot, count);
-    for candidate in candidates {
-        chosen.push(candidate);
-        if candidate.one_shot {
-            used_one_shot.push(candidate.id);
-        }
-        if adventure_search(rng, chosen, used_one_shot, count) {
-            return true;
-        }
-        chosen.pop();
-        if candidate.one_shot {
-            used_one_shot.pop();
-        }
-    }
-    false
-}
-
-fn adventure_legal_next(
-    rng: &mut DeterministicRandom,
-    chosen: &[AdventurePhaseSpec],
-    used_one_shot: &[&'static str],
-    count: usize,
-) -> Vec<AdventurePhaseSpec> {
-    let is_last = chosen.len() + 1 == count;
-    let candidates: Vec<_> = match chosen.last() {
-        None => vec![adventure_phase_spec("camp").expect("camp is in the pool")],
-        Some(prev) => ADVENTURE_SECTION_IDS
+    fn pool() -> Vec<AdventurePhaseSpec> {
+        ADVENTURE_SECTION_IDS
             .iter()
             .filter_map(|&id| adventure_phase_spec(id))
-            .filter(|candidate| adventure_role_legal(prev, candidate))
-            .filter(|candidate| !(candidate.one_shot && used_one_shot.contains(&candidate.id)))
-            .filter(|candidate| candidate.id != prev.id)
-            .filter(|candidate| adventure_energy_legal(prev, candidate))
-            .filter(|candidate| {
-                if is_last {
-                    candidate.role == AdventurePhaseRole::Outro
-                } else {
-                    candidate.role != AdventurePhaseRole::Outro
-                }
-            })
-            .collect(),
-    };
-    rng.shuffle(&candidates)
-}
+            .collect()
+    }
 
-fn adventure_role_legal(prev: &AdventurePhaseSpec, next: &AdventurePhaseSpec) -> bool {
-    use AdventurePhaseRole::*;
-    match prev.role {
-        Intro => next.role == Groove,
-        Groove => matches!(next.role, Groove | Build | Break),
-        Build => next.role == Peak,
-        Peak => matches!(next.role, Peak | Break | Outro),
-        Break => next.role == Outro,
-        Outro => false,
+    fn role_legal(prev: AdventurePhaseSpec, next: AdventurePhaseSpec) -> bool {
+        use AdventurePhaseRole::*;
+        match prev.role {
+            Intro => next.role == Groove,
+            Groove => matches!(next.role, Groove | Build | Break),
+            Build => next.role == Peak,
+            Peak => matches!(next.role, Peak | Break | Outro),
+            Break => next.role == Outro,
+            Outro => false,
+        }
     }
-}
 
-fn adventure_energy_legal(prev: &AdventurePhaseSpec, next: &AdventurePhaseSpec) -> bool {
-    // The intentional gestures: the battle erupts (Build -> Peak) and the
-    // post-climax respite (Peak -> Break) may jump the band.
-    if prev.role == AdventurePhaseRole::Build && next.role == AdventurePhaseRole::Peak {
-        return true;
+    fn energy_legal(prev: AdventurePhaseSpec, next: AdventurePhaseSpec) -> bool {
+        // The intentional gestures: the battle erupts (Build -> Peak) and the
+        // post-climax respite (Peak -> Break) may jump the band.
+        if prev.role == AdventurePhaseRole::Build && next.role == AdventurePhaseRole::Peak {
+            return true;
+        }
+        if prev.role == AdventurePhaseRole::Peak && next.role == AdventurePhaseRole::Break {
+            return true;
+        }
+        i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
     }
-    if prev.role == AdventurePhaseRole::Peak && next.role == AdventurePhaseRole::Break {
-        return true;
+
+    fn ending_legal(spec: AdventurePhaseSpec, _want_outro: bool) -> bool {
+        spec.role == AdventurePhaseRole::Outro
     }
-    i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
+
+    fn count(_request: (), rng: &mut DeterministicRandom) -> usize {
+        (8 + rng.integer(5)) as usize // 8..=12 steps
+    }
+
+    fn want_outro(_request: (), _rng: &mut DeterministicRandom) -> bool {
+        true
+    }
 }
 
 /// Role-aware length for the composed path: intros, breaks and outros stay at
@@ -267,10 +199,10 @@ mod tests {
                 return Err(format!("Outro {} is not last", spec.id));
             }
             if let Some(prev) = index.checked_sub(1).map(|i| specs[i]) {
-                if !adventure_role_legal(&prev, spec) {
+                if !AdventurePool::role_legal(prev, *spec) {
                     return Err(format!("illegal transition {} -> {}", prev.id, spec.id));
                 }
-                if !adventure_energy_legal(&prev, spec) {
+                if !AdventurePool::energy_legal(prev, *spec) {
                     return Err(format!(
                         "energy jump {} -> {} exceeds bound",
                         prev.id, spec.id

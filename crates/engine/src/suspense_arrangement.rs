@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use crate::development::{development_schedule, mask_to_schedule};
+use crate::development::{
+    clear_seams, density_bias, develop_section, plan_joins, push_seam_note, push_seam_perc,
+};
+#[cfg(test)]
+use crate::development::{mask_to_schedule, seam_lane};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
 use crate::suspense::{generate_suspense, SuspenseInput};
@@ -226,14 +230,9 @@ fn layer_rank(event: &MusicEvent) -> u8 {
 /// The shape follows the phase's role, so the pool does not breathe in lockstep.
 /// The bed (rank 0) is never masked, so the drone stays continuous.
 fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, tension: f64) {
-    if bar == 0 {
-        return;
-    }
     let Some(spec) = phase_spec(&section.id) else {
         return;
     };
-    let bars = section.length_ticks / bar;
-    let id = section.id.clone();
     // The shape follows the job the phase does, so the pool does not breathe in
     // lockstep. Rank 1 is bed+tick only, 2 adds the kit, 3 the cell, 4 the arp.
     //   Peak / Build  climb out of a sparse exposition to a full peak
@@ -248,32 +247,20 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
         PhaseRole::Intro | PhaseRole::Outro => &[1, 2, 4, 3],
         PhaseRole::Break => return,
     };
-    let Some((block_bars, mut schedule)) = development_schedule(arc, bars) else {
-        return;
-    };
     // tension → arc layer count: high tension keeps more layers audible, low
     // tension thins them. A one-rank bias applied to every block after the
     // first, so the head anchor (rank 2) in the opening block is never newly
     // masked by the bias (the bed, rank 0, is never masked regardless).
-    let bias: i32 = if tension >= 0.66 {
-        1
-    } else if tension < 0.35 {
-        -1
-    } else {
-        0
+    let bias = density_bias(tension, 0.66, 0.35);
+    let Some((block_bars, schedule)) =
+        develop_section(section, bar, arc, layer_rank, _seed, false, bias)
+    else {
+        return;
     };
-    if bias != 0 {
-        for (index, rank) in schedule.iter_mut().enumerate() {
-            if index == 0 {
-                continue;
-            }
-            *rank = ((i32::from(*rank)) + bias).clamp(1, 4) as u8;
-        }
-    }
     let block_ticks = bar * block_bars;
-    mask_to_schedule(section, bar, block_ticks, &schedule, layer_rank);
     // Every time the arc adds a layer, the block lands on an impact. Ids get
     // their own prefix so they never collide with the kit's `:kit:dev:` onsets.
+    let id = section.id.clone();
     for block in 0..schedule.len().saturating_sub(1) {
         if schedule[block + 1] > schedule[block] && schedule[block + 1] >= 3 {
             let start = (block as u32 + 1) * block_ticks;
@@ -351,60 +338,6 @@ enum SeamGesture {
     Tail,
 }
 
-fn seam_lane(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => lane,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_seam_note(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    pitch: u8,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Note {
-        id: format!("{section}:seam-note:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.4),
-        pitch,
-        voice: voice.to_string(),
-        role: None,
-    });
-}
-
-fn push_seam_perc(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:seam-perc:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.3),
-        voice: voice.to_string(),
-    });
-}
-
 /// Plan every join of the chosen form. Runs after the form exists because the
 /// treatment belongs to the *pair*, not to a reusable section.
 fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
@@ -419,23 +352,8 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
         return;
     };
     let entry = arc_entry(seed);
-    let mut pairs: Vec<(String, String)> = form
-        .steps
-        .windows(2)
-        .map(|window| (window[0].section.clone(), window[1].section.clone()))
-        .collect();
-    if let (Some(loop_from), Some(last)) = (form.loop_from, form.steps.last()) {
-        if let Some(first) = form.steps.get(loop_from as usize) {
-            pairs.push((last.section.clone(), first.section.clone()));
-        }
-    }
-    // A section can appear in more than one join; the last planned treatment
-    // wins, so clear the previous one first.
-    for section in &mut score.sections {
-        section
-            .events
-            .retain(|event| !seam_lane(event).ends_with("-seam"));
-    }
+    let pairs = plan_joins(&form);
+    clear_seams(score);
     let mut serial = 0usize;
     for (out_id, in_id) in pairs {
         let out_role = phase_spec(&out_id).map(|spec| spec.role);

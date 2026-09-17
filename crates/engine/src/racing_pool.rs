@@ -6,9 +6,10 @@
 //! [`racing_phase_energy`]). Composing a Racing song is then choosing a
 //! [`SongForm`] over that pool; section generation is untouched.
 
+use crate::composer::{self, PhaseMeta, PhasePool};
 use crate::racing::{racing_phase_energy, racing_phase_role, RacingPhaseRole};
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{SongForm, SongFormStep};
+use crate::score::SongForm;
 
 /// Maximum allowed energy step between adjacent composed phases (0-100 scale).
 pub const MAX_ENERGY_DELTA: u32 = 35;
@@ -33,6 +34,24 @@ pub struct RacingPhaseSpec {
     pub energy: u32,
     pub bars: u32,
     pub one_shot: bool,
+}
+
+impl PhaseMeta for RacingPhaseSpec {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn one_shot(&self) -> bool {
+        self.one_shot
+    }
+
+    fn is_groove(&self) -> bool {
+        self.role == RacingPhaseRole::Groove
+    }
+
+    fn is_outro(&self) -> bool {
+        self.role == RacingPhaseRole::Outro
+    }
 }
 
 /// The phase spec for a Racing section id, if it is part of the pool.
@@ -61,137 +80,51 @@ pub fn racing_compose_seed(secret: &str, seed: &str) -> u32 {
 /// order, and the loop point (always a groove, so the loop keeps the race
 /// moving). Intro and Outro are one-shot; they frame the form exactly once.
 pub fn racing_compose(seed: u32) -> SongForm {
-    let mut rng = DeterministicRandom::new(seed);
-    let count = (6 + rng.integer(4)) as usize; // 6..=9 steps
-    let mut chosen: Vec<RacingPhaseSpec> = Vec::with_capacity(count);
-    let mut used_one_shot: Vec<&'static str> = Vec::new();
-    let found = racing_search(&mut rng, &mut chosen, &mut used_one_shot, count);
-    if !found {
-        // Unreachable for this pool (the grammar is live); retried so a future
-        // pool edit prefers any legal form over the canonical fallback.
-        chosen.clear();
-        used_one_shot.clear();
-        racing_search(&mut rng, &mut chosen, &mut used_one_shot, count);
-    }
-    let groove_indices: Vec<u32> = chosen
-        .iter()
-        .enumerate()
-        .filter(|(_, spec)| spec.role == RacingPhaseRole::Groove)
-        .map(|(index, _)| index as u32)
-        .collect();
-    if chosen.len() < count || groove_indices.is_empty() {
-        // Guard: never emit a short or grooveless form; degrade to the
-        // canonical tour (every pool phase once, looping from the groove).
-        return racing_canonical_form();
-    }
-    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
-    let steps = chosen.into_iter().map(racing_step).collect();
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
+    composer::compose::<RacingPool>(seed, ())
 }
 
-/// The canonical Racing form: every pool phase once, in natural race order,
-/// looping from the first groove (cruise). The seeded search can only fall
-/// short if a future pool edit breaks the live grammar, so this is the
-/// guaranteed-valid fallback.
-fn racing_canonical_form() -> SongForm {
-    let steps = RACING_SECTION_IDS
-        .iter()
-        .map(|id| SongFormStep {
-            section: (*id).to_string(),
-            repeats: 1,
-        })
-        .collect();
-    let loop_from = RACING_SECTION_IDS
-        .iter()
-        .position(|id| {
-            racing_phase_spec(id).is_some_and(|spec| spec.role == RacingPhaseRole::Groove)
-        })
-        .map(|index| index as u32);
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
-}
+/// The Racing pool as the shared composer sees it: role/energy metadata derived
+/// from the authored plans, the Racing role grammar, and the fixed 6..=9-step
+/// band with an always-outro ending.
+struct RacingPool;
 
-fn racing_step(spec: RacingPhaseSpec) -> SongFormStep {
-    SongFormStep {
-        section: spec.id.to_string(),
-        repeats: 1,
-    }
-}
+impl PhasePool for RacingPool {
+    type Spec = RacingPhaseSpec;
+    type Request = ();
 
-fn racing_search(
-    rng: &mut DeterministicRandom,
-    chosen: &mut Vec<RacingPhaseSpec>,
-    used_one_shot: &mut Vec<&'static str>,
-    count: usize,
-) -> bool {
-    if chosen.len() == count {
-        return true;
-    }
-    let candidates = racing_legal_next(rng, chosen, used_one_shot, count);
-    for candidate in candidates {
-        chosen.push(candidate);
-        if candidate.one_shot {
-            used_one_shot.push(candidate.id);
-        }
-        if racing_search(rng, chosen, used_one_shot, count) {
-            return true;
-        }
-        chosen.pop();
-        if candidate.one_shot {
-            used_one_shot.pop();
-        }
-    }
-    false
-}
-
-fn racing_legal_next(
-    rng: &mut DeterministicRandom,
-    chosen: &[RacingPhaseSpec],
-    used_one_shot: &[&'static str],
-    count: usize,
-) -> Vec<RacingPhaseSpec> {
-    let is_last = chosen.len() + 1 == count;
-    let candidates: Vec<_> = match chosen.last() {
-        None => vec![racing_phase_spec("garage").expect("garage is in the pool")],
-        Some(prev) => RACING_SECTION_IDS
+    fn pool() -> Vec<RacingPhaseSpec> {
+        RACING_SECTION_IDS
             .iter()
             .filter_map(|&id| racing_phase_spec(id))
-            .filter(|candidate| racing_role_legal(prev, candidate))
-            .filter(|candidate| !(candidate.one_shot && used_one_shot.contains(&candidate.id)))
-            .filter(|candidate| candidate.id != prev.id)
-            .filter(|candidate| racing_energy_legal(prev, candidate))
-            .filter(|candidate| {
-                if is_last {
-                    candidate.role == RacingPhaseRole::Outro
-                } else {
-                    candidate.role != RacingPhaseRole::Outro
-                }
-            })
-            .collect(),
-    };
-    rng.shuffle(&candidates)
-}
-
-fn racing_role_legal(prev: &RacingPhaseSpec, next: &RacingPhaseSpec) -> bool {
-    use RacingPhaseRole::*;
-    match prev.role {
-        Intro => matches!(next.role, Build | Groove),
-        Build => next.role == Groove,
-        Groove => matches!(next.role, Groove | Build | Peak),
-        Peak => matches!(next.role, Peak | Groove | Outro),
-        Outro => false,
+            .collect()
     }
-}
 
-fn racing_energy_legal(prev: &RacingPhaseSpec, next: &RacingPhaseSpec) -> bool {
-    i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
+    fn role_legal(prev: RacingPhaseSpec, next: RacingPhaseSpec) -> bool {
+        use RacingPhaseRole::*;
+        match prev.role {
+            Intro => matches!(next.role, Build | Groove),
+            Build => next.role == Groove,
+            Groove => matches!(next.role, Groove | Build | Peak),
+            Peak => matches!(next.role, Peak | Groove | Outro),
+            Outro => false,
+        }
+    }
+
+    fn energy_legal(prev: RacingPhaseSpec, next: RacingPhaseSpec) -> bool {
+        i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
+    }
+
+    fn ending_legal(spec: RacingPhaseSpec, _want_outro: bool) -> bool {
+        spec.role == RacingPhaseRole::Outro
+    }
+
+    fn count(_request: (), rng: &mut DeterministicRandom) -> usize {
+        (6 + rng.integer(4)) as usize // 6..=9 steps
+    }
+
+    fn want_outro(_request: (), _rng: &mut DeterministicRandom) -> bool {
+        true
+    }
 }
 
 /// Role-aware length for the composed path: intros and outros stay at the
@@ -259,10 +192,10 @@ mod tests {
                 return Err(format!("Outro {} is not last", spec.id));
             }
             if let Some(prev) = index.checked_sub(1).map(|i| specs[i]) {
-                if !racing_role_legal(&prev, spec) {
+                if !RacingPool::role_legal(prev, *spec) {
                     return Err(format!("illegal transition {} -> {}", prev.id, spec.id));
                 }
-                if !racing_energy_legal(&prev, spec) {
+                if !RacingPool::energy_legal(prev, *spec) {
                     return Err(format!(
                         "energy jump {} -> {} exceeds bound",
                         prev.id, spec.id

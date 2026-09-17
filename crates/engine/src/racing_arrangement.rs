@@ -1,4 +1,9 @@
-use crate::development::{development_schedule, mask_to_schedule};
+use crate::development::{
+    clear_seams, density_bias, develop_section, fold_register_ceiling, plan_joins, push_seam_note,
+    push_seam_perc,
+};
+#[cfg(test)]
+use crate::development::mask_to_schedule;
 use crate::racing::{
     generate_racing, racing_harmony, GenerateInput, RacingHarmony, RacingPhaseRole, Style,
 };
@@ -195,47 +200,12 @@ fn racing_arc_for_role(role: RacingPhaseRole) -> &'static [u8] {
 /// them. The first block is left untouched so the melody still waits for the
 /// build at every complexity.
 fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u32, complexity: f64) {
-    if bar == 0 {
-        return;
-    }
     let Some(spec) = racing_phase_spec(&section.id) else {
         return;
     };
-    let bars = section.length_ticks / bar;
     let arc = racing_arc_for_role(spec.role);
-    let Some((block_bars, schedule)) = development_schedule(arc, bars) else {
-        return;
-    };
-    let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{}:arc", section.id)));
-    let mut schedule = schedule;
-    for rank in &mut schedule {
-        match rng.integer(3) {
-            0 => *rank = rank.saturating_sub(1).max(1),
-            2 => *rank = (*rank + 1).min(4),
-            _ => {}
-        }
-    }
-    // complexity → arc layer count: a one-rank bias applied to every block after
-    // the first. The bed (rank 0) is never masked and the first block keeps its
-    // rank, so the melody still waits for the build.
-    let bias: i32 = if complexity >= 0.62 {
-        1
-    } else if complexity < 0.4 {
-        -1
-    } else {
-        0
-    };
-    if bias != 0 {
-        for (index, rank) in schedule.iter_mut().enumerate() {
-            if index == 0 {
-                continue;
-            }
-            *rank = ((i32::from(*rank)) + bias).clamp(1, 4) as u8;
-        }
-    }
-    let block_ticks = bar * block_bars;
-    mask_to_schedule(section, bar, block_ticks, &schedule, racing_layer_rank);
-    section.events.sort_by_key(MusicEvent::start_tick);
+    let bias = density_bias(complexity, 0.62, 0.4);
+    develop_section(section, bar, arc, racing_layer_rank, seed, true, bias);
 }
 
 /// The seam vocabulary: how one seeded phase hands the music to the next.
@@ -251,60 +221,6 @@ enum RacingSeamGesture {
     Both,
     /// A long quiet low note: the bed fades out instead of hitting.
     Tail,
-}
-
-fn racing_seam_lane(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => lane,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_racing_seam_note(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    pitch: u8,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Note {
-        id: format!("{section}:seam-note:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.4),
-        pitch,
-        voice: voice.to_string(),
-        role: None,
-    });
-}
-
-fn push_racing_seam_perc(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:seam-perc:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.3),
-        voice: voice.to_string(),
-    });
 }
 
 /// A seam note on Racing's own harmony: `base` is the register root (60 = lead,
@@ -328,23 +244,8 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
     let Some(form) = score.form.clone() else {
         return;
     };
-    let mut pairs: Vec<(String, String)> = form
-        .steps
-        .windows(2)
-        .map(|window| (window[0].section.clone(), window[1].section.clone()))
-        .collect();
-    if let (Some(loop_from), Some(last)) = (form.loop_from, form.steps.last()) {
-        if let Some(first) = form.steps.get(loop_from as usize) {
-            pairs.push((last.section.clone(), first.section.clone()));
-        }
-    }
-    // A section can appear in more than one join; the last planned treatment
-    // wins, so clear the previous one first.
-    for section in &mut score.sections {
-        section
-            .events
-            .retain(|event| !racing_seam_lane(event).ends_with("-seam"));
-    }
+    let pairs = plan_joins(&form);
+    clear_seams(score);
     let mut serial = 0usize;
     for (out_id, in_id) in pairs {
         let out_role = racing_phase_spec(&out_id).map(|spec| spec.role);
@@ -394,7 +295,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
             RacingSeamGesture::Fill => {
                 for (index, step) in [8u32, 10, 12, 14, 15].iter().enumerate() {
                     let offset = (step * bar / 16).min(out_span.saturating_sub(bar / 16));
-                    push_racing_seam_perc(
+                    push_seam_perc(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -406,7 +307,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 }
             }
             RacingSeamGesture::Riser => {
-                push_racing_seam_perc(
+                push_seam_perc(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -421,7 +322,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                     let degree = root.progression_degrees[index % root.progression_degrees.len()];
                     let offset = (index as u32 * out_span / 3)
                         .min(out_span.saturating_sub(bar / 4));
-                    push_racing_seam_note(
+                    push_seam_note(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -434,7 +335,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 }
             }
             RacingSeamGesture::Both => {
-                push_racing_seam_perc(
+                push_seam_perc(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -447,7 +348,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                     let degree = root.progression_degrees[index % root.progression_degrees.len()];
                     let offset = (index as u32 * out_span / 3)
                         .min(out_span.saturating_sub(bar / 4));
-                    push_racing_seam_note(
+                    push_seam_note(
                         &mut out_events,
                         &mut serial,
                         &out_id,
@@ -461,7 +362,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
             }
             RacingSeamGesture::Tail => {
                 let degree = root.progression_degrees[0];
-                push_racing_seam_note(
+                push_seam_note(
                     &mut out_events,
                     &mut serial,
                     &out_id,
@@ -474,7 +375,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
             }
         }
         match landing {
-            1 => push_racing_seam_perc(
+            1 => push_seam_perc(
                 &mut in_events,
                 &mut serial,
                 &in_id,
@@ -483,7 +384,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 0.12,
                 "air-impact",
             ),
-            2 => push_racing_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "kick"),
+            2 => push_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "kick"),
             _ => {}
         }
         if !out_events.is_empty() {
@@ -558,15 +459,7 @@ fn anchor_racing_edges(section: &mut PortableSection, root_pc: i32, bar: u32) {
 /// hence the harmony, are preserved) so a seeded Racing run never squeals
 /// over the rest of the mix.
 fn apply_racing_register_ceiling(section: &mut PortableSection, ceiling: u8) {
-    for event in &mut section.events {
-        if let MusicEvent::Note { pitch, .. } = event {
-            let mut value = i32::from(*pitch);
-            while value > i32::from(ceiling) {
-                value -= 12;
-            }
-            *pitch = u8::try_from(value.max(0)).unwrap_or(*pitch);
-        }
-    }
+    fold_register_ceiling(section, ceiling);
 }
 
 /// The continuous trait surface for a seeded Racing section: each trait drives

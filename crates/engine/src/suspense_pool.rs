@@ -9,8 +9,9 @@
 //! Energy is stored on a 0-100 integer scale so the bounded-delta rule is an
 //! exact integer comparison (no floating-point boundary surprises).
 
+use crate::composer::{self, PhaseMeta, PhasePool};
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{SongForm, SongFormStep};
+use crate::score::SongForm;
 
 /// Maximum allowed energy step between adjacent phases (0-100 scale), except
 /// the intentional build -> peak gesture.
@@ -181,6 +182,24 @@ pub struct PhaseSpec {
     /// Preferred figure for this phase. Actual figure chosen by seeded
     /// selection among role+energy matches.
     pub figure: &'static str,
+}
+
+impl PhaseMeta for PhaseSpec {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn one_shot(&self) -> bool {
+        self.one_shot
+    }
+
+    fn is_groove(&self) -> bool {
+        self.role == PhaseRole::Groove
+    }
+
+    fn is_outro(&self) -> bool {
+        self.role == PhaseRole::Outro
+    }
 }
 
 /// The pool, in canonical play order (the natural song arc, Extended phases
@@ -459,174 +478,88 @@ impl Intent {
 /// Every pool phase exactly once, in canonical order, looping back to the first
 /// Groove.
 pub fn all_phases_form() -> SongForm {
-    let steps = PHASE_POOL.iter().map(step).collect::<Vec<_>>();
-    let loop_from = PHASE_POOL
-        .iter()
-        .position(|spec| spec.role == PhaseRole::Groove)
-        .map(|index| index as u32);
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
+    composer::canonical_form::<SuspensePool>()
 }
 
 /// Compose a song from the pool. The seed decides the section count, the role
 /// selection, the order, and the loop point.
 pub fn compose(seed: u32, intent: Intent) -> SongForm {
-    let mut rng = DeterministicRandom::new(seed);
-    let (low, high) = intent.count_range();
-    let count = (low + rng.integer(high - low + 1)) as usize;
-    let want_outro = match intent {
-        Intent::Arc | Intent::Long => true,
-        Intent::Loop => false,
-        Intent::Surprise => rng.integer(2) == 0,
-    };
-    let mut chosen: Vec<&'static PhaseSpec> = Vec::with_capacity(count);
-    let mut used_one_shot: Vec<&'static str> = Vec::new();
-    let found = search(
-        &mut rng,
-        &mut chosen,
-        &mut used_one_shot,
-        count,
-        want_outro,
-        seed,
-    );
-    if !found {
+    composer::compose::<SuspensePool>(seed, intent)
+}
+
+/// The Suspense pool as the shared composer sees it: role/energy metadata over
+/// [`PHASE_POOL`], the Suspense role grammar, and the intent-driven count band
+/// and outro preference.
+struct SuspensePool;
+
+impl PhasePool for SuspensePool {
+    type Spec = PhaseSpec;
+    type Request = Intent;
+
+    fn pool() -> Vec<PhaseSpec> {
+        PHASE_POOL.to_vec()
+    }
+
+    fn role_legal(prev: PhaseSpec, next: PhaseSpec) -> bool {
+        use PhaseRole::*;
+        match prev.role {
+            Intro => next.role == Groove,
+            Groove => matches!(next.role, Groove | Break | Bridge | Build | Outro),
+            Break | Bridge => next.role == Groove,
+            Build => next.role == Peak,
+            Peak => matches!(next.role, Groove | Outro),
+            Outro | Loop => false,
+        }
+    }
+
+    fn energy_legal(prev: PhaseSpec, next: PhaseSpec) -> bool {
+        if prev.role == PhaseRole::Build && next.role == PhaseRole::Peak {
+            return true; // the intentional build -> peak gesture
+        }
+        i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
+    }
+
+    fn ending_legal(spec: PhaseSpec, want_outro: bool) -> bool {
+        if want_outro {
+            spec.role == PhaseRole::Outro
+        } else {
+            spec.role == PhaseRole::Groove
+        }
+    }
+
+    fn count(request: Intent, rng: &mut DeterministicRandom) -> usize {
+        let (low, high) = request.count_range();
+        (low + rng.integer(high - low + 1)) as usize
+    }
+
+    fn want_outro(request: Intent, rng: &mut DeterministicRandom) -> bool {
+        match request {
+            Intent::Arc | Intent::Long => true,
+            Intent::Loop => false,
+            Intent::Surprise => rng.integer(2) == 0,
+        }
+    }
+
+    fn retry_want_outro() -> bool {
         // An outro ending is unreachable for the shortest Surprise forms (e.g.
         // count 5 has no room for the required groove before the outro), so
         // retry with a groove ending, which is always reachable.
-        chosen.clear();
-        used_one_shot.clear();
-        search(
-            &mut rng,
-            &mut chosen,
-            &mut used_one_shot,
-            count,
-            false,
-            seed,
-        );
+        false
     }
-    let groove_indices: Vec<u32> = chosen
-        .iter()
-        .enumerate()
-        .filter(|(_, spec)| spec.role == PhaseRole::Groove)
-        .map(|(index, _)| index as u32)
-        .collect();
-    if chosen.len() < count || groove_indices.is_empty() {
-        // Guard: never emit a short or grooveless form; degrade to the
-        // canonical all-phases tour (every pool phase once, looping from the
-        // first groove).
-        return all_phases_form();
-    }
-    let loop_from = Some(groove_indices[rng.integer(groove_indices.len() as u32) as usize]);
-    let steps = chosen.into_iter().map(step).collect();
-    SongForm {
-        steps,
-        loop_from,
-        origin: None,
-    }
-}
 
-fn step(spec: &PhaseSpec) -> SongFormStep {
-    SongFormStep {
-        section: spec.id.to_string(),
-        repeats: 1,
-    }
-}
-
-/// Backtracking search over concrete pool phases. The role grammar below is
-/// deliberately "live": from any non-terminal state there is always at least
-/// one legal continuation (a Groove can always be followed by another Groove),
-/// so the search finds a solution for every reachable count.
-fn search(
-    rng: &mut DeterministicRandom,
-    chosen: &mut Vec<&'static PhaseSpec>,
-    used_one_shot: &mut Vec<&'static str>,
-    count: usize,
-    want_outro: bool,
-    root_seed: u32,
-) -> bool {
-    if chosen.len() == count {
-        return true;
-    }
-    let candidates = legal_next(rng, chosen, used_one_shot, count, want_outro, root_seed);
-    for candidate in candidates {
-        chosen.push(candidate);
-        if candidate.one_shot {
-            used_one_shot.push(candidate.id);
-        }
-        if search(rng, chosen, used_one_shot, count, want_outro, root_seed) {
-            return true;
-        }
-        chosen.pop();
-        if candidate.one_shot {
-            used_one_shot.pop();
-        }
-    }
-    false
-}
-
-fn legal_next(
-    rng: &mut DeterministicRandom,
-    chosen: &[&'static PhaseSpec],
-    used_one_shot: &[&'static str],
-    count: usize,
-    want_outro: bool,
-    root_seed: u32,
-) -> Vec<&'static PhaseSpec> {
-    let is_last = chosen.len() + 1 == count;
-    let Some(prev) = chosen.last().copied() else {
-        return vec![phase_spec("intro").expect("intro is in the pool")];
-    };
-    let candidates = PHASE_POOL
-        .iter()
-        .filter(|candidate| role_legal(prev, candidate))
-        .filter(|candidate| !(candidate.one_shot && used_one_shot.contains(&candidate.id)))
-        .filter(|candidate| candidate.id != prev.id)
-        .filter(|candidate| energy_legal(prev, candidate))
-        .filter(|candidate| {
-            if is_last {
-                valid_ending(candidate, want_outro)
-            } else {
-                candidate.role != PhaseRole::Outro
-            }
-        })
-        .collect::<Vec<_>>();
-    // Budgeted only: contrast/groove rules. If empty for a state the backtracker
-    // will not take the path; grammar + bands keep at least one always reachable.
-    let budgeted: Vec<_> = candidates
-        .into_iter()
-        .filter(|c| groove_run_allows_change(chosen, c, root_seed))
-        .filter(|c| build_legal_allows_figure(chosen, c, root_seed))
-        .collect();
-    rng.shuffle(&budgeted)
-}
-
-fn role_legal(prev: &PhaseSpec, next: &PhaseSpec) -> bool {
-    use PhaseRole::*;
-    match prev.role {
-        Intro => next.role == Groove,
-        Groove => matches!(next.role, Groove | Break | Bridge | Build | Outro),
-        Break | Bridge => next.role == Groove,
-        Build => next.role == Peak,
-        Peak => matches!(next.role, Groove | Outro),
-        Outro | Loop => false,
-    }
-}
-
-fn energy_legal(prev: &PhaseSpec, next: &PhaseSpec) -> bool {
-    if prev.role == PhaseRole::Build && next.role == PhaseRole::Peak {
-        return true; // the intentional build -> peak gesture
-    }
-    i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
-}
-
-fn valid_ending(spec: &PhaseSpec, want_outro: bool) -> bool {
-    if want_outro {
-        spec.role == PhaseRole::Outro
-    } else {
-        spec.role == PhaseRole::Groove
+    fn refine(
+        chosen: &[PhaseSpec],
+        candidates: Vec<PhaseSpec>,
+        root_seed: u32,
+    ) -> Vec<PhaseSpec> {
+        // Budgeted only: contrast/groove rules. If empty for a state the
+        // backtracker will not take the path; grammar + bands keep at least one
+        // always reachable.
+        candidates
+            .into_iter()
+            .filter(|c| groove_run_allows_change(chosen, *c, root_seed))
+            .filter(|c| build_legal_allows_figure(chosen, *c, root_seed))
+            .collect()
     }
 }
 
@@ -694,8 +627,8 @@ pub(crate) fn contrast_attrs_differ(a: &FigureSpec, b: &FigureSpec) -> usize {
 }
 
 fn groove_run_allows_change(
-    chosen: &[&'static PhaseSpec],
-    candidate: &PhaseSpec,
+    chosen: &[PhaseSpec],
+    candidate: PhaseSpec,
     root_seed: u32,
 ) -> bool {
     if candidate.role != PhaseRole::Groove {
@@ -725,11 +658,11 @@ fn groove_run_allows_change(
 }
 
 fn build_legal_allows_figure(
-    chosen: &[&'static PhaseSpec],
-    candidate: &PhaseSpec,
+    chosen: &[PhaseSpec],
+    candidate: PhaseSpec,
     root_seed: u32,
 ) -> bool {
-    let prev = *chosen.last().unwrap_or(&candidate);
+    let prev = chosen.last().copied().unwrap_or(candidate);
     let prev_fig = figure_for_composition(prev.id, root_seed);
     let cand_fig = figure_for_composition(candidate.id, root_seed);
     // Build/Peak inherit subdivision from preceding Groove
@@ -748,7 +681,7 @@ fn build_legal_allows_figure(
     true
 }
 
-fn last_groove_subdivision(chosen: &[&'static PhaseSpec], root_seed: u32) -> Option<u8> {
+fn last_groove_subdivision(chosen: &[PhaseSpec], root_seed: u32) -> Option<u8> {
     for spec in chosen.iter().rev() {
         if spec.role == PhaseRole::Groove {
             return Some(figure_for_composition(spec.id, root_seed).subdivision);
@@ -818,7 +751,7 @@ pub(crate) fn validate_form_rules(sections: &[&str], loop_from: Option<u32>) -> 
             _ => {}
         }
         if let Some(previous) = prev {
-            if !energy_legal(previous, spec) {
+            if !SuspensePool::energy_legal(*previous, *spec) {
                 return Err(format!(
                     "energy jump {} -> {} exceeds bound",
                     previous.id, spec.id
