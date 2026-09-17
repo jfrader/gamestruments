@@ -690,6 +690,7 @@ fn apply_racing_trait_surface(section: &mut PortableSection, bar: u32, traits: &
             let MusicEvent::Note {
                 start_tick,
                 duration_ticks,
+                velocity,
                 role,
                 ..
             } = event
@@ -710,6 +711,11 @@ fn apply_racing_trait_surface(section: &mut PortableSection, bar: u32, traits: &
                 continue;
             }
             *start_tick += sixteenth;
+            // A pushed onset reads as a soft anticipation, not a stray high blip:
+            // halve its velocity so it never outshines the on-grid note it leads
+            // into. The register pass below still keeps the pitch under the
+            // ceiling, so the pair stays quiet and in-band.
+            *velocity = (*velocity * 0.5).clamp(0.08, 0.96);
             displaced += 1;
             if displaced >= displace {
                 break;
@@ -2628,6 +2634,43 @@ mod tests {
                                 section.id
                             );
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn composed_syncopated_offsets_stay_quiet_and_in_band() {
+        // The syncopation displacement pushes even-eighth onsets to off-grid
+        // sixteenths. Those pushed notes must stay under the register ceiling and
+        // read as a soft anticipation — clearly quieter than the on-grid melody —
+        // so they never surface as a stray high blip.
+        for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
+            let ceiling = racing_register_ceiling(style);
+            for seed in ["level-001", "level-002", "level-003"] {
+                let input = lab_input(style, seed);
+                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
+                    .expect("composed");
+                let bar = score.bar_ticks();
+                let pulse = bar / 8;
+                for section in &score.sections {
+                    for event in &section.events {
+                        if !event.is_melody() || event.start_tick() % pulse == 0 {
+                            continue;
+                        }
+                        let pitch = event.pitch().expect("melody note carries a pitch");
+                        assert!(
+                            pitch <= ceiling,
+                            "{style:?} {seed} {} off-grid {pitch} exceeds {ceiling}",
+                            section.id
+                        );
+                        assert!(
+                            event.velocity() < 0.4,
+                            "{style:?} {seed} {} off-grid velocity {} too loud",
+                            section.id,
+                            event.velocity()
+                        );
                     }
                 }
             }
