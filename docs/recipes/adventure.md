@@ -60,19 +60,20 @@ native default is `autoplay = false`. The Audio Lab defaults to `seeded`.
 
 ## Traits
 
-Adventure reads `energy`, `complexity`, `brightness`, `syncopation` as `wonder`,
-`danger`, `mystery`, `motion`. The base generator (`adventure/composition.rs`)
-and the seeded surface (`adventure/arrangement.rs`) both map them:
+Adventure exposes the four generation traits as `danger` (energy), `mystery`
+(complexity), `wonder` (brightness) and `motion` (syncopation). The base
+generator (`adventure/composition.rs`) and the seeded surface
+(`adventure/arrangement.rs`) both map them:
 
-- `wonder` (energy) — harmony velocity (`0.13 + wonder*0.06`), harp velocity
+- `wonder` (brightness) — harmony velocity (`0.13 + wonder*0.06`), harp velocity
   (`0.15 + wonder*0.08`), melody register (`+ wonder*2` semitones) and velocity.
   On the seeded path it brightens the harmony layer (`1.0 + wonder_dev*0.6`).
   0 is quiet, low; 1 is bright, high, loud.
-- `danger` (complexity) — bass velocity (`+ danger*0.04`) and percussion velocity
+- `danger` (energy) — bass velocity (`+ danger*0.04`) and percussion velocity
   (`+ danger*0.08`). On the seeded path it adds percussion density (`danger*6`),
   pushes the bass, and folds melody/harmony/harp down an octave when `> 0.66`,
   and raises the tempo. 0 is gentle; 1 is driving, dark, percussive.
-- `mystery` (brightness) — tempo (`- mystery*5`). On the seeded path it adds a
+- `mystery` (complexity) — tempo (`- mystery*5`). On the seeded path it adds a
   pedal drone (`mystery*4`), bell accents (`mystery*3`), thins the harmony, and
   pulls the tempo down further. 0 is fast, full; 1 is slow, drone-heavy, sparse.
 - `motion` (syncopation) — tempo (`+ motion*20`, base 92 folk / 78 dark / 100
