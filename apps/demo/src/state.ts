@@ -12,9 +12,11 @@ import {
   generateScore,
   isRacingArrangement,
   isSuspenseArrangement,
+  isAdventureArrangement,
   type Arrangement,
   type RacingArrangement,
   type SuspenseArrangement,
+  type AdventureArrangement,
 } from "./wasm-engine.ts";
 import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
@@ -129,6 +131,7 @@ export const ADVENTURE_PRESETS = [
 export let labRecipe: LabRecipe = "racing";
 export let racingArrangement: RacingArrangement = "extended";
 export let suspenseArrangement: SuspenseArrangement = "seeded";
+export let adventureArrangement: AdventureArrangement = "original";
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...GENERATION_PRESETS[0].traits };
@@ -176,14 +179,17 @@ export function currentPresets(): readonly GenerationPreset[] {
  *  game types never leaks one recipe's choice (e.g. a Suspense pool pick) into
  *  another. */
 export function currentArrangement(): Arrangement {
-  return labRecipe === "suspense" ? suspenseArrangement : racingArrangement;
+  if (labRecipe === "suspense") return suspenseArrangement;
+  if (labRecipe === "adventure") return adventureArrangement;
+  return racingArrangement;
 }
 
 /** A recipe accepts an arrangement only if that value is legal for it. */
 function recipeArrangementValid(recipe: LabRecipe, value: Arrangement): boolean {
   if (recipe === "racing") return isRacingArrangement(value);
   if (recipe === "suspense") return isSuspenseArrangement(value);
-  return true;
+  if (recipe === "adventure") return isAdventureArrangement(value);
+  return false;
 }
 
 export function generationPreset(index = activeExperimentIndex): GenerationPreset {
@@ -452,6 +458,8 @@ export async function activateExperiment(
       suspenseArrangement = nextArrangement;
     } else if (requestedRecipe === "racing" && isRacingArrangement(nextArrangement)) {
       racingArrangement = nextArrangement;
+    } else if (requestedRecipe === "adventure" && isAdventureArrangement(nextArrangement)) {
+      adventureArrangement = nextArrangement;
     }
     score = nextScore;
     transport = nextTransport;
@@ -541,7 +549,7 @@ export function setPhase(value: string): void {
 }
 
 export function setArrangement(value: Arrangement): Promise<boolean> {
-  if (labRecipe === "adventure" || !recipeArrangementValid(labRecipe, value)) {
+  if (!recipeArrangementValid(labRecipe, value)) {
     return Promise.resolve(false);
   }
   return requestExperiment(activeExperimentIndex, levelSeed, generationTraits, value);

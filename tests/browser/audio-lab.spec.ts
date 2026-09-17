@@ -215,12 +215,20 @@ test("Racing Composed composes a song form over the six phases and announces it"
   expect(errors).toEqual([]);
 });
 
-test("Adventure hides the arrangement control entirely", async ({ page }) => {
+test("Adventure offers composed as a third arrangement (control visible, 3 buttons)", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
   await selectRecipe(page, "adventure");
-  await expect(page.locator("#arrangement-control")).toBeHidden();
+  await expect(page.locator("#arrangement-control")).toBeVisible();
+  await expect(page.locator("#arrangement-buttons button")).toHaveCount(3);
+  await expect(page.locator('#arrangement-buttons button[data-arrangement="composed"]')).toBeVisible();
+  // composed is the third
+  const third = page.locator('#arrangement-buttons button').nth(2);
+  await expect(third).toHaveAttribute("data-arrangement", "composed");
+  await third.click();
+  await expect(third).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#audition-status")).toHaveText("Composed arrangement ready");
   expect(errors).toEqual([]);
 });
 

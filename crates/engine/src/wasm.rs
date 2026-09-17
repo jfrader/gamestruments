@@ -238,9 +238,10 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 }
             };
             // Composed already carries a song form, so there is no automatic
-            // arrangement to layer on top of it.
+            // arrangement to layer on top of it. Extended for Adventure is
+            // currently an alias to Original.
             let autoplay_recipe = match arrangement {
-                AdventureArrangement::Original => Some(ArrangementRecipe::Adventure),
+                AdventureArrangement::Original | AdventureArrangement::Extended => Some(ArrangementRecipe::Adventure),
                 AdventureArrangement::Composed => None,
             };
             generate_adventure_arrangement(

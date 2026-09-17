@@ -3,7 +3,7 @@ import type { SectionId } from "../../../packages/runtime/src/index.ts";
 import type { SoloMode } from "./audio-engine.ts";
 import { phaseName } from "./phase-names.ts";
 import { versionLabel } from "./lab-copy.ts";
-import { isRacingArrangement, isSuspenseArrangement, type Arrangement } from "./wasm-engine.ts";
+import { isRacingArrangement, isSuspenseArrangement, isAdventureArrangement, type Arrangement } from "./wasm-engine.ts";
 import {
   elements,
   setStartButton,
@@ -318,7 +318,7 @@ elements.arrangementButtons.addEventListener("click", (event) => {
   if (labRecipe === "suspense" && !isSuspenseArrangement(value as Arrangement)) {
     return;
   }
-  if (labRecipe === "adventure") {
+  if (labRecipe === "adventure" && !isAdventureArrangement(value as Arrangement)) {
     return;
   }
   applyGenerationRequest(setArrangement(value as Arrangement), () => {

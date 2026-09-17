@@ -61,7 +61,8 @@ function readOutput(ptr: number): Uint8Array {
 
 export type RacingArrangement = "original" | "extended" | "composed";
 export type SuspenseArrangement = "all-phases" | "seeded";
-export type Arrangement = RacingArrangement | SuspenseArrangement;
+export type AdventureArrangement = "original" | "extended" | "composed";
+export type Arrangement = RacingArrangement | SuspenseArrangement | AdventureArrangement;
 
 export function isRacingArrangement(value: Arrangement): value is RacingArrangement {
   return value === "original" || value === "extended" || value === "composed";
@@ -69,6 +70,10 @@ export function isRacingArrangement(value: Arrangement): value is RacingArrangem
 
 export function isSuspenseArrangement(value: Arrangement): value is SuspenseArrangement {
   return value === "all-phases" || value === "seeded";
+}
+
+export function isAdventureArrangement(value: Arrangement): value is AdventureArrangement {
+  return value === "original" || value === "extended" || value === "composed";
 }
 
 export interface GenerateScoreParams {

@@ -81,6 +81,27 @@ const SUSPENSE_ARRANGEMENTS: readonly ArrangementOption[] = [
   },
 ];
 
+const ADVENTURE_ARRANGEMENTS: readonly ArrangementOption[] = [
+  {
+    id: "original",
+    label: "Original",
+    description: "Eight original scenes",
+    summary: "The original quest arc, unchanged.",
+  },
+  {
+    id: "extended",
+    label: "Extended",
+    description: "Quest tour with extended timing",
+    summary: "Same scenes as Original (extended scenes planned for later).",
+  },
+  {
+    id: "composed",
+    label: "Composed",
+    description: "Eight scenes composed into a song form",
+    summary: "A seeded composer orders the scenes into a song form, re-times by role, arcs layers, and seams share a pitch class.",
+  },
+];
+
 const sectionRows = new Map<
   string,
   { item: HTMLLIElement; output: HTMLOutputElement; button: HTMLButtonElement }
@@ -265,13 +286,17 @@ export function renderGenreIndex(): void {
 }
 
 export function renderArrangementControl(recipe: LabRecipe, arrangement: Arrangement): void {
-  const visible = recipe !== "adventure";
+  const visible = true;
   elements.arrangementControl.hidden = !visible;
   if (!visible) {
     elements.arrangementSummary.value = "";
     return;
   }
-  const options = recipe === "suspense" ? SUSPENSE_ARRANGEMENTS : RACING_ARRANGEMENTS;
+  const options = recipe === "suspense"
+    ? SUSPENSE_ARRANGEMENTS
+    : recipe === "adventure"
+    ? ADVENTURE_ARRANGEMENTS
+    : RACING_ARRANGEMENTS;
   elements.arrangementButtons.replaceChildren(
     ...options.map((option) => {
       const button = document.createElement("button");

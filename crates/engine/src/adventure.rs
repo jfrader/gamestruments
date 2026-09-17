@@ -88,7 +88,7 @@ fn normalize(input: &AdventureInput) -> NormalizedTraits {
     }
 }
 
-fn subseed(secret: &str, seed: &str, domain: &str) -> u32 {
+pub(crate) fn subseed(secret: &str, seed: &str, domain: &str) -> u32 {
     let canonical = format!("string:{seed}");
     let mut value = format!("{DNA_SEED_VERSION}\0{canonical}\0{domain}");
     if !secret.is_empty() {
@@ -96,6 +96,13 @@ fn subseed(secret: &str, seed: &str, domain: &str) -> u32 {
         value.push_str(secret);
     }
     hash_text(&value)
+}
+
+/// The tonic pitch class for an Adventure piece, derived the same way the
+/// generator does so the composed passes can anchor to Adventure's own key.
+pub(crate) fn adventure_tonic_pitch_class(secret: &str, seed: &str) -> i32 {
+    let piece_seed = subseed(secret, seed, "piece");
+    composition::PieceDna::new(piece_seed).tonic_pitch_class
 }
 
 fn score_id(secret: &str, seed: &str, style: AdventureStyle, traits: NormalizedTraits) -> String {
