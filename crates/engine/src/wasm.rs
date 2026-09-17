@@ -69,7 +69,7 @@ use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
-use crate::render::{render_wav, render_wav_stereo};
+use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
@@ -409,6 +409,89 @@ pub unsafe extern "C" fn gamestruments_render_wav_stereo(
 
     // Hardcode 48000; stereo WAV (interleaved L R 16-bit PCM)
     let wav = render_wav_stereo(&score, section, phrases, 48000);
+    write_output(&wav);
+    unsafe { OUT_PTR }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_render_wav_chunk(
+    score_ptr: *const u8,
+    score_len: usize,
+    section_ptr: *const u8,
+    section_len: usize,
+    start_phrases: f64,
+    phrases: f64,
+) -> *const u8 {
+    let score_slice = slice::from_raw_parts(score_ptr, score_len);
+    let score: PortableScore = match serde_json::from_slice(score_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("score JSON must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if let Err(error) = score.validate() {
+        write_error(format!("invalid score: {error}"));
+        return unsafe { OUT_PTR };
+    }
+
+    let section_slice = slice::from_raw_parts(section_ptr, section_len);
+    let section = match core::str::from_utf8(section_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("section must be valid UTF-8: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if score.section(section).is_none() {
+        write_error(format!("unknown score section: {section}"));
+        return unsafe { OUT_PTR };
+    }
+
+    // Hardcode 48000. Supports fractional + offset phrases for chunked long renders
+    // (to stay under the 2 MiB output buffer while producing contiguous audio of the take).
+    let wav = render_wav_chunk(&score, section, start_phrases, phrases, 48000);
+    write_output(&wav);
+    unsafe { OUT_PTR }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_render_wav_stereo_chunk(
+    score_ptr: *const u8,
+    score_len: usize,
+    section_ptr: *const u8,
+    section_len: usize,
+    start_phrases: f64,
+    phrases: f64,
+) -> *const u8 {
+    let score_slice = slice::from_raw_parts(score_ptr, score_len);
+    let score: PortableScore = match serde_json::from_slice(score_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("score JSON must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if let Err(error) = score.validate() {
+        write_error(format!("invalid score: {error}"));
+        return unsafe { OUT_PTR };
+    }
+
+    let section_slice = slice::from_raw_parts(section_ptr, section_len);
+    let section = match core::str::from_utf8(section_slice) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(format!("section must be valid UTF-8: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    if score.section(section).is_none() {
+        write_error(format!("unknown score section: {section}"));
+        return unsafe { OUT_PTR };
+    }
+
+    // Hardcode 48000; stereo WAV (interleaved L R 16-bit PCM). Chunked form.
+    let wav = render_wav_stereo_chunk(&score, section, start_phrases, phrases, 48000);
     write_output(&wav);
     unsafe { OUT_PTR }
 }

@@ -11,47 +11,7 @@ pub fn render_wav(
     phrases: usize,
     sample_rate: u32,
 ) -> Vec<u8> {
-    let section = score
-        .section(section_id)
-        .expect("section_id must exist in score");
-    let length_ticks = section.length_ticks;
-    let tps = score.ticks_per_second();
-    let phrase_sec = length_ticks as f64 / tps;
-    let total_sec = phrase_sec * phrases as f64;
-    let total_samples = (total_sec * sample_rate as f64).round() as usize;
-
-    let mut synth = Synth::new(sample_rate as f32);
-    let mut samples = Vec::with_capacity(total_samples);
-
-    let mut pos = 0usize;
-    let mut tick: u32 = 0;
-    const CHUNK: usize = 256;
-
-    while pos < total_samples {
-        let chunk = (total_samples - pos).min(CHUNK);
-        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
-        let local = tick % length_ticks.max(1);
-
-        for ev in events_starting_at(score, section_id, local, window_ticks) {
-            synth.trigger(&ev, tps);
-        }
-
-        let mut buf = vec![0.0f32; chunk];
-        synth.fill(&mut buf);
-        samples.extend_from_slice(&buf);
-
-        pos += chunk;
-        tick = tick.wrapping_add(window_ticks);
-    }
-
-    let mut master = MasterChain::new(sample_rate, MasterConfig::default());
-    // Must use the offline path for renders so that per-render LUFS measurement +
-    // true-peak limiting can be performed (realtime path cannot do this).
-    let _ = master.process_offline(&mut samples);
-
-    // The outer seam fade remains (cosmetic boundaries only; negligible effect on
-    // integrated LUFS and never increases true peak).
-    apply_outer_seam_fade(&mut samples, sample_rate, total_sec);
+    let samples = render_samples_mono(score, section_id, 0.0, phrases as f64, sample_rate, true);
     encode_16bit_mono_wav(&samples, sample_rate)
 }
 
@@ -62,46 +22,7 @@ pub fn render_wav_stereo(
     phrases: usize,
     sample_rate: u32,
 ) -> Vec<u8> {
-    let section = score
-        .section(section_id)
-        .expect("section_id must exist in score");
-    let length_ticks = section.length_ticks;
-    let tps = score.ticks_per_second();
-    let phrase_sec = length_ticks as f64 / tps;
-    let total_sec = phrase_sec * phrases as f64;
-    let total_samples = (total_sec * sample_rate as f64).round() as usize;
-
-    let mut synth = Synth::new(sample_rate as f32);
-    let mut left = Vec::with_capacity(total_samples);
-    let mut right = Vec::with_capacity(total_samples);
-
-    let mut pos = 0usize;
-    let mut tick: u32 = 0;
-    const CHUNK: usize = 256;
-
-    while pos < total_samples {
-        let chunk = (total_samples - pos).min(CHUNK);
-        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
-        let local = tick % length_ticks.max(1);
-
-        for ev in events_starting_at(score, section_id, local, window_ticks) {
-            synth.trigger(&ev, tps);
-        }
-
-        let mut bl = vec![0.0f32; chunk];
-        let mut br = vec![0.0f32; chunk];
-        synth.fill_stereo(&mut bl, &mut br);
-        left.extend_from_slice(&bl);
-        right.extend_from_slice(&br);
-
-        pos += chunk;
-        tick = tick.wrapping_add(window_ticks);
-    }
-
-    let mut master = MasterChain::new(sample_rate, MasterConfig::default());
-    let _ = master.process_offline_stereo(&mut left, &mut right);
-
-    apply_outer_seam_fade_stereo(&mut left, &mut right, sample_rate, total_sec);
+    let (left, right) = render_samples_stereo(score, section_id, 0.0, phrases as f64, sample_rate, true);
     encode_16bit_stereo_wav(&left, &right, sample_rate)
 }
 
@@ -183,6 +104,142 @@ fn encode_16bit_mono_wav(samples: &[f32], sr: u32) -> Vec<u8> {
         wav.extend_from_slice(&v.to_le_bytes());
     }
     wav
+}
+
+/// Core mono synthesis for a (start, dur) span in "phrase" units (fractional OK).
+/// start_phrases=0, phrases=N reproduces original. Master is per-rendered span.
+fn render_samples_mono(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+    apply_seam: bool,
+) -> Vec<f32> {
+    let section = score
+        .section(section_id)
+        .expect("section_id must exist in score");
+    let length_ticks = section.length_ticks;
+    let tps = score.ticks_per_second();
+    let phrase_sec = length_ticks as f64 / tps;
+    let dur_sec = phrase_sec * phrases;
+    let total_samples = (dur_sec * sample_rate as f64).round() as usize;
+
+    let mut synth = Synth::new(sample_rate as f32);
+    let mut samples = Vec::with_capacity(total_samples);
+
+    let mut pos = 0usize;
+    let start_tick = (start_phrases * length_ticks as f64).round() as u32;
+    let mut tick: u32 = start_tick;
+    const CHUNK: usize = 256;
+
+    while pos < total_samples {
+        let chunk = (total_samples - pos).min(CHUNK);
+        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
+        let local = tick % length_ticks.max(1);
+
+        for ev in events_starting_at(score, section_id, local, window_ticks) {
+            synth.trigger(&ev, tps);
+        }
+
+        let mut buf = vec![0.0f32; chunk];
+        synth.fill(&mut buf);
+        samples.extend_from_slice(&buf);
+
+        pos += chunk;
+        tick = tick.wrapping_add(window_ticks);
+    }
+
+    let mut master = MasterChain::new(sample_rate, MasterConfig::default());
+    // Must use the offline path for renders so that per-render LUFS measurement +
+    // true-peak limiting can be performed (realtime path cannot do this).
+    let _ = master.process_offline(&mut samples);
+
+    if apply_seam {
+        apply_outer_seam_fade(&mut samples, sample_rate, dur_sec);
+    }
+    samples
+}
+
+/// Core stereo synthesis for a (start, dur) span in "phrase" units (fractional OK).
+fn render_samples_stereo(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+    apply_seam: bool,
+) -> (Vec<f32>, Vec<f32>) {
+    let section = score
+        .section(section_id)
+        .expect("section_id must exist in score");
+    let length_ticks = section.length_ticks;
+    let tps = score.ticks_per_second();
+    let phrase_sec = length_ticks as f64 / tps;
+    let dur_sec = phrase_sec * phrases;
+    let total_samples = (dur_sec * sample_rate as f64).round() as usize;
+
+    let mut synth = Synth::new(sample_rate as f32);
+    let mut left = Vec::with_capacity(total_samples);
+    let mut right = Vec::with_capacity(total_samples);
+
+    let mut pos = 0usize;
+    let start_tick = (start_phrases * length_ticks as f64).round() as u32;
+    let mut tick: u32 = start_tick;
+    const CHUNK: usize = 256;
+
+    while pos < total_samples {
+        let chunk = (total_samples - pos).min(CHUNK);
+        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
+        let local = tick % length_ticks.max(1);
+
+        for ev in events_starting_at(score, section_id, local, window_ticks) {
+            synth.trigger(&ev, tps);
+        }
+
+        let mut bl = vec![0.0f32; chunk];
+        let mut br = vec![0.0f32; chunk];
+        synth.fill_stereo(&mut bl, &mut br);
+        left.extend_from_slice(&bl);
+        right.extend_from_slice(&br);
+
+        pos += chunk;
+        tick = tick.wrapping_add(window_ticks);
+    }
+
+    let mut master = MasterChain::new(sample_rate, MasterConfig::default());
+    let _ = master.process_offline_stereo(&mut left, &mut right);
+
+    if apply_seam {
+        apply_outer_seam_fade_stereo(&mut left, &mut right, sample_rate, dur_sec);
+    }
+    (left, right)
+}
+
+/// Render a (possibly offset/fractional) span of the take as mono WAV. For chunked
+/// long renders that must fit in the WASM 2 MiB output buffer. No outer seam.
+pub fn render_wav_chunk(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+) -> Vec<u8> {
+    let samples = render_samples_mono(score, section_id, start_phrases, phrases, sample_rate, false);
+    encode_16bit_mono_wav(&samples, sample_rate)
+}
+
+/// Render a (possibly offset/fractional) span of the take as stereo WAV. For chunked
+/// long renders. No outer seam.
+pub fn render_wav_stereo_chunk(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+) -> Vec<u8> {
+    let (left, right) = render_samples_stereo(score, section_id, start_phrases, phrases, sample_rate, false);
+    encode_16bit_stereo_wav(&left, &right, sample_rate)
 }
 
 #[cfg(test)]
