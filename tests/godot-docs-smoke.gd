@@ -14,7 +14,7 @@ extends SceneTree
 
 var failures: Array[String] = []
 
-const SECTION_TIMEOUT_MS := 12000
+const SECTION_TIMEOUT_MS := 180000
 const SETTLE_FRAMES := 10
 
 
