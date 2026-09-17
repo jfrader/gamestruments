@@ -4,9 +4,9 @@ This is the exact, repo-owned source for the Gamestruments itch.io listing.
 Any updates to the storefront must be approved here first.
 For official itch creator documentation, see: https://itch.io/docs/creators/
 
-The 0.1.3 copy below became current on 2026-09-15 (see `docs/releases/v0.1.3.md`
-for exact artifacts). It supersedes the 0.1.2 copy published on 2026-09-13
-(`docs/releases/v0.1.2.md`). The dated devlogs at the end are historical and are
+The 1.0.1 copy below became current on 2026-09-17 (see `docs/releases/v1.0.1.md`
+for exact artifacts). It supersedes the 0.1.3 copy published on 2026-09-15
+(`docs/releases/v0.1.3.md`). The dated devlogs at the end are historical and are
 not edited.
 
 ## Metadata Fields
@@ -20,7 +20,7 @@ not edited.
 - **Language:** English
 - **Tags:** adaptive-music, audio, dynamic-music, godot, godot-4, music, procedural, racing, soundtrack, adventure
 - **Release Status:** Released
-- **Released version:** 0.1.3 (2026-09-15)
+- **Released version:** 1.0.1 (2026-09-17)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
 - **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Godot and HTML5, one engine). The source repository is private.
@@ -83,18 +83,18 @@ The complete public docs and one free example script ship in a separate free dow
 
 All future updates to this kit are included with your purchase. Questions or bugs? Post in the comments.
 
-## Published downloads (live 2026-09-15)
+## Published downloads (live 2026-09-17)
 
-- Paid kit upload: `gamestruments-0.1.3-godot4.zip`, 9985245 bytes,
-  SHA-256 `4e519eeef592eca7e725f13d8075a5943b2f536ce2d8b67aa5005f72670d1fa3`,
+- Paid kit upload: `gamestruments-1.0.1-godot4.zip`, 10695434 bytes,
+  SHA-256 `f5724e947b66f91e4864e8a916ecd85f2a1203e1e1e76d393307354d89b4cd25`,
   type **Source code**, no OS executable flags. Built by the release workflow
-  from tag `v0.1.3` (commit `b43f3f2634385980ba9e8d12fcc0c00d719f4fc3`). This
-  replaces `gamestruments-0.1.2-godot4.zip` (9840405 bytes, SHA-256
-  `1af99d4c0ef5f4cd6092ce6660acedfc946155bae172c2fc6c491a76ac1a20b2`), which is
+  from tag `v1.0.1` (commit `5e78a4db43895ddc73a44138d425e7a454bf168a`). This
+  replaces `gamestruments-1.0.0-godot4.zip` (10679228 bytes, SHA-256
+  `2ee9d10ef6a0ea6b0e82479c1dfa817d5798c0eb02ed71202009852c02baaf74`), which is
   removed from the page so buyers only get the current kit.
 - Free per-file demo download on the same page:
-  `gamestruments-docs-and-example.zip`, 21983 bytes,
-  SHA-256 `a39569b8ca72e376d39679624703783258df6255a08c7dafec3c3edc4732a8c4`,
+  `gamestruments-docs-and-example.zip`, 22609 bytes,
+  SHA-256 `b447d6c89fd7614cd70240d7ab7d2ac69f0b1ef2b5d649c9eb665fc4d6f8d6d1`,
   type **Documentation or Instructions**, free-demo flag set. Contains the
   complete buyer docs plus one `example.gd` from the canonical quickstart; no
   addon or native binaries, and the example needs the paid addon to run.
@@ -194,3 +194,22 @@ Try it in your browser: https://gamestruments.gurisitos.games
 Get the kit: https://gurisitosgames.itch.io/gamestruments-godot
 
 All future updates are included. Building something with it? I'd love to see it — questions and bug reports are welcome in the comments.
+
+## Update Devlog — v1.0.1 (2026-09-17)
+
+**Title:** v1.0.1 — Theme Ride is back, and you can see the score
+
+Gamestruments 1.0.1 is out. Two things landed:
+
+- **Theme Ride** is back in the Suspense pool: the Decrypt cell and the Full
+  Breach hook over a full 4/4 rock backbeat, on every bar. It is a pool phase
+  like any other, so a `seeded` or `all-phases` take can include it.
+- The Audio Lab has a **Score Debugger**: one step grid per bar for every voice,
+  with hit counts and velocity, per-voice Solo/Mute, and Play bar. Point at a
+  bar instead of describing a feeling.
+
+If you already own the kit, grab the latest download — updates are included.
+
+**Heads-up for Suspense users:** the pool now has 28 phases, so seeded and
+all-phases Suspense takes are different songs than 1.0.0 produced. Racing and
+Adventure are unchanged.
