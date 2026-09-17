@@ -11,6 +11,9 @@ const LOOKAHEAD_SECONDS = 0.3;
 const MIN_GAIN = 0.0001;
 const NOTE_TAIL_SECONDS = 0.16;
 
+// Ambience send gain (verse/solo only). Set to 0.0 to A/B the room/ambience prototype completely off.
+const AMBIENCE = 1.0;
+
 type NoteEvent = Extract<MusicEvent, { kind: "note" }>;
 type SynthVoice = Exclude<
   NoteEvent["voice"],
@@ -742,9 +745,11 @@ export class DemoAudioEngine {
             ? bus.melody
             : bus.tonal,
         );
+        this.#scheduleAmbienceSend(event, start);
         return;
       }
       this.#schedulePercussion(event, start, event.voice === "reverse-cymbal" ? bus.tonal : bus.percussion);
+      this.#scheduleAmbienceSend(event, start);
     } finally {
       this.#schedulingSection = previousSection;
     }
@@ -2031,6 +2036,52 @@ export class DemoAudioEngine {
     parameter.exponentialRampToValueAtTime(sustainGain, decayEnd);
     parameter.setValueAtTime(sustainGain, end);
     parameter.exponentialRampToValueAtTime(MIN_GAIN, end + releaseTime);
+  }
+
+  #scheduleAmbienceSend(event: MusicEvent, start: number): void {
+    if (AMBIENCE <= 0) return;
+    if (event.section !== "verse" && event.section !== "solo") return;
+    const context = this.#context;
+    if (context === null || this.#noiseBuffer === null || this.#masterGain === null) {
+      return;
+    }
+    const seed = (event as { id?: string }).id ?? "amb";
+    const u = deterministicUnit(seed);
+    const uOff = deterministicUnit(`${seed}:aoff`);
+    const uFreq = deterministicUnit(`${seed}:afreq`);
+    const bedDuration = 0.27 + u * 0.22;
+    const baseLevel = 0.016 * AMBIENCE;
+    const velocity = (event as { velocity?: number }).velocity ?? 0.72;
+    const level = baseLevel * (0.65 + velocity * 0.35);
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    const delay = context.createDelay(0.18);
+    const feedback = context.createGain();
+    const delaySend = context.createGain();
+    source.buffer = this.#noiseBuffer;
+    filter.type = "lowpass";
+    filter.frequency.value = 620 + uFreq * 260;
+    filter.Q.value = 0.65;
+    envelope.gain.setValueAtTime(MIN_GAIN, start);
+    envelope.gain.linearRampToValueAtTime(Math.max(MIN_GAIN, level), start + 0.009);
+    envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, start + bedDuration);
+    delay.delayTime.value = 0.029 + u * 0.012;
+    feedback.gain.value = 0.26;
+    delaySend.gain.value = level * 0.48;
+    // direct bed + filtered-noise through small fixed fb delay (quiet room send)
+    source.connect(filter);
+    filter.connect(envelope);
+    envelope.connect(this.#masterGain);
+    envelope.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(delaySend);
+    delaySend.connect(this.#masterGain);
+    const offset = uOff * Math.max(0, this.#noiseBuffer.duration - bedDuration - 0.008);
+    source.start(start, offset);
+    source.stop(start + bedDuration + 0.04);
+    this.#cleanupAfter(source, [source, filter, envelope, delay, feedback, delaySend]);
   }
 
   #cleanupAfter(
