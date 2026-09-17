@@ -227,10 +227,16 @@ fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u
     };
     let arc = racing_arc_for_role(spec.role);
     let bias = density_bias(complexity, 0.62, 0.4);
-    // A flow/groove phase carries the race groove: the kit (rank 2) is present
-    // in every block, so a race loop never stops and restarts the drums. Other
-    // roles may still open on a sparse, drumless exposition (rank 1).
-    let floor = if spec.role == RacingPhaseRole::Groove {
+    // Every phase that carries the race groove — the build (`grid`), the flow
+    // (`cruise`) and the peaks (`attack`, `final-lap`) — keeps the kit (rank 2)
+    // in every block, so a race loop never stops and restarts the drums. Only
+    // the framing phases (intro, outro) may still open on a sparse, drumless
+    // exposition (rank 1); a deliberately drumless passage is its own phase
+    // (`breather`), never a block inside a groove.
+    let floor = if matches!(
+        spec.role,
+        RacingPhaseRole::Build | RacingPhaseRole::Groove | RacingPhaseRole::Peak
+    ) {
         2
     } else {
         1
@@ -2316,30 +2322,37 @@ mod tests {
         }
     }
 
+    /// Every phase that carries the race groove (the build `grid`, the flow
+    /// `cruise` and the peaks `attack`/`final-lap`) must keep the kit in every
+    /// block of the composed path, so the race loop never stops and restarts
+    /// the drums mid-groove.
     #[test]
-    fn seeded_flow_phase_keeps_kit_in_every_block() {
+    fn seeded_race_groove_phases_keep_kit_in_every_block() {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
                 let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
                     .expect("seeded");
                 let bar = score.bar_ticks();
-                let cruise = score.section("cruise").expect("cruise");
-                let bars = cruise.length_ticks / bar;
-                let block_bars = if bars <= 8 { 2 } else { 4 };
-                let blocks = (bars / block_bars) as usize;
-                for block in 0..blocks {
-                    let from = block as u32 * block_bars * bar;
-                    let to = from + block_bars * bar;
-                    let has_kit = cruise.events.iter().any(|event| {
-                        matches!(event, MusicEvent::Percussion { lane, .. } if lane.ends_with("-kit"))
-                            && event.start_tick() >= from
-                            && event.start_tick() < to
-                    });
-                    assert!(
-                        has_kit,
-                        "{style:?} {seed} cruise block {block} dropped the kit"
-                    );
+                for id in ["grid", "cruise", "attack", "final-lap"] {
+                    let section = score.section(id).expect(id);
+                    let bars = section.length_ticks / bar;
+                    let block_bars = if bars <= 8 { 2 } else { 4 };
+                    let blocks = (bars / block_bars) as usize;
+                    assert!(blocks >= 2, "{style:?} {seed} {id} needs blocks to develop");
+                    for block in 0..blocks {
+                        let from = block as u32 * block_bars * bar;
+                        let to = from + block_bars * bar;
+                        let has_kit = section.events.iter().any(|event| {
+                            matches!(event, MusicEvent::Percussion { lane, .. } if lane.ends_with("-kit"))
+                                && event.start_tick() >= from
+                                && event.start_tick() < to
+                        });
+                        assert!(
+                            has_kit,
+                            "{style:?} {seed} {id} block {block} dropped the kit"
+                        );
+                    }
                 }
             }
         }
