@@ -3081,26 +3081,46 @@ mod tests {
             let bars_in = section.length_ticks / bar;
             assert_eq!(bars_in, 8, "theme-ride is authored at eight bars");
             let pulse = bar / 8;
-            let has = |voice: &str, start: u32| {
-                section.events.iter().any(|event| {
-                    matches!(event, MusicEvent::Percussion { voice: v, start_tick, .. }
-                        if v == voice && *start_tick == start)
-                })
+            // Exact multiplicity, not presence: a second kit layered on top
+            // (for example if a pool phase ever went through `develop_drums`)
+            // would double these onsets and must fail here.
+            let count = |voice: &str, start: u32| {
+                section
+                    .events
+                    .iter()
+                    .filter(|event| {
+                        matches!(event, MusicEvent::Percussion { voice: v, start_tick, .. }
+                            if v == voice && *start_tick == start)
+                    })
+                    .count()
             };
             for index in 0..bars_in {
                 let base = index * bar;
-                assert!(
-                    has("kick", base) && has("kick", base + 4 * pulse),
-                    "theme-ride kick must land on beats 1 and 3 in bar {index}"
+                assert_eq!(
+                    count("kick", base),
+                    1,
+                    "theme-ride kick must land once on beat 1 in bar {index}"
                 );
-                assert!(
-                    has("snare", base + 2 * pulse) && has("snare", base + 6 * pulse),
-                    "theme-ride snare must land on beats 2 and 4 in bar {index}"
+                assert_eq!(
+                    count("kick", base + 4 * pulse),
+                    1,
+                    "theme-ride kick must land once on beat 3 in bar {index}"
+                );
+                assert_eq!(
+                    count("snare", base + 2 * pulse),
+                    1,
+                    "theme-ride snare must land once on beat 2 in bar {index}"
+                );
+                assert_eq!(
+                    count("snare", base + 6 * pulse),
+                    1,
+                    "theme-ride snare must land once on beat 4 in bar {index}"
                 );
                 for step in [1u32, 3, 5, 7] {
-                    assert!(
-                        has("hat", base + step * pulse),
-                        "theme-ride hat must land on the offbeat at step {step} in bar {index}"
+                    assert_eq!(
+                        count("hat", base + step * pulse),
+                        1,
+                        "theme-ride hat must land once on the offbeat at step {step} in bar {index}"
                     );
                 }
             }
