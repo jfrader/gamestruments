@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Audio Lab: added a Score Debugger view — one step grid per bar (8th or 16th subdivision, inferred from the events) with hit counts, first/last tick and velocity range per voice, plus Solo/Mute per voice and a Play bar action that holds the transport on that bar.
+
 ## [1.0.0] - 2026-09-17
 
 ### Added

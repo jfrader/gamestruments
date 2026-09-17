@@ -2032,3 +2032,79 @@ footer p {
     letter-spacing: -0.5px;
   }
 }
+
+/* Debugger */
+.debugger-view {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.debugger-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.debugger-bar-container {
+  margin-bottom: 32px;
+  background: #11120f;
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.debugger-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.debugger-bar-header h3 {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.debugger-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.debugger-grid th, .debugger-grid td {
+  border: 1px solid #333;
+  padding: 6px;
+  text-align: center;
+}
+
+.debugger-grid th {
+  background: #1a1a1a;
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.debugger-grid td:first-child {
+  text-align: left;
+  font-weight: bold;
+}
+
+.debugger-cell-hit {
+  background: var(--text-highlight);
+  color: var(--background);
+  font-weight: bold;
+}
+
+.debugger-grid button {
+  background: #2a2a2a;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  margin-right: 4px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.debugger-grid button:hover {
+  background: #444;
+}

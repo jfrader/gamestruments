@@ -29,7 +29,7 @@ type SynthVoice = Exclude<
   | "bell"
 >;
 
-export type SoloMode = "full" | "melody" | "rhythm";
+export type SoloMode = "full" | "melody" | "rhythm" | { voice: string; mute: boolean };
 export type TransitionCurve = "linear" | "equalPower";
 
 export function transitionCurveForEvent(event: MusicEvent): TransitionCurve {
@@ -105,6 +105,10 @@ export function sectionSchedulingState(
 }
 
 export function eventMatchesSolo(event: MusicEvent, mode: SoloMode): boolean {
+  if (typeof mode === "object") {
+    if (event.kind !== "note" && event.kind !== "percussion") return true;
+    return mode.mute ? event.voice !== mode.voice : event.voice === mode.voice;
+  }
   if (mode === "full") {
     return true;
   }

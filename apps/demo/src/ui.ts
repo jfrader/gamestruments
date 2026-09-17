@@ -35,7 +35,7 @@ function fmt(value: number): string {
   return String(Math.round(value * 10000) / 10000);
 }
 
-export type ViewName = "lab" | "games" | "genres";
+export type ViewName = "lab" | "games" | "genres" | "debugger";
 export { requireElement, elements };
 
 interface ArrangementOption {
@@ -519,7 +519,7 @@ export function setPlaybackPending(pending: boolean): void {
 export function renderView(): void {
   const requested = window.location.hash.slice(1);
   const view: ViewName =
-    requested === "games" || requested === "genres" ? requested : "lab";
+    requested === "games" || requested === "genres" || requested === "debugger" ? requested : "lab";
   elements.shell.dataset.view = view;
   for (const candidate of document.querySelectorAll<HTMLElement>("[data-view]")) {
     candidate.hidden = candidate.dataset.view !== view;

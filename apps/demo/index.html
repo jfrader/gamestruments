@@ -19,6 +19,7 @@
         </div>
         <nav class="view-nav" aria-label="Audio Lab views">
           <a href="#lab" data-view-link="lab" aria-current="page">Lab</a>
+          <a href="#debugger" data-view-link="debugger">Debugger</a>
           <a href="#games" data-view-link="games">Game types</a>
           <a href="#genres" data-view-link="genres">Genres</a>
         </nav>
@@ -279,6 +280,15 @@
           </p>
         </header>
         <ol class="catalog-index genre-index" id="genre-index"></ol>
+      </section>
+
+      <section class="debugger-view view" data-view="debugger" hidden>
+        <header class="debugger-header">
+          <h2>Score Debugger</h2>
+          <select id="debugger-phase-select" aria-label="Select phase"></select>
+          <button type="button" id="debugger-cue-btn">Cue Phase</button>
+        </header>
+        <div id="debugger-content" class="debugger-content"></div>
       </section>
 
       <footer>
