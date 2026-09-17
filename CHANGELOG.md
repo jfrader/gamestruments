@@ -5,6 +5,7 @@
 ### Added
 
 - Suspense's phase pool regained Theme Ride: a full 4/4 rock-backbeat ride (kick on beats 1 and 3, snare on 2 and 4, offbeat hats, every bar) that carries the Decrypt solo's high-register cell and the Full Breach late hook over the shared harmonic arc. The backbeat is pinned deterministically for this phase alone, so every other phase's seeded kit choice is unchanged.
+- Audio Lab: added a Score Debugger view — one step grid per bar (8th or 16th subdivision, inferred from the events) with hit counts, first/last tick and velocity range per voice, plus Solo/Mute per voice and a Play bar action that holds the transport on that bar.
 
 ## [1.0.0] - 2026-09-17
 

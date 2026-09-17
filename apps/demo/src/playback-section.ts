@@ -32,3 +32,8 @@ export function playbackSectionOnScore(
   }
   return score.defaultSection;
 }
+
+/** A one-bar slice the score debugger injects for one-off playback, not a phase. */
+export function isDebugBarSection(id: SectionId): boolean {
+  return id.includes("-bar-");
+}

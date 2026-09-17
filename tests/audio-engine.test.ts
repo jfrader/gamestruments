@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import {
   createTransitionCurve,
+  eventMatchesSolo,
   schedulingStartTick,
   sectionSchedulingState,
   transitionCurveForEvent,
@@ -106,8 +107,7 @@ describe("audio scheduling horizons", () => {
   });
 });
 
-describe("form handoff kicks", () => {
-  it("includes the incoming downbeat kick when filling from loop origin", () => {
+describe("form handoff kicks", () => {  it("includes the incoming downbeat kick when filling from loop origin", () => {
     const origin = 8 * 4 * 960;
     const section = {
       id: "pre-chorus",
@@ -122,5 +122,43 @@ describe("form handoff kicks", () => {
     assert.equal(kick[0]?.startTick, origin);
     const missed = eventsInRange(section, origin + 80, origin + 480, origin);
     assert.equal(missed.length, 0);
+  });
+});
+
+describe("per-voice solo and mute", () => {
+  it("keeps every voice for the full mix", () => {
+    assert.equal(eventMatchesSolo(harmony, "full"), true);
+    assert.equal(eventMatchesSolo(percussion, "full"), true);
+  });
+
+  it("soloes exactly one voice", () => {
+    assert.equal(eventMatchesSolo(harmony, { voice: "warm", mute: false }), true);
+    assert.equal(eventMatchesSolo(bass, { voice: "warm", mute: false }), false);
+    assert.equal(eventMatchesSolo(percussion, { voice: "warm", mute: false }), false);
+  });
+
+  it("mutes exactly one voice", () => {
+    assert.equal(eventMatchesSolo(harmony, { voice: "warm", mute: true }), false);
+    assert.equal(eventMatchesSolo(bass, { voice: "warm", mute: true }), true);
+  });
+
+  it("matches percussion by its kit voice", () => {
+    assert.equal(eventMatchesSolo(percussion, { voice: "kick", mute: false }), true);
+    assert.equal(eventMatchesSolo(percussion, { voice: "snare", mute: false }), false);
+  });
+
+  it("passes events that carry no voice", () => {
+    const stem: MusicEvent = {
+      id: "section:stem:0",
+      section: "section",
+      lane: "stem",
+      kind: "stem",
+      asset: "bed",
+      action: "start",
+      startTick: 0,
+      durationTicks: 960,
+      velocity: 0.5,
+    };
+    assert.equal(eventMatchesSolo(stem, { voice: "warm", mute: true }), true);
   });
 });

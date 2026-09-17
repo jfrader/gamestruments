@@ -14,6 +14,7 @@ import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.
 import { cueView } from "./section-cues.ts";
 import {
   ADVENTURE_SCENE_SECTIONS,
+  isDebugBarSection,
   SUSPENSE_PHASE_SECTIONS,
 } from "./playback-section.ts";
 import { phaseName } from "./phase-names.ts";
@@ -35,7 +36,12 @@ function fmt(value: number): string {
   return String(Math.round(value * 10000) / 10000);
 }
 
-export type ViewName = "lab" | "games" | "genres";
+/** The score's real phases: the debugger's transient bar slices are not phases. */
+function phaseSections(score: PortableScore): readonly PortableSection[] {
+  return score.sections.filter((section) => !isDebugBarSection(section.id));
+}
+
+export type ViewName = "lab" | "games" | "genres" | "debugger";
 export { requireElement, elements };
 
 interface ArrangementOption {
@@ -67,7 +73,8 @@ const sectionRows = new Map<
 
 export function createSectionRows(score: PortableScore): void {
   sectionRows.clear();
-  const rows = score.sections.map((section) => {
+  const phases = phaseSections(score);
+  const rows = phases.map((section) => {
     const item = document.createElement("li");
     const label = document.createElement("span");
     const meter = document.createElement("i");
@@ -86,7 +93,7 @@ export function createSectionRows(score: PortableScore): void {
     return item;
   });
   elements.sectionList.replaceChildren(...rows);
-  elements.sectionSelect.replaceChildren(...score.sections.map((section) => {
+  elements.sectionSelect.replaceChildren(...phases.map((section) => {
     const option = document.createElement("option");
     option.value = section.id;
     option.textContent = `${section.label} · ${section.lengthTicks / (score.beatsPerBar * score.ticksPerBeat)} bars`;
@@ -318,7 +325,7 @@ export function renderGenerationControls(
   }
   elements.generatorSummary.value = [
     score.id,
-    `${score.sections.length} sections @ ${score.bpm} bpm`,
+    `${phaseSections(score).length} sections @ ${score.bpm} bpm`,
     "engine: wasm",
   ].join(" / ");
 }
@@ -372,7 +379,7 @@ export function renderSectionSteps(
   snapshot: TransportSnapshot,
   busy: boolean,
 ): void {
-  const sections = score.sections;
+  const sections = phaseSections(score);
   const enabled = sections.length > 1 && !busy;
   const active =
     snapshot.transition !== null && tick >= snapshot.transition.startTick
@@ -519,7 +526,7 @@ export function setPlaybackPending(pending: boolean): void {
 export function renderView(): void {
   const requested = window.location.hash.slice(1);
   const view: ViewName =
-    requested === "games" || requested === "genres" ? requested : "lab";
+    requested === "games" || requested === "genres" || requested === "debugger" ? requested : "lab";
   elements.shell.dataset.view = view;
   for (const candidate of document.querySelectorAll<HTMLElement>("[data-view]")) {
     candidate.hidden = candidate.dataset.view !== view;

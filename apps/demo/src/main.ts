@@ -58,7 +58,10 @@ import {
   versionIndex,
 } from "./state";
 
+import { setupScoreDebugger, renderDebuggerGrid } from "./score-grid.ts";
+
 await initializeLab();
+setupScoreDebugger();
 
 /** The one status line per arrangement, for every recipe. */
 const ARRANGEMENT_READY: Record<Arrangement, string> = {
@@ -78,6 +81,7 @@ function renderCurrentScore(): void {
     currentArrangement(),
     phase,
   );
+  renderDebuggerGrid();
 }
 
 async function togglePlayback(): Promise<void> {
