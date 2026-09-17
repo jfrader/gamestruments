@@ -226,11 +226,11 @@ describe("Racing arrangements through the shipped WASM", () => {
     );
   });
 
-  it("Seeded builds a song form over the six sections and loops to a groove", () => {
+  it("Seeded builds a song form over the unified pool and loops to a groove", () => {
     const { score } = generate({ recipe: "racing", style: "funk", arrangement: "seeded" });
 
     assert.match(score.id, /-seeded$/);
-    assert.equal(score.sections.length, 7);
+    assert.equal(score.sections.length, 14);
     const form = formOf(score);
     assert.ok(form.steps.length >= 6);
     for (const step of form.steps) {
@@ -240,9 +240,45 @@ describe("Racing arrangements through the shipped WASM", () => {
       );
     }
     assert.equal(form.steps[0]!.section, "garage");
-    assert.equal(form.steps[form.steps.length - 1]!.section, "victory");
+    assert.ok(
+      ["victory", "cooldown"].includes(form.steps[form.steps.length - 1]!.section),
+      "seeded form must end on a terminal",
+    );
     assert.ok(form.loopFrom !== undefined, "seeded form must have a loopFrom");
-    assert.equal(form.steps[form.loopFrom!]!.section, "cruise");
+    assert.ok(
+      ["cruise", "slipstream"].includes(form.steps[form.loopFrom!]!.section),
+      "seeded form must loop to a groove",
+    );
+  });
+
+  it("Seeded carries every pool phase plus the game-signal sections and rules", () => {
+    const { score } = generate({ recipe: "racing", style: "funk", arrangement: "seeded" });
+
+    const pool = [
+      "garage", "ignition", "grid", "breather", "cruise", "slipstream",
+      "attack", "redline", "final-lap", "victory", "cooldown",
+    ];
+    for (const id of [...pool, "defeat", "recovery", "wrong-way"]) {
+      assert.ok(
+        score.sections.some((section) => section.id === id),
+        `seeded score must carry ${id}`,
+      );
+    }
+    const targets = score.rules.map((rule) => rule.target);
+    for (const id of ["defeat", "recovery", "wrong-way"]) {
+      assert.ok(targets.includes(id), `seeded rules must select ${id}`);
+    }
+    // A loss/DNF rule selects defeat; a win still selects victory.
+    const finishRules = score.rules.filter((rule) => {
+      const when = rule.when.categorical ?? {};
+      return when.racePhase === "finish";
+    });
+    const defeatRule = finishRules.find((rule) => {
+      const values = rule.when.categorical?.finishResult;
+      return Array.isArray(values) ? values.includes("loss") : values === "loss";
+    });
+    assert.ok(defeatRule, "a finish rule must select defeat on loss");
+    assert.equal(defeatRule.target, "defeat");
   });
 
   it("Seeded is deterministic and varies with the seed", () => {

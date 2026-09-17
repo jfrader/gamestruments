@@ -206,23 +206,23 @@ test("Racing All phases and Seeded offer the two arrangements and announce them"
   await page.goto("/#lab");
   await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Seeded (the default) composes a song form over the six phases plus the
-  // drumless Breather.
+  // Seeded (the default) composes a song form over the unified eleven-phase
+  // pool plus the game-signal sections.
   await expect(page.locator("#score-title")).toContainText("Seeded");
-  await expect(page.locator("#section-list li")).toHaveCount(7);
+  await expect(page.locator("#section-list li")).toHaveCount(14);
   await expect(page.locator("#section-control")).toBeVisible();
 
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
   await expect(page.locator("#score-title")).toContainText("All phases");
-  await expect(page.locator("#section-list li")).toHaveCount(10);
+  await expect(page.locator("#section-list li")).toHaveCount(14);
 
   await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
   await expect(page.locator("#score-title")).toContainText("Seeded");
-  await expect(page.locator("#section-list li")).toHaveCount(7);
+  await expect(page.locator("#section-list li")).toHaveCount(14);
   await expect(page.locator("#section-control")).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -258,7 +258,7 @@ test("every recipe exposes exactly the All phases and Seeded arrangements", asyn
   }
 });
 
-test("All phases to Seeded while a new phase is active falls back to Garage", async ({ page }) => {
+test("All phases and Seeded share the pool, so a cued phase survives the switch", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -266,19 +266,19 @@ test("All phases to Seeded while a new phase is active falls back to Garage", as
   });
   await page.goto("/#lab");
 
-  // All phases is the ten-section tour; cue and play Ignition, a phase the
-  // seeded composer's six-section pool does not have.
+  // Both arrangements carry every pool phase; cue and play Ignition.
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Cue Ignition", exact: true }).click();
   await page.locator("#center-play").click();
   await expect(page.locator("#mood-name")).toHaveText("Ignition");
 
-  // Roll back to Seeded while Ignition is the active section.
+  // Roll back to Seeded while Ignition is the active section: the unified pool
+  // keeps it cueable instead of falling back to Garage.
   await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
-  await expect(page.locator("#mood-name")).toHaveText("Garage");
+  await expect(page.locator("#mood-name")).toHaveText("Ignition");
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await page.locator("#start-audio").click();
   expect(errors).toEqual([]);

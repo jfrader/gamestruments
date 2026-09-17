@@ -385,8 +385,26 @@ fn form_index_for(score: &PortableScore, section: &str) -> Option<usize> {
 }
 
 pub fn select_section(score: &PortableScore, state: &GameState) -> String {
-    if state.finish_result == "win" && state.race_phase == "finish" {
+    if state.race_phase == "finish" {
+        if state.finish_result == "win" {
+            return "victory".into();
+        }
+        // A loss or DNF cues the defeat outro where the score carries one;
+        // original/extended keep victory as the only finish.
+        if matches!(state.finish_result.as_str(), "loss" | "dnf")
+            && score.section("defeat").is_some()
+        {
+            return "defeat".into();
+        }
         return "victory".into();
+    }
+    // Race incidents: recovery (a reset) and wrong-way. They outrank the
+    // intensity and final-lap rules so an explicit incident cue always wins.
+    if state.race_phase == "recovery" && score.section("recovery").is_some() {
+        return "recovery".into();
+    }
+    if state.race_phase == "wrong-way" && score.section("wrong-way").is_some() {
+        return "wrong-way".into();
     }
     if state.final_lap {
         return "final-lap".into();
@@ -398,15 +416,15 @@ pub fn select_section(score: &PortableScore, state: &GameState) -> String {
         "race" => "cruise".into(),
         "grid" => "grid".into(),
         "garage" => "garage".into(),
-        "finish" => "victory".into(),
         _ => score.default_section.clone(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::AdaptiveTransport;
+    use super::{select_section, AdaptiveTransport};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
+    use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
     use crate::score::{GameState, TraceState};
     use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
@@ -422,6 +440,23 @@ mod tests {
             syncopation: 0.6,
         })
         .expect("transport test score must validate")
+    }
+
+    fn composed_score() -> crate::score::PortableScore {
+        generate_racing_arrangement(
+            &GenerateInput {
+                secret: "qa-secret".into(),
+                seed: "qa-race".into(),
+                style: Style::Funk,
+                palette: InstrumentPalette::default(),
+                energy: 0.6,
+                complexity: 0.5,
+                brightness: 0.5,
+                syncopation: 0.6,
+            },
+            RacingArrangement::Seeded,
+        )
+        .expect("composed transport test score must validate")
     }
 
     #[test]
@@ -442,6 +477,135 @@ mod tests {
         );
         transport.advance(bar * 4);
         assert_eq!(transport.current_section(), "cruise");
+    }
+
+    #[test]
+    fn finish_result_selects_victory_on_a_win_and_defeat_on_a_loss() {
+        let composed = composed_score();
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "finish".into(),
+                    finish_result: "win".into(),
+                    ..GameState::default()
+                },
+            ),
+            "victory"
+        );
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "finish".into(),
+                    finish_result: "loss".into(),
+                    ..GameState::default()
+                },
+            ),
+            "defeat"
+        );
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "finish".into(),
+                    finish_result: "dnf".into(),
+                    ..GameState::default()
+                },
+            ),
+            "defeat"
+        );
+    }
+
+    #[test]
+    fn original_score_keeps_victory_for_a_loss() {
+        // Original carries no defeat section, so a loss still resolves to
+        // victory — the frozen original behaviour is untouched.
+        let original = score();
+        assert_eq!(
+            select_section(
+                &original,
+                &GameState {
+                    race_phase: "finish".into(),
+                    finish_result: "loss".into(),
+                    ..GameState::default()
+                },
+            ),
+            "victory"
+        );
+        assert!(original.section("defeat").is_none());
+    }
+
+    #[test]
+    fn recovery_and_wrong_way_cue_their_phase_and_resolve_back_to_cruise() {
+        let composed = composed_score();
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "recovery".into(),
+                    finish_result: "none".into(),
+                    ..GameState::default()
+                },
+            ),
+            "recovery"
+        );
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "wrong-way".into(),
+                    finish_result: "none".into(),
+                    ..GameState::default()
+                },
+            ),
+            "wrong-way"
+        );
+        // A subsequent race signal resolves back into the flow groove.
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    race_phase: "race".into(),
+                    finish_result: "none".into(),
+                    ..GameState::default()
+                },
+            ),
+            "cruise"
+        );
+    }
+
+    #[test]
+    fn recovery_incident_outranks_intensity_and_final_lap() {
+        let composed = composed_score();
+        // Even under max pressure on the final lap, an explicit recovery cue
+        // wins the selection.
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    intensity: 0.9,
+                    position_pressure: 0.9,
+                    final_lap: true,
+                    race_phase: "recovery".into(),
+                    finish_result: "none".into(),
+                },
+            ),
+            "recovery"
+        );
+        assert_eq!(
+            select_section(
+                &composed,
+                &GameState {
+                    intensity: 0.9,
+                    position_pressure: 0.9,
+                    final_lap: true,
+                    race_phase: "wrong-way".into(),
+                    finish_result: "none".into(),
+                },
+            ),
+            "wrong-way"
+        );
     }
 
     fn suspense_pool(seed: &str) -> crate::score::PortableScore {

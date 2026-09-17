@@ -14,18 +14,28 @@ use crate::score::SongForm;
 /// Maximum allowed energy step between adjacent composed phases (0-100 scale).
 pub const MAX_ENERGY_DELTA: u32 = 35;
 
-/// The Racing phase pool in natural race order. `breather` is a composed-only
-/// drumless phase (no kit) that resolves into the flow; the other six are the
-/// base sections derived from the authored plans.
-pub const RACING_SECTION_IDS: [&str; 7] = [
+/// The Racing composition pool in natural race order. The six base sections
+/// plus the four authored phases (`ignition`/`slipstream`/`redline`/`cooldown`)
+/// and the composed-only drumless `breather`. This is the one pool both the
+/// `seeded` composer and the `all-phases` tour draw from.
+pub const RACING_SECTION_IDS: [&str; 11] = [
     "garage",
+    "ignition",
     "grid",
     "breather",
     "cruise",
+    "slipstream",
     "attack",
+    "redline",
     "final-lap",
     "victory",
+    "cooldown",
 ];
+
+/// Game-signal sections carried by every composed score so the game can cue
+/// them, but never part of the composed song form: the loss outro (`defeat`)
+/// and the two race incidents (`recovery`, `wrong-way`).
+pub const RACING_SIGNAL_IDS: [&str; 3] = ["defeat", "recovery", "wrong-way"];
 
 /// A Racing phase as the composer sees it: its role and energy band, derived
 /// from the authored plan, plus the authored length (every Racing section is
@@ -53,7 +63,12 @@ impl PhaseMeta for RacingPhaseSpec {
     }
 
     fn is_outro(&self) -> bool {
-        self.role == RacingPhaseRole::Outro
+        // Both the win outro (victory) and the post-outro release (cooldown)
+        // are terminal: either may close a form, and neither appears elsewhere.
+        matches!(
+            self.role,
+            RacingPhaseRole::Outro | RacingPhaseRole::PostOutro
+        )
     }
 }
 
@@ -63,24 +78,53 @@ pub fn racing_phase_spec(id: &str) -> Option<RacingPhaseSpec> {
         .iter()
         .copied()
         .find(|candidate| *candidate == id)?;
-    // The breather has no authored plan: it is a composed-only drumless phase,
-    // so its role and energy live here rather than being derived from `PLANS`.
-    if pool_id == "breather" {
-        return Some(RacingPhaseSpec {
+    // The breather, the four authored phases and the post-outro have no base
+    // plan (they are built over a source section), so their role, energy and
+    // authored length live here rather than being derived from `PLANS`.
+    match pool_id {
+        "breather" => Some(RacingPhaseSpec {
             id: "breather",
             role: RacingPhaseRole::Breather,
             energy: 60,
             bars: 4,
             one_shot: false,
-        });
+        }),
+        "ignition" => Some(RacingPhaseSpec {
+            id: "ignition",
+            role: RacingPhaseRole::Build,
+            energy: 62,
+            bars: 8,
+            one_shot: false,
+        }),
+        "slipstream" => Some(RacingPhaseSpec {
+            id: "slipstream",
+            role: RacingPhaseRole::Groove,
+            energy: 78,
+            bars: 16,
+            one_shot: false,
+        }),
+        "redline" => Some(RacingPhaseSpec {
+            id: "redline",
+            role: RacingPhaseRole::Peak,
+            energy: 98,
+            bars: 16,
+            one_shot: false,
+        }),
+        "cooldown" => Some(RacingPhaseSpec {
+            id: "cooldown",
+            role: RacingPhaseRole::PostOutro,
+            energy: 55,
+            bars: 8,
+            one_shot: false,
+        }),
+        _ => Some(RacingPhaseSpec {
+            id: pool_id,
+            role: racing_phase_role(id)?,
+            energy: racing_phase_energy(id)?,
+            bars: 4,
+            one_shot: matches!(id, "garage" | "victory"),
+        }),
     }
-    Some(RacingPhaseSpec {
-        id: pool_id,
-        role: racing_phase_role(id)?,
-        energy: racing_phase_energy(id)?,
-        bars: 4,
-        one_shot: matches!(id, "garage" | "victory"),
-    })
 }
 
 /// The compose seed for a Racing level: a hash of the project secret and level
@@ -98,8 +142,8 @@ pub fn racing_compose(seed: u32) -> SongForm {
 }
 
 /// The Racing pool as the shared composer sees it: role/energy metadata derived
-/// from the authored plans, the Racing role grammar, and the fixed 6..=9-step
-/// band with an always-outro ending.
+/// from the authored plans, the Racing role grammar, and the fixed 6..=12-step
+/// band with an outro-or-post-outro ending.
 struct RacingPool;
 
 impl PhasePool for RacingPool {
@@ -120,21 +164,31 @@ impl PhasePool for RacingPool {
             Build => matches!(next.role, Groove | Breather),
             Breather => matches!(next.role, Groove),
             Groove => matches!(next.role, Groove | Build | Peak | Breather),
-            Peak => matches!(next.role, Peak | Groove | Outro),
+            Peak => matches!(next.role, Peak | Groove | Outro | PostOutro),
             Outro => false,
+            PostOutro => false,
         }
     }
 
     fn energy_legal(prev: RacingPhaseSpec, next: RacingPhaseSpec) -> bool {
+        // The post-climax release (Peak -> PostOutro) may drop the whole band:
+        // a resolved-down cooldown is a deliberate large step, not an error.
+        if prev.role == RacingPhaseRole::Peak && next.role == RacingPhaseRole::PostOutro {
+            return true;
+        }
         i32::abs(prev.energy as i32 - next.energy as i32) <= MAX_ENERGY_DELTA as i32
     }
 
     fn ending_legal(spec: RacingPhaseSpec, _want_outro: bool) -> bool {
-        spec.role == RacingPhaseRole::Outro
+        // A composed song ends on the win outro or the post-outro release.
+        matches!(
+            spec.role,
+            RacingPhaseRole::Outro | RacingPhaseRole::PostOutro
+        )
     }
 
     fn count(_request: (), rng: &mut DeterministicRandom) -> usize {
-        (6 + rng.integer(4)) as usize // 6..=9 steps
+        (6 + rng.integer(7)) as usize // 6..=12 steps, so the full pool is reachable
     }
 
     fn want_outro(_request: (), _rng: &mut DeterministicRandom) -> bool {
@@ -155,6 +209,12 @@ impl PhasePool for RacingPool {
 pub fn racing_phase_bars(spec: &RacingPhaseSpec, seed: u32, energy: f64) -> u32 {
     let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{}:bars", spec.id)));
     let authored = spec.bars.max(4);
+    // The authored multi-block phases (ignition/slipstream/redline/cooldown)
+    // already carry deliberate lengths; the composed path honours them as-is
+    // rather than stretching an already-long phase out further.
+    if authored > 4 {
+        return authored;
+    }
     let band = if energy >= 0.66 {
         1
     } else if energy < 0.33 {
@@ -163,10 +223,20 @@ pub fn racing_phase_bars(spec: &RacingPhaseSpec, seed: u32, energy: f64) -> u32 
         rng.integer(2)
     };
     match spec.role {
-        RacingPhaseRole::Intro | RacingPhaseRole::Outro | RacingPhaseRole::Breather => authored,
+        RacingPhaseRole::Intro
+        | RacingPhaseRole::Outro
+        | RacingPhaseRole::PostOutro
+        | RacingPhaseRole::Breather => authored,
         RacingPhaseRole::Build | RacingPhaseRole::Groove => authored + authored * band,
         RacingPhaseRole::Peak => authored * 2 + authored * band,
     }
+}
+
+/// The canonical all-phases tour: every composition-pool phase once, in pool
+/// order, looping back to the first groove (`cruise`). Game-signal sections are
+/// not toured.
+pub fn racing_all_phases_form() -> SongForm {
+    composer::canonical_form::<RacingPool>()
 }
 
 #[cfg(test)]
@@ -184,12 +254,15 @@ mod tests {
             .map(|id| racing_phase_spec(id).ok_or_else(|| format!("unknown phase {id}")))
             .collect::<Result<_, _>>()?;
 
-        // Intro first, outro last, both once.
+        // Intro first, terminal ending last, both once.
         if specs[0].role != RacingPhaseRole::Intro {
             return Err("form must begin with the Intro".into());
         }
-        if specs.last().map(|spec| spec.role) != Some(RacingPhaseRole::Outro) {
-            return Err("form must end with the Outro".into());
+        if !matches!(
+            specs.last().map(|spec| spec.role),
+            Some(RacingPhaseRole::Outro | RacingPhaseRole::PostOutro)
+        ) {
+            return Err("form must end with the Outro or the Post-outro".into());
         }
         let mut seen_one_shot: Vec<&str> = Vec::new();
         for spec in &specs {
@@ -204,8 +277,12 @@ mod tests {
             if spec.role == RacingPhaseRole::Intro && index != 0 {
                 return Err(format!("Intro appears at step {index}, not first"));
             }
-            if spec.role == RacingPhaseRole::Outro && index != specs.len() - 1 {
-                return Err(format!("Outro {} is not last", spec.id));
+            if matches!(
+                spec.role,
+                RacingPhaseRole::Outro | RacingPhaseRole::PostOutro
+            ) && index != specs.len() - 1
+            {
+                return Err(format!("terminal {} is not last", spec.id));
             }
             if let Some(prev) = index.checked_sub(1).map(|i| specs[i]) {
                 if !RacingPool::role_legal(prev, *spec) {
@@ -255,14 +332,54 @@ mod tests {
                 .iter()
                 .filter_map(|&id| racing_phase_spec(id))
                 .count(),
-            7
+            11
         );
         assert!(racing_phase_spec("garage").unwrap().one_shot);
         assert!(racing_phase_spec("victory").unwrap().one_shot);
-        for id in ["grid", "breather", "cruise", "attack", "final-lap"] {
+        for id in [
+            "ignition",
+            "grid",
+            "breather",
+            "cruise",
+            "slipstream",
+            "attack",
+            "redline",
+            "final-lap",
+            "cooldown",
+        ] {
             assert!(!racing_phase_spec(id).unwrap().one_shot, "{id} repeats");
         }
         assert!(racing_phase_spec("attack").unwrap().energy > racing_phase_spec("cruise").unwrap().energy);
+    }
+
+    #[test]
+    fn pool_specs_cover_the_new_phases_with_role_and_energy() {
+        for (id, role, energy, bars) in [
+            ("ignition", RacingPhaseRole::Build, 62, 8),
+            ("slipstream", RacingPhaseRole::Groove, 78, 16),
+            ("redline", RacingPhaseRole::Peak, 98, 16),
+            ("cooldown", RacingPhaseRole::PostOutro, 55, 8),
+            ("breather", RacingPhaseRole::Breather, 60, 4),
+        ] {
+            let spec = racing_phase_spec(id).unwrap();
+            assert_eq!(spec.role, role, "{id} role");
+            assert_eq!(spec.energy, energy, "{id} energy");
+            assert_eq!(spec.bars, bars, "{id} bars");
+            assert!(!spec.one_shot, "{id} one_shot");
+        }
+        // The post-outro is a terminal ending alongside victory, not a rival.
+        let cooldown = racing_phase_spec("cooldown").unwrap();
+        let victory = racing_phase_spec("victory").unwrap();
+        assert!(RacingPool::ending_legal(cooldown, true));
+        assert!(RacingPool::ending_legal(victory, true));
+        assert!(RacingPool::role_legal(
+            racing_phase_spec("final-lap").unwrap(),
+            cooldown
+        ));
+        assert!(RacingPool::energy_legal(
+            racing_phase_spec("final-lap").unwrap(),
+            cooldown
+        ));
     }
 
     #[test]
@@ -325,7 +442,7 @@ mod tests {
             validate_racing_form(&id_refs, form.loop_from)
                 .unwrap_or_else(|error| panic!("seed {seed}: {error}"));
             assert!(
-                (6..=9).contains(&ids.len()),
+                (6..=12).contains(&ids.len()),
                 "seed {seed}: count {}",
                 ids.len()
             );
@@ -354,8 +471,16 @@ mod tests {
                 let spec = racing_phase_spec(id).unwrap();
                 let bars = racing_phase_bars(&spec, seed, 0.5);
                 assert_eq!(bars % 4, 0, "{id} bars {bars} not tile-aligned");
+                if spec.bars > 4 {
+                    // Multi-block authored phases keep their length composed.
+                    assert_eq!(bars, spec.bars, "{id} bars {bars}");
+                    continue;
+                }
                 match spec.role {
-                    RacingPhaseRole::Intro | RacingPhaseRole::Outro | RacingPhaseRole::Breather => {
+                    RacingPhaseRole::Intro
+                    | RacingPhaseRole::Outro
+                    | RacingPhaseRole::PostOutro
+                    | RacingPhaseRole::Breather => {
                         assert_eq!(bars, 4, "{id}")
                     }
                     RacingPhaseRole::Build | RacingPhaseRole::Groove => {
@@ -367,5 +492,38 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn every_pool_phase_is_reachable_from_the_seeded_composer() {
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for seed in 0..4096u32 {
+            let form = racing_compose(0x4ace_0000 ^ seed);
+            for step in &form.steps {
+                seen.insert(step.section.clone());
+            }
+        }
+        for id in RACING_SECTION_IDS {
+            assert!(seen.contains(id), "composer never chose {id}");
+        }
+    }
+
+    #[test]
+    fn all_phases_form_tours_every_pool_phase() {
+        let form = racing_all_phases_form();
+        let ids: Vec<&str> = form
+            .steps
+            .iter()
+            .map(|step| step.section.as_str())
+            .collect();
+        assert_eq!(ids, RACING_SECTION_IDS.to_vec());
+        let loop_from = form.loop_from.unwrap() as usize;
+        assert_eq!(form.steps[loop_from].section, "cruise");
+        assert_eq!(
+            racing_phase_spec(&form.steps[loop_from].section)
+                .unwrap()
+                .role,
+            RacingPhaseRole::Groove
+        );
     }
 }

@@ -177,6 +177,11 @@ pub enum RacingPhaseRole {
     Groove,
     Peak,
     Outro,
+    /// A composed-only post-outro release: the resolved-down `cooldown` that
+    /// follows a win. A distinct terminal ending from [`Outro`] (victory), so
+    /// the two never compete for the single outro slot. Not derived from a plan
+    /// — the pool assigns it to the `cooldown` phase.
+    PostOutro,
     /// A composed-only drumless breather: no kit, resolved into the flow. Not
     /// derived from a plan — the pool assigns it to the `breather` phase.
     Breather,
