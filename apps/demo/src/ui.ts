@@ -352,7 +352,7 @@ export function renderAuditionControls(levelSeed: string, soloMode: SoloMode): v
   renderVersion(levelSeed);
 }
 
-/** The version readout: `level-001 · Versión 3`. */
+/** The version readout: `level-001 · Version 3`. */
 export function renderVersion(levelSeed: string): void {
   elements.versionValue.value = versionLabel(levelSeed, nextVersionNumber());
 }

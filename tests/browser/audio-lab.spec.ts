@@ -37,7 +37,7 @@ test("generation controls remain functional before and during playback", async (
   await page.locator("#level-seed").fill("release-e2e");
   await page.locator("#apply-seed").click();
   await expect(page.locator("#variation-value")).toHaveText("release-e2e");
-  await expect(page.locator("#version-value")).toHaveText("release-e2e · Versión 1");
+  await expect(page.locator("#version-value")).toHaveText("release-e2e · Version 1");
 
   await page.locator("#generation-energy").evaluate((input: HTMLInputElement) => {
     input.value = "0.91";
@@ -50,8 +50,8 @@ test("generation controls remain functional before and during playback", async (
   // The version axis is a second performance of the same piece. It starts the
   // engine when idle, so playback is asserted directly here.
   await page.locator("#new-version").click();
-  await expect(page.locator("#version-value")).toHaveText("release-e2e · Versión 2");
-  await expect(page.locator("#audition-status")).toContainText("Versión 1");
+  await expect(page.locator("#version-value")).toHaveText("release-e2e · Version 2");
+  await expect(page.locator("#audition-status")).toContainText("Version 1");
   await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
   await expect(page.locator("#start-audio")).toHaveAttribute("aria-label", /Stop engine — playing/);
 
