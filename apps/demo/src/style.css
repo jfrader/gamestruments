@@ -52,6 +52,8 @@ footer {
 }
 
 .masthead {
+  flex-wrap: wrap;
+  row-gap: 14px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }
@@ -116,7 +118,7 @@ h1 {
   margin: 0;
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: clamp(42px, 5vw, 78px);
-  line-height: 0.82;
+  line-height: 1;
   letter-spacing: -0.035em;
   font-weight: 800;
 }
@@ -1543,10 +1545,6 @@ footer p {
 
   h1 {
     font-size: clamp(36px, 3.6vw, 52px);
-  }
-
-  .eyebrow {
-    margin-bottom: 2px;
   }
 
   .start-button {
