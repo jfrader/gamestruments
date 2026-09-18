@@ -20,7 +20,7 @@ not edited.
 - **Language:** English
 - **Tags:** adaptive-music, audio, dynamic-music, godot, godot-4, music, procedural, racing, soundtrack, adventure
 - **Release Status:** Released
-- **Released version:** 1.0.1 (2026-09-17)
+- **Released version:** 1.0.1 (2026-09-17) — uploaded; the Score Debugger is author-only (`?debug`)
 - **Platforms:** No OS executable flags (the zip contains libraries/source, not a standalone OS executable).
 - **Community:** Comments enabled for public support.
 - **External Links:** Live demo at https://gurisitosgames.itch.io/gamestruments-audio-lab-demo and standalone browser preview at https://gamestruments.gurisitos.games (Godot and HTML5, one engine). The source repository is private.
