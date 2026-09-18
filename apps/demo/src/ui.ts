@@ -525,8 +525,18 @@ export function setPlaybackPending(pending: boolean): void {
 
 export function renderView(): void {
   const requested = window.location.hash.slice(1);
+  // The score debugger is an authoring tool, not part of the public Lab: it is
+  // reachable only with an explicit `?debug` flag, and its nav link is hidden
+  // for every other visitor.
+  const debugEnabled = new URLSearchParams(window.location.search).has("debug");
+  const debugLink = document.querySelector('[data-view-link="debugger"]');
+  if (debugLink instanceof HTMLElement) {
+    debugLink.hidden = !debugEnabled;
+  }
   const view: ViewName =
-    requested === "games" || requested === "genres" || requested === "debugger" ? requested : "lab";
+    requested === "games" || requested === "genres" || (requested === "debugger" && debugEnabled)
+      ? requested
+      : "lab";
   elements.shell.dataset.view = view;
   for (const candidate of document.querySelectorAll<HTMLElement>("[data-view]")) {
     candidate.hidden = candidate.dataset.view !== view;

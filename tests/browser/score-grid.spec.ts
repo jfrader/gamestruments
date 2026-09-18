@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
 
 test("score debugger renders the engine's step grid, counts and solo state", async ({ page }) => {
-  await page.goto("/#lab");
+  await page.goto("/?debug=1#lab");
   await selectRecipe(page, "suspense");
 
   await page.locator('a[data-view-link="debugger"]').click();
@@ -57,7 +57,7 @@ test("score debugger renders the engine's step grid, counts and solo state", asy
 });
 
 test("a played bar never becomes a phase in the Lab", async ({ page }) => {
-  await page.goto("/#lab");
+  await page.goto("/?debug=1#lab");
   await selectRecipe(page, "suspense");
 
   await page.locator('a[data-view-link="debugger"]').click();
