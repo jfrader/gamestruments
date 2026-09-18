@@ -220,6 +220,10 @@ Adventure are unchanged.
 
 Published: <https://gurisitosgames.itch.io/gamestruments-godot/devlog/1668875/see-it-in-action-walkthrough-video-and-this-updates-polish>
 
+Video: embedded in the post from the Gurisitos Games YouTube channel
+(https://www.youtube.com/@gurisitosgames — walkthrough at
+https://youtu.be/lkLMUKZhgmM, published 2026-09-18).
+
 **Title:** See it in action — walkthrough video and this update's polish
 
 See the Audio Lab in action — the walkthrough video is attached to this post
