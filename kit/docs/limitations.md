@@ -9,13 +9,13 @@
 ## Audio
 
 - The runtime synth renders mono at 48000 Hz and sends identical left/right frames through Godot. This favors a small, deterministic runtime over sample-library fidelity.
-- HTML5 games use the WASM engine. Godot HTML5 export of this GDExtension is not supported. Preview: <https://gamestruments.gurisitos.games>.
+- HTML5 games use the WASM engine. This addon ships no web build: no web library, no `web.*` entry in the GDExtension. Godot supports GDExtension in web exports, but only with custom export templates built with `dlink_enabled=yes`, which this kit does not provide. Preview: <https://gamestruments.gurisitos.games>.
 - No WAV, OGG, MP3, MIDI, stem export, sample import, mastering, effects rack, spatial audio, or middleware bridge ships.
 
 ## Runtime and Platforms
 
 - Supported: Godot 4.7.x (tested on 4.7.2), Linux x86_64 (built on Ubuntu 24.04), Windows x86_64, and macOS arm64/x86_64.
-- Unsupported: Godot versions other than 4.7.x, web export, mobile, and consoles.
+- Unsupported: Godot versions other than 4.7.x, this addon's web target, mobile, and consoles.
 - The macOS universal library is ad-hoc signed for loading but is not Developer ID-signed or notarized. The Linux and Windows libraries are not publisher-signed. Operating-system quarantine or application-signing rules may apply when you redistribute the libraries as part of your own game.
 - The node prefers an audible `Music` bus and otherwise uses `Master`. State requests require a successful `generate(seed)` first.
 - State transitions wait for bar boundaries; instant cuts are not supported by the public API.
