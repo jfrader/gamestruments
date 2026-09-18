@@ -215,3 +215,26 @@ If you already own the kit, grab the latest download — updates are included.
 **Heads-up for Suspense users:** the pool now has 28 phases, so seeded and
 all-phases Suspense takes are different songs than 1.0.0 produced. Racing and
 Adventure are unchanged.
+
+## Update Devlog — v1.0.1 storefront (2026-09-18)
+
+**Title:** See it in action — walkthrough video and this update's polish
+
+A new walkthrough video is up on the page — free download, watch it with
+sound. One continuous Audio Lab session: Suspense into Anomaly, Racing into
+Position Fight, Adventure into the boss, with the speed/intensity dial moving
+and the sound world switching from noir to neon to orchestral. No cuts, no
+captions: you hear exactly what the engine does.
+
+While we were at it, the Lab got a polish pass:
+
+- The whole Lab now reads in English, Piece/Version controls included.
+- The top bar stays put when you press play: the button no longer changes size
+  and shoves the bar into two lines.
+- The title no longer overlaps its neighbours.
+
+And from the 1.0.1 update itself: the Score Debugger (author-only) shows the
+score bar by bar, and Theme Ride is back in the Suspense pool.
+
+Try the Lab, watch the video — and if the music fits your game, the kit is
+$12.99 with all future updates included.
