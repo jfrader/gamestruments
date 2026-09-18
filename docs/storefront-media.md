@@ -28,6 +28,23 @@ __GLX_VENDOR_LIBRARY_NAME=mesa LIBGL_ALWAYS_SOFTWARE=1 \
   Pick the desktop shots for the page; the `-neg` ones show the missing-addon
   error and are for the docs, not the storefront.
 
+## Visual direction (learned the hard way)
+
+A raw Movie Maker capture of the Godot example is a grey dev panel with
+buttons: technically native, useless as a showcase. The storefront video's
+visual identity is the **Audio Lab's orbit**, so the cut is built from Lab
+footage:
+
+1. Record three ~13 s Lab clips (Suspense, Racing, Adventure) at 1280x720 with
+   Playwright's isolated profile; the orbit reacts to the music.
+2. Compose them with cross-fades and the storyboard captions.
+3. Mux the engine's offline WAV (`tools/render-ab.mjs`) as the audio, with the
+   explicit `-map` above.
+
+The native kit still supplies the **screenshots** for the page, and a short
+native segment if a cut needs "this is the real engine" evidence — but it is not
+the slideshow's main visual.
+
 ## 2. Native video (required for promotion)
 
 Record the **packaged** examples with Godot's Movie Maker so the audio is the
