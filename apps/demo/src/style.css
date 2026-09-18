@@ -221,16 +221,19 @@ h1 span {
   box-shadow: none;
 }
 
-/* Stateful engine button — stable children, crossfade/sweep, reduced-motion aware */
+/* Stateful engine button — stable children, crossfade/sweep, reduced-motion aware.
+   min-width and max-width match so the control's footprint is fixed: the label
+   can change (Start engine ↔ phase name ↔ crossing readout) without reflowing
+   the masthead into a second row. */
 .start-button {
   position: relative;
   overflow: hidden;
-  max-width: 320px;
+  max-width: 172px;
 }
 .engine-copy {
   position: relative;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,6 +268,7 @@ h1 span {
   opacity: 1;
   display: inline;
   text-align: left;
+  min-width: 0;
 }
 .start-button:not([data-engine-state="crossing"]) .engine-label--to {
   display: none;
@@ -365,14 +369,6 @@ h1 span {
 .start-button[data-engine-state="crossing"] .engine-stop {
   color: #f1eee5;
   opacity: 0.95;
-}
-
-@media (min-width: 641px) {
-  .start-button[data-engine-state="playing"],
-  .start-button[data-engine-state="waiting"],
-  .start-button[data-engine-state="crossing"] {
-    min-width: 210px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1554,7 +1550,6 @@ footer p {
   }
 
   .start-button {
-    min-width: 148px;
     min-height: 44px;
     padding: 6px 12px;
   }
@@ -1729,7 +1724,6 @@ footer p {
   }
 
   .start-button {
-    min-width: 148px;
     min-height: 44px;
     padding: 6px 12px;
     margin-left: 0;
@@ -1810,6 +1804,7 @@ footer p {
 
   .start-button {
     flex: 1;
+    max-width: 320px;
     margin-left: 0;
   }
 

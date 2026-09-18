@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Audio Lab: the engine button reserves a fixed width, so toggling Play/Stop — and the label swapping between Start engine, the current phase, and a crossover readout — no longer reflows the topbar into a second row; a long phase name truncates with an ellipsis inside the fixed control.
+- Audio Lab: removed the eyebrow text above the title so the wordmark no longer overlaps it on narrow screens.
+
 ## [1.0.1] - 2026-09-17
 
 ### Added

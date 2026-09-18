@@ -29,7 +29,8 @@ for (const height of [768, 600]) {
       const usable = await panel.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
         const control = element.querySelector(".toggle-control")!.getBoundingClientRect();
-        return control.top >= bounds.top && control.bottom <= bounds.bottom;
+        // 1px slack for subpixel rounding after scrollIntoViewIfNeeded.
+        return control.top >= bounds.top - 1 && control.bottom <= bounds.bottom + 1;
       });
       expect(usable).toBe(true);
       const knob = await page.locator("#game-signals .toggle-control i").boundingBox();
