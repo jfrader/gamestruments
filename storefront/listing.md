@@ -218,23 +218,27 @@ Adventure are unchanged.
 
 ## Update Devlog — v1.0.1 storefront (2026-09-18)
 
+Published: <https://gurisitosgames.itch.io/gamestruments-godot/devlog/1668875/see-it-in-action-walkthrough-video-and-this-updates-polish>
+
 **Title:** See it in action — walkthrough video and this update's polish
 
-A new walkthrough video is up on the page — free download, watch it with
-sound. One continuous Audio Lab session: Suspense into Anomaly, Racing into
-Position Fight, Adventure into the boss, with the speed/intensity dial moving
-and the sound world switching from noir to neon to orchestral. No cuts, no
-captions: you hear exactly what the engine does.
+See the Audio Lab in action — the walkthrough video is attached to this post
+(watch it with sound, it's a free download). One continuous session: Suspense
+into Anomaly, Racing into Position Fight, Adventure into the boss, with the
+speed/intensity dial moving and the sound world switching from noir to neon to
+orchestral. No cuts, no captions: you hear exactly what the engine does.
 
-While we were at it, the Lab got a polish pass:
+What's new and cool in this update:
 
-- The whole Lab now reads in English, Piece/Version controls included.
-- The top bar stays put when you press play: the button no longer changes size
-  and shoves the bar into two lines.
-- The title no longer overlaps its neighbours.
-
-And from the 1.0.1 update itself: the Score Debugger (author-only) shows the
-score bar by bar, and Theme Ride is back in the Suspense pool.
+- **The Score Debugger.** Point at a bar instead of describing a feeling: one
+  step grid per bar for every voice, with hit counts and velocity, per-voice
+  Solo and Mute, and a Play bar. You can finally see what the engine is doing
+  under the hood.
+- **Theme Ride is back.** Suspense gets its Decrypt cell and the Full Breach
+  hook back, riding a full 4/4 rock backbeat on every bar.
+- **Three recipes, ten sound worlds.** Racing, Suspense and Adventure, each
+  with its own styles — switch the world and the same seed becomes another
+  song: noir, neon, orchestral, chip, dark and more.
 
 Try the Lab, watch the video — and if the music fits your game, the kit is
 $12.99 with all future updates included.
