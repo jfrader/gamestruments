@@ -54,8 +54,11 @@ godot --path <extract>/kit/examples \
   and mux it onto the Movie Maker video:
 
   ```bash
-  ffmpeg -i /tmp/opencode/native.avi -i /tmp/opencode/render.wav \
-    -c:v copy -c:a aac -b:a 192k -shortest /tmp/opencode/native-music.mp4
+  # `-map` is mandatory: the AVI already carries its own silent PCM track and
+  # ffmpeg would otherwise pick it as "best audio" and mux silence.
+  ffmpeg -y -i /tmp/opencode/native.avi -i /tmp/opencode/muxaudio/mono.wav \
+    -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest \
+    /tmp/opencode/gamestruments-native-1.0.1.mp4
   ```
 
   Always verify before publishing:
