@@ -39,11 +39,11 @@ not edited.
 **Media Capture Checklist:**
 - [x] Build the itch HTML preview from the same approved lab source, with its actual phases and controls unchanged.
 - [x] Clearly identify the interactive browser experience as **Audio Lab preview**; do not present it as exact native playback or as a bundled Godot interface.
-- [ ] Capture native integration screenshots and native-audio evidence from the final extracted Godot kit, not the development checkout.
+- [x] Capture native integration screenshots and native-audio evidence from the final extracted Godot kit, not the development checkout. Re-captured 2026-09-18 with the packaged smoke: `playback-play`, `game_signals-race`, `song_form-form` (+ narrow and missing-addon states).
 - [x] Cover image follows the 315:250 ratio (630x500 recommended).
 - [ ] Show one readable integration script and the native example it runs. Keep API calls legible rather than filling the page with code screenshots.
-- [ ] Include a short transition video recorded from the final native kit; it is required before promoting this update.
-- [ ] Fran has approved the music excerpts and finished video.
+- [x] Promotion video published: `gamestruments-demo-final.mp4` (type Video, free demo). It is the approved live Audio Lab walkthrough — Fran rejected the raw native panel capture as a showcase; native evidence lives in the screenshots and the `samples` download.
+- [x] Fran has approved the music excerpts and finished video (2026-09-18, the 106 s walkthrough and the 98 s portrait reel).
 
 ## Long Description
 
@@ -103,6 +103,13 @@ All future updates to this kit are included with your purchase. Questions or bug
   SHA-256 `08c72a66c94523932a7d9032edb43de39129a48d1f4c2eecd0e38a83ec83a449`,
   browser-play enabled, embed 960x600, mobile friendly, fullscreen.
   Rebuild with `npm run build:itch`.
+- Promotion walkthrough video: `gamestruments-demo-final.mp4`, 18855439 bytes,
+  SHA-256 `b09c38402061930863b5414764a002a836ba281e3b0db6077dc98ae7e59ba179`,
+  type **Video**, free-demo flag set. 106 s, 1920x1080, about -15 LUFS, the live
+  Audio Lab driven at human pace (Suspense/Anomaly, Racing/Position Fight,
+  Adventure/Boss; sound worlds noir, neon, orchestral; cursor visible; no
+  captions; no stops). The 98 s 1080x1920 portrait reel for Instagram is
+  `gamestruments-reel-portrait.mp4` (not on the page).
 - Free sample video: `gamestruments-samples.mp4`, type **Video**, free-demo flag
   set. 24 s of the native engine — Racing neon cruise, Suspense terminal theme,
   Adventure folk explore — rendered at 48 kHz from the v0.1.3 engine and
@@ -112,23 +119,18 @@ All future updates to this kit are included with your purchase. Questions or bug
   (official reference: <https://itch.io/docs/creators/getting-started>).
 - Demo-to-kit navigation stays same-tab. The source repository stays private.
 
-## Video sequence (pending)
+## Video (published 2026-09-18)
 
-Target 35–45 seconds. Music and captions only; no voiceover or sales copy. Code
-excerpts come from the tested canonical public example, using its existing API
-and phase names. Native-audio evidence must be captured from the packaged native
-kit. Music is approved; the recording is still outstanding.
+Fran approved a live Lab walkthrough instead of the storyboarded native cut:
+the final 106 s video (`gamestruments-demo-final.mp4`) is one continuous Lab
+session — play, cue the strong sections (Anomaly, Position Fight, No Retreat),
+drag Speed intensity, switch the sound world (noir, neon, orchestral) — with
+the Lab's own audio captured in-page, no captions or overlays, a visible
+cursor, and zero silence. The portrait Instagram reel (98 s) is the same
+session recorded natively at a phone viewport.
 
-| Time | Caption | Shot |
-|---|---|---|
-| 0:00–0:07 | Procedural music for your game | Let an approved native music excerpt play before showing code. |
-| 0:07–0:11 | Generate a soundtrack | Highlight the setup and `generate` call in the public example; keep the music playing. |
-| 0:11–0:20 | Music follows the action | Show an actual game-state change and let the transition be heard. |
-| 0:20–0:24 | Call it from your game | Highlight the matching event callback in the same tested example. |
-| 0:24–0:36 | Find the sound for your game | Contrast another approved style or section; no new controls or invented phases. |
-| 0:36–0:45 | Try the demo | End with the actual lab and kit destination. |
 
-Keep native and browser footage clearly identified. Final cuts should follow
+ Final cuts should follow
 the music rather than forcing a transition to fit these draft timings.
 
 ## Update Devlog — v0.1.3 (2026-09-15)
