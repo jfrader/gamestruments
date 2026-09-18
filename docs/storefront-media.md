@@ -98,6 +98,13 @@ godot --path <extract>/kit/examples \
   `ffmpeg -i out.mp4 -map 0:a -af volumedetect -f null -` must show a real
   `max_volume`, not `-91.0 dB`.
 
+### Captions: keep them off the music
+
+Fran, after watching a cut full of "phase name — description" subtitles: "don't
+add 'phase name - description' subtitles, let the user feel it." A storefront
+cut carries at most a closing call to action and the source label; it does not
+narrate each phase. Explain the product on the page, not over the music.
+
 ## 3. Browser footage (optional, must be labelled)
 
 The Audio Lab preview may be recorded for the final "try the demo" beat, but it
