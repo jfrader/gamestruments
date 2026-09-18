@@ -44,8 +44,23 @@ godot --path <extract>/kit/examples \
   changes you want on camera; the storyboard and captions live in
   `storefront/listing.md` under "Video sequence (pending)" (35–45 s, music and
   captions only, no voiceover).
-- Movie Maker writes video **with** audio, so the native mix is what ends up in
-  the cut.
+- **Known gotcha (measured 2026-09-18):** on this machine Movie Maker writes a
+  correct `pcm_s16le` audio stream but the samples are **digital silence**
+  (`mean_volume: -91.0 dB`), with either the default audio driver or
+  `--audio-driver Dummy`. The video is good; the audio has to be supplied
+  separately.
+- **Workaround:** render the same score to WAV with the engine's own offline
+  renderer (from the packaged source, same generator version as the archive)
+  and mux it onto the Movie Maker video:
+
+  ```bash
+  ffmpeg -i /tmp/opencode/native.avi -i /tmp/opencode/render.wav \
+    -c:v copy -c:a aac -b:a 192k -shortest /tmp/opencode/native-music.mp4
+  ```
+
+  Always verify before publishing:
+  `ffmpeg -i out.mp4 -map 0:a -af volumedetect -f null -` must show a real
+  `max_volume`, not `-91.0 dB`.
 
 ## 3. Browser footage (optional, must be labelled)
 
