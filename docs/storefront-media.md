@@ -45,6 +45,22 @@ The native kit still supplies the **screenshots** for the page, and a short
 native segment if a cut needs "this is the real engine" evidence — but it is not
 the slideshow's main visual.
 
+### The audio must be the Lab's own
+
+Rendering the beds separately and muxing them onto separately recorded clips
+produces a video whose music is not the music you can hear in it. Record the
+session and its audio together:
+
+1. Drive the Lab with **random seeds** (`#level-seed` + apply), one recipe and
+   style per clip, so the take is audible and varied.
+2. Capture the Lab's mix **in-page**: patch `AudioContext` and `AudioNode.connect`
+   before the app loads, tee every connection to `ctx.destination` into a
+   `MediaStreamAudioDestinationNode`, and record it with `MediaRecorder`.
+   Playwright's own video has no audio track.
+3. Trim each clip's lead-in by `videoDuration - audioDuration - 0.2` so the
+   picture and the music start together, then cross-fade and caption as above.
+   Verified with `volumedetect`: a real `max_volume`, not `-91.0 dB`.
+
 ## 2. Native video (required for promotion)
 
 Record the **packaged** examples with Godot's Movie Maker so the audio is the
