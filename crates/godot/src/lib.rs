@@ -53,6 +53,13 @@ struct GamestrumentsPlayer {
     ticks_per_second: f64,
     tick: u32,
     sample_rate: f32,
+    /// Produced sample count; the score clock derives from this so it cannot
+    /// drift from the audio. Reset whenever a score is generated.
+    frames_produced: u64,
+    /// Reused per-call buffers (mono synth output and the stereo pair we hand
+    /// to `push_buffer`), so the hot path does not allocate every frame.
+    scratch: Vec<f32>,
+    stereo_scratch: Vec<Vector2>,
     live_player: Option<Gd<AudioStreamPlayer>>,
     base: Base<Node>,
 }
@@ -84,6 +91,9 @@ impl INode for GamestrumentsPlayer {
             ticks_per_second: 2160.0,
             tick: 0,
             sample_rate: 48000.0,
+            frames_produced: 0,
+            scratch: Vec::new(),
+            stereo_scratch: Vec::new(),
             live_player: None,
             base,
         }
@@ -130,49 +140,68 @@ impl INode for GamestrumentsPlayer {
         if frames <= 0 {
             return;
         }
-        let mut buffer = vec![0.0_f32; frames as usize];
+        let frames = frames as usize;
+        self.scratch.clear();
+        self.scratch.resize(frames, 0.0);
+        let sample_rate = f64::from(self.sample_rate);
+        let ticks_per_second = self.ticks_per_second;
+
         if let Some(form_audio) = self.form_audio.as_mut() {
             if let Some(transport) = self.transport.as_mut() {
-                form_audio.fill(score, transport, &mut buffer);
-                self.tick = form_audio.tick(self.ticks_per_second);
+                form_audio.fill(score, transport, &mut self.scratch);
+                self.tick = form_audio.tick(ticks_per_second);
             }
-            if let Some(master) = self.master.as_mut() {
-                master.process(&mut buffer);
+        } else {
+            // The score clock is the produced-sample count mapped to ticks, so
+            // score time and synth phase advance together and never drift.
+            let start_tick = self.tick;
+            let next_tick = gamestruments_engine::synth::tick_at_sample(
+                self.frames_produced + frames as u64,
+                sample_rate,
+                ticks_per_second,
+            );
+            // The window is exactly the ticks this buffer covers: contiguous
+            // with the previous buffer, so no event is dropped or doubled.
+            let span_ticks = next_tick.saturating_sub(start_tick).max(1);
+            if let Some(transport) = self.transport.as_mut() {
+                transport.advance(start_tick);
+                let section = transport.current_section().to_string();
+                let length = score.section(&section).map(|s| s.length_ticks).unwrap_or(1);
+                let local = if transport.has_form() {
+                    transport.phrase_tick(start_tick)
+                } else {
+                    start_tick % length.max(1)
+                };
+                for event in gamestruments_engine::synth::events_starting_at(
+                    score,
+                    &section,
+                    local,
+                    span_ticks,
+                ) {
+                    // Place the event at its true sample offset inside this
+                    // buffer instead of starting the whole window at once.
+                    let offset_seconds =
+                        (f64::from(event.start_tick()) - f64::from(local)) / ticks_per_second;
+                    self.synth.trigger_at(
+                        &event,
+                        ticks_per_second,
+                        offset_seconds.max(0.0),
+                    );
+                }
             }
-            for sample in buffer {
-                playback.push_frame(Vector2::new(sample, sample));
-            }
-            return;
+            self.synth.fill(&mut self.scratch);
+            self.tick = next_tick;
         }
-        let window_ticks = ((frames as f64 / f64::from(self.sample_rate)) * self.ticks_per_second)
-            .ceil() as u32
-            + 1;
-        if let Some(transport) = self.transport.as_mut() {
-            transport.advance(self.tick);
-            let section = transport.current_section().to_string();
-            let length = score.section(&section).map(|s| s.length_ticks).unwrap_or(1);
-            let local = if transport.has_form() {
-                transport.phrase_tick(self.tick)
-            } else {
-                self.tick % length.max(1)
-            };
-            for event in gamestruments_engine::synth::events_starting_at(
-                score,
-                &section,
-                local,
-                window_ticks.max(1),
-            ) {
-                self.synth.trigger(&event, self.ticks_per_second);
-            }
-        }
-        self.synth.fill(&mut buffer);
+
         if let Some(master) = self.master.as_mut() {
-            master.process(&mut buffer);
+            master.process(&mut self.scratch);
         }
-        for sample in buffer {
-            playback.push_frame(Vector2::new(sample, sample));
-        }
-        self.tick = self.tick.wrapping_add(window_ticks.max(1));
+        self.stereo_scratch.clear();
+        self.stereo_scratch
+            .extend(self.scratch.iter().map(|sample| Vector2::new(*sample, *sample)));
+        let stereo = PackedVector2Array::from(self.stereo_scratch.as_slice());
+        playback.push_buffer(&stereo);
+        self.frames_produced = self.frames_produced.saturating_add(frames as u64);
     }
 }
 
@@ -323,6 +352,7 @@ impl GamestrumentsPlayer {
         };
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
+        self.frames_produced = 0;
         self.synth = Synth::new(self.sample_rate);
         self.master = Some(MasterChain::new(self.sample_rate as u32, MasterConfig::default()));
         let initial = score.default_section.clone();

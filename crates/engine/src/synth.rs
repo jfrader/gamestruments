@@ -226,6 +226,14 @@ impl Synth {
     }
 
     pub fn trigger(&mut self, event: &MusicEvent, ticks_per_second: f64) {
+        self.trigger_at(event, ticks_per_second, 0.0);
+    }
+
+    /// Schedule `event` to start `offset_seconds` after the current audio
+    /// position. A caller filling one buffer from a window of score events
+    /// passes each event's offset, so note timing is sample-accurate and does
+    /// not depend on how often the caller runs.
+    pub fn trigger_at(&mut self, event: &MusicEvent, ticks_per_second: f64, offset_seconds: f64) {
         let duration = event.duration_ticks() as f64 / ticks_per_second;
         let velocity = event.velocity() as f32;
         let voice = event.voice();
@@ -276,7 +284,7 @@ impl Synth {
                 base_freq,
                 velocity: velocity.clamp(0.0, 1.0),
                 is_melody,
-                start_phase: self.phase,
+                start_phase: self.phase + offset_seconds as f32,
                 duration: duration as f32,
                 life,
                 pitch,
@@ -383,7 +391,7 @@ impl Synth {
             base_freq,
             velocity: velocity.clamp(0.0, 1.0),
             is_melody: false,
-            start_phase: self.phase,
+            start_phase: self.phase + offset_seconds as f32,
             duration: if matches!(vtype, VoiceType::ReverseCymbal | VoiceType::AirImpact) {
                 duration.max(0.04) as f32
             } else {
@@ -1196,6 +1204,22 @@ pub fn events_starting_at(
         .unwrap_or_default()
 }
 
+/// Score time (in ticks) at a produced-sample position, as a float so callers
+/// can schedule events inside the current buffer. Deriving the score clock a
+/// pure function of produced samples is what keeps it locked to the audio
+/// clock instead of accumulating rounding drift per call.
+pub fn score_tick_at_sample(frames_produced: u64, sample_rate: f64, ticks_per_second: f64) -> f64 {
+    if sample_rate <= 0.0 {
+        return 0.0;
+    }
+    frames_produced as f64 / sample_rate * ticks_per_second
+}
+
+/// Integer form of [`score_tick_at_sample`].
+pub fn tick_at_sample(frames_produced: u64, sample_rate: f64, ticks_per_second: f64) -> u32 {
+    score_tick_at_sample(frames_produced, sample_rate, ticks_per_second) as u32
+}
+
 fn midi_to_freq(pitch: u8) -> f32 {
     440.0 * dmath::powf(2.0, (pitch as f32 - 69.0) / 12.0)
 }
@@ -1636,5 +1660,52 @@ mod tests {
         synth.fill(&mut buffer);
         let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
         assert!(energy > 1.0, "expected audible energy, got {energy}");
+    }
+
+    #[test]
+    fn trigger_at_starts_the_voice_at_the_requested_offset() {
+        let mut synth = Synth::new(48000.0);
+        synth.trigger_at(
+            &MusicEvent::Note {
+                id: "offset-test".into(),
+                section: "journey".into(),
+                lane: "melody".into(),
+                start_tick: 0,
+                duration_ticks: 240,
+                velocity: 0.6,
+                pitch: 67,
+                voice: "pluck".into(),
+                role: Some("melody".into()),
+            },
+            2160.0,
+            0.25,
+        );
+        assert_eq!(synth.voices.len(), 1, "one note should schedule one voice");
+        assert!(
+            (synth.voices[0].start_phase - 0.25).abs() < 1e-6,
+            "voice must start at the requested offset, got {}",
+            synth.voices[0].start_phase
+        );
+    }
+
+    #[test]
+    fn score_tick_at_sample_does_not_drift_over_a_long_run() {
+        // Simulate ~9 minutes of variable-sized buffers at 48 kHz / 2160 tps.
+        // The old `tick += ceil(span) + 1` scheme drifts tens of seconds; a
+        // sample-derived tick must stay within one tick of the true score time.
+        let sample_rate = 48000.0_f64;
+        let ticks_per_second = 2160.0_f64;
+        let mut produced = 0_u64;
+        for buffer in 0..(60 * 60 * 9) {
+            let frames = 800 + (buffer % 400);
+            produced += frames as u64;
+            let tick = f64::from(super::tick_at_sample(produced, sample_rate, ticks_per_second));
+            let truth = produced as f64 / sample_rate * ticks_per_second;
+            assert!(
+                (tick - truth).abs() < 1.0,
+                "sample-derived tick drifted from score time: {tick} vs {truth}"
+            );
+        }
+        assert!(produced > 48_000 * 60 * 5, "simulation should span minutes");
     }
 }
