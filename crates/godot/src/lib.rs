@@ -45,6 +45,12 @@ struct GamestrumentsPlayer {
     brightness: f64,
     #[export]
     syncopation: f64,
+    /// Synth/output rate in Hz, read when the node enters the tree and when a
+    /// score is generated (set it before `add_child`/`generate`). Lower it
+    /// (e.g. 22050) to cut synthesis CPU when the game's material is
+    /// band-limited. Defaults to 48000 so existing consumers are unchanged.
+    #[export]
+    sample_rate: f64,
     score: Option<PortableScore>,
     transport: Option<AdaptiveTransport>,
     synth: Synth,
@@ -52,7 +58,6 @@ struct GamestrumentsPlayer {
     master: Option<MasterChain>,
     ticks_per_second: f64,
     tick: u32,
-    sample_rate: f32,
     /// Produced sample count; the score clock derives from this so it cannot
     /// drift from the audio. Reset whenever a score is generated.
     frames_produced: u64,
@@ -101,7 +106,7 @@ impl INode for GamestrumentsPlayer {
 
     fn ready(&mut self) {
         let mut generator = AudioStreamGenerator::new_gd();
-        generator.set_mix_rate(self.sample_rate);
+        generator.set_mix_rate(self.resolved_sample_rate());
         generator.set_buffer_length(0.1);
         let mut player = AudioStreamPlayer::new_alloc();
         player.set_name("LiveStream");
@@ -143,7 +148,7 @@ impl INode for GamestrumentsPlayer {
         let frames = frames as usize;
         self.scratch.clear();
         self.scratch.resize(frames, 0.0);
-        let sample_rate = f64::from(self.sample_rate);
+        let sample_rate = f64::from(self.resolved_sample_rate());
         let ticks_per_second = self.ticks_per_second;
 
         if let Some(form_audio) = self.form_audio.as_mut() {
@@ -220,6 +225,11 @@ impl GamestrumentsPlayer {
 
 #[godot_api]
 impl GamestrumentsPlayer {
+    /// The synth/output rate actually used, clamped to a sane audio range.
+    fn resolved_sample_rate(&self) -> f32 {
+        (self.sample_rate as f32).clamp(8000.0, 96000.0)
+    }
+
     #[func]
     fn generate(&mut self, seed: GString) -> bool {
         if self.project_secret.is_empty() {
@@ -353,15 +363,16 @@ impl GamestrumentsPlayer {
         self.ticks_per_second = score.ticks_per_second();
         self.tick = 0;
         self.frames_produced = 0;
-        self.synth = Synth::new(self.sample_rate);
-        self.master = Some(MasterChain::new(self.sample_rate as u32, MasterConfig::default()));
+        let rate = self.resolved_sample_rate();
+        self.synth = Synth::new(rate);
+        self.master = Some(MasterChain::new(rate as u32, MasterConfig::default()));
         let initial = score.default_section.clone();
         match AdaptiveTransport::new(score.clone(), Some(&initial)) {
             Ok(transport) => {
                 self.form_audio = if score.form.as_ref().and_then(|form| form.origin)
                     == Some(gamestruments_engine::score::FormOrigin::TransitionStart)
                 {
-                    Some(FormAudio::new(&score, self.sample_rate))
+                    Some(FormAudio::new(&score, rate))
                 } else {
                     None
                 };
