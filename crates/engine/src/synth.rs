@@ -213,6 +213,8 @@ struct Voice {
     voice_type: VoiceType,
     base_freq: f32,
     velocity: f32,
+    velocity_gain: f32,
+    frequency_multipliers: [f32; 3],
     is_melody: bool,
     start_phase: f32,
     duration: f32,
@@ -233,6 +235,47 @@ struct Voice {
     // mono path and non-twin voices only ever touch `filt` (state kept in sync).
     filt_l: Biquad,
     filt_r: Biquad,
+}
+
+fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
+    let exponent = match voice_type {
+        VoiceType::Triangle => 0.75,
+        VoiceType::Bass | VoiceType::Epiano => 0.78,
+        VoiceType::Harp | VoiceType::Organ | VoiceType::Supersaw => 0.8,
+        VoiceType::Warm
+        | VoiceType::Glass
+        | VoiceType::Pulse
+        | VoiceType::Pluck
+        | VoiceType::Felt
+        | VoiceType::Dusk
+        | VoiceType::Bell
+        | VoiceType::FrameDrum
+        | VoiceType::Tambourine
+        | VoiceType::Chip => 0.82,
+        VoiceType::Recorder | VoiceType::Vielle => 0.84,
+        VoiceType::Kick
+        | VoiceType::Snare
+        | VoiceType::Hat
+        | VoiceType::Tom
+        | VoiceType::ReverseCymbal
+        | VoiceType::AirImpact => return 1.0,
+    };
+    velocity_curve(velocity, exponent)
+}
+
+fn voice_frequency_multipliers(voice_type: VoiceType) -> [f32; 3] {
+    let multiplier = |cents: f32| dmath::powf(2.0, cents / 1200.0);
+    match voice_type {
+        VoiceType::Warm => [multiplier(-10.0), multiplier(10.0), 1.0],
+        VoiceType::Glass => [multiplier(-6.0), multiplier(6.0), 1.0],
+        VoiceType::Pulse => [multiplier(-8.0), multiplier(8.0), 1.0],
+        VoiceType::Pluck => [multiplier(-5.0), multiplier(5.0), 1.0],
+        VoiceType::Felt => [multiplier(-2.0), multiplier(2.0), 1.0],
+        VoiceType::Dusk => [multiplier(-3.0), multiplier(3.0), 1.0],
+        VoiceType::Epiano => [multiplier(-7.0), multiplier(7.0), multiplier(3.0)],
+        VoiceType::Supersaw => [multiplier(-11.0), 1.0, multiplier(13.0)],
+        _ => [1.0; 3],
+    }
 }
 
 pub struct Synth {
@@ -304,10 +347,13 @@ impl Synth {
             } else {
                 0x1234_5678
             };
+            let velocity = velocity.clamp(0.0, 1.0);
             let mut voice = Voice {
                 voice_type: vtype,
                 base_freq,
-                velocity: velocity.clamp(0.0, 1.0),
+                velocity,
+                velocity_gain: voice_velocity_gain(vtype, velocity),
+                frequency_multipliers: voice_frequency_multipliers(vtype),
                 is_melody,
                 start_phase: self.phase + offset_seconds as f32,
                 duration: duration as f32,
@@ -329,6 +375,7 @@ impl Synth {
                 let mut echo = voice.clone();
                 echo.start_phase += 0.42;
                 echo.velocity *= 0.16;
+                echo.velocity_gain = voice_velocity_gain(vtype, echo.velocity);
                 echo.pan = -echo.pan;
                 // echo gets fresh filter states (clone zeros them); opposite pan already set.
                 self.voices.push(echo);
@@ -411,10 +458,13 @@ impl Synth {
             }
             noise_state = s;
         }
+        let velocity = velocity.clamp(0.0, 1.0);
         let mut perc = Voice {
             voice_type: vtype,
             base_freq,
-            velocity: velocity.clamp(0.0, 1.0),
+            velocity,
+            velocity_gain: voice_velocity_gain(vtype, velocity),
+            frequency_multipliers: voice_frequency_multipliers(vtype),
             is_melody: false,
             start_phase: self.phase + offset_seconds as f32,
             duration: if matches!(vtype, VoiceType::ReverseCymbal | VoiceType::AirImpact) {
@@ -529,7 +579,6 @@ impl Synth {
                     secondary,
                     sec_r,
                     sec_g,
-                    det_c,
                     g,
                     att,
                     dec,
@@ -545,7 +594,6 @@ impl Synth {
                         Wave::Triangle,
                         1.002,
                         0.62,
-                        10.0,
                         0.068,
                         0.048,
                         0.22,
@@ -561,7 +609,6 @@ impl Synth {
                         Wave::Sine,
                         2.003,
                         0.22,
-                        6.0,
                         0.07,
                         0.01,
                         0.18,
@@ -577,7 +624,6 @@ impl Synth {
                         Wave::Triangle,
                         0.5,
                         0.38,
-                        8.0,
                         0.05,
                         0.014,
                         0.14,
@@ -593,7 +639,6 @@ impl Synth {
                         Wave::Triangle,
                         2.0,
                         0.16,
-                        5.0,
                         0.05,
                         0.004,
                         0.09,
@@ -609,7 +654,6 @@ impl Synth {
                         Wave::Triangle,
                         2.0,
                         0.06,
-                        2.0,
                         0.06,
                         0.025,
                         0.35,
@@ -625,7 +669,6 @@ impl Synth {
                         Wave::Sine,
                         1.001,
                         0.35,
-                        3.0,
                         0.055,
                         0.4,
                         0.9,
@@ -638,9 +681,8 @@ impl Synth {
                     ),
                     _ => unreachable!(),
                 };
-                let f1 = compute_freq(base, age, pd) * dmath::powf(2.0, -det_c / 1200.0);
-                let f2 =
-                    compute_freq(base * sec_r, age, pd * 0.5) * dmath::powf(2.0, det_c / 1200.0);
+                let f1 = compute_freq(base, age, pd) * v.frequency_multipliers[0];
+                let f2 = compute_freq(base * sec_r, age, pd * 0.5) * v.frequency_multipliers[1];
                 let s1 = generate_osc(v.phase1, primary);
                 v.phase1 += TAU * f1 * dt;
                 let s2 = generate_osc(v.phase2, secondary);
@@ -659,7 +701,7 @@ impl Synth {
                 }
                 let q = res + if is_mel { 0.25 } else { 0.0 };
                 sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
-                let peak = g * velocity_curve(vel, 0.82) * if is_mel { 1.18 } else { 1.0 };
+                let peak = g * v.velocity_gain * if is_mel { 1.18 } else { 1.0 };
                 let cap = if matches!(v.voice_type, VoiceType::Felt | VoiceType::Dusk) {
                     rel
                 } else {
@@ -701,7 +743,7 @@ impl Synth {
                 (string + excitation)
                     * attack
                     * 0.105
-                    * velocity_curve(vel, 0.8)
+                    * v.velocity_gain
                     * if is_mel { 1.08 } else { 1.0 }
             }
             VoiceType::Recorder => {
@@ -727,7 +769,7 @@ impl Synth {
                 );
                 let breath_attack = (age / 0.07).clamp(0.0, 1.0);
                 let sig = tone + breath * (0.018 + 0.025 * (1.0 - breath_attack));
-                let peak = 0.085 * velocity_curve(vel, 0.84) * if is_mel { 1.08 } else { 1.0 };
+                let peak = 0.085 * v.velocity_gain * if is_mel { 1.08 } else { 1.0 };
                 let env =
                     compute_envelope_with_cap(age, v.duration, peak, 0.78, 0.045, 0.12, 0.24, 0.24);
                 sig * env
@@ -758,7 +800,7 @@ impl Synth {
                     FilterMode::Bandpass,
                 );
                 let sig = tone + bow * 0.025;
-                let peak = 0.082 * velocity_curve(vel, 0.84) * if is_mel { 1.08 } else { 1.0 };
+                let peak = 0.082 * v.velocity_gain * if is_mel { 1.08 } else { 1.0 };
                 let env =
                     compute_envelope_with_cap(age, v.duration, peak, 0.72, 0.085, 0.28, 0.45, 0.45);
                 sig * env
@@ -779,7 +821,7 @@ impl Synth {
                 (body + color + shimmer)
                     * strike
                     * 0.09
-                    * velocity_curve(vel, 0.82)
+                    * v.velocity_gain
                     * if is_mel { 1.06 } else { 1.0 }
             }
             VoiceType::Bass => {
@@ -803,19 +845,18 @@ impl Synth {
                 }
                 let q = 0.7 + vel * 0.35;
                 sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
-                let peak = 0.12 * velocity_curve(vel, 0.78);
+                let peak = 0.12 * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.62, 0.008, 0.12, 0.11);
                 sig * env
             }
             VoiceType::Epiano => {
-                let det = 7.0 / 1200.0;
-                let f_l = base * dmath::powf(2.0, -det);
-                let f_r = base * dmath::powf(2.0, det);
+                let f_l = base * v.frequency_multipliers[0];
+                let f_r = base * v.frequency_multipliers[1];
                 let s_l = generate_osc(v.phase1, Wave::Sine);
                 v.phase1 += TAU * f_l * dt;
                 let s_r = generate_osc(v.phase2, Wave::Sine);
                 v.phase2 += TAU * f_r * dt;
-                let tine_f = base * (2.001 + vel * 0.003) * dmath::powf(2.0, 3.0 / 1200.0);
+                let tine_f = base * (2.001 + vel * 0.003) * v.frequency_multipliers[2];
                 let s_t = generate_osc(v.phase3, Wave::Sine);
                 v.phase3 += TAU * tine_f * dt;
                 let bg = 0.62;
@@ -847,7 +888,7 @@ impl Synth {
                 }
                 let q = 0.45 + vel * 0.35;
                 sig = v.filt.process(sig, fc, q, sr, FilterMode::Lowpass);
-                let peak = 0.12 * velocity_curve(vel, 0.78);
+                let peak = 0.12 * v.velocity_gain;
                 let sus = 0.48 + (1.0 - vel) * 0.12;
                 let att = 0.012;
                 let dec = 0.18 + (1.0 - vel) * 0.08;
@@ -870,16 +911,15 @@ impl Synth {
                 }
                 let tr = 0.92 + dmath::sin(v.trem_phase) * 0.08;
                 v.trem_phase += TAU * 5.4 * dt;
-                let peak = (if is_mel { 0.09 } else { 0.034 }) * velocity_curve(vel, 0.8);
+                let peak = (if is_mel { 0.09 } else { 0.034 }) * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.7, 0.03, 0.18, 0.2);
                 mix * env * tr
             }
             VoiceType::Supersaw => {
-                let dets = [-11.0f32, 0.0, 13.0];
                 let mut mix = 0.0;
                 let ps = [&mut v.phase1, &mut v.phase2, &mut v.phase3];
-                for (i, &c) in dets.iter().enumerate() {
-                    let f = base * dmath::powf(2.0, c / 1200.0);
+                for (i, &frequency_multiplier) in v.frequency_multipliers.iter().enumerate() {
+                    let f = base * frequency_multiplier;
                     mix += saw_phase(*ps[i]);
                     *ps[i] += TAU * f * dt;
                 }
@@ -894,14 +934,14 @@ impl Synth {
                 }
                 let q = 0.4;
                 let sig = v.filt.process(mix, fc, q, sr, FilterMode::Lowpass);
-                let peak = (if is_mel { 0.034 } else { 0.016 }) * velocity_curve(vel, 0.8);
+                let peak = (if is_mel { 0.034 } else { 0.016 }) * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.62, 0.02, 0.14, 0.16);
                 sig * env
             }
             VoiceType::Triangle => {
                 let s = generate_osc(v.phase1, Wave::Triangle);
                 v.phase1 += TAU * base * dt;
-                let peak = 0.1 * velocity_curve(vel, 0.75);
+                let peak = 0.1 * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.7, 0.004, 0.05, 0.04);
                 s * env
             }
@@ -921,7 +961,7 @@ impl Synth {
                 v.phase2 += TAU * f2 * dt;
                 let mut sig = s1 + s2 * oct_g;
                 sig = bitcrush(sig, steps);
-                let peak = (if is_lead { 0.032 } else { 0.011 }) * velocity_curve(vel, 0.82);
+                let peak = (if is_lead { 0.032 } else { 0.011 }) * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.55, 0.003, 0.04, 0.03);
                 sig * env
             }
@@ -1011,7 +1051,7 @@ impl Synth {
                 } else {
                     0.0
                 };
-                (modes + strike) * 0.2 * velocity_curve(vel, 0.82)
+                (modes + strike) * 0.2 * v.velocity_gain
             }
             VoiceType::Tambourine => {
                 let variation = base;
@@ -1030,7 +1070,7 @@ impl Synth {
                     sr,
                     FilterMode::Highpass,
                 );
-                airy * envelope.min(1.25) * 0.12 * velocity_curve(vel, 0.82)
+                airy * envelope.min(1.25) * 0.12 * v.velocity_gain
             }
             VoiceType::ReverseCymbal | VoiceType::AirImpact => {
                 let reverse = matches!(v.voice_type, VoiceType::ReverseCymbal);
@@ -1111,14 +1151,13 @@ impl Synth {
         match v.voice_type {
             VoiceType::Epiano => {
                 // exact copy of osc/phase/tine pre-filter logic from the mono arm (untouched)
-                let det = 7.0 / 1200.0;
-                let f_l = base * dmath::powf(2.0, -det);
-                let f_r = base * dmath::powf(2.0, det);
+                let f_l = base * v.frequency_multipliers[0];
+                let f_r = base * v.frequency_multipliers[1];
                 let s_l = generate_osc(v.phase1, Wave::Sine);
                 v.phase1 += TAU * f_l * dt;
                 let s_r = generate_osc(v.phase2, Wave::Sine);
                 v.phase2 += TAU * f_r * dt;
-                let tine_f = base * (2.001 + vel * 0.003) * dmath::powf(2.0, 3.0 / 1200.0);
+                let tine_f = base * (2.001 + vel * 0.003) * v.frequency_multipliers[2];
                 let s_t = generate_osc(v.phase3, Wave::Sine);
                 v.phase3 += TAU * tine_f * dt;
                 let bg = 0.62;
@@ -1157,7 +1196,7 @@ impl Synth {
                 // split filters get their own pre (for independent IIR history on sides)
                 let y_l = v.filt_l.process(pre_l, fc, q, sr, FilterMode::Lowpass);
                 let y_r = v.filt_r.process(pre_r, fc, q, sr, FilterMode::Lowpass);
-                let peak = 0.12 * velocity_curve(vel, 0.78);
+                let peak = 0.12 * v.velocity_gain;
                 let sus = 0.48 + (1.0 - vel) * 0.12;
                 let att = 0.012;
                 let dec = 0.18 + (1.0 - vel) * 0.08;
@@ -1168,15 +1207,14 @@ impl Synth {
                 (y_l * env * tr, y_r * env * tr)
             }
             VoiceType::Supersaw => {
-                let dets = [-11.0f32, 0.0, 13.0];
                 let s0 = saw_phase(v.phase1);
-                let f0 = base * dmath::powf(2.0, dets[0] / 1200.0);
+                let f0 = base * v.frequency_multipliers[0];
                 v.phase1 += TAU * f0 * dt;
                 let s1 = saw_phase(v.phase2);
-                let f1 = base * dmath::powf(2.0, dets[1] / 1200.0);
+                let f1 = base * v.frequency_multipliers[1];
                 v.phase2 += TAU * f1 * dt;
                 let s2 = saw_phase(v.phase3);
-                let f2 = base * dmath::powf(2.0, dets[2] / 1200.0);
+                let f2 = base * v.frequency_multipliers[2];
                 v.phase3 += TAU * f2 * dt;
                 let bg = 1.0; // the mix in mono is just sum of saws
                 let pre_l = (s0 + s1 * 0.5) * bg;
@@ -1195,7 +1233,7 @@ impl Synth {
                 let _ = v.filt.process(pre_sum, fc, q, sr, FilterMode::Lowpass);
                 let y_l = v.filt_l.process(pre_l, fc, q, sr, FilterMode::Lowpass);
                 let y_r = v.filt_r.process(pre_r, fc, q, sr, FilterMode::Lowpass);
-                let peak = (if is_mel { 0.034 } else { 0.016 }) * velocity_curve(vel, 0.8);
+                let peak = (if is_mel { 0.034 } else { 0.016 }) * v.velocity_gain;
                 let env = compute_envelope(age, v.duration, peak, 0.62, 0.02, 0.14, 0.16);
                 (y_l * env, y_r * env)
             }
@@ -1419,6 +1457,7 @@ mod tests {
     use super::{Biquad, FilterMode, Synth};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::MusicEvent;
+    use std::time::{Duration, Instant};
 
     fn rms(samples: &[f32]) -> f32 {
         (samples.iter().map(|sample| sample * sample).sum::<f32>() / samples.len() as f32).sqrt()
@@ -1477,6 +1516,95 @@ mod tests {
         samples
     }
 
+    fn benchmark_voice(voice: &str, percussion: bool) -> (Duration, usize) {
+        const SAMPLE_RATE: f32 = 48_000.0;
+        const PARALLEL_VOICES: usize = 8;
+        let mut synth = Synth::new(SAMPLE_RATE);
+        let event = if percussion {
+            MusicEvent::Percussion {
+                id: format!("{voice}-benchmark"),
+                section: "benchmark".into(),
+                lane: "benchmark".into(),
+                start_tick: 0,
+                duration_ticks: 960,
+                velocity: 0.65,
+                voice: voice.into(),
+            }
+        } else {
+            MusicEvent::Note {
+                id: format!("{voice}-benchmark"),
+                section: "benchmark".into(),
+                lane: "benchmark".into(),
+                start_tick: 0,
+                duration_ticks: 3840,
+                velocity: 0.65,
+                pitch: 67,
+                voice: voice.into(),
+                role: Some("melody".into()),
+            }
+        };
+        synth.trigger(&event, 960.0);
+        let prototype = synth.voices.pop().expect("benchmark voice must exist");
+        let samples = if percussion {
+            (prototype.life * SAMPLE_RATE) as usize
+        } else {
+            SAMPLE_RATE as usize
+        };
+        let dt = 1.0 / SAMPLE_RATE;
+        let mut timings = (0..3)
+            .map(|_| {
+                let mut voices = vec![prototype.clone(); PARALLEL_VOICES];
+                let mut checksum = 0.0;
+                let started = Instant::now();
+                for sample in 0..samples {
+                    let age = sample as f32 * dt;
+                    for active_voice in &mut voices {
+                        checksum +=
+                            Synth::generate_voice_sample(active_voice, age, SAMPLE_RATE, dt);
+                    }
+                }
+                std::hint::black_box(checksum);
+                started.elapsed()
+            })
+            .collect::<Vec<_>>();
+        timings.sort_unstable();
+        (timings[1], samples * PARALLEL_VOICES)
+    }
+
+    #[test]
+    #[ignore = "release-only voice timing benchmark; run explicitly with --ignored --nocapture"]
+    #[allow(clippy::assertions_on_constants)]
+    fn voice_render_benchmark() {
+        assert!(
+            !cfg!(debug_assertions),
+            "run this timing benchmark with cargo test --release"
+        );
+        let notes = [
+            "warm", "glass", "pulse", "pluck", "felt", "dusk", "harp", "recorder", "vielle",
+            "bell", "bass", "epiano", "organ", "supersaw", "triangle", "chip",
+        ];
+        let percussion = [
+            "kick",
+            "snare",
+            "hat",
+            "tom",
+            "reverse-cymbal",
+            "air-impact",
+            "frame-drum",
+            "tambourine",
+        ];
+        println!("median nanoseconds per generated voice sample (8 voices, 3 runs)");
+        for (voice, is_percussion) in notes
+            .into_iter()
+            .map(|voice| (voice, false))
+            .chain(percussion.into_iter().map(|voice| (voice, true)))
+        {
+            let (elapsed, voice_samples) = benchmark_voice(voice, is_percussion);
+            let nanoseconds = elapsed.as_nanos() as f64 / voice_samples as f64;
+            println!("{voice}: {nanoseconds:.2} ns / voice sample");
+        }
+    }
+
     #[test]
     fn cached_filter_coefficients_preserve_samples() {
         let mut cached = Biquad::new();
@@ -1489,6 +1617,16 @@ mod tests {
                 recalculated.process(input, 2350.0, 0.72, 48000.0, FilterMode::Bandpass);
             assert_eq!(cached_sample.to_bits(), recalculated_sample.to_bits());
         }
+    }
+
+    #[test]
+    fn pluck_render_is_bit_exact() {
+        let hash = render_note("pluck", 960, 48000)
+            .into_iter()
+            .fold(0xcbf2_9ce4_8422_2325u64, |hash, sample| {
+                (hash ^ u64::from(sample.to_bits())).wrapping_mul(0x0000_0100_0000_01b3)
+            });
+        assert_eq!(hash, 15_142_955_883_572_678_187);
     }
 
     #[test]
