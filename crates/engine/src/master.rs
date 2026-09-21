@@ -1316,6 +1316,7 @@ mod tests {
         score: &PortableScore,
         seconds: usize,
         mode: RealtimeBenchmarkMode,
+        voice_filter: Option<&str>,
     ) -> Duration {
         const SAMPLE_RATE: usize = 48_000;
         const BUFFER_FRAMES: usize = 256;
@@ -1357,7 +1358,9 @@ mod tests {
         let mut checksum = 0.0f32;
         for (frames, events) in &schedule {
             for (event, offset_seconds) in events {
-                synth.trigger_at(event, ticks_per_second, *offset_seconds);
+                if voice_filter.is_none_or(|voice| event.voice() == voice) {
+                    synth.trigger_at(event, ticks_per_second, *offset_seconds);
+                }
             }
             let mut buffer = [0.0f32; BUFFER_FRAMES];
             synth.fill(&mut buffer[..*frames]);
@@ -1386,9 +1389,10 @@ mod tests {
         score: &PortableScore,
         seconds: usize,
         mode: RealtimeBenchmarkMode,
+        voice_filter: Option<&str>,
     ) -> Duration {
         let mut timings = (0..3)
-            .map(|_| benchmark_realtime_render(score, seconds, mode))
+            .map(|_| benchmark_realtime_render(score, seconds, mode, voice_filter))
             .collect::<Vec<_>>();
         timings.sort_unstable();
         timings[1]
@@ -1428,10 +1432,37 @@ mod tests {
         ];
         println!("rendering {AUDIO_SECONDS}s of racing/grid audio (median of 3)");
         for (label, mode) in cases {
-            let elapsed = median_realtime_render(&score, AUDIO_SECONDS, mode);
+            let elapsed = median_realtime_render(&score, AUDIO_SECONDS, mode, None);
             let milliseconds_per_audio_second =
                 elapsed.as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
             println!("{label}: {milliseconds_per_audio_second:.3} ms CPU / s audio");
+        }
+    }
+
+    #[test]
+    #[ignore = "release-only voice timing benchmark; run explicitly with --ignored --nocapture"]
+    #[allow(clippy::assertions_on_constants)]
+    fn realtime_synth_voice_breakdown_benchmark() {
+        assert!(
+            !cfg!(debug_assertions),
+            "run this timing benchmark with cargo test --release"
+        );
+        const AUDIO_SECONDS: usize = 12;
+        let score: PortableScore = serde_json::from_str(include_str!(
+            "../../../catalog/racing/tiny-torque-level-004/score.json"
+        ))
+        .expect("representative racing score must parse");
+        println!("rendering {AUDIO_SECONDS}s of racing/grid audio by voice (median of 3)");
+        for voice in ["__none__", "pluck", "bass", "kick", "snare", "hat"] {
+            let elapsed = median_realtime_render(
+                &score,
+                AUDIO_SECONDS,
+                RealtimeBenchmarkMode::SynthOnly,
+                Some(voice),
+            );
+            let milliseconds_per_audio_second =
+                elapsed.as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
+            println!("{voice}: {milliseconds_per_audio_second:.3} ms CPU / s audio");
         }
     }
 
