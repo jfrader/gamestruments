@@ -27,6 +27,8 @@ jobs:
         with:
           node-version: "24"
       - run: cargo test -p gamestruments-engine --locked
+      # regression ceiling for production render cost runs here (release mode)
+      - run: cargo test -p gamestruments-engine --release realtime_render_benchmark -- --ignored --nocapture --test-threads=1
       - run: cargo clippy -p gamestruments-engine --all-targets --locked -- -D warnings
       - run: cargo check -p gamestruments-godot --locked
       - run: rustup target add wasm32-unknown-unknown
