@@ -323,6 +323,9 @@ pub struct Limiter {
     /// envelope computation. Enables detector to see inter-sample peaks that
     /// span chunk boundaries. State persists; no reset per call.
     tp_history: [f32; 3],
+    input_scratch: Vec<f32>,
+    extended_scratch: Vec<f32>,
+    envelope_scratch: Vec<f32>,
 }
 
 impl Limiter {
@@ -330,6 +333,9 @@ impl Limiter {
         Self {
             processor: DynamicsProcessor::new(sample_rate, -3.0, 1.0, 18.0, 0.001, 0.075, 0.003),
             tp_history: [0.0; 3],
+            input_scratch: Vec::new(),
+            extended_scratch: Vec::new(),
+            envelope_scratch: Vec::new(),
         }
     }
 
@@ -338,30 +344,32 @@ impl Limiter {
             return;
         }
         // Save inputs (pre any gain) so TP history reflects the signal *into* the limiter.
-        let inputs: Vec<f32> = buffer.to_vec();
+        self.input_scratch.clear();
+        self.input_scratch.extend_from_slice(buffer);
 
         // Build extended view: tp_history (past inputs) + current inputs.
         // This lets env for early positions in chunk see past; within-chunk future
         // gives additional lookahead for the gain computer.
-        let mut extended = vec![0.0f32; 3 + inputs.len()];
-        extended[0..3].copy_from_slice(&self.tp_history);
-        extended[3..].copy_from_slice(&inputs);
+        self.extended_scratch.clear();
+        self.extended_scratch.extend_from_slice(&self.tp_history);
+        self.extended_scratch.extend_from_slice(&self.input_scratch);
 
-        let env_ext = true_peak_envelope_4x(&extended);
-        let levels = &env_ext[3..];
+        true_peak_envelope_4x_into(&self.extended_scratch, &mut self.envelope_scratch);
+        let levels = &self.envelope_scratch[3..];
 
         self.processor.process_with_levels(buffer, levels);
 
         // Update history from *inputs* (not the gained outputs).
-        let n = inputs.len();
+        let n = self.input_scratch.len();
         if n >= 3 {
-            self.tp_history.copy_from_slice(&inputs[n - 3..]);
+            self.tp_history
+                .copy_from_slice(&self.input_scratch[n - 3..]);
         } else {
             let shift = 3 - n;
             for i in 0..shift {
                 self.tp_history[i] = self.tp_history[i + n];
             }
-            self.tp_history[shift..(shift + n)].copy_from_slice(&inputs[..n]);
+            self.tp_history[shift..(shift + n)].copy_from_slice(&self.input_scratch[..n]);
         }
     }
 
@@ -619,12 +627,14 @@ fn true_peak_at(samples: &[f32], index: usize) -> f32 {
 
 /// Per-sample neighbourhood peak of the 4x oversampled signal.
 pub fn true_peak_envelope_4x(samples: &[f32]) -> Vec<f32> {
-    if samples.is_empty() {
-        return Vec::new();
-    }
-    (0..samples.len())
-        .map(|index| true_peak_at(samples, index))
-        .collect()
+    let mut envelope = Vec::with_capacity(samples.len());
+    true_peak_envelope_4x_into(samples, &mut envelope);
+    envelope
+}
+
+fn true_peak_envelope_4x_into(samples: &[f32], envelope: &mut Vec<f32>) {
+    envelope.clear();
+    envelope.extend((0..samples.len()).map(|index| true_peak_at(samples, index)));
 }
 
 /// Max absolute value over the sample points and the three 1/4-way points
@@ -794,17 +804,28 @@ impl MasterChain {
         }
     }
 
-    /// REALTIME causal path (Godot, live WASM etc.).
-    /// No lookahead beyond the internal 3 ms delay line; fixed makeup gain.
-    /// Detector for limiter is driven from true-peak envelope (cross-chunk stateful).
+    /// REALTIME causal path (Godot, live WASM etc.). Metering is skipped because
+    /// live callers do not request a report. Use [`Self::process_metered`] when a
+    /// realtime report is required.
     pub fn process(&mut self, buffer: &mut [f32]) {
+        self.process_realtime(buffer, false);
+    }
+
+    /// Realtime causal path with integrated-loudness and true-peak metering.
+    pub fn process_metered(&mut self, buffer: &mut [f32]) {
+        self.process_realtime(buffer, true);
+    }
+
+    fn process_realtime(&mut self, buffer: &mut [f32], meter: bool) {
         for x in buffer.iter_mut() {
             if !x.is_finite() {
                 *x = 0.0;
             }
         }
 
-        self.meter_before.process(buffer);
+        if meter {
+            self.meter_before.process(buffer);
+        }
 
         self.highpass.process(buffer);
         self.compressor.process(buffer);
@@ -827,11 +848,22 @@ impl MasterChain {
             *x = x.clamp(-ceiling_linear, ceiling_linear);
         }
 
-        self.meter_after.process(buffer);
+        if meter {
+            self.meter_after.process(buffer);
+        }
     }
 
-    /// Stereo realtime path with linked detectors.
+    /// Stereo realtime path with linked detectors and no report metering.
     pub fn process_stereo(&mut self, left: &mut [f32], right: &mut [f32]) {
+        self.process_stereo_realtime(left, right, false);
+    }
+
+    /// Stereo realtime path with linked detectors and report metering.
+    pub fn process_stereo_metered(&mut self, left: &mut [f32], right: &mut [f32]) {
+        self.process_stereo_realtime(left, right, true);
+    }
+
+    fn process_stereo_realtime(&mut self, left: &mut [f32], right: &mut [f32], meter: bool) {
         let n = left.len();
         if n != right.len() || n == 0 {
             return;
@@ -844,7 +876,9 @@ impl MasterChain {
                 right[i] = 0.0;
             }
         }
-        self.meter_before.process_stereo(left, right);
+        if meter {
+            self.meter_before.process_stereo(left, right);
+        }
         self.highpass.process_stereo(left, right);
         self.compressor.process_stereo(left, right);
         let makeup = dmath::db_to_linear(REALTIME_MAKEUP_DB);
@@ -861,7 +895,9 @@ impl MasterChain {
             left[i] = left[i].clamp(-ceiling, ceiling);
             right[i] = right[i].clamp(-ceiling, ceiling);
         }
-        self.meter_after.process_stereo(left, right);
+        if meter {
+            self.meter_after.process_stereo(left, right);
+        }
     }
 
     /// OFFLINE render path (render_wav etc.).
@@ -1191,6 +1227,9 @@ impl MasterChain {
         }
     }
 
+    /// Report values accumulated by [`Self::process_metered`] or
+    /// [`Self::process_stereo_metered`]. The default realtime process methods do
+    /// not update the meters.
     pub fn report(&self) -> MasterReport {
         let (lufs_before, _) = self.meter_before.report();
         let (lufs_after, tp_after) = self.meter_after.report();
@@ -1220,7 +1259,9 @@ fn measure_lufs_stereo(left: &[f32], right: &[f32], sr: u32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{score::PortableScore, synth::events_starting_at, Synth};
     use std::f32::consts::PI;
+    use std::time::{Duration, Instant};
 
     // --- helpers local to tests ---
     fn decode_wav_samples(wav: &[u8]) -> Vec<f32> {
@@ -1235,6 +1276,163 @@ mod tests {
 
     fn ceiling_linear() -> f32 {
         dmath::db_to_linear(DEFAULT_CEILING_DBTP)
+    }
+
+    #[derive(Clone, Copy)]
+    enum RealtimeBenchmarkMode {
+        SynthOnly,
+        ProductionMaster,
+        MeteredMaster,
+        MasterWithoutMeters,
+        MasterWithoutMetersOrTruePeak,
+    }
+
+    fn process_without_meters(chain: &mut MasterChain, buffer: &mut [f32], true_peak: bool) {
+        for sample in buffer.iter_mut() {
+            if !sample.is_finite() {
+                *sample = 0.0;
+            }
+        }
+        chain.highpass.process(buffer);
+        chain.compressor.process(buffer);
+
+        let makeup = dmath::db_to_linear(REALTIME_MAKEUP_DB);
+        for sample in buffer.iter_mut() {
+            *sample *= makeup;
+        }
+
+        if true_peak {
+            chain.limiter.process(buffer);
+        } else {
+            chain.limiter.processor.process(buffer);
+        }
+        let ceiling = dmath::db_to_linear(chain.config.ceiling_dbtp);
+        for sample in buffer.iter_mut() {
+            *sample = sample.clamp(-ceiling, ceiling);
+        }
+    }
+
+    fn benchmark_realtime_render(
+        score: &PortableScore,
+        seconds: usize,
+        mode: RealtimeBenchmarkMode,
+    ) -> Duration {
+        const SAMPLE_RATE: usize = 48_000;
+        const BUFFER_FRAMES: usize = 256;
+        let section_id = "grid";
+        let section_length = score
+            .section(section_id)
+            .expect("benchmark section must exist")
+            .length_ticks;
+        let ticks_per_second = score.ticks_per_second();
+        let total_frames = seconds * SAMPLE_RATE;
+        let mut schedule = Vec::with_capacity(total_frames.div_ceil(BUFFER_FRAMES));
+        let mut frames_produced = 0usize;
+        let mut tick = 0u32;
+        while frames_produced < total_frames {
+            let frames = (total_frames - frames_produced).min(BUFFER_FRAMES);
+            let next_tick = crate::synth::tick_at_sample(
+                (frames_produced + frames) as u64,
+                SAMPLE_RATE as f64,
+                ticks_per_second,
+            );
+            let span_ticks = next_tick.saturating_sub(tick).max(1);
+            let local_tick = tick % section_length.max(1);
+            let events = events_starting_at(score, section_id, local_tick, span_ticks)
+                .into_iter()
+                .map(|event| {
+                    let offset_seconds =
+                        (f64::from(event.start_tick()) - f64::from(local_tick)) / ticks_per_second;
+                    (event, offset_seconds.max(0.0))
+                })
+                .collect::<Vec<_>>();
+            schedule.push((frames, events));
+            frames_produced += frames;
+            tick = next_tick;
+        }
+
+        let started = Instant::now();
+        let mut synth = Synth::new(SAMPLE_RATE as f32);
+        let mut master = MasterChain::new(SAMPLE_RATE as u32, MasterConfig::default());
+        let mut checksum = 0.0f32;
+        for (frames, events) in &schedule {
+            for (event, offset_seconds) in events {
+                synth.trigger_at(event, ticks_per_second, *offset_seconds);
+            }
+            let mut buffer = [0.0f32; BUFFER_FRAMES];
+            synth.fill(&mut buffer[..*frames]);
+            match mode {
+                RealtimeBenchmarkMode::SynthOnly => {}
+                RealtimeBenchmarkMode::ProductionMaster => {
+                    master.process(&mut buffer[..*frames]);
+                }
+                RealtimeBenchmarkMode::MeteredMaster => {
+                    master.process_metered(&mut buffer[..*frames]);
+                }
+                RealtimeBenchmarkMode::MasterWithoutMeters => {
+                    process_without_meters(&mut master, &mut buffer[..*frames], true);
+                }
+                RealtimeBenchmarkMode::MasterWithoutMetersOrTruePeak => {
+                    process_without_meters(&mut master, &mut buffer[..*frames], false);
+                }
+            }
+            checksum += buffer[frames - 1];
+        }
+        std::hint::black_box(checksum);
+        started.elapsed()
+    }
+
+    fn median_realtime_render(
+        score: &PortableScore,
+        seconds: usize,
+        mode: RealtimeBenchmarkMode,
+    ) -> Duration {
+        let mut timings = (0..3)
+            .map(|_| benchmark_realtime_render(score, seconds, mode))
+            .collect::<Vec<_>>();
+        timings.sort_unstable();
+        timings[1]
+    }
+
+    #[test]
+    #[ignore = "release-only timing benchmark; run explicitly with --ignored --nocapture"]
+    #[allow(clippy::assertions_on_constants)]
+    fn realtime_render_benchmark() {
+        assert!(
+            !cfg!(debug_assertions),
+            "run this timing benchmark with cargo test --release"
+        );
+        const AUDIO_SECONDS: usize = 12;
+        let score: PortableScore = serde_json::from_str(include_str!(
+            "../../../catalog/racing/tiny-torque-level-004/score.json"
+        ))
+        .expect("representative racing score must parse");
+        let cases = [
+            ("synth only", RealtimeBenchmarkMode::SynthOnly),
+            (
+                "synth + production master",
+                RealtimeBenchmarkMode::ProductionMaster,
+            ),
+            (
+                "synth + metered master",
+                RealtimeBenchmarkMode::MeteredMaster,
+            ),
+            (
+                "synth + master, meters off",
+                RealtimeBenchmarkMode::MasterWithoutMeters,
+            ),
+            (
+                "synth + master, meters/true-peak off",
+                RealtimeBenchmarkMode::MasterWithoutMetersOrTruePeak,
+            ),
+        ];
+        println!("rendering {AUDIO_SECONDS}s of racing/grid audio (median of 3)");
+        for (label, mode) in cases {
+            let elapsed = median_realtime_render(&score, AUDIO_SECONDS, mode);
+            let milliseconds_per_audio_second =
+                elapsed.as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
+            println!("{label}: {milliseconds_per_audio_second:.3} ms CPU / s audio");
+        }
     }
 
     #[test]
@@ -1296,6 +1494,43 @@ mod tests {
                 s
             );
         }
+        let max_true_peak = true_peak_envelope_4x(&out)
+            .into_iter()
+            .fold(0.0f32, f32::max);
+        assert!(
+            max_true_peak <= ceiling + 2e-3,
+            "realtime true-peak ceiling violated across chunks: {max_true_peak}"
+        );
+    }
+
+    #[test]
+    fn realtime_metering_does_not_change_audio() {
+        let mut unmetered = MasterChain::new(48000, MasterConfig::default());
+        let mut metered = MasterChain::new(48000, MasterConfig::default());
+        let mut signal = (0..48000)
+            .map(|index| {
+                let phase = 2.0 * PI * 997.0 * index as f32 / 48000.0;
+                phase.sin() * (0.5 + (index % 127) as f32 / 127.0)
+            })
+            .collect::<Vec<_>>();
+        let mut metered_signal = signal.clone();
+
+        for (plain, measured) in signal.chunks_mut(256).zip(metered_signal.chunks_mut(256)) {
+            unmetered.process(plain);
+            metered.process_metered(measured);
+        }
+
+        assert_eq!(
+            signal
+                .iter()
+                .map(|sample| sample.to_bits())
+                .collect::<Vec<_>>(),
+            metered_signal
+                .iter()
+                .map(|sample| sample.to_bits())
+                .collect::<Vec<_>>()
+        );
+        assert!(metered.report().integrated_lufs_after.is_finite());
     }
 
     #[test]

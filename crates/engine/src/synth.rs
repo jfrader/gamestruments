@@ -119,7 +119,7 @@ enum VoiceType {
     AirImpact,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FilterMode {
     Lowpass,
     Highpass,
@@ -132,6 +132,13 @@ struct Biquad {
     x2: f32,
     y1: f32,
     y2: f32,
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a0: f32,
+    a1: f32,
+    a2: f32,
+    coefficient_key: Option<(u32, u32, u32, FilterMode)>,
 }
 
 impl Biquad {
@@ -141,40 +148,58 @@ impl Biquad {
             x2: 0.0,
             y1: 0.0,
             y2: 0.0,
+            b0: 0.0,
+            b1: 0.0,
+            b2: 0.0,
+            a0: 1.0,
+            a1: 0.0,
+            a2: 0.0,
+            coefficient_key: None,
         }
     }
 
     fn process(&mut self, x: f32, fc: f32, q: f32, sr: f32, mode: FilterMode) -> f32 {
         let fc = fc.max(20.0).min(sr * 0.49);
         let q = q.max(0.1);
-        let omega = std::f32::consts::TAU * (fc / sr);
-        let sin_om = dmath::sin(omega);
-        let cos_om = dmath::cos(omega);
-        let alpha = sin_om / (2.0 * q);
-        let (b0, b1, b2) = match mode {
-            FilterMode::Lowpass => {
-                let b0 = (1.0 - cos_om) * 0.5;
-                let b1 = 1.0 - cos_om;
-                let b2 = b0;
-                (b0, b1, b2)
-            }
-            FilterMode::Highpass => {
-                let b0 = (1.0 + cos_om) * 0.5;
-                let b1 = -(1.0 + cos_om);
-                let b2 = b0;
-                (b0, b1, b2)
-            }
-            FilterMode::Bandpass => {
-                let b0 = alpha;
-                let b1 = 0.0;
-                let b2 = -alpha;
-                (b0, b1, b2)
-            }
-        };
-        let a0 = 1.0 + alpha;
-        let a1 = -2.0 * cos_om;
-        let a2 = 1.0 - alpha;
-        let y = (b0 * x + b1 * self.x1 + b2 * self.x2 - a1 * self.y1 - a2 * self.y2) / a0;
+        let coefficient_key = (fc.to_bits(), q.to_bits(), sr.to_bits(), mode);
+        if self.coefficient_key != Some(coefficient_key) {
+            let omega = std::f32::consts::TAU * (fc / sr);
+            let sin_om = dmath::sin(omega);
+            let cos_om = dmath::cos(omega);
+            let alpha = sin_om / (2.0 * q);
+            let (b0, b1, b2) = match mode {
+                FilterMode::Lowpass => {
+                    let b0 = (1.0 - cos_om) * 0.5;
+                    let b1 = 1.0 - cos_om;
+                    let b2 = b0;
+                    (b0, b1, b2)
+                }
+                FilterMode::Highpass => {
+                    let b0 = (1.0 + cos_om) * 0.5;
+                    let b1 = -(1.0 + cos_om);
+                    let b2 = b0;
+                    (b0, b1, b2)
+                }
+                FilterMode::Bandpass => {
+                    let b0 = alpha;
+                    let b1 = 0.0;
+                    let b2 = -alpha;
+                    (b0, b1, b2)
+                }
+            };
+            let a0 = 1.0 + alpha;
+            self.b0 = b0;
+            self.b1 = b1;
+            self.b2 = b2;
+            self.a0 = a0;
+            self.a1 = -2.0 * cos_om;
+            self.a2 = 1.0 - alpha;
+            self.coefficient_key = Some(coefficient_key);
+        }
+        let y = (self.b0 * x + self.b1 * self.x1 + self.b2 * self.x2
+            - self.a1 * self.y1
+            - self.a2 * self.y2)
+            / self.a0;
         self.x2 = self.x1;
         self.x1 = x;
         self.y2 = self.y1;
@@ -1391,7 +1416,7 @@ use crate::score::PortableScore;
 
 #[cfg(test)]
 mod tests {
-    use super::Synth;
+    use super::{Biquad, FilterMode, Synth};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::MusicEvent;
 
@@ -1450,6 +1475,20 @@ mod tests {
         synth.fill(&mut samples);
         assert!(synth.voices.is_empty(), "{voice} must clean up its voice");
         samples
+    }
+
+    #[test]
+    fn cached_filter_coefficients_preserve_samples() {
+        let mut cached = Biquad::new();
+        let mut recalculated = Biquad::new();
+        for index in 0..4096 {
+            let input = ((index as f32 * 0.173).sin() * 0.7).clamp(-1.0, 1.0);
+            let cached_sample = cached.process(input, 2350.0, 0.72, 48000.0, FilterMode::Bandpass);
+            recalculated.coefficient_key = None;
+            let recalculated_sample =
+                recalculated.process(input, 2350.0, 0.72, 48000.0, FilterMode::Bandpass);
+            assert_eq!(cached_sample.to_bits(), recalculated_sample.to_bits());
+        }
     }
 
     #[test]

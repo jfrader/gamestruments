@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Live playback uses substantially less CPU: realtime mastering no longer runs two expensive loudness/true-peak meters when no report is requested, while the limiter still enforces its true-peak ceiling. Synth filters also reuse unchanged coefficients instead of recalculating trigonometry for every sample.
 - Godot `GamestrumentsPlayer` no longer drifts out of time. The score clock is now derived from produced samples rather than the render frame, and every note is scheduled at its true sample offset inside the buffer, so timing is independent of frame rate. Previously the score position crept 15-35 s ahead of the sound after ~9 minutes of playback, and a stalled frame could fire a whole window of notes at one instant. The generated buffer is also handed to Godot with a single `push_buffer` call instead of one `push_frame` per sample, removing ~48k GDExtension crossings per second and cutting live playback CPU substantially.
 
 ### Added
