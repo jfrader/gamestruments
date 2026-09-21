@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] - 2026-09-21
+
+### Fixed
+
+- Live playback costs another ~32% less CPU on the production render path (synth-only ~43%): each voice caches its velocity gain and oscillator detune multipliers at trigger time instead of recomputing three invariant `powf` calls per sample. Output is bit-exact.
+
 ## [1.0.3] - 2026-09-21
 
 ### Added
