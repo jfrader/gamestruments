@@ -1,11 +1,6 @@
 # Changelog
 
-## [1.0.2] - 2026-09-19
-
-### Fixed
-
-- Live playback uses substantially less CPU: realtime mastering no longer runs two expensive loudness/true-peak meters when no report is requested, while the limiter still enforces its true-peak ceiling. Synth filters also reuse unchanged coefficients instead of recalculating trigonometry for every sample.
-- Godot `GamestrumentsPlayer` no longer drifts out of time. The score clock is now derived from produced samples rather than the render frame, and every note is scheduled at its true sample offset inside the buffer, so timing is independent of frame rate. Previously the score position crept 15-35 s ahead of the sound after ~9 minutes of playback, and a stalled frame could fire a whole window of notes at one instant. The generated buffer is also handed to Godot with a single `push_buffer` call instead of one `push_frame` per sample, removing ~48k GDExtension crossings per second and cutting live playback CPU substantially.
+## [1.0.3] - 2026-09-21
 
 ### Added
 
@@ -13,6 +8,13 @@
 
 ### Fixed
 
+- Live playback uses substantially less CPU: realtime mastering no longer runs two expensive loudness/true-peak meters when no report is requested, while the limiter still enforces its true-peak ceiling. Synth filters also reuse unchanged coefficients instead of recalculating trigonometry for every sample.
+
+## [1.0.2] - 2026-09-19
+
+### Fixed
+
+- Godot `GamestrumentsPlayer` no longer drifts out of time. The score clock is now derived from produced samples rather than the render frame, and every note is scheduled at its true sample offset inside the buffer, so timing is independent of frame rate. Previously the score position crept 15-35 s ahead of the sound after ~9 minutes of playback, and a stalled frame could fire a whole window of notes at one instant. The generated buffer is also handed to Godot with a single `push_buffer` call instead of one `push_frame` per sample, removing ~48k GDExtension crossings per second and cutting live playback CPU substantially.
 - Audio Lab: the engine button reserves a fixed width, so toggling Play/Stop — and the label swapping between Start engine, the current phase, and a crossover readout — no longer reflows the topbar into a second row; a long phase name truncates with an ellipsis inside the fixed control.
 - Audio Lab: removed the eyebrow text above the title so the wordmark no longer overlaps it on narrow screens.
 
