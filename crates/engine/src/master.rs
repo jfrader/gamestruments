@@ -1436,6 +1436,18 @@ mod tests {
             let milliseconds_per_audio_second =
                 elapsed.as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
             println!("{label}: {milliseconds_per_audio_second:.3} ms CPU / s audio");
+            if label.contains("production master") {
+                // Regression ceiling for the production render path (synth + MasterChain::process).
+                // Guards against CPU cost creep re-introduced in the realtime mix path used by games.
+                // Measured on 2026-09-21 dev machine (release, median of 3): ~19.5 ms CPU per audio-second.
+                // Set ceiling at ~2x (CI runners slow/noisy): 40.0 .
+                // Re-measure with: cargo test -p gamestruments-engine --release realtime_render_benchmark -- --ignored --nocapture --test-threads=1
+                // Update this ceiling (and comment) only after confirming a legitimate sustained change.
+                assert!(
+                    milliseconds_per_audio_second < 40.0,
+                    "production master render cost {milliseconds_per_audio_second:.3} ms/s exceeded ceiling 40.0; re-measure and adjust if needed"
+                );
+            }
         }
     }
 
