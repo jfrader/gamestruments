@@ -369,9 +369,10 @@ impl GamestrumentsPlayer {
         let initial = score.default_section.clone();
         match AdaptiveTransport::new(score.clone(), Some(&initial)) {
             Ok(transport) => {
-                self.form_audio = if score.form.as_ref().and_then(|form| form.origin)
-                    == Some(gamestruments_engine::score::FormOrigin::TransitionStart)
-                {
+                // Any score with a form blends through the aligned renderer.
+                // Seeded and pool forms leave `origin` unset; gating on
+                // TransitionStart skipped that blend and hard-cut phase cues.
+                self.form_audio = if score.form.is_some() {
                     Some(FormAudio::new(&score, rate))
                 } else {
                     None
