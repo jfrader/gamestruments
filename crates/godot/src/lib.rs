@@ -1,9 +1,10 @@
-use gamestruments_engine::{master::{MasterChain, MasterConfig},
+use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
-    generate_suspense_arrangement, AdaptiveTransport, AdventureInput, AdventureState,
-    AdventureStyle, ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette,
-    PortableScore, RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle,
-    Synth, TraceState,
+    generate_suspense_arrangement,
+    master::{MasterChain, MasterConfig},
+    AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
+    FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore, RacingArrangement,
+    Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -191,19 +192,15 @@ impl INode for GamestrumentsPlayer {
                 } else {
                     0.0
                 };
-                let (g_out, g_act) =
-                    gamestruments_engine::handoff::crossfade_gains(progress);
+                let (g_out, g_act) = gamestruments_engine::handoff::crossfade_gains(progress);
                 self.scratch[i] = g_out * out_v.scratch[i] + g_act * active.scratch[i];
             }
 
             // Advance clocks for both voices (outgoing keeps its audible time).
-            out_v.frames_produced =
-                out_v.frames_produced.saturating_add(frames as u64);
-            active.frames_produced =
-                active.frames_produced.saturating_add(frames as u64);
+            out_v.frames_produced = out_v.frames_produced.saturating_add(frames as u64);
+            active.frames_produced = active.frames_produced.saturating_add(frames as u64);
 
-            self.handoff_samples_done =
-                self.handoff_samples_done.saturating_add(frames as u64);
+            self.handoff_samples_done = self.handoff_samples_done.saturating_add(frames as u64);
 
             // Run MasterChain *once* on the already-mixed buffer (active's master).
             if let Some(master) = active.master.as_mut() {
@@ -223,8 +220,7 @@ impl INode for GamestrumentsPlayer {
 
             self.scratch.copy_from_slice(&active.scratch[..]);
 
-            active.frames_produced =
-                active.frames_produced.saturating_add(frames as u64);
+            active.frames_produced = active.frames_produced.saturating_add(frames as u64);
 
             if let Some(master) = active.master.as_mut() {
                 master.process(&mut self.scratch);
@@ -232,8 +228,11 @@ impl INode for GamestrumentsPlayer {
         }
 
         self.stereo_scratch.clear();
-        self.stereo_scratch
-            .extend(self.scratch.iter().map(|sample| Vector2::new(*sample, *sample)));
+        self.stereo_scratch.extend(
+            self.scratch
+                .iter()
+                .map(|sample| Vector2::new(*sample, *sample)),
+        );
         let stereo = PackedVector2Array::from(self.stereo_scratch.as_slice());
         playback.push_buffer(&stereo);
     }
@@ -287,20 +286,15 @@ impl GamestrumentsPlayer {
                     start_tick % length.max(1)
                 };
                 for event in gamestruments_engine::synth::events_starting_at(
-                    score,
-                    &section,
-                    local,
-                    span_ticks,
+                    score, &section, local, span_ticks,
                 ) {
                     // Place the event at its true sample offset inside this
                     // buffer instead of starting the whole window at once.
                     let offset_seconds =
                         (f64::from(event.start_tick()) - f64::from(local)) / ticks_per_second;
-                    voice.synth.trigger_at(
-                        &event,
-                        ticks_per_second,
-                        offset_seconds.max(0.0),
-                    );
+                    voice
+                        .synth
+                        .trigger_at(&event, ticks_per_second, offset_seconds.max(0.0));
                 }
             }
             voice.synth.fill(&mut voice.scratch);
@@ -357,6 +351,15 @@ impl GamestrumentsPlayer {
         if self.project_secret.is_empty() {
             godot_error!("GamestrumentsPlayer.project_secret is empty");
             return false;
+        }
+        let seed_str = seed.to_string();
+        if self
+            .active
+            .as_ref()
+            .is_some_and(|active| active.seed == seed_str)
+        {
+            // Already playing this seed. Do not recompose or restart the clock.
+            return true;
         }
         let recipe = self.recipe.to_string();
         let (score, automatic_recipe) = match recipe.as_str() {
@@ -483,16 +486,7 @@ impl GamestrumentsPlayer {
             }
         };
 
-        let seed_str = seed.to_string();
-        if let Some(active) = &self.active {
-            if active.seed == seed_str {
-                // Already playing exactly this seed on the active voice: report
-                // success and do not touch the clock or restart anything.
-                return true;
-            }
-        }
-
-        match self.voice_from_score(score, seed_str) {
+        match self.voice_from_score(score, seed.to_string()) {
             Ok(v) => {
                 let rate = self.resolved_sample_rate() as u32;
                 let is_replacing = self.active.is_some();

@@ -174,10 +174,12 @@ music.set_trace_state("complete", 0.0, 0.0, 1.0)   # coda holds through credits
 
 - **No live trait changes.** The four traits are read at `generate` and baked;
   only the state methods and form controls are live.
-- **No recipe switch on a live score.** A score belongs to one recipe; switching
-  means generating a new score (and crossfading host-side).
-- **No cross-recipe crossfade.** The engine's crossfade (2 bars) joins sections
-  within one score only. Between two players it is your bus automation.
+- **No recipe switch inside one score.** A score belongs to one recipe. `generate()`
+  builds a new score. On the Godot player, a generate while audio is already
+  playing hands off with the same two-bar linear join as a section crossfade.
+- **No engine crossfade between two player nodes.** The 2-bar join mixes sections
+  inside one score, or the outgoing and incoming scores of one Godot player.
+  Two nodes still need your bus fade.
 - **No version/take knob.** `generate(seed)` takes a seed string only; the
   generator version and take index are internal.
 - **No arbitrary state graph.** The three state models (`race`/`trace`/`adventure`)
@@ -191,12 +193,12 @@ music.set_trace_state("complete", 0.0, 0.0, 1.0)   # coda holds through credits
 ## 8. Pitfalls
 
 - **Regenerating per lap or per state change.** Generate once at level load; the
-  state methods and the form are the variety. Regeneration reloads from the
-  first section and discards the crossfade.
+  state methods and the form are the variety. A new seed starts its own section,
+  it does not continue the previous score's phrase.
 - **Treating traits as live.** Set them, then `generate`. A "sweep" is a
   regeneration + crossfade, not a running knob.
-- **Expecting the engine to crossfade between recipes.** Two players need your
-  bus-level fade; the engine only crossfades inside one score.
+- **Expecting two player nodes to crossfade themselves.** One Godot player
+  hands off on `generate()`. Two nodes still need your bus fade.
 - **Designing around `defeat`/`recovery`/`wrong-way` on Racing `original` or
   `extended`.** They don't exist there; a loss falls back to `victory`.
 - **Holding forever.** `set_form_hold(true)` with no release pins the piece to
