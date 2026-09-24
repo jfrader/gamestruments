@@ -14,16 +14,50 @@ pub fn crossfade_sample_count(score: &PortableScore, sample_rate: u32) -> u64 {
     samples.max(1)
 }
 
-/// Linear amplitude above which a rendered buffer counts as sounding, about
-/// -60 dBFS. A genuinely silent voice renders exact zeros, and mastered music
-/// peaks near the -1 dBFS ceiling, so this sits far below any real signal and
-/// far above digital silence.
-pub const SOUNDING_THRESHOLD: f32 = 0.001;
+/// RMS amplitude above which the incoming voice counts as *musically present*
+/// (not merely non-silent), linear, about -16.5 dBFS.
+///
+/// A rendered buffer's RMS (not its peak) is the gate, so a lone transient or a
+/// quiet bed of rumble cannot release the hold the way a `> 0` peak check would.
+/// Calibrated against the real racing scores: their quiet `ignition` bed renders
+/// at rms ≈ 0.05–0.12, and real content (the garage intro, the grooves) sits
+/// well above this floor, so the hold persists through the bed and releases only
+/// when the incoming score has actual material.
+pub const MUSICAL_FLOOR: f32 = 0.15;
 
-/// Whether `buffer` has produced audible signal: any sample whose magnitude
-/// exceeds [`SOUNDING_THRESHOLD`].
-pub fn buffer_is_sounding(buffer: &[f32]) -> bool {
-    buffer.iter().any(|sample| sample.abs() > SOUNDING_THRESHOLD)
+/// Root-mean-square amplitude of `buffer` (the level, not the peak). An empty
+/// buffer is silent (0.0). Allocation-free: a single pass over the slice.
+pub fn buffer_rms(buffer: &[f32]) -> f32 {
+    if buffer.is_empty() {
+        return 0.0;
+    }
+    let sum_sq: f32 = buffer.iter().map(|&s| s * s).sum();
+    (sum_sq / buffer.len() as f32).sqrt()
+}
+
+/// Whether `buffer`'s level has reached the musical floor: its RMS is at or
+/// above [`MUSICAL_FLOOR`].
+pub fn buffer_above_floor(buffer: &[f32]) -> bool {
+    buffer_rms(buffer) >= MUSICAL_FLOOR
+}
+
+/// Upper bound on the incoming match gain, so a near-silent incoming is lifted
+/// to the outgoing's level without runaway gain on a buffer that is still
+/// basically silent.
+pub const MAX_MATCH_GAIN: f32 = 4.0;
+
+/// Gain applied to the incoming voice so its level matches the outgoing's:
+/// `outgoing_rms / incoming_rms`, clamped to `[1.0, MAX_MATCH_GAIN]`. It only
+/// ever boosts a quieter incoming (never cuts a louder one), and a silent
+/// incoming yields `1.0` because boosting silence is a no-op. Applied on top of
+/// the fade law, it keeps the crossfade sum level instead of dipping toward the
+/// quieter of the two voices.
+pub fn match_gain(outgoing_rms: f32, incoming_rms: f32) -> f32 {
+    if incoming_rms <= 0.0 {
+        1.0
+    } else {
+        (outgoing_rms / incoming_rms).clamp(1.0, MAX_MATCH_GAIN)
+    }
 }
 
 /// Progress state for a crossfade between an outgoing and an incoming voice.
@@ -34,21 +68,22 @@ pub fn buffer_is_sounding(buffer: &[f32]) -> bool {
 /// `retarget` therefore differ — `begin` starts a fade at zero, while `retarget`
 /// keeps the running counter and only re-fixes the total.
 ///
-/// A handoff that begins while the incoming voice is still silent (for example
-/// a score that opens on its sparse section) does not fade the outgoing down
-/// into that silence. It first *holds*: the outgoing stays at full gain and the
-/// incoming silent until the incoming's rendered buffer first sounds above
-/// [`SOUNDING_THRESHOLD`], at which point the crossfade starts from progress
-/// zero. The hold is bounded by the fade length itself (`samples_total`) so a
-/// never-sounding incoming cannot hold forever; the fade then runs anyway.
+/// A handoff that begins while the incoming voice is still below the musical
+/// floor (for example a score that opens on a quiet bed) does not fade the
+/// outgoing down into that near-silence. It first *holds*: the outgoing stays
+/// at full gain and the incoming silent until the incoming's rendered buffer
+/// reaches [`MUSICAL_FLOOR`] in RMS (a level sustained across a whole buffer,
+/// not a lone peak), at which point the crossfade starts from progress zero.
+/// The hold is bounded by the fade length itself (`samples_total`) so a
+/// never-reaching incoming cannot hold forever; the fade then runs anyway.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Handoff {
     samples_done: u64,
     samples_total: u64,
-    /// True while the incoming voice has not yet sounded and the outgoing is
-    /// held at full gain instead of fading.
+    /// True while the incoming voice has not yet reached the musical floor and
+    /// the outgoing is held at full gain instead of fading.
     waiting: bool,
-    /// Samples spent waiting for the incoming to sound. Bounded by
+    /// Samples spent waiting for the incoming to reach the floor. Bounded by
     /// `samples_total`.
     wait_elapsed: u64,
 }
@@ -65,20 +100,21 @@ impl Handoff {
     }
 
     /// Whether a crossfade is currently in progress (an outgoing voice is
-    /// fading or being held for the incoming's first sound).
+    /// fading or being held for the incoming to reach the floor).
     pub fn is_active(&self) -> bool {
         self.samples_total > 0
     }
 
     /// Whether the handoff is holding the outgoing at full gain because the
-    /// incoming voice has not yet produced signal.
+    /// incoming voice has not yet reached the musical floor.
     pub fn is_waiting(&self) -> bool {
         self.waiting && self.samples_total > 0
     }
 
     /// Begin a handoff from a non-handoff state: the incoming voice has just
     /// replaced the playing one, so the outgoing is held at full gain until the
-    /// incoming sounds (or the hold bound elapses), then fades from zero.
+    /// incoming reaches the floor (or the hold bound elapses), then fades from
+    /// zero.
     pub fn begin(&mut self, samples_total: u64) {
         self.samples_done = 0;
         self.samples_total = samples_total;
@@ -96,26 +132,26 @@ impl Handoff {
     }
 
     /// Observe the incoming voice's rendered buffer for this frame. While
-    /// waiting, this either keeps holding (the incoming is still silent) or
-    /// starts the fade at zero because the buffer sounds above
-    /// [`SOUNDING_THRESHOLD`], or because the elapsed wait reached the hold
-    /// bound (`samples_total`). Once fading, calls are a no-op.
+    /// waiting, this either keeps holding (the incoming is still below the
+    /// floor) or starts the fade at zero because the buffer's RMS reached
+    /// [`MUSICAL_FLOOR`], or because the elapsed wait reached the hold bound
+    /// (`samples_total`). Once fading, calls are a no-op.
     pub fn poll(&mut self, incoming: &[f32]) {
         if !self.is_waiting() {
             return;
         }
         let frames = incoming.len() as u64;
         let bound_reached = self.wait_elapsed.saturating_add(frames) >= self.samples_total;
-        if buffer_is_sounding(incoming) || bound_reached {
+        if buffer_above_floor(incoming) || bound_reached {
             self.waiting = false;
             self.wait_elapsed = 0;
             self.samples_done = 0;
         }
     }
 
-    /// Advance by `frames` mixed samples. While holding for the incoming's
-    /// first sound this advances the hold clock; while fading it advances the
-    /// fade counter.
+    /// Advance by `frames` mixed samples. While holding for the incoming to
+    /// reach the floor this advances the hold clock; while fading it advances
+    /// the fade counter.
     pub fn advance(&mut self, frames: u64) {
         if self.waiting {
             self.wait_elapsed = self.wait_elapsed.saturating_add(frames);
@@ -125,8 +161,8 @@ impl Handoff {
     }
 
     /// Linear crossfade progress in `[0, 1]` at sample offset `offset` within
-    /// the buffer being mixed. Pinned at `0.0` while holding for the incoming's
-    /// first sound, so the gains stay at `(1, 0)`.
+    /// the buffer being mixed. Pinned at `0.0` while holding for the incoming to
+    /// reach the floor, so the gains stay at `(1, 0)`.
     pub fn progress(&self, offset: u64) -> f32 {
         if self.samples_total == 0 || self.waiting {
             0.0
@@ -192,17 +228,23 @@ mod tests {
         assert!(samples >= 1);
     }
 
-    /// A one-sample buffer whose magnitude is above [`SOUNDING_THRESHOLD`]: the
-    /// incoming voice has produced signal.
-    fn sounding() -> [f32; 1] {
-        [SOUNDING_THRESHOLD * 2.0]
+    /// A one-sample buffer whose RMS is exactly [`MUSICAL_FLOOR`]: the gate
+    /// releases "at or above" the floor, so this starts the fade.
+    fn at_floor() -> [f32; 1] {
+        [MUSICAL_FLOOR]
+    }
+
+    /// A quiet but non-silent buffer whose RMS sits below the floor (like the
+    /// ignition bed): it must keep the hold, unlike the old peak gate.
+    fn below_floor() -> [f32; 4] {
+        [MUSICAL_FLOOR * 0.5; 4]
     }
 
     #[test]
     fn retargeting_a_mid_fade_handoff_does_not_restart_the_fade() {
         let mut handoff = Handoff::idle();
         handoff.begin(4800);
-        handoff.poll(&sounding()); // the incoming sounds, so the fade starts
+        handoff.poll(&at_floor()); // the incoming reaches the floor, so the fade starts
         handoff.advance(2400);
 
         // Halfway through the fade.
@@ -228,14 +270,14 @@ mod tests {
     fn beginning_a_fresh_handoff_starts_the_fade_at_zero() {
         let mut handoff = Handoff::idle();
         handoff.begin(100);
-        handoff.poll(&sounding());
+        handoff.poll(&at_floor());
         handoff.advance(80);
         assert!((crossfade_gains(handoff.progress(0)).0 - 0.2).abs() < 1e-6);
 
         // The previous fade completed, then a brand-new handoff starts.
         handoff.reset();
         handoff.begin(200);
-        handoff.poll(&sounding());
+        handoff.poll(&at_floor());
 
         let (g_out, _) = crossfade_gains(handoff.progress(0));
         assert_eq!(g_out, 1.0, "a fresh handoff must begin at full outgoing gain");
@@ -249,7 +291,7 @@ mod tests {
 
         handoff.begin(100);
         assert!(handoff.is_active());
-        handoff.poll(&sounding());
+        handoff.poll(&at_floor());
 
         handoff.advance(120); // overshoot past the total
         assert_eq!(handoff.progress(0), 1.0);
@@ -258,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn while_waiting_for_the_incoming_to_sound_the_gains_hold_at_one_and_zero() {
+    fn while_waiting_for_the_incoming_to_reach_the_floor_the_gains_hold_at_one_and_zero() {
         let mut handoff = Handoff::idle();
         handoff.begin(1000);
         assert!(handoff.is_waiting());
@@ -278,7 +320,43 @@ mod tests {
     }
 
     #[test]
-    fn a_sounding_incoming_starts_the_fade_at_zero_and_it_completes() {
+    fn a_quiet_but_non_silent_incoming_keeps_the_hold() {
+        let mut handoff = Handoff::idle();
+        handoff.begin(1000);
+
+        // A low-level bed (below the floor but far above digital silence) must
+        // not release the hold: the RMS gate ignores the peak and holds.
+        let bed = below_floor();
+        let bed_len = bed.len() as u64;
+        for _ in 0..3 {
+            handoff.poll(&bed);
+            handoff.advance(bed_len);
+            assert!(
+                handoff.is_waiting(),
+                "a below-floor bed released the hold early"
+            );
+        }
+        assert!(!handoff.finished());
+    }
+
+    #[test]
+    fn a_lone_transient_below_the_floor_does_not_release_the_hold() {
+        let mut handoff = Handoff::idle();
+        handoff.begin(1000);
+
+        // One loud-ish sample among zeros: its RMS stays below the floor, so the
+        // hold continues where the old peak gate would have released.
+        let mut incoming = [0.0f32; 8];
+        incoming[0] = MUSICAL_FLOOR * 0.9;
+        handoff.poll(&incoming);
+        assert!(
+            handoff.is_waiting(),
+            "a single sub-floor transient released the hold"
+        );
+    }
+
+    #[test]
+    fn a_floor_reaching_incoming_starts_the_fade_at_zero_and_it_completes() {
         let mut handoff = Handoff::idle();
         handoff.begin(100);
 
@@ -287,10 +365,8 @@ mod tests {
         handoff.advance(8);
         assert!(handoff.is_waiting());
 
-        // ...then a later frame contains signal above the threshold.
-        let mut incoming = [0.0f32; 8];
-        incoming[5] = SOUNDING_THRESHOLD * 2.0;
-        handoff.poll(&incoming);
+        // ...then a later frame reaches the floor.
+        handoff.poll(&at_floor());
         assert!(!handoff.is_waiting());
         // The fade starts at zero progress.
         assert_eq!(handoff.progress(0), 0.0);
@@ -299,6 +375,30 @@ mod tests {
         handoff.advance(100);
         assert!(handoff.finished());
         assert_eq!(crossfade_gains(handoff.progress(0)), (0.0, 1.0));
+    }
+
+    #[test]
+    fn buffer_rms_is_the_mean_square_root() {
+        assert_eq!(buffer_rms(&[]), 0.0);
+        assert_eq!(buffer_rms(&[0.0f32; 8]), 0.0);
+        // All-same buffer: RMS equals the sample magnitude.
+        assert!((buffer_rms(&[0.5f32; 8]) - 0.5).abs() < 1e-6);
+        // A single sample: RMS equals its magnitude.
+        assert!((buffer_rms(&[MUSICAL_FLOOR]) - MUSICAL_FLOOR).abs() < 1e-6);
+    }
+
+    #[test]
+    fn match_gain_boosts_only_the_quieter_incoming() {
+        // Incoming louder than the outgoing: never cut, gain stays 1.0.
+        assert_eq!(match_gain(0.2, 0.4), 1.0);
+        // Equal levels: no boost.
+        assert_eq!(match_gain(0.3, 0.3), 1.0);
+        // Incoming quieter: boost to match the outgoing.
+        assert!((match_gain(0.4, 0.1) - 4.0).abs() < 1e-6);
+        // A huge ratio clamps to the cap instead of running away.
+        assert_eq!(match_gain(0.9, 0.05), MAX_MATCH_GAIN);
+        // Boosting silence is a no-op.
+        assert_eq!(match_gain(0.3, 0.0), 1.0);
     }
 
     #[test]

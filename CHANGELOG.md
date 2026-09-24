@@ -8,7 +8,7 @@
 
 ### Fixed
 
-- A seed change to a score that opens silent no longer fades the outgoing score into silence: the outgoing holds at full level until the new score actually starts sounding, then crossfades normally.
+- A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
 
 ## [1.0.4] - 2026-09-21
 
