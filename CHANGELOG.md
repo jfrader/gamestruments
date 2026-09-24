@@ -9,6 +9,7 @@
 ### Fixed
 
 - A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
+- A section cue (`cue_section`) no longer drops the summed Master bus to silence: the outgoing section holds at full level until the incoming section's rendered level clears the musical floor, then runs the crossfade, so a section that opens with rests no longer leaves a hole after the cue.
 
 ## [1.0.4] - 2026-09-21
 

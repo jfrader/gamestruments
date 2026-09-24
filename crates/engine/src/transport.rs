@@ -1,3 +1,4 @@
+use crate::handoff::MUSICAL_FLOOR;
 use crate::score::{AdventureState, FormOrigin, GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -6,6 +7,11 @@ pub struct TransitionPlan {
     pub to: String,
     pub start_tick: u32,
     pub end_tick: u32,
+    /// Whether this transition holds the outgoing at full gain until the
+    /// incoming section's rendered level reaches the musical floor (a game
+    /// section cue), rather than crossfading on the authored schedule (an
+    /// automatic form transition).
+    pub hold: bool,
 }
 
 pub struct SectionPlayback<'a> {
@@ -27,6 +33,17 @@ pub struct AdaptiveTransport {
     form_held: bool,
     form_not_before: u32,
     automatic_transition: bool,
+    /// The tick at which the active transition's crossfade actually began:
+    /// `None` while the crossfade is holding (the outgoing at full gain and the
+    /// incoming silent until the incoming section's rendered level reaches
+    /// [`MUSICAL_FLOOR`]), otherwise the tick the hold released. Reset whenever
+    /// the transition is replaced or cleared.
+    release_tick: Option<u32>,
+    /// Whether the renderer has reported the incoming section's level during
+    /// this transition. Until it has (a structural simulation that never
+    /// renders), a held cue does not extend: it still completes at the plan's
+    /// authored end.
+    incoming_reported: bool,
 }
 
 impl AdaptiveTransport {
@@ -51,6 +68,8 @@ impl AdaptiveTransport {
             form_held: false,
             form_not_before: 0,
             automatic_transition: false,
+            release_tick: None,
+            incoming_reported: false,
         })
     }
 
@@ -135,26 +154,37 @@ impl AdaptiveTransport {
             }
             if at_tick < plan.start_tick {
                 if target == self.current_section {
-                    self.transition = None;
+                    self.clear_transition();
                     self.pending_section = None;
                     self.sync_form_to(&self.current_section.clone());
                     return None;
                 }
                 let next = self.create_plan(&self.current_section, target, at_tick);
-                self.transition = Some(next.clone());
+                self.begin_transition(next.clone());
                 return Some(next);
             }
             self.pending_section = Some(target.to_string());
             return None;
         }
         let plan = self.create_plan(&self.current_section, target, at_tick);
-        self.transition = Some(plan.clone());
+        self.begin_transition(plan.clone());
         Some(plan)
     }
 
     pub fn advance(&mut self, at_tick: u32) {
         if let Some(plan) = &self.transition {
-            if at_tick >= plan.end_tick {
+            // A held cue whose incoming never reaches the floor still must
+            // finish: release the hold at the plan's authored end. Only once
+            // the renderer has observed the incoming, so a structural
+            // simulation still completes at the authored end.
+            if plan.hold
+                && self.incoming_reported
+                && self.release_tick.is_none()
+                && at_tick >= plan.end_tick
+            {
+                self.release_tick = Some(plan.end_tick);
+            }
+            if at_tick >= self.effective_end(plan) {
                 self.current_section = plan.to.clone();
                 self.cue_target = None;
                 self.section_entered_at = if self.score.form.as_ref().and_then(|form| form.origin)
@@ -167,13 +197,13 @@ impl AdaptiveTransport {
                     at_tick
                 };
                 self.sync_form_to(&self.current_section.clone());
-                self.transition = None;
+                self.clear_transition();
                 self.automatic_transition = false;
                 self.form_not_before = 0;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
                         let next = self.create_plan(&self.current_section, &pending, at_tick);
-                        self.transition = Some(next);
+                        self.begin_transition(next);
                     }
                 }
             }
@@ -183,7 +213,7 @@ impl AdaptiveTransport {
 
     pub fn section_gain(&self, section_id: &str, at_tick: u32) -> f32 {
         if let Some(plan) = &self.transition {
-            if at_tick >= plan.start_tick && at_tick < plan.end_tick {
+            if at_tick >= plan.start_tick && at_tick < self.effective_end(plan) {
                 let progress = self.fade_progress(plan, at_tick);
                 if section_id == plan.from {
                     return 1.0 - progress;
@@ -220,7 +250,7 @@ impl AdaptiveTransport {
                 .as_ref()
                 .is_some_and(|plan| at_tick < plan.start_tick)
         {
-            let plan = self.transition.take();
+            let plan = self.clear_transition();
             self.automatic_transition = false;
             self.pending_section = None;
             self.sync_form_to(&self.current_section.clone());
@@ -253,7 +283,7 @@ impl AdaptiveTransport {
 
     pub fn playback_at(&self, at_tick: u32) -> [Option<SectionPlayback<'_>>; 2] {
         if let Some(plan) = &self.transition {
-            if at_tick >= plan.end_tick {
+            if at_tick >= self.effective_end(plan) {
                 return [
                     Some(SectionPlayback {
                         section: &plan.to,
@@ -264,7 +294,7 @@ impl AdaptiveTransport {
                     None,
                 ];
             }
-            if at_tick >= plan.start_tick && at_tick < plan.end_tick {
+            if at_tick >= plan.start_tick {
                 let progress = self.fade_progress(plan, at_tick);
                 return [
                     Some(SectionPlayback {
@@ -303,6 +333,7 @@ impl AdaptiveTransport {
             to: to.to_string(),
             start_tick: start,
             end_tick: start.saturating_add(self.transition_length()),
+            hold: true,
         }
     }
 
@@ -311,8 +342,71 @@ impl AdaptiveTransport {
         length.max(self.bar_ticks)
     }
 
+    /// Start a new transition, dropping any in-flight hold.
+    fn begin_transition(&mut self, plan: TransitionPlan) {
+        self.release_tick = None;
+        self.incoming_reported = false;
+        self.transition = Some(plan);
+    }
+
+    /// End the active transition and return it, dropping any in-flight hold.
+    fn clear_transition(&mut self) -> Option<TransitionPlan> {
+        self.release_tick = None;
+        self.incoming_reported = false;
+        self.transition.take()
+    }
+
+    /// The tick at which the active transition actually finishes. A held cue
+    /// whose incoming has been observed by the renderer begins its crossfade at
+    /// the release tick (or holds until the plan's authored end) and then runs
+    /// the full crossfade length, so it extends past
+    /// [`TransitionPlan::end_tick`] when the incoming opens quietly; a
+    /// never-sounding incoming still completes (bounded by one crossfade length
+    /// past the plan end). A transition the renderer has not observed (or an
+    /// automatic form transition) ends at the authored tick.
+    fn effective_end(&self, plan: &TransitionPlan) -> u32 {
+        if !plan.hold || !self.incoming_reported {
+            return plan.end_tick;
+        }
+        let release = self.release_tick.unwrap_or(plan.end_tick);
+        release.saturating_add(self.transition_length())
+    }
+
     fn fade_progress(&self, plan: &TransitionPlan, at_tick: u32) -> f32 {
-        (at_tick - plan.start_tick) as f32 / (plan.end_tick - plan.start_tick).max(1) as f32
+        if !plan.hold {
+            return (at_tick.saturating_sub(plan.start_tick)) as f32
+                / self.transition_length().max(1) as f32;
+        }
+        let Some(release) = self.release_tick else {
+            return 0.0;
+        };
+        (at_tick.saturating_sub(release)) as f32 / self.transition_length().max(1) as f32
+    }
+
+    /// Report the incoming section's rendered level (RMS) for the active
+    /// transition. While a held cue's incoming has not reached
+    /// [`MUSICAL_FLOOR`], the crossfade holds at progress zero so the outgoing
+    /// stays at full gain; the first report at or above the floor releases the
+    /// hold and starts the crossfade at zero. The renderer calls this once per
+    /// buffer, so the hold releases within a buffer of the incoming sounding.
+    /// Automatic form transitions ignore reports and crossfade on schedule.
+    pub fn report_incoming_level(&mut self, level: f32, at_tick: u32) {
+        let Some(plan) = &self.transition else {
+            return;
+        };
+        if !plan.hold {
+            return;
+        }
+        self.incoming_reported = true;
+        if self.release_tick.is_some() {
+            return;
+        }
+        if at_tick < plan.start_tick {
+            return;
+        }
+        if level >= MUSICAL_FLOOR {
+            self.release_tick = Some(at_tick.min(plan.end_tick));
+        }
     }
 
     fn sync_form_to(&mut self, section: &str) {
@@ -369,8 +463,9 @@ impl AdaptiveTransport {
             to: next_section,
             start_tick: boundary_tick,
             end_tick: boundary_tick.saturating_add(length),
+            hold: false,
         };
-        self.transition = Some(plan);
+        self.begin_transition(plan);
         self.automatic_transition = true;
     }
 }
