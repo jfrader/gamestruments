@@ -1,7 +1,7 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
     generate_suspense_arrangement,
-    handoff::{buffer_rms, crossfade_gains, crossfade_sample_count, match_gain, Handoff},
+    handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
     AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
     FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore, RacingArrangement,
@@ -199,15 +199,14 @@ impl INode for GamestrumentsPlayer {
             // incoming silent.
             self.handoff.poll(&active.scratch);
 
-            // Gain-match the incoming to the outgoing so the linear crossfade sum
-            // stays level instead of dipping toward the quieter voice.
-            let match_gain = match_gain(buffer_rms(&out_v.scratch), buffer_rms(&active.scratch));
-
-            // Mix using the provided crossfade gains over the outgoing's sample count.
+            // Mix using the provided crossfade gains over the outgoing's sample
+            // count. The incoming continues at its natural level: no gain-match is
+            // applied, so its applied gain is exactly the fade law's `g_act` and
+            // reaches 1.0 at the fade's end with no residual scale factor.
             for i in 0..frames {
                 let progress = self.handoff.progress(i as u64);
                 let (g_out, g_act) = crossfade_gains(progress);
-                self.scratch[i] = g_out * out_v.scratch[i] + g_act * match_gain * active.scratch[i];
+                self.scratch[i] = g_out * out_v.scratch[i] + g_act * active.scratch[i];
             }
 
             // Advance clocks for both voices (outgoing keeps its audible time).

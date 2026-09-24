@@ -41,25 +41,6 @@ pub fn buffer_above_floor(buffer: &[f32]) -> bool {
     buffer_rms(buffer) >= MUSICAL_FLOOR
 }
 
-/// Upper bound on the incoming match gain, so a near-silent incoming is lifted
-/// to the outgoing's level without runaway gain on a buffer that is still
-/// basically silent.
-pub const MAX_MATCH_GAIN: f32 = 4.0;
-
-/// Gain applied to the incoming voice so its level matches the outgoing's:
-/// `outgoing_rms / incoming_rms`, clamped to `[1.0, MAX_MATCH_GAIN]`. It only
-/// ever boosts a quieter incoming (never cuts a louder one), and a silent
-/// incoming yields `1.0` because boosting silence is a no-op. Applied on top of
-/// the fade law, it keeps the crossfade sum level instead of dipping toward the
-/// quieter of the two voices.
-pub fn match_gain(outgoing_rms: f32, incoming_rms: f32) -> f32 {
-    if incoming_rms <= 0.0 {
-        1.0
-    } else {
-        (outgoing_rms / incoming_rms).clamp(1.0, MAX_MATCH_GAIN)
-    }
-}
-
 /// Progress state for a crossfade between an outgoing and an incoming voice.
 ///
 /// The player owns one of these for the lifetime of a handoff. Re-targeting a
@@ -388,17 +369,23 @@ mod tests {
     }
 
     #[test]
-    fn match_gain_boosts_only_the_quieter_incoming() {
-        // Incoming louder than the outgoing: never cut, gain stays 1.0.
-        assert_eq!(match_gain(0.2, 0.4), 1.0);
-        // Equal levels: no boost.
-        assert_eq!(match_gain(0.3, 0.3), 1.0);
-        // Incoming quieter: boost to match the outgoing.
-        assert!((match_gain(0.4, 0.1) - 4.0).abs() < 1e-6);
-        // A huge ratio clamps to the cap instead of running away.
-        assert_eq!(match_gain(0.9, 0.05), MAX_MATCH_GAIN);
-        // Boosting silence is a no-op.
-        assert_eq!(match_gain(0.3, 0.0), 1.0);
+    fn incoming_gain_is_exactly_one_at_and_after_the_fade_end() {
+        // The incoming voice's applied gain is the fade law's second term, with
+        // no residual scale factor. At the fade's end it must be exactly 1.0 so
+        // the level does not step at the handoff boundary, and past the end the
+        // clamped progress keeps it exactly 1.0.
+        assert_eq!(crossfade_gains(1.0).1, 1.0);
+        assert_eq!(crossfade_gains(1.5).1, 1.0);
+        assert_eq!(crossfade_gains(2.0).1, 1.0);
+
+        // A handoff driven to completion reports the same unity incoming gain.
+        let mut handoff = Handoff::idle();
+        handoff.begin(100);
+        handoff.poll(&at_floor());
+        while !handoff.finished() {
+            handoff.advance(16);
+        }
+        assert_eq!(crossfade_gains(handoff.progress(0)).1, 1.0);
     }
 
     #[test]
