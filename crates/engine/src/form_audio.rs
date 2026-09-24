@@ -1,6 +1,13 @@
+use crate::handoff::buffer_rms;
 use crate::score::{MusicEvent, PortableScore};
 use crate::synth::Synth;
 use crate::transport::AdaptiveTransport;
+
+/// Identity of the incoming section the hold probe is watching: its tonal
+/// synth index and the transition's start tick. The start tick changes when a
+/// new plan begins, so comparing it scopes the probe to one plan and stops a
+/// previous transition's tail from releasing a later hold.
+type IncomingId = (usize, u32);
 
 pub struct FormAudio {
     sample_rate: f32,
@@ -10,6 +17,12 @@ pub struct FormAudio {
     origins: Vec<Option<u32>>,
     active: [Option<(usize, f32)>; 2],
     drums: Synth,
+    /// The incoming section's tonal synth index and plan start tick while a
+    /// section crossfade is active, plus the buffer of its rendered samples
+    /// used to gate the hold. The buffer is a pre-master render, so the
+    /// transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
+    incoming: Option<IncomingId>,
+    incoming_probe: Vec<f32>,
 }
 
 impl FormAudio {
@@ -26,6 +39,8 @@ impl FormAudio {
             origins: vec![None; score.sections.len()],
             active: [None, None],
             drums: Synth::new(sample_rate),
+            incoming: None,
+            incoming_probe: Vec::new(),
         }
     }
 
@@ -40,11 +55,13 @@ impl FormAudio {
         buffer: &mut [f32],
     ) {
         let ticks_per_second = score.ticks_per_second();
+        let mut report_tick = 0;
         for sample in buffer {
             let tick = self.tick(ticks_per_second);
             if self.last_tick != Some(tick) {
                 transport.advance(tick);
                 self.active = [None, None];
+                let mut incoming = None;
                 for (slot, playback) in transport.playback_at(tick).into_iter().enumerate() {
                     let Some(playback) = playback else {
                         continue;
@@ -78,7 +95,18 @@ impl FormAudio {
                         }
                     }
                     self.active[slot] = Some((index, playback.gain));
+                    // The incoming section owns slot 1 during a crossfade; its
+                    // start tick identifies the plan the probe belongs to.
+                    if slot == 1 {
+                        incoming = Some((index, playback.origin));
+                    }
                 }
+                if self.incoming != incoming {
+                    // A plan began or ended: drop the previous transition's
+                    // samples so its tail cannot release this hold early.
+                    self.incoming_probe.clear();
+                }
+                self.incoming = incoming;
                 self.last_tick = Some(tick);
             }
             let mut rhythm = [0.0];
@@ -88,10 +116,23 @@ impl FormAudio {
                 let mut tonal = [0.0];
                 self.tonal[index].fill(&mut tonal);
                 mix += tonal[0] * gain;
+                // Accumulate the incoming section's own (unattenuated) tonal,
+                // only from the plan's start tick on, so the probe gates the
+                // hold on the incoming that actually began.
+                if let Some((probe_index, probe_start)) = self.incoming {
+                    if probe_index == index && tick >= probe_start {
+                        self.incoming_probe.push(tonal[0]);
+                    }
+                }
             }
             *sample = mix;
             self.frames += 1;
+            report_tick = tick;
         }
+        if self.incoming.is_some() && !self.incoming_probe.is_empty() {
+            transport.report_incoming_level(buffer_rms(&self.incoming_probe), report_tick);
+        }
+        self.incoming_probe.clear();
     }
 
     /// Stereo fill: uses the engine stereo path (with pans, split twins, opposite echoes).
@@ -108,11 +149,13 @@ impl FormAudio {
         let len = left.len();
         assert_eq!(len, right.len());
         let ticks_per_second = score.ticks_per_second();
+        let mut report_tick = 0;
         for i in 0..len {
             let tick = self.tick(ticks_per_second);
             if self.last_tick != Some(tick) {
                 transport.advance(tick);
                 self.active = [None, None];
+                let mut incoming = None;
                 for (slot, playback) in transport.playback_at(tick).into_iter().enumerate() {
                     let Some(playback) = playback else {
                         continue;
@@ -146,7 +189,18 @@ impl FormAudio {
                         }
                     }
                     self.active[slot] = Some((index, playback.gain));
+                    // The incoming section owns slot 1 during a crossfade; its
+                    // start tick identifies the plan the probe belongs to.
+                    if slot == 1 {
+                        incoming = Some((index, playback.origin));
+                    }
                 }
+                if self.incoming != incoming {
+                    // A plan began or ended: drop the previous transition's
+                    // samples so its tail cannot release this hold early.
+                    self.incoming_probe.clear();
+                }
+                self.incoming = incoming;
                 self.last_tick = Some(tick);
             }
             let mut rl = [0.0f32];
@@ -160,18 +214,208 @@ impl FormAudio {
                 self.tonal[index].fill_stereo(&mut tl, &mut tr);
                 mix_l += tl[0] * gain;
                 mix_r += tr[0] * gain;
+                // Accumulate the incoming section's own tonal, only from the
+                // plan's start tick on, so the probe gates the hold on the
+                // incoming that actually began.
+                if let Some((probe_index, probe_start)) = self.incoming {
+                    if probe_index == index && tick >= probe_start {
+                        self.incoming_probe.push((tl[0] + tr[0]) * 0.5);
+                    }
+                }
             }
             left[i] = mix_l;
             right[i] = mix_r;
             self.frames += 1;
+            report_tick = tick;
         }
+        if self.incoming.is_some() && !self.incoming_probe.is_empty() {
+            transport.report_incoming_level(buffer_rms(&self.incoming_probe), report_tick);
+        }
+        self.incoming_probe.clear();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::score::{MusicEvent, PortableSection, SCORE_SCHEMA_VERSION};
     use crate::{generate_suspense_arrangement, SuspenseArrangement, SuspenseInput, SuspenseStyle};
+
+    /// A sustained note, so a section of these keeps rendering above silence.
+    fn note(section: &str, start_tick: u32, serial: u32) -> MusicEvent {
+        MusicEvent::Note {
+            id: format!("{section}-{serial}"),
+            section: section.into(),
+            lane: "melody".into(),
+            start_tick,
+            duration_ticks: 240,
+            velocity: 0.8,
+            pitch: 60,
+            voice: "chip".into(),
+            role: Some("melody".into()),
+        }
+    }
+
+    /// A two-section, form-less score. `a` is a steady groove from tick zero;
+    /// `b` opens with `incoming_rest_ticks` of rest before the same groove. One
+    /// bar is 960 ticks and the crossfade is one bar.
+    fn cue_score(incoming_rest_ticks: u32) -> PortableScore {
+        let section = |id: &str, first_note_tick: u32| PortableSection {
+            id: id.into(),
+            label: id.into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (first_note_tick..3840)
+                .step_by(240)
+                .enumerate()
+                .map(|(i, tick)| note(id, tick, i as u32))
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: "cue-test".into(),
+            title: "Cue Test".into(),
+            bpm: 120.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![section("a", 0), section("b", incoming_rest_ticks)],
+            rules: Vec::new(),
+            form: None,
+        }
+    }
+
+    /// A three-section, form-less score. `a` grooves from tick zero, `b` from
+    /// `b_first_note`, and `c` from `c_first_note` (a tick past its length
+    /// leaves `c` entirely silent). One bar is 960 ticks, crossfade one bar.
+    fn cue_trio_score(b_first_note: u32, c_first_note: u32) -> PortableScore {
+        let section = |id: &str, first_note_tick: u32| PortableSection {
+            id: id.into(),
+            label: id.into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (first_note_tick..3840)
+                .step_by(240)
+                .enumerate()
+                .map(|(i, tick)| note(id, tick, i as u32))
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: "cue-trio-test".into(),
+            title: "Cue Trio Test".into(),
+            bpm: 120.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![
+                section("a", 0),
+                section("b", b_first_note),
+                section("c", c_first_note),
+            ],
+            rules: Vec::new(),
+            form: None,
+        }
+    }
+
+    fn render(score: &PortableScore, transport: &mut AdaptiveTransport, bars: f64) -> f32 {
+        let rate = 8000.0f32;
+        let mut fa = FormAudio::new(score, rate);
+        let mut buf = vec![0.0f32; 512];
+        let frames =
+            (score.bar_ticks() as f64 * bars / score.ticks_per_second() * f64::from(rate)).ceil()
+                as usize;
+        let mut min_rms = f32::INFINITY;
+        let mut frame = 0;
+        while frame < frames {
+            let n = (frames - frame).min(512);
+            fa.fill(score, transport, &mut buf[..n]);
+            min_rms = min_rms.min(buffer_rms(&buf[..n]));
+            frame += n;
+        }
+        min_rms
+    }
+
+    #[test]
+    fn a_section_cue_whose_incoming_opens_with_rests_never_reaches_silence() {
+        // `b` opens with one and a half bars of rest, longer than the one-bar
+        // crossfade: the outgoing would fade out before the incoming sounds.
+        let score = cue_score(1440);
+        let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
+        transport.request_section("b", 0);
+
+        // The hold keeps the outgoing at full gain until the incoming reaches
+        // the floor, then the crossfade runs for another bar: two bars in all.
+        let min_rms = render(&score, &mut transport, 2.0);
+        assert!(
+            min_rms > 0.001,
+            "the transition dipped to silence: min chunk rms {min_rms}"
+        );
+    }
+
+    #[test]
+    fn a_section_cue_whose_incoming_has_content_crossfades_unchanged() {
+        // `b` has content from tick zero, so the incoming never sits silent: the
+        // cue must crossfade through without dipping and land on `b` within the
+        // authored length.
+        let score = cue_score(0);
+        let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
+        let plan = transport.request_section("b", 0).unwrap();
+        assert_eq!(plan.end_tick - plan.start_tick, score.bar_ticks());
+
+        // Render one and a half authored lengths. A cue gated in the wrong
+        // domain (the raw probe against the mastered floor) holds to the time
+        // bound and only lands at two lengths; one whose incoming reaches the
+        // floor on its first buffer completes at the authored length.
+        let min_rms = render(&score, &mut transport, 1.5);
+        assert!(
+            min_rms > 0.001,
+            "the content crossfade dipped to silence: min chunk rms {min_rms}"
+        );
+        assert_eq!(
+            transport.current_section(),
+            "b",
+            "a content incoming must crossfade within the authored length, not hold to the time bound"
+        );
+    }
+
+    #[test]
+    fn a_later_cues_hold_is_not_released_by_the_previous_transitions_probe() {
+        // `b` sounds from its second bar; `c` never sounds. Cueing `b` and then
+        // queueing `c` puts the end of the first transition and the start of the
+        // second in one fill: `b`'s loud tail must not release `c`'s hold.
+        let score = cue_trio_score(960, 6000);
+        let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
+        transport.request_section("b", 0).unwrap();
+        transport.advance(500);
+        assert!(
+            transport.request_section("c", 500).is_none(),
+            "a cue queued behind an active transition defers to it"
+        );
+
+        // `b` is silent through its authored window, so its cue releases at the
+        // bound (tick 960) and ends at 1920, where the queued `c` cue begins.
+        let _ = render(&score, &mut transport, 2.5);
+
+        // `c` never sounds, so its hold must still be holding at tick 2400. A
+        // probe that carried `b`'s tail would have released it at 1920 and be
+        // halfway through `c`'s crossfade here.
+        assert_eq!(
+            transport.section_gain("c", 2400),
+            0.0,
+            "the queued cue's probe leaked from the previous transition"
+        );
+        assert_eq!(
+            transport.section_gain("b", 2400),
+            1.0,
+            "the outgoing must stay at full gain while the incoming is silent"
+        );
+    }
+
 
     #[test]
     fn native_full_form_has_one_rhythm_owner_and_no_extra_opening_bars() {

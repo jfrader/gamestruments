@@ -23,7 +23,23 @@ pub fn crossfade_sample_count(score: &PortableScore, sample_rate: u32) -> u64 {
 /// at rms ≈ 0.05–0.12, and real content (the garage intro, the grooves) sits
 /// well above this floor, so the hold persists through the bed and releases only
 /// when the incoming score has actual material.
+///
+/// It is a floor on *mastered* output: the score handoff measures each voice
+/// through its own `MasterChain` before mixing. A renderer that probes before
+/// mastering must use [`RAW_MUSICAL_FLOOR`] instead.
 pub const MUSICAL_FLOOR: f32 = 0.15;
+
+/// [`MUSICAL_FLOOR`] expressed in the pre-master domain, for renderers that
+/// probe a section *before* the Godot player's `MasterChain` — the section-cue
+/// hold in [`crate::form_audio::FormAudio`] does exactly that.
+///
+/// The realtime master path applies a fixed [`crate::master::REALTIME_MAKEUP_DB`]
+/// makeup and only compresses material above its threshold, so below that
+/// threshold the raw level that reaches [`MUSICAL_FLOOR`] once mastered is
+/// `MUSICAL_FLOOR` divided by that makeup (about -40 dBFS). The test below pins
+/// the derivation, so this is the one calibrated constant expressed in the
+/// renderer's domain rather than a second hand-tuned number.
+pub const RAW_MUSICAL_FLOOR: f32 = 0.010;
 
 /// Root-mean-square amplitude of `buffer` (the level, not the peak). An empty
 /// buffer is silent (0.0). Allocation-free: a single pass over the slice.
@@ -356,6 +372,19 @@ mod tests {
         handoff.advance(100);
         assert!(handoff.finished());
         assert_eq!(crossfade_gains(handoff.progress(0)), (0.0, 1.0));
+    }
+
+    #[test]
+    fn raw_musical_floor_is_the_mastered_floor_in_the_pre_makeup_domain() {
+        // The section-cue probe reads pre-master output, so its floor must be
+        // MUSICAL_FLOOR expressed before the realtime makeup gain, not a second
+        // hand-tuned number.
+        let makeup = crate::dmath::db_to_linear(crate::master::REALTIME_MAKEUP_DB);
+        let derived = MUSICAL_FLOOR / makeup;
+        assert!(
+            (RAW_MUSICAL_FLOOR - derived).abs() < 1e-4,
+            "RAW_MUSICAL_FLOOR {RAW_MUSICAL_FLOOR} must equal MUSICAL_FLOOR / makeup ({derived})"
+        );
     }
 
     #[test]
