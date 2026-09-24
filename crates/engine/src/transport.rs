@@ -1,4 +1,4 @@
-use crate::handoff::MUSICAL_FLOOR;
+use crate::handoff::RAW_MUSICAL_FLOOR;
 use crate::score::{AdventureState, FormOrigin, GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -384,12 +384,14 @@ impl AdaptiveTransport {
     }
 
     /// Report the incoming section's rendered level (RMS) for the active
-    /// transition. While a held cue's incoming has not reached
-    /// [`MUSICAL_FLOOR`], the crossfade holds at progress zero so the outgoing
-    /// stays at full gain; the first report at or above the floor releases the
-    /// hold and starts the crossfade at zero. The renderer calls this once per
-    /// buffer, so the hold releases within a buffer of the incoming sounding.
-    /// Automatic form transitions ignore reports and crossfade on schedule.
+    /// transition. The level is the section's pre-master render (see
+    /// [`crate::form_audio::FormAudio`]), so it is compared against
+    /// [`RAW_MUSICAL_FLOOR`]. While a held cue's incoming has not reached that
+    /// floor the crossfade holds at progress zero so the outgoing stays at full
+    /// gain; the first report at or above the floor releases the hold and starts
+    /// the crossfade at zero. The renderer calls this once per buffer, so the
+    /// hold releases within a buffer of the incoming sounding. Automatic form
+    /// transitions ignore reports and crossfade on schedule.
     pub fn report_incoming_level(&mut self, level: f32, at_tick: u32) {
         let Some(plan) = &self.transition else {
             return;
@@ -404,7 +406,7 @@ impl AdaptiveTransport {
         if at_tick < plan.start_tick {
             return;
         }
-        if level >= MUSICAL_FLOOR {
+        if level >= RAW_MUSICAL_FLOOR {
             self.release_tick = Some(at_tick.min(plan.end_tick));
         }
     }
