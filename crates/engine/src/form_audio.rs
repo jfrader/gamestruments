@@ -15,12 +15,12 @@ pub struct FormAudio {
     last_tick: Option<u32>,
     tonal: Vec<Synth>,
     origins: Vec<Option<u32>>,
-    active: [Option<(usize, f32)>; 2],
-    drums: Synth,
-    /// The incoming section's tonal synth index and plan start tick while a
-    /// section crossfade is active, plus the buffer of its rendered samples
-    /// used to gate the hold. The buffer is a pre-master render, so the
-    /// transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
+    active: [Option<(usize, f32, f32)>; 2],
+    drums: Vec<Synth>,
+    /// The incoming section's index and plan start tick while a section
+    /// crossfade is active, plus the buffer of its rendered samples (tonal and
+    /// percussion) used to gate the hold. The buffer is a pre-master render, so
+    /// the transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
     incoming: Option<IncomingId>,
     incoming_probe: Vec<f32>,
 }
@@ -38,7 +38,11 @@ impl FormAudio {
                 .collect(),
             origins: vec![None; score.sections.len()],
             active: [None, None],
-            drums: Synth::new(sample_rate),
+            drums: score
+                .sections
+                .iter()
+                .map(|_| Synth::new(sample_rate))
+                .collect(),
             incoming: None,
             incoming_probe: Vec::new(),
         }
@@ -76,6 +80,7 @@ impl FormAudio {
                     let section = &score.sections[index];
                     if self.origins[index] != Some(playback.origin) {
                         self.tonal[index] = Synth::new(self.sample_rate);
+                        self.drums[index] = Synth::new(self.sample_rate);
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
@@ -89,12 +94,12 @@ impl FormAudio {
                                 self.tonal[index].trigger(event, ticks_per_second)
                             }
                             MusicEvent::Percussion { .. } if playback.percussion => {
-                                self.drums.trigger(event, ticks_per_second)
+                                self.drums[index].trigger(event, ticks_per_second)
                             }
                             _ => (),
                         }
                     }
-                    self.active[slot] = Some((index, playback.gain));
+                    self.active[slot] = Some((index, playback.gain, playback.drum_gain));
                     // The incoming section owns slot 1 during a crossfade; its
                     // start tick identifies the plan the probe belongs to.
                     if slot == 1 {
@@ -109,19 +114,19 @@ impl FormAudio {
                 self.incoming = incoming;
                 self.last_tick = Some(tick);
             }
-            let mut rhythm = [0.0];
-            self.drums.fill(&mut rhythm);
-            let mut mix = rhythm[0];
-            for (index, gain) in self.active.into_iter().flatten() {
+            let mut mix = 0.0;
+            for (index, gain, drum_gain) in self.active.into_iter().flatten() {
                 let mut tonal = [0.0];
                 self.tonal[index].fill(&mut tonal);
-                mix += tonal[0] * gain;
-                // Accumulate the incoming section's own (unattenuated) tonal,
+                let mut rhythm = [0.0];
+                self.drums[index].fill(&mut rhythm);
+                mix += tonal[0] * gain + rhythm[0] * drum_gain;
+                // Accumulate the incoming section's own (unattenuated) tonal and drums,
                 // only from the plan's start tick on, so the probe gates the
                 // hold on the incoming that actually began.
                 if let Some((probe_index, probe_start)) = self.incoming {
                     if probe_index == index && tick >= probe_start {
-                        self.incoming_probe.push(tonal[0]);
+                        self.incoming_probe.push(tonal[0] + rhythm[0]);
                     }
                 }
             }
@@ -170,6 +175,7 @@ impl FormAudio {
                     let section = &score.sections[index];
                     if self.origins[index] != Some(playback.origin) {
                         self.tonal[index] = Synth::new(self.sample_rate);
+                        self.drums[index] = Synth::new(self.sample_rate);
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
@@ -183,12 +189,12 @@ impl FormAudio {
                                 self.tonal[index].trigger(event, ticks_per_second)
                             }
                             MusicEvent::Percussion { .. } if playback.percussion => {
-                                self.drums.trigger(event, ticks_per_second)
+                                self.drums[index].trigger(event, ticks_per_second)
                             }
                             _ => (),
                         }
                     }
-                    self.active[slot] = Some((index, playback.gain));
+                    self.active[slot] = Some((index, playback.gain, playback.drum_gain));
                     // The incoming section owns slot 1 during a crossfade; its
                     // start tick identifies the plan the probe belongs to.
                     if slot == 1 {
@@ -203,23 +209,24 @@ impl FormAudio {
                 self.incoming = incoming;
                 self.last_tick = Some(tick);
             }
-            let mut rl = [0.0f32];
-            let mut rr = [0.0f32];
-            self.drums.fill_stereo(&mut rl, &mut rr);
-            let mut mix_l = rl[0];
-            let mut mix_r = rr[0];
-            for (index, gain) in self.active.into_iter().flatten() {
+            let mut mix_l = 0.0;
+            let mut mix_r = 0.0;
+            for (index, gain, drum_gain) in self.active.into_iter().flatten() {
                 let mut tl = [0.0f32];
                 let mut tr = [0.0f32];
                 self.tonal[index].fill_stereo(&mut tl, &mut tr);
-                mix_l += tl[0] * gain;
-                mix_r += tr[0] * gain;
-                // Accumulate the incoming section's own tonal, only from the
+                let mut rl = [0.0f32];
+                let mut rr = [0.0f32];
+                self.drums[index].fill_stereo(&mut rl, &mut rr);
+                mix_l += tl[0] * gain + rl[0] * drum_gain;
+                mix_r += tr[0] * gain + rr[0] * drum_gain;
+                // Accumulate the incoming section's own tonal and drums, only from the
                 // plan's start tick on, so the probe gates the hold on the
                 // incoming that actually began.
                 if let Some((probe_index, probe_start)) = self.incoming {
                     if probe_index == index && tick >= probe_start {
-                        self.incoming_probe.push((tl[0] + tr[0]) * 0.5);
+                        self.incoming_probe
+                            .push((tl[0] + tr[0]) * 0.5 + (rl[0] + rr[0]) * 0.5);
                     }
                 }
             }
@@ -253,6 +260,18 @@ mod tests {
             pitch: 60,
             voice: "chip".into(),
             role: Some("melody".into()),
+        }
+    }
+
+    fn percussion(section: &str, start_tick: u32, serial: u32) -> MusicEvent {
+        MusicEvent::Percussion {
+            id: format!("{section}-{serial}"),
+            section: section.into(),
+            lane: "drums".into(),
+            start_tick,
+            duration_ticks: 240,
+            velocity: 1.0,
+            voice: "snare".into(),
         }
     }
 
@@ -521,6 +540,128 @@ mod tests {
         assert_eq!(
             chunked.tick(score.ticks_per_second()),
             one.tick(score.ticks_per_second())
+        );
+    }
+
+    fn percussion_led_cue_score() -> PortableScore {
+        let a = PortableSection {
+            id: "a".into(),
+            label: "a".into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (0..3840)
+                .step_by(60)
+                .enumerate()
+                .map(|(i, tick)| note("a", tick, i as u32))
+                .collect(),
+        };
+        let b = PortableSection {
+            id: "b".into(),
+            label: "b".into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (0..3840)
+                .step_by(60)
+                .enumerate()
+                .map(|(i, tick)| percussion("b", tick, i as u32))
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: "percussion-led-test".into(),
+            title: "Percussion Led Test".into(),
+            bpm: 120.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![a, b],
+            rules: Vec::new(),
+            form: None,
+        }
+    }
+
+    #[test]
+    fn percussion_led_incoming_crossfades_and_releases() {
+        let score = percussion_led_cue_score();
+        let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
+        transport.request_section("b", 0).unwrap();
+        let min_rms = render(&score, &mut transport, 1.5);
+        assert!(
+            min_rms > 0.0001,
+            "the crossfade dipped to silence: min chunk rms {min_rms}"
+        );
+        assert_eq!(
+            transport.current_section(),
+            "b",
+            "the hold must release for a percussion-led incoming"
+        );
+    }
+
+    fn drum_bus_carry_score() -> PortableScore {
+        let a = PortableSection {
+            id: "a".into(),
+            label: "a".into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (0..3840)
+                .step_by(60)
+                .enumerate()
+                .map(|(i, tick)| percussion("a", tick, i as u32))
+                .collect(),
+        };
+        let b = PortableSection {
+            id: "b".into(),
+            label: "b".into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 3840,
+            events: (1440..3840)
+                .step_by(60)
+                .enumerate()
+                .map(|(i, tick)| percussion("b", tick, i as u32))
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: "drum-bus-carry-test".into(),
+            title: "Drum Bus Carry Test".into(),
+            bpm: 120.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![a, b],
+            rules: Vec::new(),
+            form: None,
+        }
+    }
+
+    #[test]
+    fn drum_bus_carries_outgoing_percussion_during_hold() {
+        let score = drum_bus_carry_score();
+        let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
+        transport.request_section("b", 0).unwrap();
+        
+        let rate = 8000.0f32;
+        let mut fa = FormAudio::new(&score, rate);
+        let mut buf = vec![0.0f32; 512];
+        let frames = (score.bar_ticks() as f64 * 1.0 / score.ticks_per_second() * f64::from(rate)).ceil() as usize;
+        let mut max_rms = 0.0f32;
+        let mut frame = 0;
+        while frame < frames {
+            let n = (frames - frame).min(512);
+            fa.fill(&score, &mut transport, &mut buf[..n]);
+            max_rms = max_rms.max(buffer_rms(&buf[..n]));
+            frame += n;
+        }
+        
+        assert!(
+            max_rms > crate::handoff::RAW_MUSICAL_FLOOR,
+            "outgoing drums were cut during the hold: max chunk rms {max_rms}"
         );
     }
 }
