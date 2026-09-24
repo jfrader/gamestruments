@@ -192,6 +192,12 @@ impl INode for GamestrumentsPlayer {
                 master.process(&mut active.scratch);
             }
 
+            // Hold the outgoing at full gain until the incoming voice has
+            // produced signal (or the hold bound elapses), then fade from zero.
+            // While holding, `progress` is pinned at zero so the mix below keeps
+            // the outgoing at full gain and the incoming silent.
+            self.handoff.poll(&active.scratch);
+
             // Mix using the provided crossfade gains over the outgoing's sample count.
             for i in 0..frames {
                 let progress = self.handoff.progress(i as u64);
