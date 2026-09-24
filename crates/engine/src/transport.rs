@@ -18,6 +18,7 @@ pub struct SectionPlayback<'a> {
     pub section: &'a str,
     pub origin: u32,
     pub gain: f32,
+    pub drum_gain: f32,
     pub percussion: bool,
 }
 
@@ -289,6 +290,7 @@ impl AdaptiveTransport {
                         section: &plan.to,
                         origin: plan.start_tick,
                         gain: 1.0,
+                        drum_gain: 1.0,
                         percussion: true,
                     }),
                     None,
@@ -296,17 +298,20 @@ impl AdaptiveTransport {
             }
             if at_tick >= plan.start_tick {
                 let progress = self.fade_progress(plan, at_tick);
+                let (gain_from, gain_to) = (1.0 - progress, progress);
                 return [
                     Some(SectionPlayback {
                         section: &plan.from,
                         origin: self.section_entered_at,
-                        gain: 1.0 - progress,
-                        percussion: false,
+                        gain: gain_from,
+                        drum_gain: if plan.hold { gain_from } else { 1.0 },
+                        percussion: plan.hold,
                     }),
                     Some(SectionPlayback {
                         section: &plan.to,
                         origin: plan.start_tick,
-                        gain: progress,
+                        gain: gain_to,
+                        drum_gain: if plan.hold { gain_to } else { 1.0 },
                         percussion: true,
                     }),
                 ];
@@ -317,6 +322,7 @@ impl AdaptiveTransport {
                 section: &self.current_section,
                 origin: self.section_entered_at,
                 gain: 1.0,
+                drum_gain: 1.0,
                 percussion: true,
             }),
             None,

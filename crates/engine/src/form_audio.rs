@@ -17,10 +17,10 @@ pub struct FormAudio {
     origins: Vec<Option<u32>>,
     active: [Option<(usize, f32, f32)>; 2],
     drums: Vec<Synth>,
-    /// The incoming section's tonal synth index and plan start tick while a
-    /// section crossfade is active, plus the buffer of its rendered samples
-    /// used to gate the hold. The buffer is a pre-master render, so the
-    /// transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
+    /// The incoming section's index and plan start tick while a section
+    /// crossfade is active, plus the buffer of its rendered samples (tonal and
+    /// percussion) used to gate the hold. The buffer is a pre-master render, so
+    /// the transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
     incoming: Option<IncomingId>,
     incoming_probe: Vec<f32>,
 }
@@ -225,7 +225,8 @@ impl FormAudio {
                 // incoming that actually began.
                 if let Some((probe_index, probe_start)) = self.incoming {
                     if probe_index == index && tick >= probe_start {
-                        self.incoming_probe.push(tl[0] + tr[0] + rl[0] + rr[0]);
+                        self.incoming_probe
+                            .push((tl[0] + tr[0]) * 0.5 + (rl[0] + rr[0]) * 0.5);
                     }
                 }
             }
@@ -255,7 +256,7 @@ mod tests {
             lane: "melody".into(),
             start_tick,
             duration_ticks: 240,
-            velocity: 1.0,
+            velocity: 0.8,
             pitch: 60,
             voice: "chip".into(),
             role: Some("melody".into()),
@@ -285,7 +286,7 @@ mod tests {
             color: "#ffffff".into(),
             length_ticks: 3840,
             events: (first_note_tick..3840)
-                .step_by(60)
+                .step_by(240)
                 .enumerate()
                 .map(|(i, tick)| note(id, tick, i as u32))
                 .collect(),
@@ -316,7 +317,7 @@ mod tests {
             color: "#ffffff".into(),
             length_ticks: 3840,
             events: (first_note_tick..3840)
-                .step_by(60)
+                .step_by(240)
                 .enumerate()
                 .map(|(i, tick)| note(id, tick, i as u32))
                 .collect(),

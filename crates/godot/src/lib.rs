@@ -664,7 +664,7 @@ impl GamestrumentsPlayer {
                         .playback_at(active.tick)
                         .into_iter()
                         .flatten()
-                        .find(|part| part.percussion)
+                        .last()
                         .map(|part| GString::from(part.section))
                 })
             })
