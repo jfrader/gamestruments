@@ -1,6 +1,7 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
     generate_suspense_arrangement,
+    handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
     AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
     FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore, RacingArrangement,
@@ -76,10 +77,9 @@ struct GamestrumentsPlayer {
     /// The voice that is fading out during a handoff. Stays until the fade
     /// sample count (computed from *its* score) is reached.
     outgoing: Option<Voice>,
-    /// Samples of crossfade that have been mixed so far.
-    handoff_samples_done: u64,
-    /// Total samples for the current crossfade (from crossfade_sample_count of outgoing).
-    handoff_samples_total: u64,
+    /// Crossfade progress between the outgoing and incoming voice. Owns the
+    /// sample counter so a re-targeted handoff keeps its fade continuous.
+    handoff: Handoff,
     /// Reused mix buffer (mono) for final output or crossfade sum. The per-voice
     /// scratches inside Voice are the render targets for synth/form.
     scratch: Vec<f32>,
@@ -110,8 +110,7 @@ impl INode for GamestrumentsPlayer {
             sample_rate: 48000.0,
             active: None,
             outgoing: None,
-            handoff_samples_done: 0,
-            handoff_samples_total: 0,
+            handoff: Handoff::idle(),
             scratch: Vec::new(),
             stereo_scratch: Vec::new(),
             live_player: None,
@@ -169,7 +168,7 @@ impl INode for GamestrumentsPlayer {
         self.scratch.clear();
         self.scratch.resize(frames, 0.0);
 
-        let in_handoff = self.outgoing.is_some() && self.handoff_samples_total > 0;
+        let in_handoff = self.outgoing.is_some() && self.handoff.is_active();
 
         if in_handoff {
             let out_v = self.outgoing.as_mut().unwrap();
@@ -183,16 +182,20 @@ impl INode for GamestrumentsPlayer {
             active.scratch.resize(frames, 0.0);
             GamestrumentsPlayer::fill_voice_buffer(active, frames, sample_rate);
 
+            // Each voice's own stateful MasterChain (compressor, limiter
+            // lookahead) runs on its own buffer *before* mixing, so the outgoing
+            // voice keeps the dynamics it had while it was the sole voice.
+            if let Some(master) = out_v.master.as_mut() {
+                master.process(&mut out_v.scratch);
+            }
+            if let Some(master) = active.master.as_mut() {
+                master.process(&mut active.scratch);
+            }
+
             // Mix using the provided crossfade gains over the outgoing's sample count.
             for i in 0..frames {
-                let progress = if self.handoff_samples_total > 0 {
-                    ((self.handoff_samples_done + i as u64) as f32
-                        / self.handoff_samples_total as f32)
-                        .clamp(0.0, 1.0)
-                } else {
-                    0.0
-                };
-                let (g_out, g_act) = gamestruments_engine::handoff::crossfade_gains(progress);
+                let progress = self.handoff.progress(i as u64);
+                let (g_out, g_act) = crossfade_gains(progress);
                 self.scratch[i] = g_out * out_v.scratch[i] + g_act * active.scratch[i];
             }
 
@@ -200,17 +203,23 @@ impl INode for GamestrumentsPlayer {
             out_v.frames_produced = out_v.frames_produced.saturating_add(frames as u64);
             active.frames_produced = active.frames_produced.saturating_add(frames as u64);
 
-            self.handoff_samples_done = self.handoff_samples_done.saturating_add(frames as u64);
+            self.handoff.advance(frames as u64);
 
-            // Run MasterChain *once* on the already-mixed buffer (active's master).
-            if let Some(master) = active.master.as_mut() {
-                master.process(&mut self.scratch);
+            // Both voices were individually ceiling'd by their own chains, but
+            // the crossfade gains need not sum to exactly 1.0, so clamp the
+            // mixed sum to the master ceiling as a backstop.
+            let ceiling = active
+                .master
+                .as_ref()
+                .map(MasterChain::ceiling_linear)
+                .unwrap_or(1.0);
+            for sample in &mut self.scratch {
+                *sample = sample.clamp(-ceiling, ceiling);
             }
 
-            if self.handoff_samples_done >= self.handoff_samples_total {
+            if self.handoff.finished() {
                 let _ = self.outgoing.take();
-                self.handoff_samples_done = 0;
-                self.handoff_samples_total = 0;
+                self.handoff.reset();
             }
         } else {
             // Single active voice — render directly into its scratch then copy to mix.
@@ -490,8 +499,10 @@ impl GamestrumentsPlayer {
             Ok(v) => {
                 let rate = self.resolved_sample_rate() as u32;
                 let is_replacing = self.active.is_some();
+                // Whether a crossfade was already in flight before this generate.
+                let was_handoff = self.outgoing.is_some();
                 if is_replacing {
-                    if self.outgoing.is_none() {
+                    if !was_handoff {
                         // First handoff: park the currently playing as outgoing.
                         self.outgoing = self.active.take();
                     } else {
@@ -501,16 +512,25 @@ impl GamestrumentsPlayer {
                     }
                 }
                 self.active = Some(v);
-                self.handoff_samples_done = 0;
-                if let Some(out) = &self.outgoing {
-                    if let Some(sc) = &out.score {
-                        self.handoff_samples_total =
-                            gamestruments_engine::handoff::crossfade_sample_count(sc, rate);
+
+                // Fix the crossfade length from the outgoing voice's score, then
+                // move the handoff state. A fresh handoff starts its fade at zero;
+                // a re-targeted handoff keeps its running counter so the outgoing
+                // gain does not snap back to 1.0 mid-fade.
+                let total = self
+                    .outgoing
+                    .as_ref()
+                    .and_then(|out| out.score.as_ref())
+                    .map(|sc| crossfade_sample_count(sc, rate))
+                    .unwrap_or(0);
+                if self.outgoing.is_some() {
+                    if was_handoff {
+                        self.handoff.retarget(total);
                     } else {
-                        self.handoff_samples_total = 0;
+                        self.handoff.begin(total);
                     }
                 } else {
-                    self.handoff_samples_total = 0;
+                    self.handoff.reset();
                 }
                 true
             }
