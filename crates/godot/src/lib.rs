@@ -192,7 +192,17 @@ impl INode for GamestrumentsPlayer {
                 master.process(&mut active.scratch);
             }
 
-            // Mix using the provided crossfade gains over the outgoing's sample count.
+            // Hold the outgoing at full gain until the incoming voice has
+            // produced signal at or above the musical floor (or the hold bound
+            // elapses), then fade from zero. While holding, `progress` is pinned
+            // at zero so the mix below keeps the outgoing at full gain and the
+            // incoming silent.
+            self.handoff.poll(&active.scratch);
+
+            // Mix using the provided crossfade gains over the outgoing's sample
+            // count. The incoming continues at its natural level: no gain-match is
+            // applied, so its applied gain is exactly the fade law's `g_act` and
+            // reaches 1.0 at the fade's end with no residual scale factor.
             for i in 0..frames {
                 let progress = self.handoff.progress(i as u64);
                 let (g_out, g_act) = crossfade_gains(progress);

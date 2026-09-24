@@ -6,6 +6,10 @@
 
 - Calling `generate()` on a Godot player that is already playing crossfades the new score over the one still going, for the same two bars a section join uses. The old score is not cut off, and cues during the fade land on the incoming score.
 
+### Fixed
+
+- A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
+
 ## [1.0.4] - 2026-09-21
 
 ### Fixed
