@@ -585,16 +585,6 @@ impl GamestrumentsPlayer {
     }
 
     #[func]
-    fn handoff_state(&self) -> GString {
-        let progress = self.handoff.progress(0);
-        let waiting = self.handoff.is_waiting();
-        let finished = self.handoff.finished();
-        let (g_out, g_act) = crossfade_gains(progress);
-        GString::from(&format!("wait={} done={} p={:.2} go={:.2} gi={:.2}", 
-            waiting, finished, progress, g_out, g_act))
-    }
-
-    #[func]
     fn set_race_state(
         &mut self,
         phase: GString,
@@ -603,11 +593,12 @@ impl GamestrumentsPlayer {
         final_lap: bool,
         #[opt(default = "none")] finish_result: GString,
     ) -> bool {
-        let Some(active) = self.active.as_mut() else {
+        let Some(target) = self.pending.as_mut().or(self.active.as_mut()) else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target.tick;
+        let Some(transport) = target.transport.as_mut() else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
             return false;
         };
@@ -631,7 +622,7 @@ impl GamestrumentsPlayer {
                     finish_result.to_string()
                 },
             },
-            active.tick,
+            tick,
         );
         true
     }
@@ -640,8 +631,9 @@ impl GamestrumentsPlayer {
     fn cue_section(&mut self, section: GString) -> bool {
         let target = section.to_string();
         if self
-            .active
+            .pending
             .as_ref()
+            .or(self.active.as_ref())
             .and_then(|v| v.score.as_ref())
             .and_then(|score| score.section(&target))
             .is_none()
@@ -649,50 +641,54 @@ impl GamestrumentsPlayer {
             godot_error!("Unknown music section or no generated score: {target}");
             return false;
         }
-        let Some(active) = self.active.as_mut() else {
+        let Some(target_voice) = self.pending.as_mut().or(self.active.as_mut()) else {
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target_voice.tick;
+        let Some(transport) = target_voice.transport.as_mut() else {
             return false;
         };
-        transport.request_section(&target, active.tick);
+        transport.request_section(&target, tick);
         true
     }
 
     #[func]
     fn set_form_hold(&mut self, held: bool) -> bool {
-        let Some(active) = self.active.as_mut() else {
+        let Some(target) = self.pending.as_mut().or(self.active.as_mut()) else {
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target.tick;
+        let Some(transport) = target.transport.as_mut() else {
             return false;
         };
         if !transport.has_form() {
             return false;
         }
-        transport.set_form_held(held, active.tick);
+        transport.set_form_held(held, tick);
         true
     }
 
     #[func]
     fn advance_form(&mut self) -> bool {
-        let Some(active) = self.active.as_mut() else {
+        let Some(target) = self.pending.as_mut().or(self.active.as_mut()) else {
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target.tick;
+        let Some(transport) = target.transport.as_mut() else {
             return false;
         };
-        if transport.next_form_section(active.tick).is_none() {
+        if transport.next_form_section(tick).is_none() {
             return false;
         }
-        transport.advance_form(active.tick);
+        transport.advance_form(tick);
         true
     }
 
     #[func]
     fn is_form_held(&self) -> bool {
-        self.active
+        self.pending
             .as_ref()
+            .or(self.active.as_ref())
             .and_then(|v| v.transport.as_ref())
             .is_some_and(AdaptiveTransport::is_form_held)
     }
@@ -716,11 +712,12 @@ impl GamestrumentsPlayer {
 
     #[func]
     fn set_trace_state(&mut self, phase: GString, heat: f64, focus: f64, progress: f64) -> bool {
-        let Some(active) = self.active.as_mut() else {
+        let Some(target) = self.pending.as_mut().or(self.active.as_mut()) else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target.tick;
+        let Some(transport) = target.transport.as_mut() else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
             return false;
         };
@@ -741,7 +738,7 @@ impl GamestrumentsPlayer {
                 focus,
                 progress,
             },
-            active.tick,
+            tick,
         );
         true
     }
@@ -754,11 +751,12 @@ impl GamestrumentsPlayer {
         threat: f64,
         quest_complete: bool,
     ) -> bool {
-        let Some(active) = self.active.as_mut() else {
+        let Some(target) = self.pending.as_mut().or(self.active.as_mut()) else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
             return false;
         };
-        let Some(transport) = active.transport.as_mut() else {
+        let tick = target.tick;
+        let Some(transport) = target.transport.as_mut() else {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
             return false;
         };
@@ -775,7 +773,7 @@ impl GamestrumentsPlayer {
                 threat,
                 quest_complete,
             },
-            active.tick,
+            tick,
         );
         true
     }
