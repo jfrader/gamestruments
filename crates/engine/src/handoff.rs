@@ -1,12 +1,16 @@
 use crate::score::PortableScore;
 
+/// Fraction of a score handoff over which the incoming voice reaches full
+/// level. The outgoing fades across the whole handoff, but the incoming enters
+/// almost immediately: a fast declick (about 80 ms on a two-bar fade), not a
+/// musical fade-in, so the new score keeps its downbeat while the old score
+/// rings out beneath it. Without this the incoming would step from silence to
+/// full in one sample when the hold released.
+pub const INCOMING_ATTACK_PROGRESS: f32 = 0.02;
+
 pub fn crossfade_gains(progress: f32) -> (f32, f32) {
     let p = progress.clamp(0.0, 1.0);
-    if p == 0.0 {
-        (1.0, 0.0)
-    } else {
-        (1.0 - p, 1.0)
-    }
+    (1.0 - p, (p / INCOMING_ATTACK_PROGRESS).min(1.0))
 }
 
 pub fn crossfade_sample_count(score: &PortableScore, sample_rate: u32) -> u64 {

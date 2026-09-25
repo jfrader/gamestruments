@@ -144,43 +144,8 @@ impl INode for GamestrumentsPlayer {
     }
 
     fn process(&mut self, _delta: f64) {
-        let sample_rate_f = self.resolved_sample_rate();
-        let sample_rate = f64::from(sample_rate_f);
+        let sample_rate = f64::from(self.resolved_sample_rate());
 
-        let active_exists = self.active.is_some();
-        if self.pending.is_some() && active_exists {
-            let active = self.active.as_mut().unwrap();
-            let bar_ticks = active.score.as_ref().map(|s| s.bar_ticks()).unwrap_or(1);
-            let current_bar = active.tick / bar_ticks;
-            
-            let player = self.live_player.as_ref();
-            let frames = player.and_then(|p| p.get_stream_playback()).and_then(|p| p.try_cast::<AudioStreamGeneratorPlayback>().ok()).map(|pb| pb.get_frames_available()).unwrap_or(0);
-            
-            if frames > 0 {
-                let next_tick = gamestruments_engine::synth::tick_at_sample(
-                    active.frames_produced + frames as u64,
-                    sample_rate,
-                    active.ticks_per_second,
-                );
-                let next_bar = next_tick / bar_ticks;
-                if next_bar > current_bar || active.tick == 0 {
-                    self.outgoing = self.active.take();
-                    self.active = self.pending.take();
-                    let rate = self.resolved_sample_rate() as u32;
-                    let total = self
-                        .outgoing
-                        .as_ref()
-                        .and_then(|out| out.score.as_ref())
-                        .map(|sc| crossfade_sample_count(sc, rate))
-                        .unwrap_or(0);
-                    self.handoff.begin(total);
-                }
-            }
-        }
-
-        let Some(active) = self.active.as_mut() else {
-            return;
-        };
         let player = match self.live_player.as_ref() {
             Some(player) if player.is_instance_valid() => player.clone(),
             _ => return,
@@ -197,6 +162,38 @@ impl INode for GamestrumentsPlayer {
             return;
         }
         let frames = frames as usize;
+
+        // A voice parked by `generate` is promoted once the playing score reaches
+        // its next bar boundary, so a seed change swaps on the bar like a cue.
+        let promote = match (self.pending.is_some(), self.active.as_ref()) {
+            (true, Some(active)) => {
+                let bar_ticks = active.score.as_ref().map(|s| s.bar_ticks()).unwrap_or(1);
+                let current_bar = active.tick / bar_ticks;
+                let next_tick = gamestruments_engine::synth::tick_at_sample(
+                    active.frames_produced + frames as u64,
+                    sample_rate,
+                    active.ticks_per_second,
+                );
+                next_tick / bar_ticks > current_bar || active.tick == 0
+            }
+            _ => false,
+        };
+        if promote {
+            self.outgoing = self.active.take();
+            self.active = self.pending.take();
+            let rate = self.resolved_sample_rate() as u32;
+            let total = self
+                .outgoing
+                .as_ref()
+                .and_then(|out| out.score.as_ref())
+                .map(|sc| crossfade_sample_count(sc, rate))
+                .unwrap_or(0);
+            self.handoff.begin(total);
+        }
+
+        let Some(active) = self.active.as_mut() else {
+            return;
+        };
 
         // Prepare the mix buffer we will eventually push (reused, no alloc).
         self.scratch.clear();
