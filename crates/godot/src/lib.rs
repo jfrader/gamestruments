@@ -74,6 +74,8 @@ struct GamestrumentsPlayer {
     /// Active (incoming) voice. All live state lives here; the old top-level
     /// fields were replaced by this (no parallel copies).
     active: Option<Voice>,
+    /// A new voice parked here to wait for the active voice to reach a bar boundary.
+    pending: Option<Voice>,
     /// The voice that is fading out during a handoff. Stays until the fade
     /// sample count (computed from *its* score) is reached.
     outgoing: Option<Voice>,
@@ -109,6 +111,7 @@ impl INode for GamestrumentsPlayer {
             syncopation: 0.7,
             sample_rate: 48000.0,
             active: None,
+            pending: None,
             outgoing: None,
             handoff: Handoff::idle(),
             scratch: Vec::new(),
@@ -143,6 +146,37 @@ impl INode for GamestrumentsPlayer {
     fn process(&mut self, _delta: f64) {
         let sample_rate_f = self.resolved_sample_rate();
         let sample_rate = f64::from(sample_rate_f);
+
+        let active_exists = self.active.is_some();
+        if self.pending.is_some() && active_exists {
+            let active = self.active.as_mut().unwrap();
+            let bar_ticks = active.score.as_ref().map(|s| s.bar_ticks()).unwrap_or(1);
+            let current_bar = active.tick / bar_ticks;
+            
+            let player = self.live_player.as_ref();
+            let frames = player.and_then(|p| p.get_stream_playback()).and_then(|p| p.try_cast::<AudioStreamGeneratorPlayback>().ok()).map(|pb| pb.get_frames_available()).unwrap_or(0);
+            
+            if frames > 0 {
+                let next_tick = gamestruments_engine::synth::tick_at_sample(
+                    active.frames_produced + frames as u64,
+                    sample_rate,
+                    active.ticks_per_second,
+                );
+                let next_bar = next_tick / bar_ticks;
+                if next_bar > current_bar || active.tick == 0 {
+                    self.outgoing = self.active.take();
+                    self.active = self.pending.take();
+                    let rate = self.resolved_sample_rate() as u32;
+                    let total = self
+                        .outgoing
+                        .as_ref()
+                        .and_then(|out| out.score.as_ref())
+                        .map(|sc| crossfade_sample_count(sc, rate))
+                        .unwrap_or(0);
+                    self.handoff.begin(total);
+                }
+            }
+        }
 
         let Some(active) = self.active.as_mut() else {
             return;
@@ -507,14 +541,12 @@ impl GamestrumentsPlayer {
 
         match self.voice_from_score(score, seed.to_string()) {
             Ok(v) => {
-                let rate = self.resolved_sample_rate() as u32;
                 let is_replacing = self.active.is_some();
-                // Whether a crossfade was already in flight before this generate.
-                let was_handoff = self.outgoing.is_some();
+                let was_handoff = self.outgoing.is_some() && self.handoff.is_active();
                 if is_replacing {
                     if !was_handoff {
-                        // First handoff: park the currently playing as outgoing.
-                        self.outgoing = self.active.take();
+                        self.pending = Some(v);
+                        return true;
                     } else {
                         // Second generate while a handoff is already running:
                         // replace only the incoming voice; keep the fading-out one.
@@ -523,6 +555,7 @@ impl GamestrumentsPlayer {
                 }
                 self.active = Some(v);
 
+                let rate = self.resolved_sample_rate() as u32;
                 // Fix the crossfade length from the outgoing voice's score, then
                 // move the handoff state. A fresh handoff starts its fade at zero;
                 // a re-targeted handoff keeps its running counter so the outgoing
@@ -549,6 +582,16 @@ impl GamestrumentsPlayer {
                 false
             }
         }
+    }
+
+    #[func]
+    fn handoff_state(&self) -> GString {
+        let progress = self.handoff.progress(0);
+        let waiting = self.handoff.is_waiting();
+        let finished = self.handoff.finished();
+        let (g_out, g_act) = crossfade_gains(progress);
+        GString::from(&format!("wait={} done={} p={:.2} go={:.2} gi={:.2}", 
+            waiting, finished, progress, g_out, g_act))
     }
 
     #[func]

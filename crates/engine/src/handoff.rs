@@ -2,7 +2,11 @@ use crate::score::PortableScore;
 
 pub fn crossfade_gains(progress: f32) -> (f32, f32) {
     let p = progress.clamp(0.0, 1.0);
-    (1.0 - p, p)
+    if p == 0.0 {
+        (1.0, 0.0)
+    } else {
+        (1.0 - p, 1.0)
+    }
 }
 
 pub fn crossfade_sample_count(score: &PortableScore, sample_rate: u32) -> u64 {
@@ -191,7 +195,7 @@ mod tests {
     #[test]
     fn test_crossfade_gains() {
         assert_eq!(crossfade_gains(0.0), (1.0, 0.0));
-        assert_eq!(crossfade_gains(0.5), (0.5, 0.5));
+        assert_eq!(crossfade_gains(0.5), (0.5, 1.0));
         assert_eq!(crossfade_gains(1.0), (0.0, 1.0));
 
         assert_eq!(crossfade_gains(-1.0), (1.0, 0.0));
