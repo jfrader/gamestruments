@@ -107,4 +107,76 @@ describe("Adventure recipe through the shipped WASM", () => {
     assert.equal(complete.status, "scheduled");
     if (complete.status === "scheduled") assert.equal(complete.plan.to, "victory");
   });
+
+  it("supersedes an in-flight manual form step with quest_complete and drops queued cues", () => {
+    const { score } = generate("folk", true);
+    const bar = score.beatsPerBar * score.ticksPerBeat;
+    const transport = new AdaptiveTransport(score);
+    assert.equal(transport.snapshot().currentSection, "camp");
+
+    // A manual form step commits at the next bar boundary.
+    const step = transport.advanceForm(bar / 2);
+    assert.equal(step.status, "scheduled");
+    if (step.status !== "scheduled") return;
+    assert.equal(step.plan.to, "explore");
+    assert.equal(step.plan.startTick, bar);
+
+    // The form step is now in flight: past its start tick but not complete.
+    transport.advance(step.plan.startTick);
+    assert.equal(transport.snapshot().currentSection, "camp");
+
+    // A direct cue during the in-flight form step defers (queues) behind it.
+    const cue = transport.requestSection("town", step.plan.startTick);
+    assert.equal(cue.status, "queued");
+
+    // quest_complete arrives mid-transition and must supersede the stale form step.
+    const victory = transport.requestState({ numeric: { questComplete: 1 }, categorical: {} }, step.plan.startTick);
+    assert.equal(victory.status, "scheduled");
+    if (victory.status !== "scheduled") return;
+    assert.equal(victory.plan.to, "victory");
+
+    // The superseded transition reaches victory.
+    transport.advance(victory.plan.endTick);
+    assert.equal(transport.snapshot().currentSection, "victory");
+    assert.equal(transport.snapshot().transition, null);
+    assert.equal(transport.snapshot().pendingSection, null);
+  });
+
+  it("supersedes an in-flight automatic form transition with quest_complete", () => {
+    const { score } = generate("folk", true);
+    const campLen = score.sections.find(s => s.id === "camp")!.lengthTicks;
+    const transport = new AdaptiveTransport(score);
+    assert.equal(transport.snapshot().currentSection, "camp");
+
+    // Let the form auto-advance camp -> explore.
+    transport.advance(campLen);
+    const automatic = transport.snapshot().transition;
+    assert.ok(automatic);
+    assert.equal(automatic!.to, "explore");
+
+    // quest_complete mid-flight must supersede the automatic progression.
+    const victory = transport.requestState({ numeric: { questComplete: 1 }, categorical: {} }, automatic!.startTick + 1);
+    assert.equal(victory.status, "scheduled");
+    if (victory.status !== "scheduled") return;
+    assert.equal(victory.plan.to, "victory");
+
+    transport.advance(victory.plan.endTick);
+    assert.equal(transport.snapshot().currentSection, "victory");
+  });
+
+  it("a held cue still defers to the active cue after the supersede change", () => {
+    const { score } = generate("folk", true);
+    const transport = new AdaptiveTransport(score);
+
+    const cue = transport.requestSection("explore", 0);
+    assert.equal(cue.status, "scheduled");
+    if (cue.status !== "scheduled") return;
+
+    transport.advance(cue.plan.startTick);
+
+    // quest_complete during an explicit held cue defers (queues) behind it.
+    const victory = transport.requestState({ numeric: { questComplete: 1 }, categorical: {} }, cue.plan.startTick + 1);
+    assert.equal(victory.status, "queued");
+    assert.equal(transport.snapshot().currentSection, "camp");
+  });
 });

@@ -14,6 +14,32 @@ pub struct TransitionPlan {
     pub hold: bool,
 }
 
+/// Why the active transition is running. An authoritative game-state update
+/// supersedes a form transition that is still in flight — the transport's
+/// autonomous progression (automatic or a manual [`AdaptiveTransport::advance_form`])
+/// is stale once the game reports a new current state — while a held cue is
+/// never dropped mid-hold.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TransitionSource {
+    /// Automatic form progression (`maybe_advance_form`).
+    Automatic,
+    /// A manual form step (`advance_form`).
+    Form,
+    /// An explicit request: a game-state update (`set_race_state`,
+    /// `set_trace_state`, `set_adventure_state`) or a direct section cue
+    /// (`cue_section`).
+    Explicit,
+}
+
+impl TransitionSource {
+    /// Whether this source follows the song form rather than answering an
+    /// explicit request, and is therefore superseded by a later game-state
+    /// update.
+    fn is_form(self) -> bool {
+        matches!(self, TransitionSource::Automatic | TransitionSource::Form)
+    }
+}
+
 pub struct SectionPlayback<'a> {
     pub section: &'a str,
     pub origin: u32,
@@ -33,7 +59,7 @@ pub struct AdaptiveTransport {
     cue_target: Option<String>,
     form_held: bool,
     form_not_before: u32,
-    automatic_transition: bool,
+    transition_source: TransitionSource,
     /// The tick at which the active transition's crossfade actually began:
     /// `None` while the crossfade is holding (the outgoing at full gain and the
     /// incoming silent until the incoming section's rendered level reaches
@@ -68,7 +94,7 @@ impl AdaptiveTransport {
             cue_target: None,
             form_held: false,
             form_not_before: 0,
-            automatic_transition: false,
+            transition_source: TransitionSource::Explicit,
             release_tick: None,
             incoming_reported: false,
         })
@@ -101,7 +127,7 @@ impl AdaptiveTransport {
 
     pub fn request_state(&mut self, state: &GameState, at_tick: u32) -> Option<TransitionPlan> {
         let target = select_section(&self.score, state);
-        self.request_section(&target, at_tick)
+        self.request_section_as(&target, at_tick, TransitionSource::Explicit, true)
     }
 
     pub fn request_trace_state(
@@ -117,7 +143,7 @@ impl AdaptiveTransport {
         };
         if hold {
             self.cue_target = None;
-            return self.request_section(&section, at_tick);
+            return self.request_section_as(&section, at_tick, TransitionSource::Explicit, true);
         }
         let already_cued = self.cue_target.as_deref() == Some(section.as_str())
             && self.current_section == section
@@ -126,7 +152,7 @@ impl AdaptiveTransport {
             return None;
         }
         self.cue_target = Some(section.clone());
-        self.request_section(&section, at_tick)
+        self.request_section_as(&section, at_tick, TransitionSource::Explicit, true)
     }
 
     pub fn request_adventure_state(
@@ -135,13 +161,30 @@ impl AdaptiveTransport {
         at_tick: u32,
     ) -> Option<TransitionPlan> {
         let target = crate::adventure::select_adventure_section(state);
-        self.request_section(target, at_tick)
+        self.request_section_as(target, at_tick, TransitionSource::Explicit, true)
     }
 
+    /// A direct section cue (`cue_section`): defers to whatever transition is
+    /// already in flight, so a held cue is never dropped mid-hold.
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {
+        self.request_section_as(target, at_tick, TransitionSource::Explicit, false)
+    }
+
+    /// Route a section request. An authoritative game-state update
+    /// (`supersede_form`) replaces a form transition that is still in flight —
+    /// the transport's autonomous progression is stale once the game reports a
+    /// new current state — while a direct cue defers to it. Either way the new
+    /// transition still holds the outgoing at full gain until the incoming
+    /// clears the musical floor, so nothing hard-cuts or dips to silence.
+    fn request_section_as(
+        &mut self,
+        target: &str,
+        at_tick: u32,
+        source: TransitionSource,
+        supersede_form: bool,
+    ) -> Option<TransitionPlan> {
         self.score.section(target)?;
         self.advance(at_tick);
-        self.automatic_transition = false;
         if target == self.current_section
             && self.transition.is_none()
             && self.pending_section.is_none()
@@ -153,22 +196,28 @@ impl AdaptiveTransport {
                 self.pending_section = None;
                 return None;
             }
-            if at_tick < plan.start_tick {
+            let supersede = supersede_form && self.transition_source.is_form();
+            if at_tick < plan.start_tick || supersede {
+                // The transition has not begun (or is a stale form transition):
+                // replace it outright instead of queueing the request behind it.
+                // A queued cue was relative to the transition being replaced, so
+                // it is dropped rather than resurfacing after the new one lands.
                 if target == self.current_section {
                     self.clear_transition();
                     self.pending_section = None;
                     self.sync_form_to(&self.current_section.clone());
                     return None;
                 }
+                self.pending_section = None;
                 let next = self.create_plan(&self.current_section, target, at_tick);
-                self.begin_transition(next.clone());
+                self.begin_transition(next.clone(), source);
                 return Some(next);
             }
             self.pending_section = Some(target.to_string());
             return None;
         }
         let plan = self.create_plan(&self.current_section, target, at_tick);
-        self.begin_transition(plan.clone());
+        self.begin_transition(plan.clone(), source);
         Some(plan)
     }
 
@@ -199,12 +248,11 @@ impl AdaptiveTransport {
                 };
                 self.sync_form_to(&self.current_section.clone());
                 self.clear_transition();
-                self.automatic_transition = false;
                 self.form_not_before = 0;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
                         let next = self.create_plan(&self.current_section, &pending, at_tick);
-                        self.begin_transition(next);
+                        self.begin_transition(next, TransitionSource::Explicit);
                     }
                 }
             }
@@ -245,14 +293,13 @@ impl AdaptiveTransport {
             self.form_not_before = at_tick;
         }
         if held
-            && self.automatic_transition
+            && self.transition_source == TransitionSource::Automatic
             && self
                 .transition
                 .as_ref()
                 .is_some_and(|plan| at_tick < plan.start_tick)
         {
             let plan = self.clear_transition();
-            self.automatic_transition = false;
             self.pending_section = None;
             self.sync_form_to(&self.current_section.clone());
             return plan;
@@ -279,7 +326,7 @@ impl AdaptiveTransport {
 
     pub fn advance_form(&mut self, at_tick: u32) -> Option<TransitionPlan> {
         let target = self.next_form_section(at_tick)?;
-        self.request_section(&target, at_tick)
+        self.request_section_as(&target, at_tick, TransitionSource::Form, false)
     }
 
     pub fn playback_at(&self, at_tick: u32) -> [Option<SectionPlayback<'_>>; 2] {
@@ -349,9 +396,10 @@ impl AdaptiveTransport {
     }
 
     /// Start a new transition, dropping any in-flight hold.
-    fn begin_transition(&mut self, plan: TransitionPlan) {
+    fn begin_transition(&mut self, plan: TransitionPlan, source: TransitionSource) {
         self.release_tick = None;
         self.incoming_reported = false;
+        self.transition_source = source;
         self.transition = Some(plan);
     }
 
@@ -359,6 +407,7 @@ impl AdaptiveTransport {
     fn clear_transition(&mut self) -> Option<TransitionPlan> {
         self.release_tick = None;
         self.incoming_reported = false;
+        self.transition_source = TransitionSource::Explicit;
         self.transition.take()
     }
 
@@ -473,8 +522,7 @@ impl AdaptiveTransport {
             end_tick: boundary_tick.saturating_add(length),
             hold: false,
         };
-        self.begin_transition(plan);
-        self.automatic_transition = true;
+        self.begin_transition(plan, TransitionSource::Automatic);
     }
 }
 
@@ -526,9 +574,11 @@ pub fn select_section(score: &PortableScore, state: &GameState) -> String {
 #[cfg(test)]
 mod tests {
     use super::{select_section, AdaptiveTransport};
+    use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
+    use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
-    use crate::score::{GameState, TraceState};
+    use crate::score::{AdventureState, GameState, TraceState};
     use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 
     fn score() -> crate::score::PortableScore {
@@ -1032,5 +1082,141 @@ mod tests {
             .request_trace_state(&alert, far)
             .expect("later alert must re-cue bridge");
         assert_eq!(rearmed.to, "bridge");
+    }
+
+    /// The Adventure autoplay form (camp → explore → … → victory) attached to a
+    /// plain `generate_adventure` score, matching what the Godot player builds
+    /// for `recipe = "adventure"`, `arrangement = "original"`, `autoplay = true`.
+    fn adventure_autoplay_score() -> crate::score::PortableScore {
+        apply_automatic_arrangement(
+            generate_adventure(&AdventureInput {
+                secret: "transport-regression".into(),
+                seed: "adventure-tour".into(),
+                style: AdventureStyle::Folk,
+                wonder: 0.6,
+                danger: 0.5,
+                mystery: 0.6,
+                motion: 0.58,
+            })
+            .expect("adventure fixture must validate"),
+            ArrangementRecipe::Adventure,
+            true,
+        )
+        .expect("adventure autoplay form must validate")
+    }
+
+    fn quest_complete_state() -> AdventureState {
+        AdventureState {
+            area_phase: "explore".into(),
+            discovery: 0.4,
+            threat: 0.1,
+            quest_complete: true,
+        }
+    }
+
+    #[test]
+    fn quest_complete_supersedes_an_inflight_manual_form_step() {
+        let score = adventure_autoplay_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        assert_eq!(transport.current_section(), "camp");
+
+        // A manual form step commits at the next bar boundary.
+        let step = transport.advance_form(bar / 2).unwrap();
+        assert_eq!(step.to, "explore");
+        assert_eq!(step.start_tick, bar);
+        // The form step is now in flight: past its start tick but not complete.
+        transport.advance(step.start_tick);
+        assert_eq!(transport.current_section(), "camp");
+
+        // quest_complete arrives mid-transition and must supersede the stale
+        // form step instead of queueing behind it.
+        let victory = transport
+            .request_adventure_state(&quest_complete_state(), step.start_tick)
+            .expect("quest_complete must supersede the in-flight form step");
+        assert_eq!(victory.to, "victory");
+        // The superseded transition reaches victory within its authored span
+        // (a structural simulation never reports the incoming, so it completes
+        // at the plan end) rather than waiting out the old transition first.
+        transport.advance(victory.end_tick);
+        assert_eq!(transport.current_section(), "victory");
+    }
+
+    #[test]
+    fn quest_complete_supersedes_an_inflight_automatic_form_transition() {
+        let score = adventure_autoplay_score();
+        let camp_len = score.section("camp").unwrap().length_ticks;
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        assert_eq!(transport.current_section(), "camp");
+
+        // Let the form auto-advance camp -> explore.
+        transport.advance(camp_len);
+        let automatic = transport
+            .transition
+            .as_ref()
+            .expect("the form must auto-advance past camp")
+            .clone();
+        assert_eq!(automatic.to, "explore");
+        assert!(!automatic.hold, "automatic form transitions crossfade on schedule");
+
+        // quest_complete mid-flight must supersede the automatic progression.
+        let victory = transport
+            .request_adventure_state(&quest_complete_state(), automatic.start_tick + 1)
+            .expect("quest_complete supersedes the automatic transition");
+        assert_eq!(victory.to, "victory");
+        transport.advance(victory.end_tick);
+        assert_eq!(transport.current_section(), "victory");
+    }
+
+    #[test]
+    fn a_held_cue_still_defers_to_the_active_cue_after_the_supersede_change() {
+        // An explicit cue (not a form step) in flight is never superseded by a
+        // later game-state request: the hold guarantee stands.
+        let score = adventure_autoplay_score();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        let cue = transport.request_section("explore", 0).unwrap();
+        transport.advance(cue.start_tick);
+        // quest_complete during an explicit held cue defers (queues) behind it.
+        assert!(
+            transport
+                .request_adventure_state(&quest_complete_state(), cue.start_tick + 1)
+                .is_none(),
+            "a held cue is never dropped mid-hold, even for an authoritative request"
+        );
+        assert_eq!(transport.current_section(), "camp");
+    }
+
+    #[test]
+    fn a_queued_cue_does_not_outlive_a_superseding_game_state() {
+        let score = adventure_autoplay_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        assert_eq!(transport.current_section(), "camp");
+
+        // A manual form step commits at the next bar boundary and is now in flight.
+        let step = transport.advance_form(bar / 2).unwrap();
+        transport.advance(step.start_tick);
+        assert_eq!(transport.current_section(), "camp");
+
+        // A direct cue during the in-flight form step defers (queues) behind it.
+        assert!(
+            transport.request_section("town", step.start_tick).is_none(),
+            "a direct cue queues behind an in-flight form step"
+        );
+
+        // quest_complete supersedes the form step.
+        let victory = transport
+            .request_adventure_state(&quest_complete_state(), step.start_tick)
+            .expect("quest_complete supersedes the in-flight form step");
+        assert_eq!(victory.to, "victory");
+
+        // The superseded transition lands on victory, and the stale queued cue
+        // must not then drag the transport on to town.
+        transport.advance(victory.end_tick);
+        assert_eq!(transport.current_section(), "victory");
+        assert!(
+            transport.transition.is_none(),
+            "the superseding game state drops the stale queued cue"
+        );
     }
 }

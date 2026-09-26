@@ -17,6 +17,7 @@
 - A section cue (`cue_section`) no longer drops the summed Master bus to silence: the outgoing section holds at full level until the incoming section's rendered level clears the musical floor, then runs the crossfade, so a section that opens with rests no longer leaves a hole after the cue.
 - A section cue whose incoming is carried by drums now releases on time (the hold gate reads the incoming's full render, tonal plus percussion, not just its tonal), and the drum bus crossfades with the section instead of hard-switching the pattern at the cue start.
 - Offline WAV renders no longer compress the score or drop its tail: the render advanced its tick cursor by `ceil(chunk / sample_rate * tps) + 1` per internal chunk — more ticks than the chunk's samples actually covered — so long exports drifted ahead of the audio and each phrase's ending came back as the next phrase's opening. The cursor is now derived from the produced-sample count and every event is scheduled at its true sample offset, so exported and chunked WAVs keep their timing and their full tail.
+- A game-state change (`set_race_state`, `set_trace_state`, `set_adventure_state`) now supersedes the song-form transition already in flight instead of waiting for it to finish: a `quest_complete` that lands while the form is stepping still reaches the victory section promptly, rather than only after the outgoing section's hold and crossfade.
 
 ## [1.0.4] - 2026-09-21
 
