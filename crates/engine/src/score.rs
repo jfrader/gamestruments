@@ -32,7 +32,17 @@ impl PortableScore {
         for section in &mut self.sections {
             for event in &mut section.events {
                 if let MusicEvent::Note { pitch, .. } = event {
-                    *pitch = (*pitch as i32 + semitones).clamp(0, 127) as u8;
+                    // Shift by whole octaves at the MIDI bounds so a chord's
+                    // intervals survive at the extremes instead of clamping
+                    // single notes onto the limit.
+                    let mut shifted = i32::from(*pitch) + semitones;
+                    while shifted < 0 {
+                        shifted += 12;
+                    }
+                    while shifted > 127 {
+                        shifted -= 12;
+                    }
+                    *pitch = shifted as u8;
                 }
             }
         }
