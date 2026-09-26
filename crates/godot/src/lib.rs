@@ -1,6 +1,6 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
-    generate_suspense_arrangement,
+    generate_suspense_arrangement, racing_root_pitch_class,
     handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
     AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
@@ -30,6 +30,9 @@ struct Voice {
     frames_produced: u64,
     /// The seed passed to generate(), used to detect "already playing this seed".
     seed: String,
+    /// Root pitch class this voice's score is in, so a replacement can be
+    /// transposed into the same key.
+    root_pitch_class: i32,
     /// Reused per-voice mono scratch so two voices can render without
     /// allocating a fresh Vec on every audio frame.
     scratch: Vec<f32>,
@@ -375,6 +378,7 @@ impl GamestrumentsPlayer {
             tick: 0,
             frames_produced: 0,
             seed,
+            root_pitch_class: 0,
             scratch: Vec::new(),
         };
         let initial = score.default_section.clone();
@@ -412,6 +416,9 @@ impl GamestrumentsPlayer {
             return true;
         }
         let recipe = self.recipe.to_string();
+        // The key of the score about to be generated; a replacement is moved into
+        // the playing score's key so a seed change blends at the seam.
+        let mut new_root: i32 = 0;
         let (score, automatic_recipe) = match recipe.as_str() {
             "adventure" => {
                 let style = if self.style.is_empty() {
@@ -497,27 +504,23 @@ impl GamestrumentsPlayer {
                     // song form; no automatic arrangement layers on top of them.
                     RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
                 };
-                (
-                    generate_racing_arrangement(
-                        &GenerateInput {
-                            secret: self.project_secret.to_string(),
-                            seed: seed.to_string(),
-                            style,
-                            palette: InstrumentPalette {
-                                melody: self.melody_voice.to_string(),
-                                harmony: self.harmony_voice.to_string(),
-                                drive: self.drive_voice.to_string(),
-                                bass: self.bass_voice.to_string(),
-                            },
-                            energy: self.energy,
-                            complexity: self.complexity,
-                            brightness: self.brightness,
-                            syncopation: self.syncopation,
-                        },
-                        arrangement,
-                    ),
-                    recipe,
-                )
+                let input = GenerateInput {
+                    secret: self.project_secret.to_string(),
+                    seed: seed.to_string(),
+                    style,
+                    palette: InstrumentPalette {
+                        melody: self.melody_voice.to_string(),
+                        harmony: self.harmony_voice.to_string(),
+                        drive: self.drive_voice.to_string(),
+                        bass: self.bass_voice.to_string(),
+                    },
+                    energy: self.energy,
+                    complexity: self.complexity,
+                    brightness: self.brightness,
+                    syncopation: self.syncopation,
+                };
+                new_root = racing_root_pitch_class(&input);
+                (generate_racing_arrangement(&input, arrangement), recipe)
             }
             other => {
                 godot_error!("Unknown Gamestruments recipe \"{other}\"");
@@ -536,8 +539,20 @@ impl GamestrumentsPlayer {
             }
         };
 
+        // A replacement score inherits the playing score's key and tempo, so a
+        // seed change blends at the seam like a section cue instead of clashing
+        // two keys and two tempos.
+        let mut score = score;
+        if let Some(previous) = self.pending.as_ref().or(self.active.as_ref()) {
+            if let Some(previous_score) = previous.score.as_ref() {
+                score.transpose((previous.root_pitch_class - new_root).rem_euclid(12));
+                score.bpm = previous_score.bpm;
+            }
+        }
+
         match self.voice_from_score(score, seed.to_string()) {
-            Ok(v) => {
+            Ok(mut v) => {
+                v.root_pitch_class = new_root;
                 let is_replacing = self.active.is_some();
                 let was_handoff = self.outgoing.is_some() && self.handoff.is_active();
                 if is_replacing {

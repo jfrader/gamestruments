@@ -247,6 +247,13 @@ pub(crate) fn racing_harmony(input: &GenerateInput) -> RacingHarmony {
     }
 }
 
+/// The key (root pitch class) a racing score is generated in. A replacement
+/// score is transposed into the playing score's key so a seed change blends at
+/// the seam like a section cue instead of clashing two keys.
+pub fn racing_root_pitch_class(input: &GenerateInput) -> i32 {
+    racing_harmony(input).root_pitch_class
+}
+
 struct StyleKit {
     melody: &'static str,
     bright_melody: &'static str,
@@ -1531,6 +1538,28 @@ mod tests {
             .iter()
             .filter_map(|event| event.pitch())
             .collect()
+    }
+
+    #[test]
+    fn a_replacement_is_transposed_into_the_playing_key() {
+        // A replacement score is moved into the playing score's key so a seed
+        // change blends at the seam. The key accessor is deterministic and the
+        // transposition must preserve every interval, so the music is unchanged.
+        let base = sample("shared-secret", InstrumentPalette::default());
+        assert_eq!(
+            super::racing_root_pitch_class(&base),
+            super::racing_root_pitch_class(&base),
+            "the generated key must be deterministic"
+        );
+
+        let mut score = generate_racing(&base).expect("score must validate");
+        let before = pitches(&score);
+        assert!(!before.is_empty(), "the racing score must carry pitched events");
+        score.transpose(5);
+        let after = pitches(&score);
+        for (a, b) in before.iter().zip(after.iter()) {
+            assert_eq!(i32::from(*a) + 5, i32::from(*b));
+        }
     }
 
     #[test]

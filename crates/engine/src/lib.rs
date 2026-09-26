@@ -29,7 +29,10 @@ pub use adventure::{
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 pub use form_audio::FormAudio;
 pub use handoff::{crossfade_gains, crossfade_sample_count};
-pub use racing::{generate_racing, GenerateInput, InstrumentPalette, RacingPhaseRole, Style};
+pub use racing::{
+    generate_racing, racing_root_pitch_class, GenerateInput, InstrumentPalette, RacingPhaseRole,
+    Style,
+};
 pub use racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 pub use render::{render_wav, render_wav_stereo};
 pub use score::{AdventureState, GameState, PortableScore, TraceState};
