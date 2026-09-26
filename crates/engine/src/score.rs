@@ -21,6 +21,34 @@ pub struct PortableScore {
     pub form: Option<SongForm>,
 }
 
+impl PortableScore {
+    /// Shift every pitched event by `semitones`. Intervals, voicings and the
+    /// arrangement are preserved, so a score generated for one seed can be
+    /// moved into the key of the score it replaces and blend at the seam.
+    pub fn transpose(&mut self, semitones: i32) {
+        if semitones == 0 {
+            return;
+        }
+        for section in &mut self.sections {
+            for event in &mut section.events {
+                if let MusicEvent::Note { pitch, .. } = event {
+                    // Shift by whole octaves at the MIDI bounds so a chord's
+                    // intervals survive at the extremes instead of clamping
+                    // single notes onto the limit.
+                    let mut shifted = i32::from(*pitch) + semitones;
+                    while shifted < 0 {
+                        shifted += 12;
+                    }
+                    while shifted > 127 {
+                        shifted -= 12;
+                    }
+                    *pitch = shifted as u8;
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SongFormStep {

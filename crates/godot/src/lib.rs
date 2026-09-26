@@ -1,6 +1,6 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
-    generate_suspense_arrangement,
+    generate_suspense_arrangement, racing_root_pitch_class,
     handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
     AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
@@ -30,6 +30,12 @@ struct Voice {
     frames_produced: u64,
     /// The seed passed to generate(), used to detect "already playing this seed".
     seed: String,
+    /// Root pitch class this voice's score is in, so a replacement can be
+    /// transposed into the same key.
+    root_pitch_class: i32,
+    /// Recipe this voice was generated from; a replacement only inherits the
+    /// key and tempo when it is the same recipe.
+    recipe: String,
     /// Reused per-voice mono scratch so two voices can render without
     /// allocating a fresh Vec on every audio frame.
     scratch: Vec<f32>,
@@ -74,6 +80,8 @@ struct GamestrumentsPlayer {
     /// Active (incoming) voice. All live state lives here; the old top-level
     /// fields were replaced by this (no parallel copies).
     active: Option<Voice>,
+    /// A new voice parked here to wait for the active voice to reach a bar boundary.
+    pending: Option<Voice>,
     /// The voice that is fading out during a handoff. Stays until the fade
     /// sample count (computed from *its* score) is reached.
     outgoing: Option<Voice>,
@@ -109,6 +117,7 @@ impl INode for GamestrumentsPlayer {
             syncopation: 0.7,
             sample_rate: 48000.0,
             active: None,
+            pending: None,
             outgoing: None,
             handoff: Handoff::idle(),
             scratch: Vec::new(),
@@ -141,12 +150,8 @@ impl INode for GamestrumentsPlayer {
     }
 
     fn process(&mut self, _delta: f64) {
-        let sample_rate_f = self.resolved_sample_rate();
-        let sample_rate = f64::from(sample_rate_f);
+        let sample_rate = f64::from(self.resolved_sample_rate());
 
-        let Some(active) = self.active.as_mut() else {
-            return;
-        };
         let player = match self.live_player.as_ref() {
             Some(player) if player.is_instance_valid() => player.clone(),
             _ => return,
@@ -163,6 +168,49 @@ impl INode for GamestrumentsPlayer {
             return;
         }
         let frames = frames as usize;
+
+        // A voice parked by `generate` is promoted once the playing score reaches
+        // its next bar boundary, so a seed change swaps on the bar like a cue.
+        let promote = match (self.pending.is_some(), self.active.as_ref()) {
+            (true, Some(active)) => {
+                let bar_ticks = active.score.as_ref().map(|s| s.bar_ticks()).unwrap_or(1);
+                let current_bar = active.tick / bar_ticks;
+                let next_tick = gamestruments_engine::synth::tick_at_sample(
+                    active.frames_produced + frames as u64,
+                    sample_rate,
+                    active.ticks_per_second,
+                );
+                next_tick / bar_ticks > current_bar || active.tick == 0
+            }
+            _ => false,
+        };
+        if promote {
+            let was_handoff = self.outgoing.is_some() && self.handoff.is_active();
+            if was_handoff {
+                // A crossfade is already running: keep the voice that is fading
+                // out and drop the incoming it was replacing.
+                let _ = self.active.take();
+            } else {
+                self.outgoing = self.active.take();
+            }
+            self.active = self.pending.take();
+            let rate = self.resolved_sample_rate() as u32;
+            let total = self
+                .outgoing
+                .as_ref()
+                .and_then(|out| out.score.as_ref())
+                .map(|sc| crossfade_sample_count(sc, rate))
+                .unwrap_or(0);
+            if was_handoff {
+                self.handoff.retarget(total);
+            } else {
+                self.handoff.begin(total);
+            }
+        }
+
+        let Some(active) = self.active.as_mut() else {
+            return;
+        };
 
         // Prepare the mix buffer we will eventually push (reused, no alloc).
         self.scratch.clear();
@@ -344,6 +392,8 @@ impl GamestrumentsPlayer {
             tick: 0,
             frames_produced: 0,
             seed,
+            root_pitch_class: 0,
+            recipe: String::new(),
             scratch: Vec::new(),
         };
         let initial = score.default_section.clone();
@@ -381,6 +431,9 @@ impl GamestrumentsPlayer {
             return true;
         }
         let recipe = self.recipe.to_string();
+        // The key of the score about to be generated; a replacement is moved into
+        // the playing score's key so a seed change blends at the seam.
+        let mut new_root: i32 = 0;
         let (score, automatic_recipe) = match recipe.as_str() {
             "adventure" => {
                 let style = if self.style.is_empty() {
@@ -466,27 +519,23 @@ impl GamestrumentsPlayer {
                     // song form; no automatic arrangement layers on top of them.
                     RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
                 };
-                (
-                    generate_racing_arrangement(
-                        &GenerateInput {
-                            secret: self.project_secret.to_string(),
-                            seed: seed.to_string(),
-                            style,
-                            palette: InstrumentPalette {
-                                melody: self.melody_voice.to_string(),
-                                harmony: self.harmony_voice.to_string(),
-                                drive: self.drive_voice.to_string(),
-                                bass: self.bass_voice.to_string(),
-                            },
-                            energy: self.energy,
-                            complexity: self.complexity,
-                            brightness: self.brightness,
-                            syncopation: self.syncopation,
-                        },
-                        arrangement,
-                    ),
-                    recipe,
-                )
+                let input = GenerateInput {
+                    secret: self.project_secret.to_string(),
+                    seed: seed.to_string(),
+                    style,
+                    palette: InstrumentPalette {
+                        melody: self.melody_voice.to_string(),
+                        harmony: self.harmony_voice.to_string(),
+                        drive: self.drive_voice.to_string(),
+                        bass: self.bass_voice.to_string(),
+                    },
+                    energy: self.energy,
+                    complexity: self.complexity,
+                    brightness: self.brightness,
+                    syncopation: self.syncopation,
+                };
+                new_root = racing_root_pitch_class(&input);
+                (generate_racing_arrangement(&input, arrangement), recipe)
             }
             other => {
                 godot_error!("Unknown Gamestruments recipe \"{other}\"");
@@ -505,43 +554,40 @@ impl GamestrumentsPlayer {
             }
         };
 
+        // A replacement score inherits the playing score's key and tempo, so a
+        // seed change blends at the seam like a section cue instead of clashing
+        // two keys and two tempos.
+        let mut score = score;
+        let previous = self
+            .pending
+            .as_ref()
+            .or(self.active.as_ref())
+            .filter(|voice| voice.recipe == recipe);
+        let carried = previous.and_then(|voice| {
+            voice
+                .score
+                .as_ref()
+                .map(|previous_score| (voice.root_pitch_class, previous_score.bpm))
+        });
+        if let Some((key, bpm)) = carried {
+            score.transpose((key - new_root).rem_euclid(12));
+            score.bpm = bpm;
+        }
+
         match self.voice_from_score(score, seed.to_string()) {
-            Ok(v) => {
-                let rate = self.resolved_sample_rate() as u32;
-                let is_replacing = self.active.is_some();
-                // Whether a crossfade was already in flight before this generate.
-                let was_handoff = self.outgoing.is_some();
-                if is_replacing {
-                    if !was_handoff {
-                        // First handoff: park the currently playing as outgoing.
-                        self.outgoing = self.active.take();
-                    } else {
-                        // Second generate while a handoff is already running:
-                        // replace only the incoming voice; keep the fading-out one.
-                        let _ = self.active.take();
-                    }
+            Ok(mut v) => {
+                // Record the key the score is actually in, so a later seed change
+                // carries from the sounding key rather than the generated one.
+                v.root_pitch_class = carried.map_or(new_root, |(key, _)| key);
+                v.recipe = recipe.clone();
+                if self.active.is_some() || self.pending.is_some() {
+                    // Park the replacement; `process` promotes it on the next bar
+                    // boundary so the change stays bar-aligned and click-free.
+                    self.pending = Some(v);
+                    return true;
                 }
                 self.active = Some(v);
-
-                // Fix the crossfade length from the outgoing voice's score, then
-                // move the handoff state. A fresh handoff starts its fade at zero;
-                // a re-targeted handoff keeps its running counter so the outgoing
-                // gain does not snap back to 1.0 mid-fade.
-                let total = self
-                    .outgoing
-                    .as_ref()
-                    .and_then(|out| out.score.as_ref())
-                    .map(|sc| crossfade_sample_count(sc, rate))
-                    .unwrap_or(0);
-                if self.outgoing.is_some() {
-                    if was_handoff {
-                        self.handoff.retarget(total);
-                    } else {
-                        self.handoff.begin(total);
-                    }
-                } else {
-                    self.handoff.reset();
-                }
+                self.handoff.reset();
                 true
             }
             Err(error) => {
@@ -549,6 +595,26 @@ impl GamestrumentsPlayer {
                 false
             }
         }
+    }
+
+    /// Apply a state update to every voice that can be live this bar: the
+    /// playing voice and any replacement parked for the next bar boundary, so a
+    /// cue is not lost while the replacement waits.
+    fn for_each_live_voice(
+        &mut self,
+        mut update: impl FnMut(&mut AdaptiveTransport, u32) -> bool,
+    ) -> bool {
+        let mut accepted = false;
+        for voice in [self.active.as_mut(), self.pending.as_mut()]
+            .into_iter()
+            .flatten()
+        {
+            let tick = voice.tick;
+            if let Some(transport) = voice.transport.as_mut() {
+                accepted |= update(transport, tick);
+            }
+        }
+        accepted
     }
 
     #[func]
@@ -560,14 +626,6 @@ impl GamestrumentsPlayer {
         final_lap: bool,
         #[opt(default = "none")] finish_result: GString,
     ) -> bool {
-        let Some(active) = self.active.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
-            return false;
-        };
         if !intensity.is_finite()
             || !pressure.is_finite()
             || !(0.0..=1.0).contains(&intensity)
@@ -576,82 +634,86 @@ impl GamestrumentsPlayer {
             godot_error!("Gamestruments race intensity and pressure must be within 0.0..1.0");
             return false;
         }
-        transport.request_state(
-            &GameState {
-                intensity,
-                position_pressure: pressure,
-                final_lap,
-                race_phase: phase.to_string(),
-                finish_result: if finish_result.is_empty() {
-                    "none".into()
-                } else {
-                    finish_result.to_string()
-                },
+        let state = GameState {
+            intensity,
+            position_pressure: pressure,
+            final_lap,
+            race_phase: phase.to_string(),
+            finish_result: if finish_result.is_empty() {
+                "none".into()
+            } else {
+                finish_result.to_string()
             },
-            active.tick,
-        );
-        true
+        };
+        let accepted = self.for_each_live_voice(|transport, tick| {
+            transport.request_state(&state, tick);
+            true
+        });
+        if !accepted {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
+        }
+        accepted
     }
 
     #[func]
     fn cue_section(&mut self, section: GString) -> bool {
         let target = section.to_string();
-        if self
+        let known = self
             .active
             .as_ref()
             .and_then(|v| v.score.as_ref())
             .and_then(|score| score.section(&target))
-            .is_none()
-        {
+            .or_else(|| {
+                self.pending
+                    .as_ref()
+                    .and_then(|v| v.score.as_ref())
+                    .and_then(|score| score.section(&target))
+            })
+            .is_some();
+        if !known {
             godot_error!("Unknown music section or no generated score: {target}");
             return false;
         }
-        let Some(active) = self.active.as_mut() else {
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            return false;
-        };
-        transport.request_section(&target, active.tick);
-        true
+        self.for_each_live_voice(|transport, tick| {
+            transport.request_section(&target, tick);
+            true
+        })
     }
 
     #[func]
     fn set_form_hold(&mut self, held: bool) -> bool {
-        let Some(active) = self.active.as_mut() else {
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            return false;
-        };
-        if !transport.has_form() {
-            return false;
-        }
-        transport.set_form_held(held, active.tick);
-        true
+        self.for_each_live_voice(|transport, tick| {
+            if transport.has_form() {
+                transport.set_form_held(held, tick);
+                true
+            } else {
+                false
+            }
+        })
     }
 
     #[func]
     fn advance_form(&mut self) -> bool {
-        let Some(active) = self.active.as_mut() else {
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            return false;
-        };
-        if transport.next_form_section(active.tick).is_none() {
-            return false;
-        }
-        transport.advance_form(active.tick);
-        true
+        self.for_each_live_voice(|transport, tick| {
+            if transport.next_form_section(tick).is_none() {
+                false
+            } else {
+                transport.advance_form(tick);
+                true
+            }
+        })
     }
 
     #[func]
     fn is_form_held(&self) -> bool {
-        self.active
-            .as_ref()
-            .and_then(|v| v.transport.as_ref())
-            .is_some_and(AdaptiveTransport::is_form_held)
+        [self.active.as_ref(), self.pending.as_ref()]
+            .into_iter()
+            .flatten()
+            .any(|v| {
+                v.transport
+                    .as_ref()
+                    .is_some_and(AdaptiveTransport::is_form_held)
+            })
     }
 
     #[func]
@@ -673,14 +735,6 @@ impl GamestrumentsPlayer {
 
     #[func]
     fn set_trace_state(&mut self, phase: GString, heat: f64, focus: f64, progress: f64) -> bool {
-        let Some(active) = self.active.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
-            return false;
-        };
         if !heat.is_finite()
             || !focus.is_finite()
             || !progress.is_finite()
@@ -691,16 +745,20 @@ impl GamestrumentsPlayer {
             godot_error!("Gamestruments trace heat, focus, and progress must be within 0.0..1.0");
             return false;
         }
-        transport.request_trace_state(
-            &TraceState {
-                phase: phase.to_string(),
-                heat,
-                focus,
-                progress,
-            },
-            active.tick,
-        );
-        true
+        let state = TraceState {
+            phase: phase.to_string(),
+            heat,
+            focus,
+            progress,
+        };
+        let accepted = self.for_each_live_voice(|transport, tick| {
+            transport.request_trace_state(&state, tick);
+            true
+        });
+        if !accepted {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
+        }
+        accepted
     }
 
     #[func]
@@ -711,29 +769,25 @@ impl GamestrumentsPlayer {
         threat: f64,
         quest_complete: bool,
     ) -> bool {
-        let Some(active) = self.active.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
-            return false;
-        };
-        let Some(transport) = active.transport.as_mut() else {
-            godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
-            return false;
-        };
         for (name, value) in [("discovery", discovery), ("threat", threat)] {
             if !value.is_finite() || !(0.0..=1.0).contains(&value) {
                 godot_error!("Gamestruments adventure {name} must be within 0.0..1.0");
                 return false;
             }
         }
-        transport.request_adventure_state(
-            &AdventureState {
-                area_phase: area_phase.to_string(),
-                discovery,
-                threat,
-                quest_complete,
-            },
-            active.tick,
-        );
-        true
+        let state = AdventureState {
+            area_phase: area_phase.to_string(),
+            discovery,
+            threat,
+            quest_complete,
+        };
+        let accepted = self.for_each_live_voice(|transport, tick| {
+            transport.request_adventure_state(&state, tick);
+            true
+        });
+        if !accepted {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
+        }
+        accepted
     }
 }
