@@ -62,7 +62,7 @@ Exported properties:
 
 Methods:
 
-- `generate(seed: String) -> bool`
+- `generate(seed: String, opening_section: String = "") -> bool` — an opening section makes a replacement score land directly on that section during its bar-aligned handoff; empty uses the recipe default
 - `set_race_state(phase: String, intensity: float, pressure: float, final_lap: bool, finish_result: String = "none") -> bool` — Racing
 - `set_trace_state(phase: String, heat: float, focus: float, progress: float) -> bool` — Suspense
 - `set_adventure_state(area_phase: String, discovery: float, threat: float, quest_complete: bool) -> bool` — Adventure

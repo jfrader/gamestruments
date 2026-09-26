@@ -1,11 +1,11 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
-    generate_suspense_arrangement, racing_root_pitch_class,
+    generate_suspense_arrangement,
     handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
-    AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle, ArrangementRecipe,
-    FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore, RacingArrangement,
-    Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
+    racing_root_pitch_class, AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle,
+    ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore,
+    RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -379,7 +379,12 @@ impl GamestrumentsPlayer {
 
     /// Build a fresh Voice exactly as the old generate did for its top-level
     /// state. The handoff/park decision is done by the caller (generate).
-    fn voice_from_score(&self, score: PortableScore, seed: String) -> Result<Voice, String> {
+    fn voice_from_score(
+        &self,
+        score: PortableScore,
+        seed: String,
+        opening_section: Option<&str>,
+    ) -> Result<Voice, String> {
         let rate_f = self.resolved_sample_rate();
         let rate = rate_f as u32;
         let mut voice = Voice {
@@ -396,7 +401,12 @@ impl GamestrumentsPlayer {
             recipe: String::new(),
             scratch: Vec::new(),
         };
-        let initial = score.default_section.clone();
+        let initial = opening_section
+            .unwrap_or(&score.default_section)
+            .to_string();
+        if score.section(&initial).is_none() {
+            return Err(format!("Unknown opening section: {initial}"));
+        }
         match AdaptiveTransport::new(score.clone(), Some(&initial)) {
             Ok(transport) => {
                 // Any score with a form blends through the aligned renderer.
@@ -416,7 +426,7 @@ impl GamestrumentsPlayer {
     }
 
     #[func]
-    fn generate(&mut self, seed: GString) -> bool {
+    fn generate(&mut self, seed: GString, #[opt(default = "")] opening_section: GString) -> bool {
         if self.project_secret.is_empty() {
             godot_error!("GamestrumentsPlayer.project_secret is empty");
             return false;
@@ -428,7 +438,11 @@ impl GamestrumentsPlayer {
             .is_some_and(|active| active.seed == seed_str)
         {
             // Already playing this seed. Do not recompose or restart the clock.
-            return true;
+            return if opening_section.is_empty() {
+                true
+            } else {
+                self.cue_section(opening_section)
+            };
         }
         let recipe = self.recipe.to_string();
         // The key of the score about to be generated; a replacement is moved into
@@ -574,7 +588,9 @@ impl GamestrumentsPlayer {
             score.bpm = bpm;
         }
 
-        match self.voice_from_score(score, seed.to_string()) {
+        let requested_opening = opening_section.to_string();
+        let requested_opening = (!requested_opening.is_empty()).then_some(requested_opening);
+        match self.voice_from_score(score, seed.to_string(), requested_opening.as_deref()) {
             Ok(mut v) => {
                 // Record the key the score is actually in, so a later seed change
                 // carries from the sounding key rather than the generated one.

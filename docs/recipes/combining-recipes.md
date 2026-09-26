@@ -176,12 +176,13 @@ music.set_trace_state("complete", 0.0, 0.0, 1.0)   # coda holds through credits
   only the state methods and form controls are live.
 - **No recipe switch inside one score.** A score belongs to one recipe. `generate()`
   builds a new score. On the Godot player, a generate while audio is already
-  playing hands off with the same two-bar linear join as a section crossfade.
+  playing hands off on the next bar. Pass an optional opening section with the
+  seed to land directly on that section instead of following with a second cue.
 - **No engine crossfade between two player nodes.** The 2-bar join mixes sections
   inside one score, or the outgoing and incoming scores of one Godot player.
   Two nodes still need your bus fade.
-- **No version/take knob.** `generate(seed)` takes a seed string only; the
-  generator version and take index are internal.
+- **No version/take knob.** `generate(seed, opening_section = "")` takes the
+  score seed and optional opening section only; generator version and take index are internal.
 - **No arbitrary state graph.** The three state models (`race`/`trace`/`adventure`)
   are the whole adaptive surface; there is no custom game-state authoring.
 - **No sample import, MIDI/WAV export, pattern editor, or FMOD/Wwise.** Godot
