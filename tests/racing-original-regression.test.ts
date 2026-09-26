@@ -37,29 +37,34 @@ interface RacingCase {
 
 /**
  * Frozen SHA256 digests of the canonicalized original six-section musical
- * material, generated with the WASM committed at baseline e906504
- * ("Add Suspense theme arrangement for title music (#64)"). They guard the
- * untouched Original Racing material — especially the high register — against
- * unauthorized re-voicing or pitch changes. Never update these to the current
- * output to make a failing test pass.
+ * material. They guard the Original Racing material — especially the high
+ * register — against unauthorized re-voicing or pitch changes. Never update
+ * these to the current output to make a failing test pass.
+ *
+ * Authorized re-baseline GURI-1240: the garage intro is an intentional
+ * re-voice (its held pad and bass now sound through the bar and it gains a
+ * light pulse, because the Funk style used to leave the bar ends nearly
+ * silent). Every other Original section is byte-identical; only the garage
+ * digests move. This is a product-owner decision, not a refresh to satisfy a
+ * red test.
  */
 const FROZEN: Readonly<Record<string, string>> = {
-  "funk-normal": "b523492aa8b52dcfa52e78ba11e64458a1466b217d86917e9be961682e55fcc0",
-  "chip-normal": "2ded738e8d21525cfcdde9642fb7247c7302e5e1572371d9a7090cdf72f42697",
-  "fusion-normal": "56938a17987c816cc3b87340759030a36357c7ab8811ecefe901cece34464499",
-  "neon-normal": "51fb1bf48d860ce19bd9ecfd77b8e591ad0ff3e2f94baac71a16a69d67b1342a",
-  "funk-high-register": "9573faf0c79b6507a471d3214bcb60b3ba1bf320187931610e78fb1c12153508",
-  "chip-high-bright": "5f5a6cd97aa97e459a4e6b7671d2a8fcabebd4d3ed3502574319f4225bc508d4",
-  "fusion-max-energy": "e17e7e85f10302c5cad7a006c5ce603271b99151d0b7d7a6aad9172ac5a9978f",
-  "neon-low-bright": "87a1c39e6b6f2ca4414831abe4985f35c6559afded33600dc2373adb059a9035",
-  "funk-low-bright": "85dfd58cf4258cc9df5615e934d32e045e3c99dc7b667bdf685522d8f17f1e14",
-  "chip-max-all": "9fee6c9f0607595f379f623cdbc34fd6861e5e0e3f81db3914fb4602e20390fd",
-  "fusion-seed-b": "ce566430399f8ad3ccb7c3bac3efea641e3e6571a93eee6b4aa6b20fd575ca2c",
-  "neon-high-register": "54da0d8d3cf5b9d7ec82979fea8926a77b77b9b0305c3f53aeb063f4bb2ff191",
-  "funk-native-default": "06cc8a97014cba8732ea56940f0bcd7768db6077327a9146d0c6f6f54523b367",
-  "chip-native-default": "5fc1288710fda37a71cd0c455139e3ea542f28ef56a52a921656c7456be70b71",
-  "fusion-native-default": "cd34aa9d3bad72e7c11f8e43c94350b5acd9e7d1b8a568cc0c7d6fa366db3756",
-  "neon-native-default": "ea685a5b3066dc0a2c68f159766ce14b664b6df3d903d7b4a020be27117490bf",
+  "funk-normal": "75fab7a463036c2d6e4b5a1017184c9f417e902a1e6357b918a2be2d313d7fa9",
+  "chip-normal": "e8758a6d6c40690e5c8007f341d652959128deec2057fa254ea947e071306c84",
+  "fusion-normal": "6cd4cab538a66e60a63b09c05275e9fc23426560ab71a51a1e268dfaef50cf15",
+  "neon-normal": "20c1c680bf6ac996fb57e11ba48978e61d9f968faaf4536dad5f4e17b4913abf",
+  "funk-high-register": "5e109d380ee6e10d5100a6f78d8e68ea1001ab3ff3300d99e3659c402a7f86cf",
+  "chip-high-bright": "42ca834351be21b95f32bf039a3044c215f847cc6087617cb1d2da6ba8b6a404",
+  "fusion-max-energy": "a8784abe58797fcadc34f3083ab85301d0fe30916c5179b808b47952a666db21",
+  "neon-low-bright": "af17bab78d7c10f34e742c56280099ca8e856e00eadcb54b29357f914bf00bbc",
+  "funk-low-bright": "7e1c1087fd91ceda74f5463796b733c5f33aed79b0141167f2f0fae3fbf4f257",
+  "chip-max-all": "5e0dfc77f425a0eb57f9d14aa734e01e56fdd19fd1fe3e81a43ff986d031ebba",
+  "fusion-seed-b": "3fcf1ffb1643135cdf0fb6482a06769a6f141ac30e9e8c6a7ca940bca5586aa2",
+  "neon-high-register": "4e56763448dec12566f202ff008ffce6be6ae48cf7b207e7c3624c5b0714cb11",
+  "funk-native-default": "ce4b4e284d04968c476612cf76b3f68d7656f221afa8ff55d8f00e24d14cad0a",
+  "chip-native-default": "eab7d084c7d08c18ea8242b6bf7717b5827590446d184232c2ae447248d3ad92",
+  "fusion-native-default": "87af8d46864c1a7257d67f33db11e3c66b2f891ab608af465ff42ce186e1e50d",
+  "neon-native-default": "6d6ef3f182fb3ff04d7b1cf83a1d4626bdfb9649a6da75ff485515b48051a56c",
 };
 
 const CASES: readonly RacingCase[] = [
@@ -162,7 +167,7 @@ function digest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-describe("Racing Original material is frozen at baseline e906504", () => {
+describe("Racing Original material is frozen", () => {
   it("reproduces the frozen six-section material for every representative case", () => {
     for (const recipe of CASES) {
       const score = generate(recipe, "original");
@@ -175,7 +180,7 @@ describe("Racing Original material is frozen at baseline e906504", () => {
       assert.equal(
         digest(canonicalMusic(score)),
         FROZEN[recipe.name],
-        `${recipe.name} original material drifted from baseline e906504`,
+        `${recipe.name} original material drifted from the frozen baseline`,
       );
     }
   });
@@ -186,7 +191,7 @@ describe("Racing Original material is frozen at baseline e906504", () => {
       assert.equal(
         digest(canonicalMusic(extended, ORIGINAL_ORDER)),
         FROZEN[recipe.name],
-        `${recipe.name} Extended original sections drifted from baseline e906504`,
+        `${recipe.name} Extended original sections drifted from the frozen baseline`,
       );
     }
   });

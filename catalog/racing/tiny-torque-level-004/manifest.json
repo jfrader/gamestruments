@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "recipe": "racing",
-  "generatorVersion": "1.9.0",
+  "generatorVersion": "1.11.0",
   "seed": "string:level-004",
   "style": "funk",
   "traits": {
@@ -26,6 +26,6 @@
     "algorithm": "sha256",
     "encoding": "hex",
     "source": "compact-json",
-    "value": "48f065b5a14726cf03615659f2fc6ad52fa552a0e5df2ed3b7dd8833e74f3737"
+    "value": "9e5eb650972a63981c134945a3b869885d2c4da067069fbc1f3d1757b69b127c"
   }
 }

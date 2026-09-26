@@ -1454,8 +1454,9 @@ fn append_source_lane(
     bar_ticks: u32,
 ) {
     for (i, event) in src.iter().enumerate() {
-        // Ignition opens sparse: keep only the first note of each source bar
-        // and the kick, so the pulse stays grounded while anticipation builds.
+        // Ignition opens sparse: keep only the first melody note of each source
+        // bar and the grounded kick/snare, so there is space for the build
+        // without the opening reading as a dropout.
         if phase.id == "ignition" && phrase == 0 {
             if kind == "melody" {
                 let first_of_bar =
@@ -1463,7 +1464,7 @@ fn append_source_lane(
                 if !first_of_bar {
                     continue;
                 }
-            } else if kind == "kit" && event.voice != "kick" {
+            } else if kind == "kit" && event.voice != "kick" && event.voice != "snare" {
                 continue;
             }
         }
@@ -1494,8 +1495,13 @@ fn append_source_lane(
         } else if st.is_multiple_of(bar_ticks / 2) {
             vel = (vel * 0.95).min(0.96);
         }
-        if phase.id == "ignition" && phrase == 0 {
-            vel *= 0.55;
+        if phase.id == "ignition" {
+            // A build, not a step: every bar of the eight is a little louder
+            // than the one before, from an audible opening to full level.
+            let last_bar = (maxl / bar_ticks).saturating_sub(1).max(1);
+            let phase_bar = (st / bar_ticks).min(last_bar);
+            let build = 0.6 + 0.4 * (f64::from(phase_bar) / f64::from(last_bar));
+            vel *= build;
         }
 
         if st >= bar_end {
