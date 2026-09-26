@@ -20,7 +20,7 @@
           "section": "garage",
           "lane": "garage-bass",
           "startTick": 0,
-          "durationTicks": 2426,
+          "durationTicks": 3679,
           "velocity": 0.5596,
           "kind": "note",
           "pitch": 38,
@@ -31,7 +31,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 0,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 57,
@@ -42,7 +42,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 0,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 60,
@@ -53,7 +53,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 0,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 50,
@@ -64,7 +64,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 0,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 54,
@@ -81,6 +81,16 @@
           "voice": "kick"
         },
         {
+          "id": "garage:garage-kit:1",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 480,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-melody:0",
           "section": "garage",
           "lane": "garage-melody",
@@ -91,6 +101,36 @@
           "pitch": 50,
           "voice": "pluck",
           "role": "melody"
+        },
+        {
+          "id": "garage:garage-kit:2",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 1440,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
+          "id": "garage:garage-kit:3",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 1920,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "snare"
+        },
+        {
+          "id": "garage:garage-kit:4",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 2400,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
         },
         {
           "id": "garage:garage-melody:1",
@@ -105,11 +145,21 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:5",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 3360,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-bass:1",
           "section": "garage",
           "lane": "garage-bass",
           "startTick": 3840,
-          "durationTicks": 2426,
+          "durationTicks": 3679,
           "velocity": 0.5596,
           "kind": "note",
           "pitch": 47,
@@ -120,7 +170,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 3840,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 69,
@@ -131,7 +181,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 3840,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 59,
@@ -142,7 +192,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 3840,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 62,
@@ -153,14 +203,14 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 3840,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 66,
           "voice": "pluck"
         },
         {
-          "id": "garage:garage-kit:1",
+          "id": "garage:garage-kit:6",
           "section": "garage",
           "lane": "garage-kit",
           "startTick": 3840,
@@ -168,6 +218,16 @@
           "velocity": 0.4596,
           "kind": "percussion",
           "voice": "kick"
+        },
+        {
+          "id": "garage:garage-kit:7",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 4320,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
         },
         {
           "id": "garage:garage-melody:2",
@@ -182,6 +242,36 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:8",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 5280,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
+          "id": "garage:garage-kit:9",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 5760,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "snare"
+        },
+        {
+          "id": "garage:garage-kit:10",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 6240,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-melody:3",
           "section": "garage",
           "lane": "garage-melody",
@@ -194,11 +284,21 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:11",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 7200,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-bass:2",
           "section": "garage",
           "lane": "garage-bass",
           "startTick": 7680,
-          "durationTicks": 2426,
+          "durationTicks": 3679,
           "velocity": 0.5596,
           "kind": "note",
           "pitch": 43,
@@ -209,7 +309,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 7680,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 66,
@@ -220,7 +320,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 7680,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 55,
@@ -231,7 +331,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 7680,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 59,
@@ -242,14 +342,14 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 7680,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 62,
           "voice": "pluck"
         },
         {
-          "id": "garage:garage-kit:2",
+          "id": "garage:garage-kit:12",
           "section": "garage",
           "lane": "garage-kit",
           "startTick": 7680,
@@ -257,6 +357,16 @@
           "velocity": 0.4596,
           "kind": "percussion",
           "voice": "kick"
+        },
+        {
+          "id": "garage:garage-kit:13",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 8160,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
         },
         {
           "id": "garage:garage-melody:4",
@@ -271,6 +381,36 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:14",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 9120,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
+          "id": "garage:garage-kit:15",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 9600,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "snare"
+        },
+        {
+          "id": "garage:garage-kit:16",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 10080,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-melody:5",
           "section": "garage",
           "lane": "garage-melody",
@@ -283,11 +423,21 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:17",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 11040,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-bass:3",
           "section": "garage",
           "lane": "garage-bass",
           "startTick": 11520,
-          "durationTicks": 2426,
+          "durationTicks": 3679,
           "velocity": 0.5596,
           "kind": "note",
           "pitch": 45,
@@ -298,7 +448,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 11520,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 57,
@@ -309,7 +459,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 11520,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 60,
@@ -320,7 +470,7 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 11520,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 64,
@@ -331,14 +481,14 @@
           "section": "garage",
           "lane": "garage-harmony",
           "startTick": 11520,
-          "durationTicks": 2757,
+          "durationTicks": 3763,
           "velocity": 0.4396,
           "kind": "note",
           "pitch": 67,
           "voice": "pluck"
         },
         {
-          "id": "garage:garage-kit:3",
+          "id": "garage:garage-kit:18",
           "section": "garage",
           "lane": "garage-kit",
           "startTick": 11520,
@@ -346,6 +496,16 @@
           "velocity": 0.4596,
           "kind": "percussion",
           "voice": "kick"
+        },
+        {
+          "id": "garage:garage-kit:19",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 12000,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
         },
         {
           "id": "garage:garage-melody:6",
@@ -360,6 +520,36 @@
           "role": "melody"
         },
         {
+          "id": "garage:garage-kit:20",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 12960,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
+          "id": "garage:garage-kit:21",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 13440,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "snare"
+        },
+        {
+          "id": "garage:garage-kit:22",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 13920,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
+        },
+        {
           "id": "garage:garage-melody:7",
           "section": "garage",
           "lane": "garage-melody",
@@ -370,6 +560,16 @@
           "pitch": 57,
           "voice": "pluck",
           "role": "melody"
+        },
+        {
+          "id": "garage:garage-kit:23",
+          "section": "garage",
+          "lane": "garage-kit",
+          "startTick": 14880,
+          "durationTicks": 216,
+          "velocity": 0.4596,
+          "kind": "percussion",
+          "voice": "hat"
         }
       ]
     },

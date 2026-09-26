@@ -2,7 +2,7 @@ use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection};
 use crate::theory::{json_num, midi_to_note, mode_intervals, scale_pitch, NOTE_NAMES};
 
-pub const GENERATOR_VERSION: &str = "1.10.1";
+pub const GENERATOR_VERSION: &str = "1.11.0";
 pub const DNA_SEED_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -89,8 +89,11 @@ const PLANS: [SectionPlan; 6] = [
         lift: 0,
         register_shift: -7,
         melody_gate_scale: 1.65,
-        chord_gate_scale: 1.18,
-        bass_gate_scale: 1.22,
+        // The garage is a held pad, not a stab: the chord and bass sound
+        // through the bar in every style, so the sparse intro never leaves a
+        // hole where the thin kit cannot cover it.
+        chord_gate_scale: 1.7,
+        bass_gate_scale: 1.85,
         final_accent: "hat",
     },
     SectionPlan {
@@ -1350,11 +1353,11 @@ fn percussion_onsets(
 ) -> PercOnsets {
     #[allow(unused_mut)]
     let (mut kick, mut snare, mut hat) = if plan.id == "garage" {
-        (
-            vec![rhythm.kick_onsets.first().copied().unwrap_or(0)],
-            vec![],
-            vec![4],
-        )
+        // A gentle but continuous pulse: the kick and the half-time backbeat
+        // carry the bar, and offbeat eighths keep the intro from dropping into
+        // silence between its held chords. The offbeat steps also survive the
+        // Funk hat filter, which used to delete the garage's only hat.
+        (vec![0], vec![4], vec![1, 3, 5, 7])
     } else if plan.id == "grid" {
         let ek = rhythm.kick_onsets.get(1).copied().unwrap_or(6);
         let k = if bar >= 2 {
@@ -1617,7 +1620,7 @@ mod tests {
 
     #[test]
     fn many_seed_generation_is_valid_unique_and_deterministic() {
-        assert_eq!(GENERATOR_VERSION, "1.10.1");
+        assert_eq!(GENERATOR_VERSION, "1.11.0");
         let styles = [Style::Fusion, Style::Neon, Style::Funk, Style::Chip];
         let mut ids = HashSet::new();
         for index in 0..256 {

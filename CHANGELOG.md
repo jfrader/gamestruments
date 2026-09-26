@@ -6,8 +6,13 @@
 
 - Calling `generate()` on a Godot player that is already playing crossfades the new score over the one still going, for the same two bars a section join uses. The old score is not cut off, and cues during the fade land on the incoming score.
 
+### Changed
+
+- Racing's generator is now `1.11.0`. The garage intro and the Ignition build were re-voiced (GURI-1240): garage's held chord and bass now sound through the bar and the phase gains a light offbeat pulse, and Ignition ramps across its eight bars instead of replaying the garage at reduced level. Grid, Cruise, Attack, Final Lap, Victory, Slipstream, Redline and Cooldown are unchanged. Non-reserved generated takes get new ids; the shipped `tiny-torque-level-004` catalog fixture was regenerated, and the frozen Original-material regression digests were re-baselined for garage alone.
+
 ### Fixed
 
+- The garage intro no longer falls into near-silence at the end of every bar: its held chord stopped at 69% of the bar and the Funk style dropped its only hat, so the sparse kit could not cover the gap. Ignition inherited the same hole and, opening at reduced level, read as a dropout rather than a build.
 - A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
 - A section cue (`cue_section`) no longer drops the summed Master bus to silence: the outgoing section holds at full level until the incoming section's rendered level clears the musical floor, then runs the crossfade, so a section that opens with rests no longer leaves a hole after the cue.
 - A section cue whose incoming is carried by drums now releases on time (the hold gate reads the incoming's full render, tonal plus percussion, not just its tonal), and the drum bus crossfades with the section instead of hard-switching the pattern at the cue start.
