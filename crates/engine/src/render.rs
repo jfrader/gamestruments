@@ -1,6 +1,6 @@
 use crate::master::{MasterChain, MasterConfig};
-use crate::score::PortableScore;
-use crate::synth::{events_starting_at, Synth};
+use crate::score::{MusicEvent, PortableScore, PortableSection};
+use crate::synth::{score_tick_at_sample, Synth};
 
 /// Render `phrases` repetitions of `section_id` from `score` as 16-bit mono PCM WAV.
 /// Applies a short outer-boundary seam fade using smoothstep over 0.01s (matching
@@ -22,7 +22,8 @@ pub fn render_wav_stereo(
     phrases: usize,
     sample_rate: u32,
 ) -> Vec<u8> {
-    let (left, right) = render_samples_stereo(score, section_id, 0.0, phrases as f64, sample_rate, true);
+    let (left, right) =
+        render_samples_stereo(score, section_id, 0.0, phrases as f64, sample_rate, true);
     encode_16bit_stereo_wav(&left, &right, sample_rate)
 }
 
@@ -106,6 +107,133 @@ fn encode_16bit_mono_wav(samples: &[f32], sr: u32) -> Vec<u8> {
     wav
 }
 
+/// Score events whose `start_tick` lands in the half-open absolute-tick span
+/// `[tick_start, tick_end)`, paired with the sample offset (seconds) of each
+/// event from `tick_start`. The span is interpreted modulo `section.length_ticks`,
+/// so a chunk that straddles the section's loop point still schedules the events
+/// at the top of every phrase it covers. The offset is a pure function of the
+/// produced sample count (relative to the chunk's own start tick), so it does not
+/// accumulate per-chunk rounding the way `tick += ceil(chunk) + 1` did.
+fn events_in_tick_span(
+    section: &PortableSection,
+    tick_start: f64,
+    tick_end: f64,
+    tps: f64,
+) -> Vec<(&MusicEvent, f64)> {
+    let phrase_ticks = f64::from(section.length_ticks.max(1));
+    let mut events = Vec::new();
+
+    for event in &section.events {
+        let event_tick = f64::from(event.start_tick());
+        let first_phrase = ((tick_start - event_tick) / phrase_ticks).ceil() as i64;
+        let end_phrase = ((tick_end - event_tick) / phrase_ticks).ceil() as i64;
+
+        for phrase in first_phrase..end_phrase {
+            let absolute_tick = event_tick + phrase as f64 * phrase_ticks;
+            events.push((event, (absolute_tick - tick_start) / tps));
+        }
+    }
+
+    // A chunk can straddle a loop point or cover multiple phrases. Keep events
+    // in absolute score order so equal-time voices retain their authored order.
+    events.sort_by(|a, b| a.1.total_cmp(&b.1));
+    events
+}
+
+/// Core mono synthesis for a (start, dur) span in "phrase" units (fractional OK).
+/// Returns raw synth output before mastering/seam. The score cursor is derived
+/// from the produced-sample count, so timing is exact and independent of how the
+/// span is split into chunks.
+fn synthesize_mono(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+    chunk_size: usize,
+) -> Vec<f32> {
+    let section = score
+        .section(section_id)
+        .expect("section_id must exist in score");
+    let length_ticks = section.length_ticks;
+    let tps = score.ticks_per_second();
+    let phrase_sec = length_ticks as f64 / tps;
+    let total_samples = (phrase_sec * phrases * sample_rate as f64).round() as usize;
+
+    let mut synth = Synth::new(sample_rate as f32);
+    let mut samples = Vec::with_capacity(total_samples);
+
+    let start_tick = (start_phrases * length_ticks as f64).round();
+    let chunk_size = chunk_size.max(1);
+    let mut pos = 0usize;
+
+    while pos < total_samples {
+        let chunk = (total_samples - pos).min(chunk_size);
+        let tick_start = start_tick + score_tick_at_sample(pos as u64, f64::from(sample_rate), tps);
+        let tick_end =
+            start_tick + score_tick_at_sample((pos + chunk) as u64, f64::from(sample_rate), tps);
+
+        for (event, offset) in events_in_tick_span(section, tick_start, tick_end, tps) {
+            synth.trigger_at(event, tps, offset);
+        }
+
+        let mut buf = vec![0.0f32; chunk];
+        synth.fill(&mut buf);
+        samples.extend_from_slice(&buf);
+
+        pos += chunk;
+    }
+
+    samples
+}
+
+/// Core stereo synthesis. Mirrors [`synthesize_mono`] through the stereo path.
+fn synthesize_stereo(
+    score: &PortableScore,
+    section_id: &str,
+    start_phrases: f64,
+    phrases: f64,
+    sample_rate: u32,
+    chunk_size: usize,
+) -> (Vec<f32>, Vec<f32>) {
+    let section = score
+        .section(section_id)
+        .expect("section_id must exist in score");
+    let length_ticks = section.length_ticks;
+    let tps = score.ticks_per_second();
+    let phrase_sec = length_ticks as f64 / tps;
+    let total_samples = (phrase_sec * phrases * sample_rate as f64).round() as usize;
+
+    let mut synth = Synth::new(sample_rate as f32);
+    let mut left = Vec::with_capacity(total_samples);
+    let mut right = Vec::with_capacity(total_samples);
+
+    let start_tick = (start_phrases * length_ticks as f64).round();
+    let chunk_size = chunk_size.max(1);
+    let mut pos = 0usize;
+
+    while pos < total_samples {
+        let chunk = (total_samples - pos).min(chunk_size);
+        let tick_start = start_tick + score_tick_at_sample(pos as u64, f64::from(sample_rate), tps);
+        let tick_end =
+            start_tick + score_tick_at_sample((pos + chunk) as u64, f64::from(sample_rate), tps);
+
+        for (event, offset) in events_in_tick_span(section, tick_start, tick_end, tps) {
+            synth.trigger_at(event, tps, offset);
+        }
+
+        let mut bl = vec![0.0f32; chunk];
+        let mut br = vec![0.0f32; chunk];
+        synth.fill_stereo(&mut bl, &mut br);
+        left.extend_from_slice(&bl);
+        right.extend_from_slice(&br);
+
+        pos += chunk;
+    }
+
+    (left, right)
+}
+
 /// Core mono synthesis for a (start, dur) span in "phrase" units (fractional OK).
 /// start_phrases=0, phrases=N reproduces original. Master is per-rendered span.
 fn render_samples_mono(
@@ -119,36 +247,9 @@ fn render_samples_mono(
     let section = score
         .section(section_id)
         .expect("section_id must exist in score");
-    let length_ticks = section.length_ticks;
-    let tps = score.ticks_per_second();
-    let phrase_sec = length_ticks as f64 / tps;
-    let dur_sec = phrase_sec * phrases;
-    let total_samples = (dur_sec * sample_rate as f64).round() as usize;
+    let dur_sec = section.length_ticks as f64 / score.ticks_per_second() * phrases;
 
-    let mut synth = Synth::new(sample_rate as f32);
-    let mut samples = Vec::with_capacity(total_samples);
-
-    let mut pos = 0usize;
-    let start_tick = (start_phrases * length_ticks as f64).round() as u32;
-    let mut tick: u32 = start_tick;
-    const CHUNK: usize = 256;
-
-    while pos < total_samples {
-        let chunk = (total_samples - pos).min(CHUNK);
-        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
-        let local = tick % length_ticks.max(1);
-
-        for ev in events_starting_at(score, section_id, local, window_ticks) {
-            synth.trigger(&ev, tps);
-        }
-
-        let mut buf = vec![0.0f32; chunk];
-        synth.fill(&mut buf);
-        samples.extend_from_slice(&buf);
-
-        pos += chunk;
-        tick = tick.wrapping_add(window_ticks);
-    }
+    let mut samples = synthesize_mono(score, section_id, start_phrases, phrases, sample_rate, 256);
 
     let mut master = MasterChain::new(sample_rate, MasterConfig::default());
     // Must use the offline path for renders so that per-render LUFS measurement +
@@ -173,39 +274,10 @@ fn render_samples_stereo(
     let section = score
         .section(section_id)
         .expect("section_id must exist in score");
-    let length_ticks = section.length_ticks;
-    let tps = score.ticks_per_second();
-    let phrase_sec = length_ticks as f64 / tps;
-    let dur_sec = phrase_sec * phrases;
-    let total_samples = (dur_sec * sample_rate as f64).round() as usize;
+    let dur_sec = section.length_ticks as f64 / score.ticks_per_second() * phrases;
 
-    let mut synth = Synth::new(sample_rate as f32);
-    let mut left = Vec::with_capacity(total_samples);
-    let mut right = Vec::with_capacity(total_samples);
-
-    let mut pos = 0usize;
-    let start_tick = (start_phrases * length_ticks as f64).round() as u32;
-    let mut tick: u32 = start_tick;
-    const CHUNK: usize = 256;
-
-    while pos < total_samples {
-        let chunk = (total_samples - pos).min(CHUNK);
-        let window_ticks = (((chunk as f64 / sample_rate as f64) * tps).ceil() as u32).max(1) + 1;
-        let local = tick % length_ticks.max(1);
-
-        for ev in events_starting_at(score, section_id, local, window_ticks) {
-            synth.trigger(&ev, tps);
-        }
-
-        let mut bl = vec![0.0f32; chunk];
-        let mut br = vec![0.0f32; chunk];
-        synth.fill_stereo(&mut bl, &mut br);
-        left.extend_from_slice(&bl);
-        right.extend_from_slice(&br);
-
-        pos += chunk;
-        tick = tick.wrapping_add(window_ticks);
-    }
+    let (mut left, mut right) =
+        synthesize_stereo(score, section_id, start_phrases, phrases, sample_rate, 256);
 
     let mut master = MasterChain::new(sample_rate, MasterConfig::default());
     let _ = master.process_offline_stereo(&mut left, &mut right);
@@ -225,7 +297,14 @@ pub fn render_wav_chunk(
     phrases: f64,
     sample_rate: u32,
 ) -> Vec<u8> {
-    let samples = render_samples_mono(score, section_id, start_phrases, phrases, sample_rate, false);
+    let samples = render_samples_mono(
+        score,
+        section_id,
+        start_phrases,
+        phrases,
+        sample_rate,
+        false,
+    );
     encode_16bit_mono_wav(&samples, sample_rate)
 }
 
@@ -238,7 +317,14 @@ pub fn render_wav_stereo_chunk(
     phrases: f64,
     sample_rate: u32,
 ) -> Vec<u8> {
-    let (left, right) = render_samples_stereo(score, section_id, start_phrases, phrases, sample_rate, false);
+    let (left, right) = render_samples_stereo(
+        score,
+        section_id,
+        start_phrases,
+        phrases,
+        sample_rate,
+        false,
+    );
     encode_16bit_stereo_wav(&left, &right, sample_rate)
 }
 
@@ -471,5 +557,98 @@ mod tests {
         // nothing below ~120Hz panned off centre: crude, check lowpassed side small
         // (simple: overall side small already checked; detailed would need fft)
         // we assert the energy ratio already.
+    }
+
+    fn single_kick_score() -> PortableScore {
+        PortableScore {
+            schema_version: 1,
+            id: "onset-test".into(),
+            title: "onset".into(),
+            bpm: 120.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 960,
+            crossfade_bars: 2.0,
+            default_section: "a".into(),
+            sections: vec![PortableSection {
+                id: "a".into(),
+                label: "A".into(),
+                feeling: "test".into(),
+                color: "#888888".into(),
+                length_ticks: 3840,
+                events: vec![MusicEvent::Percussion {
+                    id: "kick-0".into(),
+                    section: "a".into(),
+                    lane: "kit".into(),
+                    start_tick: 1920,
+                    duration_ticks: 60,
+                    velocity: 1.0,
+                    voice: "kick".into(),
+                }],
+            }],
+            rules: vec![],
+            form: None,
+        }
+    }
+
+    #[test]
+    fn rendered_onsets_land_at_nominal_sample_positions() {
+        // A sparse section with a single kick mid-phrase: nothing else sounds, so
+        // the first audible sample is the kick's onset. It must land at
+        // start_tick / tps * sample_rate, and must not move when the render is
+        // split into a different internal chunk size. The old
+        // `tick += ceil(chunk / sr * tps) + 1` cursor ran the onset thousands of
+        // samples early (and quantised it to a chunk boundary).
+        let score = single_kick_score();
+        let sr = 48000u32;
+        let tps = score.ticks_per_second(); // 1920
+        let nominal = (1920.0 / tps * f64::from(sr)).round() as usize; // 48000
+
+        let mut onsets = Vec::new();
+        for chunk_size in [256usize, 577] {
+            let samples = synthesize_mono(&score, "a", 0.0, 1.0, sr, chunk_size);
+            assert_eq!(
+                samples.len(),
+                (3840.0 / tps * f64::from(sr)).round() as usize
+            );
+            let onset = samples
+                .iter()
+                .position(|&s| s.abs() > 0.01)
+                .expect("kick must produce an audible onset");
+            assert!(
+                (onset as i64 - nominal as i64).abs() <= 2,
+                "kick onset landed at sample {onset} instead of {nominal} (chunk {chunk_size})"
+            );
+            onsets.push(onset);
+        }
+        assert_eq!(onsets[0], onsets[1], "chunk size must not move the onset");
+        // Synth stores absolute phase as f32, so changing chunk boundaries can
+        // round amplitudes microscopically; the renderer contract is that the
+        // score clock and event onset samples do not move.
+    }
+
+    #[test]
+    fn event_windows_repeat_across_phrases_without_boundary_duplicates() {
+        let score = single_kick_score();
+        let section = score.section("a").expect("test section");
+        let tps = score.ticks_per_second();
+        let phrase_ticks = f64::from(section.length_ticks);
+
+        let repeated = events_in_tick_span(section, 0.0, phrase_ticks * 3.0, tps);
+        assert_eq!(repeated.len(), 3, "one kick must repeat in every phrase");
+        let offsets: Vec<f64> = repeated.iter().map(|(_, offset)| *offset).collect();
+        assert_eq!(offsets, vec![1.0, 3.0, 5.0]);
+
+        let before = events_in_tick_span(section, 0.0, 1920.0, tps);
+        let after = events_in_tick_span(section, 1920.0, phrase_ticks, tps);
+        assert!(
+            before.is_empty(),
+            "an event at the end is not in a half-open span"
+        );
+        assert_eq!(
+            after.len(),
+            1,
+            "the adjacent span must trigger it exactly once"
+        );
+        assert_eq!(after[0].1, 0.0, "a boundary event starts at offset zero");
     }
 }
