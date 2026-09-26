@@ -186,7 +186,13 @@ impl INode for GamestrumentsPlayer {
         };
         if promote {
             let was_handoff = self.outgoing.is_some() && self.handoff.is_active();
-            self.outgoing = self.active.take();
+            if was_handoff {
+                // A crossfade is already running: keep the voice that is fading
+                // out and drop the incoming it was replacing.
+                let _ = self.active.take();
+            } else {
+                self.outgoing = self.active.take();
+            }
             self.active = self.pending.take();
             let rate = self.resolved_sample_rate() as u32;
             let total = self
@@ -655,9 +661,14 @@ impl GamestrumentsPlayer {
         let known = self
             .active
             .as_ref()
-            .or(self.pending.as_ref())
             .and_then(|v| v.score.as_ref())
             .and_then(|score| score.section(&target))
+            .or_else(|| {
+                self.pending
+                    .as_ref()
+                    .and_then(|v| v.score.as_ref())
+                    .and_then(|score| score.section(&target))
+            })
             .is_some();
         if !known {
             godot_error!("Unknown music section or no generated score: {target}");
