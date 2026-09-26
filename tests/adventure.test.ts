@@ -159,7 +159,7 @@ describe("Adventure recipe through the shipped WASM", () => {
     assert.equal(victory.status, "scheduled");
     if (victory.status !== "scheduled") return;
     assert.equal(victory.plan.to, "victory");
-    
+
     transport.advance(victory.plan.endTick);
     assert.equal(transport.snapshot().currentSection, "victory");
   });
@@ -167,13 +167,13 @@ describe("Adventure recipe through the shipped WASM", () => {
   it("a held cue still defers to the active cue after the supersede change", () => {
     const { score } = generate("folk", true);
     const transport = new AdaptiveTransport(score);
-    
+
     const cue = transport.requestSection("explore", 0);
     assert.equal(cue.status, "scheduled");
     if (cue.status !== "scheduled") return;
-    
+
     transport.advance(cue.plan.startTick);
-    
+
     // quest_complete during an explicit held cue defers (queues) behind it.
     const victory = transport.requestState({ numeric: { questComplete: 1 }, categorical: {} }, cue.plan.startTick + 1);
     assert.equal(victory.status, "queued");

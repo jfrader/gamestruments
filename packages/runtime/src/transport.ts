@@ -102,7 +102,7 @@ export class AdaptiveTransport {
         this.#pendingSection = null;
         return { status: "unchanged" };
       }
-      
+
       const supersede = supersedeForm && (this.#transitionSource === "automatic" || this.#transitionSource === "form");
       if (atTick < this.#transition.startTick || supersede) {
         const replacedPlan = this.#transition;
