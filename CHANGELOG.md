@@ -16,6 +16,7 @@
 - A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
 - A section cue (`cue_section`) no longer drops the summed Master bus to silence: the outgoing section holds at full level until the incoming section's rendered level clears the musical floor, then runs the crossfade, so a section that opens with rests no longer leaves a hole after the cue.
 - A section cue whose incoming is carried by drums now releases on time (the hold gate reads the incoming's full render, tonal plus percussion, not just its tonal), and the drum bus crossfades with the section instead of hard-switching the pattern at the cue start.
+- Offline WAV renders no longer compress the score or drop its tail: the render advanced its tick cursor by `ceil(chunk / sample_rate * tps) + 1` per internal chunk — more ticks than the chunk's samples actually covered — so long exports drifted ahead of the audio and each phrase's ending came back as the next phrase's opening. The cursor is now derived from the produced-sample count and every event is scheduled at its true sample offset, so exported and chunked WAVs keep their timing and their full tail.
 
 ## [1.0.4] - 2026-09-21
 
