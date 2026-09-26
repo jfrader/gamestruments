@@ -200,12 +200,15 @@ impl AdaptiveTransport {
             if at_tick < plan.start_tick || supersede {
                 // The transition has not begun (or is a stale form transition):
                 // replace it outright instead of queueing the request behind it.
+                // A queued cue was relative to the transition being replaced, so
+                // it is dropped rather than resurfacing after the new one lands.
                 if target == self.current_section {
                     self.clear_transition();
                     self.pending_section = None;
                     self.sync_form_to(&self.current_section.clone());
                     return None;
                 }
+                self.pending_section = None;
                 let next = self.create_plan(&self.current_section, target, at_tick);
                 self.begin_transition(next.clone(), source);
                 return Some(next);
@@ -1181,5 +1184,39 @@ mod tests {
             "a held cue is never dropped mid-hold, even for an authoritative request"
         );
         assert_eq!(transport.current_section(), "camp");
+    }
+
+    #[test]
+    fn a_queued_cue_does_not_outlive_a_superseding_game_state() {
+        let score = adventure_autoplay_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        assert_eq!(transport.current_section(), "camp");
+
+        // A manual form step commits at the next bar boundary and is now in flight.
+        let step = transport.advance_form(bar / 2).unwrap();
+        transport.advance(step.start_tick);
+        assert_eq!(transport.current_section(), "camp");
+
+        // A direct cue during the in-flight form step defers (queues) behind it.
+        assert!(
+            transport.request_section("town", step.start_tick).is_none(),
+            "a direct cue queues behind an in-flight form step"
+        );
+
+        // quest_complete supersedes the form step.
+        let victory = transport
+            .request_adventure_state(&quest_complete_state(), step.start_tick)
+            .expect("quest_complete supersedes the in-flight form step");
+        assert_eq!(victory.to, "victory");
+
+        // The superseded transition lands on victory, and the stale queued cue
+        // must not then drag the transport on to town.
+        transport.advance(victory.end_tick);
+        assert_eq!(transport.current_section(), "victory");
+        assert!(
+            transport.transition.is_none(),
+            "the superseding game state drops the stale queued cue"
+        );
     }
 }

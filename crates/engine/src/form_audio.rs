@@ -245,7 +245,9 @@ impl FormAudio {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::score::{MusicEvent, PortableSection, SCORE_SCHEMA_VERSION};
+    use crate::adventure::{generate_adventure, AdventureInput, AdventureStyle};
+    use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+    use crate::score::{AdventureState, MusicEvent, PortableSection, SCORE_SCHEMA_VERSION};
     use crate::{generate_suspense_arrangement, SuspenseArrangement, SuspenseInput, SuspenseStyle};
 
     /// A sustained note, so a section of these keeps rendering above silence.
@@ -662,6 +664,95 @@ mod tests {
         assert!(
             max_rms > crate::handoff::RAW_MUSICAL_FLOOR,
             "outgoing drums were cut during the hold: max chunk rms {max_rms}"
+        );
+    }
+
+    #[test]
+    fn quest_complete_supersedes_an_inflight_form_step_driven_by_the_renderer() {
+        // Reproduce the macOS package-smoke failure end to end: `advance_form`
+        // commits a camp -> explore step, the renderer reports the incoming
+        // explore (which is when the player reports "explore" even though the
+        // step is still holding), and `quest_complete` must then supersede the
+        // stale step instead of queueing behind its hold and crossfade.
+        let score = apply_automatic_arrangement(
+            generate_adventure(&AdventureInput {
+                secret: "transport-regression".into(),
+                seed: "adventure-tour".into(),
+                style: AdventureStyle::Folk,
+                wonder: 0.6,
+                danger: 0.5,
+                mystery: 0.6,
+                motion: 0.58,
+            })
+            .unwrap(),
+            ArrangementRecipe::Adventure,
+            true,
+        )
+        .unwrap();
+
+        let mut transport = AdaptiveTransport::new(score.clone(), None).unwrap();
+        assert_eq!(transport.current_section(), "camp");
+        transport.advance_form(0).unwrap();
+
+        let rate = 8000.0f32;
+        let mut fa = FormAudio::new(&score, rate);
+        let mut buf = vec![0.0f32; 512];
+        let tps = score.ticks_per_second();
+        let mut min_rms = f32::INFINITY;
+        let mut cued = false;
+        let mut saw_explore_reported = false;
+        let mut saw_victory_reported = false;
+        let mut victory_landed = false;
+        for _ in 0..4000 {
+            fa.fill(&score, &mut transport, &mut buf);
+            min_rms = min_rms.min(buffer_rms(&buf));
+            let tick = fa.tick(tps);
+            let reported = transport
+                .playback_at(tick)
+                .into_iter()
+                .flatten()
+                .last()
+                .map(|part| part.section.to_string());
+            if reported.as_deref() == Some("explore") {
+                saw_explore_reported = true;
+                if !cued {
+                    // `get_current_section` reports the incoming section the
+                    // moment the step starts, so the smoke test sends
+                    // quest_complete while camp is still the transport's section.
+                    assert_eq!(
+                        transport.current_section(),
+                        "camp",
+                        "explore is reported while camp is still the current section"
+                    );
+                    transport
+                        .request_adventure_state(
+                            &AdventureState {
+                                area_phase: "explore".into(),
+                                discovery: 0.4,
+                                threat: 0.1,
+                                quest_complete: true,
+                            },
+                            tick,
+                        )
+                        .expect("quest_complete must supersede the in-flight form step");
+                    cued = true;
+                }
+            }
+            if reported.as_deref() == Some("victory") {
+                saw_victory_reported = true;
+            }
+            if transport.current_section() == "victory" {
+                victory_landed = true;
+                break;
+            }
+        }
+        assert!(saw_explore_reported, "explore was reported before victory");
+        assert!(cued, "quest_complete was sent while explore was reported");
+        assert!(saw_victory_reported, "victory was reported");
+        assert!(victory_landed, "victory landed as the current section");
+        assert!(
+            min_rms > 0.001,
+            "the supersede dipped to silence: min chunk rms {min_rms}"
         );
     }
 }
