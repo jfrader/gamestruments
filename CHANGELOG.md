@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- A Godot game can now change seed and choose the incoming section in one `generate(seed, opening_section)` call. The new score waits for the same bar-aligned handoff as before but starts directly on that section, instead of fading into its default section and then stacking a second phase transition on top.
 - The garage intro no longer falls into near-silence at the end of every bar: its held chord stopped at 69% of the bar and the Funk style dropped its only hat, so the sparse kit could not cover the gap. Ignition inherited the same hole and, opening at reduced level, read as a dropout rather than a build.
 - A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
 - A section cue (`cue_section`) no longer drops the summed Master bus to silence: the outgoing section holds at full level until the incoming section's rendered level clears the musical floor, then runs the crossfade, so a section that opens with rests no longer leaves a hole after the cue.

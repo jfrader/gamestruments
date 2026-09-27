@@ -502,10 +502,8 @@ func _native_racing_extended() -> void:
 		return
 	_check(bool(p.call("generate", "native-extended")), "native-racing-extended: generate")
 	_check(String(p.call("get_current_section")) == "garage", "native-racing-extended: initial garage")
-	_check(bool(p.call("advance_form")), "native-racing-extended: advance_form")
-	_check(await _wait_section(p, "ignition"), "native-racing-extended: advance -> ignition")
-	_check(bool(p.call("cue_section", "slipstream")), "native-racing-extended: cue slipstream")
-	_check(await _wait_section(p, "slipstream"), "native-racing-extended: cue -> slipstream")
+	_check(bool(p.call("generate", "native-extended-next", "grid")), "native-racing-extended: atomic seed + grid")
+	_check(await _wait_section(p, "grid"), "native-racing-extended: seed handoff opens directly on grid")
 	await _native_free(p)
 
 

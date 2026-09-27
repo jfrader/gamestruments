@@ -36,9 +36,10 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 ```gdscript
 var generated: bool = player.generate("level-001")
+var race_generated: bool = player.generate("circuit-042", "grid")
 ```
 
-Generates and validates the deterministic score for the current property values, resets transport and synthesis, and starts at the recipe's first section — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure.
+Generates and validates the deterministic score for the current property values. The optional second argument starts the score directly on that section; omitting it starts at the recipe's default — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure. When a score is already playing, the replacement waits for the next bar and hands off over the authored crossfade instead of restarting the output. Pass the intended opening section with the seed so the handoff does not need a second `cue_section` transition.
 
 Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style/arrangement/voice, or invalid generated score. Non-finite traits are not universally rejected at generate time — pass finite 0..1 values. Do not request state changes after a failed generation.
 
