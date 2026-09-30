@@ -15,7 +15,8 @@ import { cueView } from "./section-cues.ts";
 import { isDebugBarSection } from "./playback-section.ts";
 import { phaseName } from "./phase-names.ts";
 import { APPLY_PIECE, NEW_PIECE, NEW_VERSION, PIECE_AXIS, versionLabel } from "./lab-copy.ts";
-import { LAB_RECIPES, labRecipeInfo, nextVersionNumber, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
+import { labRecipeInfo, nextVersionNumber } from "./state.ts";
+import { LAB_RECIPES, type LabRecipe, type NormalizedMusicTraits } from "./recipes.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
 

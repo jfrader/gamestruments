@@ -11,16 +11,6 @@ pub fn hash_text(value: &str) -> u32 {
     hash ^ (hash >> 16)
 }
 
-/// A uniform draw in `[0, 1)` addressed by `(seed, tag, a, b)` instead of by
-/// position in a stream, so one decision never shifts another's draw.
-pub fn keyed_unit(seed: u32, tag: &str, a: u32, b: u32) -> f64 {
-    let key = seed
-        ^ hash_text(tag)
-        ^ a.wrapping_mul(0x9e37_79b9)
-        ^ b.wrapping_mul(0x85eb_ca6b).rotate_left(13);
-    DeterministicRandom::new(key).next()
-}
-
 pub struct DeterministicRandom {
     state: u32,
 }

@@ -6,11 +6,12 @@
 pub(crate) type Block = u16;
 pub(crate) const KICK: Block = 1;
 pub(crate) const HATS: Block = 1 << 1;
-pub(crate) const CLAP: Block = 1 << 2;
+pub(crate) const SNARE: Block = 1 << 2;
 pub(crate) const BASS: Block = 1 << 3;
 /// A running sixteenth-note line over the bass.
-pub(crate) const ACID: Block = 1 << 4;
-pub(crate) const STAB: Block = 1 << 5;
+pub(crate) const RUN: Block = 1 << 4;
+/// Off-beat hits on the cell voice.
+pub(crate) const CELL: Block = 1 << 5;
 pub(crate) const PAD: Block = 1 << 6;
 pub(crate) const ARP: Block = 1 << 7;
 /// A fill rolls through the block's last beat into the next.
@@ -19,7 +20,7 @@ pub(crate) const FILL: Block = 1 << 8;
 pub(crate) const GAP: Block = 1 << 9;
 /// A snare roll and a riser across the block's last bar.
 pub(crate) const ROLL: Block = 1 << 10;
-pub(crate) const GROOVE: Block = KICK | HATS | CLAP | BASS;
+pub(crate) const GROOVE: Block = KICK | HATS | SNARE | BASS;
 pub(crate) const BLOCK_BARS: u32 = 8;
 
 /// One match phase: its blocks, whether the bass follows the progression,
@@ -47,9 +48,9 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         color: "#4d6b8a",
         blocks: &[
             KICK | HATS,
-            KICK | HATS | CLAP,
+            KICK | HATS | SNARE,
             GROOVE,
-            GROOVE | STAB | FILL,
+            GROOVE | CELL | FILL,
         ],
         moving: false,
     },
@@ -58,7 +59,7 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         label: "Recon",
         feeling: "eyes on the map / quiet feelers",
         color: "#4f7f8f",
-        blocks: &[KICK | HATS | ACID, KICK | HATS | CLAP | ACID | GAP],
+        blocks: &[KICK | HATS | RUN, KICK | HATS | SNARE | RUN | GAP],
         moving: false,
     },
     MatchPhase {
@@ -68,9 +69,9 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         color: "#3f8f7a",
         blocks: &[
             GROOVE,
-            GROOVE | STAB,
-            GROOVE | STAB | ARP,
-            GROOVE | STAB | FILL,
+            GROOVE | CELL,
+            GROOVE | CELL | ARP,
+            GROOVE | CELL | FILL,
         ],
         moving: true,
     },
@@ -87,7 +88,7 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         label: "Raid",
         feeling: "hit and run / out before they know",
         color: "#b0663a",
-        blocks: &[GROOVE | ACID, GROOVE | ACID | STAB | FILL],
+        blocks: &[GROOVE | RUN, GROOVE | RUN | CELL | FILL],
         moving: false,
     },
     MatchPhase {
@@ -104,10 +105,10 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         feeling: "walls shaking / no way out",
         color: "#8f3f4a",
         blocks: &[
-            KICK | CLAP | BASS,
-            GROOVE | ACID,
-            GROOVE | ACID | PAD,
-            GROOVE | ACID | PAD | FILL,
+            KICK | SNARE | BASS,
+            GROOVE | RUN,
+            GROOVE | RUN | PAD,
+            GROOVE | RUN | PAD | FILL,
         ],
         moving: true,
     },
@@ -117,10 +118,10 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
         feeling: "everything committed",
         color: "#c2453a",
         blocks: &[
-            GROOVE | STAB | ARP,
-            GROOVE | STAB | ARP | ACID,
-            GROOVE | STAB | ARP | GAP,
-            GROOVE | STAB | ARP | ACID | FILL,
+            GROOVE | CELL | ARP,
+            GROOVE | CELL | ARP | RUN,
+            GROOVE | CELL | ARP | GAP,
+            GROOVE | CELL | ARP | RUN | FILL,
         ],
         moving: true,
     },

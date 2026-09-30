@@ -17,6 +17,10 @@ const AMBIENCE = 1.0;
 const PUMP_DEPTH = 0.7;
 const PUMP_RECOVERY_SECONDS = 0.11;
 
+function centsToRatio(cents: number): number {
+  return Math.pow(2, cents / 1200);
+}
+
 type NoteEvent = Extract<MusicEvent, { kind: "note" }>;
 type SynthVoice = Exclude<
   NoteEvent["voice"],
@@ -456,6 +460,8 @@ export class DemoAudioEngine {
       window.clearTimeout(timer);
     }
     this.#sectionBuses.clear();
+    this.#pumpNodes.clear();
+    this.#kickTimes = [];
     this.#sourcesBySection.clear();
     this.#activeSections.clear();
     this.#sectionReleaseTimers.clear();
@@ -1361,7 +1367,6 @@ export class DemoAudioEngine {
 
   #scheduleTrancePad(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
     const velocity = clamp(event.velocity, 0, 1);
-    const cents = (value: number) => Math.pow(2, value / 1200);
     this.#scheduleFilteredVoice(
       event,
       start,
@@ -1369,8 +1374,8 @@ export class DemoAudioEngine {
       destination,
       [
         { type: "sawtooth", ratio: 1, gain: 1 / 3 },
-        { type: "sawtooth", ratio: cents(12), gain: 1 / 3 },
-        { type: "sawtooth", ratio: cents(-12), gain: 1 / 3 },
+        { type: "sawtooth", ratio: centsToRatio(12), gain: 1 / 3 },
+        { type: "sawtooth", ratio: centsToRatio(-12), gain: 1 / 3 },
       ],
       { frequency: 2400 + velocity * 2000, q: 0.3 },
       { peak: 0.05 * Math.pow(Math.max(0.02, velocity), 0.82), sustain: 0.85, attack: 0.35, decay: 0.5, release: 0.6 },
@@ -1380,15 +1385,14 @@ export class DemoAudioEngine {
 
   #scheduleTranceLead(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
     const velocity = clamp(event.velocity, 0, 1);
-    const cents = (value: number) => Math.pow(2, value / 1200);
     this.#scheduleFilteredVoice(
       event,
       start,
       duration,
       destination,
       [
-        { type: "sawtooth", ratio: cents(8), gain: 0.5 },
-        { type: "sawtooth", ratio: cents(-8), gain: 0.5 },
+        { type: "sawtooth", ratio: centsToRatio(8), gain: 0.5 },
+        { type: "sawtooth", ratio: centsToRatio(-8), gain: 0.5 },
       ],
       { frequency: 600 + 5000 * velocity, settle: { to: 600, timeConstant: 0.18 }, q: 2 },
       { peak: 0.07 * Math.pow(Math.max(0.02, velocity), 0.82), sustain: 0.35, attack: 0.003, decay: 0.25, release: 0.15 },

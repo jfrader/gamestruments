@@ -49,12 +49,11 @@ import {
   nextVersionNumber,
   setPhase,
   setLabRecipe,
-  isLabRecipe,
   labRecipeInfo,
-  type LabRecipe,
   setSoloMode,
   versionIndex,
 } from "./state";
+import { isLabRecipe, type LabRecipe } from "./recipes.ts";
 
 import { setupScoreDebugger, renderDebuggerGrid } from "./score-grid.ts";
 

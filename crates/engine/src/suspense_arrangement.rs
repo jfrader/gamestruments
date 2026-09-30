@@ -1,4 +1,3 @@
-use crate::suspense::{apply_sound_world, compose_suspense};
 use std::collections::HashMap;
 
 use crate::development::{
@@ -7,12 +6,12 @@ use crate::development::{
 #[cfg(test)]
 use crate::development::{mask_to_schedule, seam_lane};
 use crate::match_phases::{
-    block_at, Block, MatchPhase, ACID, ARP, BASS, BLOCK_BARS, CLAP, FILL, GAP, HATS, KICK,
-    MATCH_PHASES, PAD, ROLL, STAB,
+    block_at, Block, MatchPhase, ARP, BASS, BLOCK_BARS, CELL, FILL, GAP, HATS, KICK, MATCH_PHASES,
+    PAD, ROLL, RUN, SNARE,
 };
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
-use crate::suspense::SuspenseInput;
+use crate::suspense::{apply_sound_world, compose_suspense, SuspenseInput};
 use crate::suspense_pool::{
     all_phases_form, compose, figure_for_composition, figure_spec, phase_spec, take_seed,
     FigureSpec, Intent, PhaseRole, PhaseSpec, FIGURE_POOL, PHASE_POOL,
@@ -291,11 +290,7 @@ fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
     score.form = Some(all_phases_form());
-    apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
-    apply_transition_pass(&mut score, pool_seed(input, take));
-    apply_trait_response(&mut score, &traits);
-    apply_sound_world(&mut score, input.style);
+    finish_arrangement(&mut score, input, take, traits)?;
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
     score.validate()?;
@@ -313,15 +308,27 @@ fn generate_seeded(
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
     score.form = Some(compose(form_seed, intent));
-    apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
-    apply_transition_pass(&mut score, pool_seed(input, take));
-    apply_trait_response(&mut score, &traits);
-    apply_sound_world(&mut score, input.style);
+    finish_arrangement(&mut score, input, take, traits)?;
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
     score.validate()?;
     Ok(score)
+}
+
+/// The passes every arrangement runs once its form is chosen, ending in the
+/// style's sound world.
+fn finish_arrangement(
+    score: &mut PortableScore,
+    input: &SuspenseInput,
+    take: u32,
+    traits: SuspenseTraits,
+) -> Result<(), String> {
+    apply_surface_variation(score, input, take);
+    apply_development_pass(score, pool_seed(input, take), traits)?;
+    apply_transition_pass(score, pool_seed(input, take));
+    apply_trait_response(score, &traits);
+    apply_sound_world(score, input.style);
+    Ok(())
 }
 
 /// The seam vocabulary: how one phase hands the music to the next.
@@ -1827,7 +1834,7 @@ fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> Porta
             }
         }
         let fill = has(FILL) && last;
-        if has(CLAP) {
+        if has(SNARE) {
             push_dev_perc(events, id, start + 2 * eighth, eighth, 0.22, "snare");
             if !fill {
                 push_dev_perc(events, id, start + 6 * eighth, eighth, 0.22, "snare");
@@ -1846,7 +1853,7 @@ fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> Porta
                 );
             }
         }
-        if has(ACID) {
+        if has(RUN) {
             for step in 0..16u32 {
                 let pitch = aeolian(root, degree + [0, 2, 4, 2][(step % 4) as usize]);
                 push_dev_note(
@@ -1862,7 +1869,7 @@ fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> Porta
                 );
             }
         }
-        if has(STAB) {
+        if has(CELL) {
             for step in [3u32, 6, 10] {
                 let pitch = aeolian(root + 12, degree + 4);
                 push_dev_note(

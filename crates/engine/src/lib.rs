@@ -1,12 +1,12 @@
 pub mod adventure;
 pub mod arrangement;
-pub(crate) mod match_phases;
 pub(crate) mod composer;
 pub(crate) mod development;
 pub(crate) mod dmath;
 pub mod form_audio;
 pub mod handoff;
 pub mod master;
+pub(crate) mod match_phases;
 pub mod racing;
 pub mod racing_arrangement;
 pub mod racing_pool;

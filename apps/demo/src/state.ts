@@ -24,14 +24,6 @@ import {
   type NormalizedMusicTraits,
 } from "./recipes.ts";
 
-export {
-  LAB_RECIPES,
-  isLabRecipe,
-  type GenerationPreset,
-  type LabRecipe,
-  type NormalizedMusicTraits,
-} from "./recipes.ts";
-
 export function labRecipeInfo(recipe: LabRecipe): LabRecipeProfile {
   return LAB_RECIPE_PROFILES[recipe];
 }

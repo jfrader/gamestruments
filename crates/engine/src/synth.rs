@@ -1,6 +1,7 @@
 use crate::dmath;
 use crate::score::MusicEvent;
 
+use std::collections::VecDeque;
 use std::f32::consts::TAU;
 
 const NOTE_TAIL_SECONDS: f32 = 0.16;
@@ -295,6 +296,8 @@ fn voice_frequency_multipliers(voice_type: VoiceType) -> [f32; 3] {
         VoiceType::Dusk => [multiplier(-3.0), multiplier(3.0), 1.0],
         VoiceType::Epiano => [multiplier(-7.0), multiplier(7.0), multiplier(3.0)],
         VoiceType::Supersaw => [multiplier(-11.0), 1.0, multiplier(13.0)],
+        VoiceType::TrancePad => [1.0, multiplier(12.0), multiplier(-12.0)],
+        VoiceType::TranceLead => [multiplier(8.0), multiplier(-8.0), 1.0],
         _ => [1.0; 3],
     }
 }
@@ -304,7 +307,7 @@ pub struct Synth {
     phase: f32,
     voices: Vec<Voice>,
     /// Start times of the club kicks that pump the pumped voices, ascending.
-    kicks: Vec<f32>,
+    kicks: VecDeque<f32>,
 }
 
 impl Synth {
@@ -313,7 +316,7 @@ impl Synth {
             sample_rate,
             phase: 0.0,
             voices: Vec::new(),
-            kicks: Vec::new(),
+            kicks: VecDeque::new(),
         }
     }
 
@@ -321,9 +324,9 @@ impl Synth {
     /// recovers over [`PUMP_RECOVERY_SECONDS`]. Unity when no kick has landed.
     fn pump_gain(&mut self, t: f32) -> f32 {
         while self.kicks.len() > 1 && self.kicks[1] <= t {
-            self.kicks.remove(0);
+            self.kicks.pop_front();
         }
-        match self.kicks.first() {
+        match self.kicks.front() {
             Some(&kick) if kick <= t => {
                 1.0 - PUMP_DEPTH * natural_decay(t - kick, PUMP_RECOVERY_SECONDS)
             }
@@ -918,11 +921,7 @@ impl Synth {
             }
             VoiceType::TrancePad => {
                 // Three detuned saws under a soft filter, swelling in slowly.
-                let spread = [
-                    1.0f32,
-                    dmath::powf(2.0, 12.0 / 1200.0),
-                    dmath::powf(2.0, -12.0 / 1200.0),
-                ];
+                let spread = v.frequency_multipliers;
                 let saws = generate_osc(v.phase1, Wave::Saw)
                     + generate_osc(v.phase2, Wave::Saw)
                     + generate_osc(v.phase3, Wave::Saw);
@@ -951,8 +950,8 @@ impl Synth {
             VoiceType::TranceLead => {
                 // A plucked supersaw lead: the filter snaps open and closes again.
                 let saws = generate_osc(v.phase1, Wave::Saw) + generate_osc(v.phase2, Wave::Saw);
-                v.phase1 += TAU * base * dmath::powf(2.0, 8.0 / 1200.0) * dt;
-                v.phase2 += TAU * base * dmath::powf(2.0, -8.0 / 1200.0) * dt;
+                v.phase1 += TAU * base * v.frequency_multipliers[0] * dt;
+                v.phase2 += TAU * base * v.frequency_multipliers[1] * dt;
                 let cutoff = (600.0 + 5000.0 * vel * natural_decay(age, 0.18)).min(sr * 0.44);
                 let sig = v
                     .filt
