@@ -1115,17 +1115,17 @@ impl Synth {
                 sig * env
             }
             VoiceType::TechnoKick => {
-                // A long club kick: a sine that sweeps down onto the sub, a
-                // gentle saturation for weight, and a click on top.
+                // A clean club kick: a sine that sweeps down onto the sub, a
+                // punch that falls away fast over a shorter sub tail, and a
+                // small click on top. No clipping: the weight is the sub.
                 let pitch = 48.0 + 110.0 * natural_decay(age, 0.045);
                 let body = generate_osc(v.phase1, Wave::Sine);
                 v.phase1 += TAU * pitch * dt;
-                let driven = body * 1.6;
-                let saturated = driven / (1.0 + driven.abs());
-                let click = v.filt.process(noise(&mut v.noise_state), 2000.0, 0.5, sr, FilterMode::Highpass)
-                    * natural_decay(age, 0.003)
-                    * 0.3;
-                (saturated * natural_decay(age, 0.32) + click) * (age / 0.001).clamp(0.0, 1.0) * 0.55 * v.velocity_gain
+                let envelope = 0.6 * natural_decay(age, 0.06) + 0.4 * natural_decay(age, 0.22);
+                let click = v.filt.process(noise(&mut v.noise_state), 2500.0, 0.5, sr, FilterMode::Highpass)
+                    * natural_decay(age, 0.002)
+                    * 0.15;
+                (body * envelope + click) * (age / 0.001).clamp(0.0, 1.0) * 0.32 * v.velocity_gain
             }
             VoiceType::Clap => {
                 // Three hands a hair apart, then the room's short tail.
