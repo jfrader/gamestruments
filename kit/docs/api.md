@@ -157,7 +157,7 @@ var section: String = player.get_current_section()
 
 ## Suspense Sections
 
-The Suspense pool has 27 phases. `all-phases` plays every one once in this
+The Suspense pool has 38 phases. `all-phases` plays every one once in this
 canonical order; `seeded` picks a subset and loop point from the seed.
 
 | Id | Label |
@@ -187,6 +187,17 @@ canonical order; `seeded` picks a subset and loop point from the seed.
 | `solo` | Decrypt |
 | `anomaly` | Anomaly |
 | `chorus-final` | Full Breach |
+| `theme-ride` | Theme Ride |
+| `build` | Build Order |
+| `scout` | Recon |
+| `expand` | Expansion |
+| `research` | Tech Up |
+| `raid` | Raid |
+| `tension` | Standoff |
+| `siege` | Siege |
+| `battle` | Battle |
+| `victory` | Victory |
+| `defeat` | Defeat |
 | `outro` | Disconnect |
 | `coda` | Closed Session |
 

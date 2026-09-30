@@ -7,6 +7,10 @@ use crate::development::{
 };
 #[cfg(test)]
 use crate::development::{mask_to_schedule, seam_lane};
+use crate::match_phases::{
+    block_at, Block, MatchPhase, ACID, ARP, BASS, BLOCK_BARS, CLAP, FILL, GAP, HATS, KICK,
+    MATCH_PHASES, PAD, ROLL, STAB,
+};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
 use crate::suspense::SuspenseInput;
@@ -1765,6 +1769,176 @@ fn build_new_phases(root: u8, bar: u32, seed: u32) -> Vec<(String, PortableSecti
         ),
         ("theme-ride".into(), build_theme_ride(root, bar, seed)),
     ]
+    .into_iter()
+    .chain(MATCH_PHASES.iter().map(|phase| {
+        let section = build_match_phase(phase, root, bar, seed ^ hash_text(phase.id));
+        (phase.id.to_string(), section)
+    }))
+    .collect()
+}
+
+/// A match phase in the Suspense sound: the same 8-bar block plan the club
+/// styles play, on the drone, pulse, glass and kit.
+fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> PortableSection {
+    let id = phase.id;
+    let bars = phase.bars();
+    let mut section = new_phase_section(id, phase.label, phase.feeling, phase.color, bars * bar);
+    let degrees = progression_degrees(bars, seed, true);
+    let eighth = bar / 8;
+    let sixteenth = bar / 16;
+    let events = &mut section.events;
+    for bar_index in 0..bars {
+        let (block, last) = block_at(phase.blocks, bar_index, bars);
+        let has = |layer: Block| block & layer != 0;
+        let start = bar_index * bar;
+        let degree = if phase.moving {
+            degrees[bar_index as usize]
+        } else {
+            0
+        };
+        let gap = has(GAP) && last;
+        // The drone is Suspense's bed: it holds under every bar.
+        push_dev_note(
+            events,
+            id,
+            "drone",
+            start,
+            bar,
+            0.15,
+            aeolian(root - 12, degree),
+            "warm",
+            false,
+        );
+        if has(BASS) && !gap {
+            for step in [1u32, 3, 5, 7] {
+                let pitch = aeolian(root - 12, degree);
+                push_dev_note(
+                    events,
+                    id,
+                    "bass",
+                    start + step * eighth,
+                    eighth / 2,
+                    0.18,
+                    pitch,
+                    "pulse",
+                    false,
+                );
+            }
+        }
+        if has(KICK) && !gap {
+            push_dev_perc(events, id, start, eighth, 0.4, "kick");
+            push_dev_perc(events, id, start + 4 * eighth, eighth, 0.3, "kick");
+        }
+        if has(HATS) {
+            for step in [1u32, 3, 5, 7] {
+                push_dev_perc(events, id, start + step * eighth, eighth / 3, 0.16, "hat");
+            }
+        }
+        let fill = has(FILL) && last;
+        if has(CLAP) {
+            push_dev_perc(events, id, start + 2 * eighth, eighth, 0.22, "snare");
+            if !fill {
+                push_dev_perc(events, id, start + 6 * eighth, eighth, 0.22, "snare");
+            }
+        }
+        if fill {
+            for step in 12..16u32 {
+                let velocity = 0.2 + f64::from(step - 12) * 0.05;
+                push_dev_perc(
+                    events,
+                    id,
+                    start + step * sixteenth,
+                    sixteenth,
+                    velocity,
+                    "tom",
+                );
+            }
+        }
+        if has(ACID) {
+            for step in 0..16u32 {
+                let pitch = aeolian(root, degree + [0, 2, 4, 2][(step % 4) as usize]);
+                push_dev_note(
+                    events,
+                    id,
+                    "pulse",
+                    start + step * sixteenth,
+                    sixteenth / 2,
+                    0.16,
+                    pitch,
+                    "pulse",
+                    false,
+                );
+            }
+        }
+        if has(STAB) {
+            for step in [3u32, 6, 10] {
+                let pitch = aeolian(root + 12, degree + 4);
+                push_dev_note(
+                    events,
+                    id,
+                    "cell",
+                    start + step * sixteenth,
+                    2 * sixteenth,
+                    0.2,
+                    pitch,
+                    "glass",
+                    false,
+                );
+            }
+        }
+        if has(PAD) {
+            for offset in [0, 2, 4] {
+                push_dev_note(
+                    events,
+                    id,
+                    "pad",
+                    start,
+                    bar,
+                    0.12,
+                    aeolian(root, degree + offset),
+                    "dusk",
+                    false,
+                );
+            }
+        }
+        if has(ARP) {
+            let level = if has(ROLL) {
+                0.1 + f64::from(bar_index % BLOCK_BARS) * 0.02
+            } else {
+                0.16
+            };
+            for step in 0..8u32 {
+                let pitch = aeolian(root + 12, degree + [0, 2, 4, 2][(step % 4) as usize]);
+                push_dev_note(
+                    events,
+                    id,
+                    "arp",
+                    start + step * eighth,
+                    eighth,
+                    level,
+                    pitch,
+                    "glass",
+                    step == 0,
+                );
+            }
+        }
+        if has(ROLL) && last {
+            for step in 0..16u32 {
+                let velocity = 0.15 + f64::from(step) * 0.017;
+                push_dev_perc(
+                    events,
+                    id,
+                    start + step * sixteenth,
+                    sixteenth,
+                    velocity,
+                    "snare",
+                );
+            }
+            push_dev_perc(events, id, start, bar, 0.4, "reverse-cymbal");
+        }
+    }
+    section.events.sort_by_key(MusicEvent::start_tick);
+    section
 }
 
 fn build_half_time(root: u8, bar: u32, seed: u32) -> PortableSection {

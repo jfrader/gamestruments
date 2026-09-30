@@ -8,13 +8,16 @@
 //! becomes a breakdown and a peak becomes the drop. One seed fixes the key, the
 //! progression, and the stab, arpeggio and acid figures for the whole piece.
 
+use crate::match_phases::{
+    block_at, match_phase, Block, ACID, ARP, BASS, BLOCK_BARS, CLAP, FILL, GAP, GROOVE, HATS, KICK,
+    PAD, ROLL, STAB,
+};
 use crate::rng::{keyed_unit, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
 use crate::suspense_pool::{phase_spec, PhaseRole};
 use crate::theory::NOTE_NAMES;
 
 const SIXTEENTHS_PER_BAR: u32 = 16;
-const BLOCK_BARS: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ClubStyle {
@@ -94,24 +97,6 @@ impl Plan {
         }
     }
 }
-
-/// Layers and endings of one block, as bit flags.
-type Block = u16;
-const KICK: Block = 1;
-const HATS: Block = 1 << 1;
-const CLAP: Block = 1 << 2;
-const BASS: Block = 1 << 3;
-const ACID: Block = 1 << 4;
-const STAB: Block = 1 << 5;
-const PAD: Block = 1 << 6;
-const ARP: Block = 1 << 7;
-/// Claps roll through the block's last beat into the next.
-const FILL: Block = 1 << 8;
-/// The kick and bass drop out for the block's last bar.
-const GAP: Block = 1 << 9;
-/// A snare roll and a riser across the block's last bar.
-const ROLL: Block = 1 << 10;
-const GROOVE: Block = KICK | HATS | CLAP | BASS;
 
 /// The blocks a phase cycles through, by its role and energy.
 fn blocks_for(role: PhaseRole, energy: u32) -> &'static [Block] {
@@ -231,9 +216,12 @@ fn write_section(
 ) -> Vec<MusicEvent> {
     let (role, energy) =
         phase_spec(&section.id).map_or((PhaseRole::Groove, 50), |spec| (spec.role, spec.energy));
-    let blocks = blocks_for(role, energy);
+    // A match phase plays its own block plan; every other phase follows its role.
+    let (blocks, follow) = match_phase(&section.id).map_or_else(
+        || (blocks_for(role, energy), moving(role)),
+        |phase| (phase.blocks, phase.moving),
+    );
     let bars = section.length_ticks / (SIXTEENTHS_PER_BAR * sixteenth);
-    let follow = moving(role);
     let drive = 0.8 + traits.energy * 0.15;
     let bass_pitch = |offset: i32| 33 + (plan.tonic + offset).rem_euclid(12);
     let mut w = Writer {
@@ -243,11 +231,9 @@ fn write_section(
         serial: 0,
     };
     for bar in 0..bars {
-        let block_index = bar / BLOCK_BARS;
-        let block = styled(blocks[block_index as usize % blocks.len()], style);
+        let (block, last_of_block) = block_at(blocks, bar, bars);
+        let block = styled(block, style);
         let has = |layer: Block| block & layer != 0;
-        let block_end = ((block_index + 1) * BLOCK_BARS).min(bars);
-        let last_of_block = bar + 1 == block_end;
         let gap = has(GAP) && last_of_block;
         let fill = has(FILL) && last_of_block;
         let chord_root = plan.progression[(bar % 4) as usize];
@@ -447,6 +433,38 @@ mod tests {
                 }
                 assert!(club.bpm >= 126.0, "{style:?} runs at club tempo");
             }
+        }
+    }
+
+    #[test]
+    fn every_style_plays_every_match_phase_at_the_same_length() {
+        let lengths = |style: SuspenseStyle| {
+            let score =
+                generate_suspense_arrangement(&input(style), SuspenseArrangement::AllPhases)
+                    .unwrap();
+            crate::match_phases::MATCH_PHASES
+                .iter()
+                .map(|phase| {
+                    let section = score
+                        .section(phase.id)
+                        .unwrap_or_else(|| panic!("{style:?} lacks {}", phase.id));
+                    assert!(
+                        !section.events.is_empty(),
+                        "{style:?} {} is silent",
+                        phase.id
+                    );
+                    section.length_ticks
+                })
+                .collect::<Vec<_>>()
+        };
+        let terminal = lengths(SuspenseStyle::Terminal);
+        for style in [
+            SuspenseStyle::Cipher,
+            SuspenseStyle::Noir,
+            SuspenseStyle::Techno,
+            SuspenseStyle::Trance,
+        ] {
+            assert_eq!(lengths(style), terminal, "{style:?}");
         }
     }
 

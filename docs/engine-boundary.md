@@ -44,7 +44,7 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   the autoplay adapter is applied afterward and leaves Original untouched.
   Native and WASM default to Original for Racing; the Audio Lab defaults every
   recipe to Seeded.
-- The pool has 27 phases: the fourteen base sections, `scan-ii` (Scan II) and
+- The pool has 38 phases: the fourteen base sections, `scan-ii` (Scan II) and
   `breach-ii` (Breach II) developed past their base phase, `anomaly`, and ten
   pool-authored phases (`half-time`, `sparse`, `sub-groove`, `syncopated`,
   `drive`, `drum-break`, `false-stop`, `filter-break`, `harmonic-bridge`,

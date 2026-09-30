@@ -77,7 +77,7 @@ use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
 
-const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
+const BUF_SIZE: usize = 8 * 1024 * 1024; // 8 MiB: a full club-styled Suspense pool is ~2-3 MiB of JSON
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
 static mut BUMP: usize = 0;
 static mut OUT_PTR: *const u8 = core::ptr::null();

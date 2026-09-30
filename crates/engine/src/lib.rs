@@ -1,6 +1,7 @@
 pub mod adventure;
 pub mod arrangement;
 pub(crate) mod club;
+pub(crate) mod match_phases;
 pub(crate) mod composer;
 pub(crate) mod development;
 pub(crate) mod dmath;

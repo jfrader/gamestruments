@@ -34,7 +34,7 @@ The archive contains no Strudel code, TypeScript authoring packages, browser Aud
 The kit generates deterministic scores from three shipped recipes, each from a per-title namespace, level seed, style, voice palette (Racing), traits, and generator version:
 
 - **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` (original); `extended` adds four more (ignition/slipstream/redline/cooldown) — driven by `set_race_state`. Native default arrangement original.
-- **Suspense (song-form):** a 27-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
+- **Suspense (song-form):** a 38-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
 - **Adventure:** eight sections (camp, explore, town, dungeon, combat, boss, sanctuary, victory) driven by `set_adventure_state`. 3 styles. 8 real phases.
 
 The `kit/examples/` project is three independent reference scenes, not a

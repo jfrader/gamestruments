@@ -10,7 +10,7 @@ test("Suspense exposes every music section separately from game signals", async 
   const sectionIds = await page.locator("#section-select option").evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
   const rowIds = await page.locator("#section-list button").evaluateAll((buttons) => buttons.map((button) => (button as HTMLButtonElement).dataset.cueSection));
   expect(sectionIds).toEqual(rowIds);
-  expect(sectionIds).toHaveLength(28);
+  expect(sectionIds).toHaveLength(38);
   for (const id of ["scan-ii", "breach-ii", "pre-chorus", "break", "bridge-b", "solo", "anomaly", "outro", "coda"]) expect(sectionIds).toContain(id);
   await expect(page.locator("#game-signals")).toBeVisible();
   await page.locator("#section-select").selectOption("anomaly");
@@ -26,7 +26,7 @@ test("Suspense exposes every music section separately from game signals", async 
   // The pool is the only Suspense authority: both arrangements expose every
   // phase, so alias-switching to all-phases keeps Anomaly cueable.
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
-  await expect(page.locator("#section-select option")).toHaveCount(28);
+  await expect(page.locator("#section-select option")).toHaveCount(38);
   await expect(page.locator('#section-select option[value="anomaly"]')).toHaveCount(1);
   await expect(page.locator("#cue-status")).toHaveText("Start with Anomaly");
 });
@@ -65,7 +65,8 @@ test("cue buttons wait for a bar and an active blend keeps only the latest queue
 });
 
 test("cancelled cues do not stop the current rhythm when their old fade timer expires", async ({ page }) => {
-  test.setTimeout(35000);
+  // Ten real-time bars of playback plus generating the whole pool.
+  test.setTimeout(60000);
   await installAudioCapture(page);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -174,7 +175,7 @@ test("the complete section selector and cue status fit a compact viewport", asyn
   await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("coda");
   await expect(page.locator("#cue-status")).toHaveText("Start with Closed Session");
-  await expect(page.locator("#section-select option")).toHaveCount(28);
+  await expect(page.locator("#section-select option")).toHaveCount(38);
   const width = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
   expect(width.page).toBeLessThanOrEqual(width.viewport);
 });

@@ -174,7 +174,7 @@ pub struct PhaseSpec {
     pub role: PhaseRole,
     pub energy: u32,
     pub one_shot: bool,
-    /// Authored length in bars (4, 8, or 16). The composer ignores it — its
+    /// Authored length in bars (4, 8, 16, or 32). The composer ignores it — its
     /// energy/role grammar works purely on the metadata above — but the pool
     /// path honours it when it builds the actual section, so a song form can
     /// carry mixed-length phases.
@@ -205,7 +205,7 @@ impl PhaseMeta for PhaseSpec {
 /// The pool, in canonical play order (the natural song arc, Extended phases
 /// slotted where `generate_extended` would place them, new grooves and
 /// breaks/bridges interleaved by energy, then `outro` / `coda`).
-pub const PHASE_POOL: &[PhaseSpec; 28] = &[
+pub const PHASE_POOL: &[PhaseSpec; 38] = &[
     PhaseSpec {
         id: "intro",
         role: PhaseRole::Intro,
@@ -413,6 +413,87 @@ pub const PHASE_POOL: &[PhaseSpec; 28] = &[
         one_shot: false,
         bars: 8,
         figure: "straight-8",
+    },
+    // The match phases (see `match_phases`): a strategy game's arc.
+    PhaseSpec {
+        id: "build",
+        role: PhaseRole::Groove,
+        energy: 40,
+        one_shot: false,
+        bars: 32,
+        figure: "straight-8",
+    },
+    PhaseSpec {
+        id: "scout",
+        role: PhaseRole::Groove,
+        energy: 35,
+        one_shot: false,
+        bars: 16,
+        figure: "sparse",
+    },
+    PhaseSpec {
+        id: "expand",
+        role: PhaseRole::Groove,
+        energy: 55,
+        one_shot: false,
+        bars: 32,
+        figure: "straight-8",
+    },
+    PhaseSpec {
+        id: "research",
+        role: PhaseRole::Build,
+        energy: 50,
+        one_shot: true,
+        bars: 16,
+        figure: "double-time",
+    },
+    PhaseSpec {
+        id: "raid",
+        role: PhaseRole::Groove,
+        energy: 65,
+        one_shot: false,
+        bars: 16,
+        figure: "broken-beat",
+    },
+    PhaseSpec {
+        id: "tension",
+        role: PhaseRole::Break,
+        energy: 30,
+        one_shot: true,
+        bars: 16,
+        figure: "sparse",
+    },
+    PhaseSpec {
+        id: "siege",
+        role: PhaseRole::Bridge,
+        energy: 60,
+        one_shot: true,
+        bars: 32,
+        figure: "heavy-sync",
+    },
+    PhaseSpec {
+        id: "battle",
+        role: PhaseRole::Peak,
+        energy: 90,
+        one_shot: true,
+        bars: 32,
+        figure: "double-time",
+    },
+    PhaseSpec {
+        id: "victory",
+        role: PhaseRole::Outro,
+        energy: 40,
+        one_shot: true,
+        bars: 16,
+        figure: "half_time",
+    },
+    PhaseSpec {
+        id: "defeat",
+        role: PhaseRole::Outro,
+        energy: 15,
+        one_shot: true,
+        bars: 16,
+        figure: "sparse",
     },
     PhaseSpec {
         id: "outro",
@@ -837,7 +918,11 @@ mod tests {
         assert!(PHASE_POOL.iter().any(|spec| spec.bars == 4));
         assert!(PHASE_POOL
             .iter()
-            .all(|spec| matches!(spec.bars, 4 | 8 | 16)));
+            .all(|spec| matches!(spec.bars, 4 | 8 | 16 | 32)));
+        for phase in &crate::match_phases::MATCH_PHASES {
+            let spec = phase_spec(phase.id).expect("every match phase is in the pool");
+            assert_eq!(spec.bars, phase.bars(), "{} length", phase.id);
+        }
         assert!(PHASE_POOL.iter().all(|spec| spec.energy <= 100));
     }
 

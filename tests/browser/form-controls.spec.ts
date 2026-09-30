@@ -11,7 +11,7 @@ test("the pool selector exposes every phase and a held form step survives regene
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#score-title")).toContainText("All phases");
   const options = await page.locator("#section-select option").evaluateAll((items) => items.map((item) => ({ id: (item as HTMLOptionElement).value, text: item.textContent })));
-  expect(options).toHaveLength(28);
+  expect(options).toHaveLength(38);
   for (const [base, variation] of [["verse", "scan-ii"], ["chorus", "breach-ii"]]) {
     const index = options.findIndex((item) => item.id === base);
     expect(index).toBeGreaterThanOrEqual(0);
