@@ -73,6 +73,7 @@ use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
 use crate::score::PortableScore;
+use crate::strategy::{generate_strategy, StrategyArrangement, StrategyInput, StrategyStyle};
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
@@ -260,6 +261,34 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
                 None => Ok(score),
             })
+        }
+        "strategy" => {
+            let style = match StrategyStyle::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            let arrangement = match StrategyArrangement::parse(&inp.arrangement) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_strategy(
+                &StrategyInput {
+                    secret: inp.secret,
+                    seed: inp.seed,
+                    style,
+                    energy: inp.energy,
+                    brightness: inp.brightness,
+                    complexity: inp.complexity,
+                    syncopation: inp.syncopation,
+                },
+                arrangement,
+            )
         }
         "suspense" => {
             let style = match SuspenseStyle::parse(&inp.style) {

@@ -123,6 +123,30 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   expect(runtimeErrors).toEqual([]);
 });
 
+test("switching to Strategy plays the match sections without errors", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") runtimeErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+  await selectRecipe(page, "strategy");
+  await expect(page.locator("#audition-status")).toContainText("Opened Strategy");
+  await expect(page.locator("#score-title")).toContainText(/Techno|Trance/);
+  await expect(page.locator("#section-list li")).toHaveCount(5);
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: strategy");
+
+  await page.locator('#phase-buttons button[data-phase="battle"]').click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("Battle");
+  await page.waitForTimeout(1500);
+  await page.locator("#start-audio").click();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("All phases and Seeded are the only Suspense arrangements and keep the same seed", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -247,7 +271,7 @@ test("Adventure offers exactly two arrangements: All phases and Seeded", async (
 
 test("every recipe exposes exactly the All phases and Seeded arrangements", async ({ page }) => {
   await page.goto("/#lab");
-  for (const recipe of ["racing", "suspense", "adventure"] as const) {
+  for (const recipe of ["racing", "suspense", "adventure", "strategy"] as const) {
     await selectRecipe(page, recipe);
     await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
     const ids = await page.locator("#arrangement-buttons button").evaluateAll(

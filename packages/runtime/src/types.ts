@@ -63,7 +63,11 @@ export interface NoteEvent extends EventBase {
     | "harp"
     | "recorder"
     | "vielle"
-    | "bell";
+    | "bell"
+    | "saw-bass"
+    | "stab"
+    | "trance-pad"
+    | "trance-lead";
   role?: "melody";
 }
 
@@ -71,6 +75,9 @@ export interface PercussionEvent extends EventBase {
   kind: "percussion";
   voice:
     | "kick"
+    | "techno-kick"
+    | "clap"
+    | "open-hat"
     | "snare"
     | "hat"
     | "tom"

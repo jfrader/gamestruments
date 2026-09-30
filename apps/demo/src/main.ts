@@ -1,7 +1,6 @@
 import "./style.css";
 import type { SectionId } from "../../../packages/runtime/src/index.ts";
 import type { SoloMode } from "./audio-engine.ts";
-import { phaseName } from "./phase-names.ts";
 import { versionLabel } from "./lab-copy.ts";
 import { isArrangement, type Arrangement } from "./wasm-engine.ts";
 import {
@@ -34,8 +33,7 @@ import {
   transport,
   applyPlan,
   requestMusicState,
-  requestSuspensePhase,
-  requestAdventureScene,
+  requestPhase,
   cueSection,
   stepSection,
   cancelCue,
@@ -112,12 +110,7 @@ function animate(): void {
 }
 
 function renderRuntimeSignal(): void {
-  elements.runtimeSignal.textContent =
-    labRecipe === "suspense"
-      ? `recipe: suspense  /  tracePhase: ${phaseName(phase)}`
-      : labRecipe === "adventure"
-        ? `recipe: adventure  /  areaPhase: ${phaseName(phase)}`
-        : `racePhase: ${phaseName(phase)}`;
+  elements.runtimeSignal.textContent = labRecipeInfo(labRecipe).signal(phase);
 }
 
 renderGenreIndex();
@@ -421,13 +414,7 @@ elements.phaseButtons.addEventListener("click", (event) => {
     candidate.setAttribute("aria-pressed", String(candidate === button));
   }
   renderRuntimeSignal();
-  if (labRecipe === "suspense") {
-    requestSuspensePhase();
-  } else if (labRecipe === "adventure") {
-    requestAdventureScene();
-  } else {
-    requestMusicState();
-  }
+  requestPhase();
 });
 
 elements.intensity.addEventListener("input", () => {
