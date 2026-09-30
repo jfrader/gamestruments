@@ -8,10 +8,10 @@ use super::harmony::{
     chord_at, dominant_degree, phrase_harmony, place_degree, voice_chord, Chord, ChordKind,
     ChordSpan, PhraseHarmonyInput,
 };
-use super::theme::{
-    compose_theme, counter_line, phrase_melody, PhraseMelodyInput, Tone, Treatment,
-};
+use super::theme::{counter_line, phrase_melody, PhraseMelodyInput, Treatment, THEME_RHYTHMS};
 use super::{AdventureStyle, NormalizedTraits};
+use crate::event_sink::EventSink;
+use crate::melody::{compose_theme, metric_accent, Tone};
 
 const BEATS_PER_BAR: u32 = 4;
 const PHRASE_BARS: u32 = 4;
@@ -214,7 +214,7 @@ impl PieceDna {
         let mut rng = DeterministicRandom::new(seed);
         // The tonic stays the seed's first draw, so a seed keeps its key.
         let tonic_pitch_class = *rng.pick(&TONIC_PITCH_CLASSES);
-        let theme = compose_theme(&mut rng);
+        let theme = compose_theme(&mut rng, &THEME_RHYTHMS);
         Self {
             tonic_pitch_class,
             theme,
@@ -398,108 +398,6 @@ where
         .collect()
 }
 
-/// Collects a section's events with stable per-lane ids, applies the scene's
-/// feel to every onset, and keeps everything inside the section.
-struct Sink {
-    section: &'static str,
-    beat: u32,
-    swing_point: f64,
-    length: u32,
-    events: Vec<MusicEvent>,
-    counters: BTreeMap<&'static str, usize>,
-}
-
-impl Sink {
-    fn swing(&self, tick: u32) -> u32 {
-        let beat = f64::from(self.beat);
-        let position = f64::from(tick % self.beat);
-        let middle = beat / 2.0;
-        let heard = self.swing_point * beat;
-        let moved = if position <= middle {
-            position * heard / middle
-        } else {
-            heard + (position - middle) * (beat - heard) / middle
-        };
-        tick - tick % self.beat + moved.round() as u32
-    }
-
-    /// Onset and length after the feel, clipped to the section.
-    fn place(&self, start: u32, length: u32) -> Option<(u32, u32)> {
-        let onset = self.swing(start);
-        if onset >= self.length {
-            return None;
-        }
-        let end = self.swing(start + length).min(self.length);
-        Some((onset, end.saturating_sub(onset).max(1)))
-    }
-
-    fn next_id(&mut self, lane: &'static str) -> String {
-        let counter = self.counters.entry(lane).or_insert(0);
-        let id = format!("{}:{lane}:{counter}", self.section);
-        *counter += 1;
-        id
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn note(
-        &mut self,
-        lane: &'static str,
-        start: u32,
-        length: u32,
-        velocity: f64,
-        pitch: i32,
-        voice: &str,
-        melody: bool,
-    ) {
-        let Some((start_tick, duration_ticks)) = self.place(start, length) else {
-            return;
-        };
-        let pitch = u8::try_from(pitch).expect("adventure pitch must remain within MIDI range");
-        let id = self.next_id(lane);
-        self.events.push(MusicEvent::Note {
-            id,
-            section: self.section.to_string(),
-            lane: lane.to_string(),
-            start_tick,
-            duration_ticks,
-            velocity: velocity.clamp(0.04, 0.95),
-            pitch,
-            voice: voice.to_string(),
-            role: melody.then(|| "melody".to_string()),
-        });
-    }
-
-    fn hit(&mut self, start: u32, length: u32, velocity: f64, voice: &str) {
-        let Some((start_tick, duration_ticks)) = self.place(start, length) else {
-            return;
-        };
-        let id = self.next_id("percussion");
-        self.events.push(MusicEvent::Percussion {
-            id,
-            section: self.section.to_string(),
-            lane: "percussion".to_string(),
-            start_tick,
-            duration_ticks,
-            velocity: velocity.clamp(0.04, 0.95),
-            voice: voice.to_string(),
-        });
-    }
-
-    fn finish(mut self) -> Vec<MusicEvent> {
-        fn event_id(event: &MusicEvent) -> &str {
-            match event {
-                MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
-            }
-        }
-        self.events.sort_by(|left, right| {
-            left.start_tick()
-                .cmp(&right.start_tick())
-                .then_with(|| event_id(left).cmp(event_id(right)))
-        });
-        self.events
-    }
-}
-
 /// Everything fixed for one section while its lanes are written.
 struct Section<'a> {
     plan: &'a SectionPlan,
@@ -627,18 +525,6 @@ fn texture_gain(kind: PhraseKind, phrase_index: u32) -> f64 {
     base + f64::from(phrase_index.min(5)) * 0.012
 }
 
-/// Metric weight of a sixteenth position within the bar: downbeat, half bar,
-/// beats, off-beats, then the in-between sixteenths.
-fn metric_accent(position: u32) -> f64 {
-    match position % 16 {
-        0 => 1.0,
-        8 => 0.93,
-        4 | 12 => 0.87,
-        p if p % 2 == 0 => 0.8,
-        _ => 0.74,
-    }
-}
-
 fn warm(scene: Scene) -> bool {
     matches!(
         scene,
@@ -681,14 +567,12 @@ fn build_section(
     let phrases = plan_phrases(&section, dna);
     section.melody_octave = melody_octave(&section, &phrases);
 
-    let mut sink = Sink {
-        section: plan.id,
-        beat: ticks_per_beat,
-        swing_point: feel(style, plan.scene).swing_point(),
-        length: plan.bars * bar,
-        events: Vec::new(),
-        counters: BTreeMap::new(),
-    };
+    let mut sink = EventSink::new(
+        plan.id,
+        ticks_per_beat,
+        feel(style, plan.scene).swing_point(),
+        plan.bars * bar,
+    );
     let chords: Vec<ChordSpan> = phrases
         .iter()
         .flat_map(|p| p.chords.iter().copied())
@@ -814,7 +698,7 @@ fn articulation(style: AdventureStyle, scene: Scene) -> f64 {
     }
 }
 
-fn add_melody(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+fn add_melody(sink: &mut EventSink, section: &Section, phrase: &PhrasePlan) {
     let voice = melody_voice(section.style, section.scene());
     let bar_arch = [0.9, 1.0, 1.08, 0.95];
     let base = 0.3 + section.traits.wonder * 0.06 + section.energy * 0.1;
@@ -882,7 +766,7 @@ fn counter_voice(style: AdventureStyle) -> &'static str {
 
 /// A second voice joins after the first statement. Orchestral always answers
 /// in its warm scenes; elsewhere the line appears more often as wonder climbs.
-fn add_counter(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+fn add_counter(sink: &mut EventSink, section: &Section, phrase: &PhrasePlan) {
     if matches!(phrase.kind, PhraseKind::Antecedent) || phrase.harp_intro {
         return;
     }
@@ -920,7 +804,7 @@ fn add_counter(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
 /// Orchestral horns: they double the theme an octave down when it returns in
 /// the heroic scenes, carry it in every phrase of the boss fights, and hold a
 /// soft root-and-fifth in the quiet scenes.
-fn add_horn(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+fn add_horn(sink: &mut EventSink, section: &Section, phrase: &PhrasePlan) {
     if section.style != AdventureStyle::Orchestral {
         return;
     }
@@ -967,7 +851,7 @@ fn add_horn(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
 
 /// Bells mark arrivals: the authored landmarks per style, a sparkle that grows
 /// with wonder, and a stranger glint that grows with mystery.
-fn add_bell(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+fn add_bell(sink: &mut EventSink, section: &Section, phrase: &PhrasePlan) {
     let scene = section.scene();
     let authored = match section.style {
         AdventureStyle::Folk => {
@@ -1016,10 +900,16 @@ fn add_bell(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
 /// Dark's bowed drone: the tonic held under every run of chords that contain
 /// it (up to two bars), with the open fifth above only when every chord in
 /// the run contains that too.
-fn add_drone(sink: &mut Sink, section: &Section, phrase: &PhrasePlan, tonic: i32, velocity: f64) {
+fn add_drone(
+    sink: &mut EventSink,
+    section: &Section,
+    phrase: &PhrasePlan,
+    tonic: i32,
+    velocity: f64,
+) {
     let fifth = section.place(4, tonic + 7, tonic + 5, tonic + 9);
     let mut run: Vec<ChordSpan> = Vec::new();
-    let flush = |sink: &mut Sink, run: &mut Vec<ChordSpan>| {
+    let flush = |sink: &mut EventSink, run: &mut Vec<ChordSpan>| {
         let (Some(first), Some(last)) = (run.first(), run.last()) else {
             return;
         };
@@ -1064,7 +954,7 @@ fn add_drone(sink: &mut Sink, section: &Section, phrase: &PhrasePlan, tonic: i32
 /// The bed. Dark keeps a bowed open-fifth drone under every chord that
 /// agrees with it; Folk plucks a harp bourdon and Orchestral holds low
 /// strings at the authored landmarks, and both lean on it more with mystery.
-fn add_pedal(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+fn add_pedal(sink: &mut EventSink, section: &Section, phrase: &PhrasePlan) {
     let scene = section.scene();
     let velocity = 0.09 + section.energy * 0.05;
     let tonic = section.place(0, 43, 36, 50);
@@ -1112,14 +1002,14 @@ fn add_pedal(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
     }
 }
 
-fn pedal_sounds(sink: &Sink, tick: u32) -> bool {
+fn pedal_sounds(sink: &EventSink, tick: u32) -> bool {
     sink.events.iter().any(|event| {
         matches!(event, MusicEvent::Note { lane, start_tick, duration_ticks, .. }
             if lane == "pedal" && *start_tick <= tick && tick < start_tick + duration_ticks)
     })
 }
 
-fn add_harmony(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+fn add_harmony(sink: &mut EventSink, section: &Section, chords: &[ChordSpan]) {
     let mut previous = None;
     for span in chords {
         let voicing = voice_chord(section.tonic, span.chord, &section.intervals, previous);
@@ -1260,7 +1150,7 @@ fn bass_figure(style: AdventureStyle, pace: Pace) -> &'static [(u32, u8)] {
     }
 }
 
-fn add_bass(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+fn add_bass(sink: &mut EventSink, section: &Section, chords: &[ChordSpan]) {
     let voice = match section.style {
         AdventureStyle::Folk | AdventureStyle::Dark => "harp",
         AdventureStyle::Orchestral => "vielle",
@@ -1405,7 +1295,7 @@ fn harp_figure(style: AdventureStyle, scene: Scene, variant: u32) -> &'static [(
     }
 }
 
-fn add_harp(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
+fn add_harp(sink: &mut EventSink, section: &Section, phrases: &[PhrasePlan]) {
     let target = match section.style {
         AdventureStyle::Dark => 57,
         AdventureStyle::Folk => 62,
@@ -1454,7 +1344,7 @@ fn add_harp(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
 
 /// The battle ostinato: an Orchestral string gallop (two sixteenths and an
 /// eighth) or a low Dark eighth-note pulse, riding the chord root.
-fn add_ostinato(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+fn add_ostinato(sink: &mut EventSink, section: &Section, chords: &[ChordSpan]) {
     if section.pace != Pace::Driving || section.style == AdventureStyle::Folk {
         return;
     }
@@ -1648,7 +1538,7 @@ fn phrase_fill(pace: Pace) -> &'static [Hit] {
     }
 }
 
-fn add_percussion(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
+fn add_percussion(sink: &mut EventSink, section: &Section, phrases: &[PhrasePlan]) {
     let base = 0.2 + section.energy * 0.15 + section.traits.danger * 0.08;
     let ghost_chance = 0.04 + section.traits.motion * 0.12 + section.traits.danger * 0.14;
     for phrase in phrases {
@@ -1717,7 +1607,12 @@ fn add_percussion(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
 /// Orchestral timpani on the tonic and dominant: downbeats and rolls in the
 /// fights, arrivals in the heroic scenes, a distant stroke in the dungeon,
 /// and a phrase-opening stroke anywhere once danger runs high.
-fn add_timpani(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan], chords: &[ChordSpan]) {
+fn add_timpani(
+    sink: &mut EventSink,
+    section: &Section,
+    phrases: &[PhrasePlan],
+    chords: &[ChordSpan],
+) {
     if section.style != AdventureStyle::Orchestral {
         return;
     }

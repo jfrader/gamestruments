@@ -3,9 +3,11 @@ pub mod arrangement;
 pub(crate) mod composer;
 pub(crate) mod development;
 pub(crate) mod dmath;
+pub(crate) mod event_sink;
 pub mod form_audio;
 pub mod handoff;
 pub mod master;
+pub(crate) mod melody;
 pub mod racing;
 pub mod racing_arrangement;
 pub mod racing_pool;
@@ -18,6 +20,7 @@ pub mod suspense_pool;
 pub mod synth;
 pub mod theory;
 pub mod transport;
+pub(crate) mod voicing;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm;

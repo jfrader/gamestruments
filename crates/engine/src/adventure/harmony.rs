@@ -9,6 +9,7 @@
 use super::composition::{Pace, PhraseKind};
 use crate::rng::keyed_unit as chance;
 use crate::theory::scale_pitch;
+use crate::voicing::least_motion_voicing;
 
 /// The sonority built on a chord's root degree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -469,27 +470,10 @@ pub(super) fn voice_chord(
             .collect()
     };
     let [a, b, c] = chord.kind.offsets();
-    let mut best: Option<(i32, [i32; 3])> = None;
-    for low in candidates(0, a) {
-        for middle in candidates(1, b) {
-            for high in candidates(2, c) {
-                if middle < low + 3 || high < middle + 3 {
-                    continue;
-                }
-                let voicing = [low, middle, high];
-                let motion: i32 = voicing
-                    .iter()
-                    .zip(targets)
-                    .map(|(p, t)| (p - t).pow(2))
-                    .sum();
-                if best.is_none_or(|(least, _)| motion < least) {
-                    best = Some((motion, voicing));
-                }
-            }
-        }
-    }
-    best.expect("three chord tones always fit the accompaniment register")
-        .1
+    let candidates = [candidates(0, a), candidates(1, b), candidates(2, c)];
+    let voicing = least_motion_voicing(&candidates, &targets, 3)
+        .expect("three chord tones always fit the accompaniment register");
+    [voicing[0], voicing[1], voicing[2]]
 }
 
 #[cfg(test)]
