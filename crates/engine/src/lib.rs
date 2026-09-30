@@ -1,5 +1,6 @@
 pub mod adventure;
 pub mod arrangement;
+pub(crate) mod club;
 pub(crate) mod composer;
 pub(crate) mod development;
 pub(crate) mod dmath;
@@ -12,7 +13,6 @@ pub mod racing_pool;
 pub mod render;
 pub mod rng;
 pub mod score;
-pub mod strategy;
 pub mod suspense;
 pub mod suspense_arrangement;
 pub mod suspense_pool;

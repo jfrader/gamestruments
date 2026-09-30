@@ -43,7 +43,6 @@ const arrangements: Record<LabRecipe, Arrangement> = {
   racing: "seeded",
   suspense: "seeded",
   adventure: "seeded",
-  strategy: "seeded",
 };
 export let activeExperimentIndex = 0;
 export let levelSeed = "level-001";

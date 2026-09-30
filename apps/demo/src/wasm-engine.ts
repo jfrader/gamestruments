@@ -72,7 +72,7 @@ export interface GenerateScoreParams {
   complexity: number;
   brightness: number;
   syncopation: number;
-  recipe?: "racing" | "suspense" | "adventure" | "strategy";
+  recipe?: "racing" | "suspense" | "adventure";
   arrangement?: Arrangement;
   intent?: "loop" | "arc" | "long" | "surprise";
   autoplay?: boolean;

@@ -146,8 +146,8 @@ for (const size of MOBILE_SIZES) {
       // Opening the list keeps every option on screen.
       await trigger.click();
       const options = page.locator("#recipe-select-menu button[data-recipe]");
-      await expect(options).toHaveCount(4);
-      for (let index = 0; index < 4; index += 1) {
+      await expect(options).toHaveCount(3);
+      for (let index = 0; index < 3; index += 1) {
         await expect(options.nth(index)).toBeVisible();
       }
       await trigger.click();

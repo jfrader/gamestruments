@@ -1,12 +1,8 @@
 import type { GameState, SectionId } from "../../../packages/runtime/src/index.ts";
-import {
-  ADVENTURE_SCENE_SECTIONS,
-  STRATEGY_PHASE_SECTIONS,
-  SUSPENSE_PHASE_SECTIONS,
-} from "./playback-section.ts";
+import { ADVENTURE_SCENE_SECTIONS, SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
 import { phaseName } from "./phase-names.ts";
 
-export type LabRecipe = "racing" | "suspense" | "adventure" | "strategy";
+export type LabRecipe = "racing" | "suspense" | "adventure";
 
 /** The four generic generation sliders every recipe maps onto its own traits. */
 export interface NormalizedMusicTraits {
@@ -109,6 +105,14 @@ const SUSPENSE: LabRecipeProfile = {
       style: "noir",
       traits: { energy: 0.7, complexity: 0.4, brightness: 0.78, syncopation: 0.42 },
     },
+    {
+      style: "techno",
+      traits: { energy: 0.6, complexity: 0.5, brightness: 0.5, syncopation: 0.5 },
+    },
+    {
+      style: "trance",
+      traits: { energy: 0.55, complexity: 0.4, brightness: 0.75, syncopation: 0.35 },
+    },
   ],
   autoplay: false,
   openingPhase: "scan",
@@ -167,49 +171,14 @@ const ADVENTURE: LabRecipeProfile = {
   }),
 };
 
-const STRATEGY: LabRecipeProfile = {
-  id: "strategy",
-  label: "Strategy",
-  description: "Build, recon, expand, tech up, raid, standoff, siege, battle, victory, defeat",
-  presets: [
-    {
-      style: "techno",
-      label: "Techno",
-      traits: { energy: 0.6, complexity: 0.5, brightness: 0.5, syncopation: 0.5 },
-    },
-    {
-      style: "trance",
-      label: "Trance",
-      traits: { energy: 0.55, complexity: 0.4, brightness: 0.75, syncopation: 0.35 },
-    },
-  ],
-  autoplay: false,
-  openingPhase: "build",
-  phases: Object.keys(STRATEGY_PHASE_SECTIONS),
-  phaseSections: STRATEGY_PHASE_SECTIONS,
-  traitLabels: { energy: "Drive", complexity: "Hats", brightness: "Brightness", syncopation: "Push" },
-  meters: {
-    intensity: "Economy",
-    pressure: "Threat",
-    flag: "Won",
-    flagCopy: "Play the victory",
-  },
-  signal: (phase) => `recipe: strategy  /  matchPhase: ${phaseName(phase)}`,
-  gameState: (phase, { intensity, pressure, flag }) => ({
-    numeric: { economy: intensity, threat: pressure, won: flag ? 1 : 0 },
-    categorical: { matchPhase: phase },
-  }),
-};
-
 export const LAB_RECIPE_PROFILES: Readonly<Record<LabRecipe, LabRecipeProfile>> = {
   racing: RACING,
   suspense: SUSPENSE,
   adventure: ADVENTURE,
-  strategy: STRATEGY,
 };
 
 /** The game-type selector's order. */
-export const LAB_RECIPES: readonly LabRecipeProfile[] = [RACING, SUSPENSE, ADVENTURE, STRATEGY];
+export const LAB_RECIPES: readonly LabRecipeProfile[] = [RACING, SUSPENSE, ADVENTURE];
 
 export function isLabRecipe(value: string | undefined): value is LabRecipe {
   return value !== undefined && Object.hasOwn(LAB_RECIPE_PROFILES, value);

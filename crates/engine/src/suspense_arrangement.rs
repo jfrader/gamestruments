@@ -1,3 +1,5 @@
+use crate::club::revoice;
+use crate::suspense::compose_suspense;
 use std::collections::HashMap;
 
 use crate::development::{
@@ -7,7 +9,7 @@ use crate::development::{
 use crate::development::{mask_to_schedule, seam_lane};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
-use crate::suspense::{generate_suspense, SuspenseInput};
+use crate::suspense::SuspenseInput;
 use crate::suspense_pool::{
     all_phases_form, compose, figure_for_composition, figure_spec, phase_spec, take_seed,
     FigureSpec, Intent, PhaseRole, PhaseSpec, FIGURE_POOL, PHASE_POOL,
@@ -143,7 +145,7 @@ impl SuspenseTraits {
 /// harmonic/melodic progression; the form is chosen afterwards, over this
 /// pool, by [`generate_all_phases`] and [`generate_seeded`].
 fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
-    let mut score = generate_suspense(input)?;
+    let mut score = compose_suspense(input)?;
     let root = arrangement_root(&score)?;
     let bar = score.bar_ticks();
     let seed = pool_seed(input, take);
@@ -282,6 +284,13 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
+/// Club styles rewrite the composed form's material as techno or trance.
+fn apply_club_voicing(score: &mut PortableScore, input: &SuspenseInput, take: u32) {
+    if let Some(club) = input.style.club() {
+        revoice(score, club, input.club_traits(), pool_seed(input, take));
+    }
+}
+
 fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
@@ -290,6 +299,7 @@ fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore
     apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     apply_trait_response(&mut score, &traits);
+    apply_club_voicing(&mut score, input, take);
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
     score.validate()?;
@@ -311,6 +321,7 @@ fn generate_seeded(
     apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     apply_trait_response(&mut score, &traits);
+    apply_club_voicing(&mut score, input, take);
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
     score.validate()?;
@@ -2848,7 +2859,7 @@ fn anomaly(root: u8, bar: u32, seed: u32, entry: usize) -> PortableSection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::suspense::SuspenseStyle;
+    use crate::suspense::{generate_suspense, SuspenseStyle};
     use crate::suspense_pool::{validate_form_rules, Intent, PhaseRole, PHASE_POOL};
 
     fn input(seed: &str) -> SuspenseInput {

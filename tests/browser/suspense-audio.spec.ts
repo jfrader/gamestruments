@@ -38,7 +38,7 @@ test("the seeded pool plays the default Suspense engine and swaps to all-phases"
   await page.locator("#start-audio").click();
 });
 
-for (const style of ["Terminal", "Cipher", "Noir"]) {
+for (const style of ["Terminal", "Cipher", "Noir", "Techno", "Trance"]) {
   test(`${style}: the seeded default starts and stops without errors`, async ({ page }) => {
     test.setTimeout(90000);
     const errors: string[] = [];

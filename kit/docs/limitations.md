@@ -4,7 +4,7 @@
 
 - This release ships three fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory; extended adds four more), **Suspense** (song-form: a 27-phase pool, rendered `all-phases` or `seeded`), and **Adventure** (fantasy quest: camp, explore, town, dungeon, combat, boss, sanctuary, victory — 16-bar camp/dungeon/boss/sanctuary and 32-bar explore/town/combat/victory). All use the same `GamestrumentsPlayer`.
 - It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game. `kit/examples/` contains integration reference scenes, not a game or a game template.
-- Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, and noir. Adventure ships folk, dark, and orchestral. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported. Adventure's acoustic timbres (harp, recorder, vielle, bell) are synthesized — acoustic-inspired, not sample recordings.
+- Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, noir, techno, and trance. Adventure ships folk, dark, and orchestral. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported. Adventure's acoustic timbres (harp, recorder, vielle, bell) are synthesized — acoustic-inspired, not sample recordings.
 
 ## Audio
 

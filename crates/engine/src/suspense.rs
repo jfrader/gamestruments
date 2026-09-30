@@ -1,3 +1,4 @@
+use crate::club::{revoice, ClubStyle, ClubTraits};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{
     AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection, SongForm,
@@ -12,6 +13,10 @@ pub enum SuspenseStyle {
     Terminal,
     Cipher,
     Noir,
+    /// Club techno over the Suspense song form.
+    Techno,
+    /// Club trance over the Suspense song form.
+    Trance,
 }
 
 impl SuspenseStyle {
@@ -20,6 +25,8 @@ impl SuspenseStyle {
             "terminal" => Ok(Self::Terminal),
             "cipher" => Ok(Self::Cipher),
             "noir" => Ok(Self::Noir),
+            "techno" => Ok(Self::Techno),
+            "trance" => Ok(Self::Trance),
             other => Err(format!("Unknown suspense style: {other}")),
         }
     }
@@ -29,6 +36,40 @@ impl SuspenseStyle {
             Self::Terminal => "terminal",
             Self::Cipher => "cipher",
             Self::Noir => "noir",
+            Self::Techno => "techno",
+            Self::Trance => "trance",
+        }
+    }
+
+    /// The club voicing a style is written in, if it is a club style.
+    pub(crate) fn club(self) -> Option<ClubStyle> {
+        match self {
+            Self::Techno => Some(ClubStyle::Techno),
+            Self::Trance => Some(ClubStyle::Trance),
+            Self::Terminal | Self::Cipher | Self::Noir => None,
+        }
+    }
+
+    fn display(self) -> &'static str {
+        match self {
+            Self::Terminal => "Terminal",
+            Self::Cipher => "Cipher",
+            Self::Noir => "Noir",
+            Self::Techno => "Techno",
+            Self::Trance => "Trance",
+        }
+    }
+}
+
+impl SuspenseInput {
+    /// The generation traits as the club writer reads them.
+    pub(crate) fn club_traits(&self) -> ClubTraits {
+        let traits = normalize(self);
+        ClubTraits {
+            energy: traits.tension,
+            complexity: traits.heat,
+            brightness: traits.mystery,
+            syncopation: traits.pulse,
         }
     }
 }
@@ -267,9 +308,10 @@ fn create_motif(seed: u32) -> MotifDna {
     }
 }
 
+/// Club styles are written over Terminal's form, so they compose with its timbre.
 fn create_timbre(style: SuspenseStyle) -> TimbreDna {
     match style {
-        SuspenseStyle::Terminal => TimbreDna {
+        SuspenseStyle::Terminal | SuspenseStyle::Techno | SuspenseStyle::Trance => TimbreDna {
             drone_voice: "warm".into(),
             cell_voice: "glass".into(),
             pulse_voice: "pulse".into(),
@@ -299,7 +341,7 @@ fn create_arrangement(
     let jitter = f64::from(random.integer(3)) - 1.0;
     let base = match style {
         SuspenseStyle::Noir => 64.0,
-        SuspenseStyle::Terminal => 72.0,
+        SuspenseStyle::Terminal | SuspenseStyle::Techno | SuspenseStyle::Trance => 72.0,
         SuspenseStyle::Cipher => 78.0,
     };
     ArrangementDna {
@@ -862,7 +904,24 @@ fn score_id(secret: &str, seed: &str, style: SuspenseStyle, traits: &NormalizedT
     )
 }
 
+/// Generate a Suspense score. Club styles write their own techno or trance
+/// material over the same song form.
 pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String> {
+    let mut score = compose_suspense(input)?;
+    if let Some(club) = input.style.club() {
+        revoice(
+            &mut score,
+            club,
+            input.club_traits(),
+            subseed(&input.secret, &input.seed, "club"),
+        );
+        score.validate()?;
+    }
+    Ok(score)
+}
+
+/// The Suspense song form and its material, before any club voicing.
+pub(crate) fn compose_suspense(input: &SuspenseInput) -> Result<PortableScore, String> {
     let traits = normalize(input);
     let harmony = create_harmony(subseed(&input.secret, &input.seed, "harmony"));
     let motif = create_motif(subseed(&input.secret, &input.seed, "motif"));
@@ -883,11 +942,7 @@ pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String>
         id: score_id(&input.secret, &input.seed, input.style, &traits),
         title: format!(
             "{} {} drone",
-            match input.style {
-                SuspenseStyle::Terminal => "Terminal",
-                SuspenseStyle::Cipher => "Cipher",
-                SuspenseStyle::Noir => "Noir",
-            },
+            input.style.display(),
             harmony.key.to_uppercase()
         ),
         bpm: arrangement.bpm,
