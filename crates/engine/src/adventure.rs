@@ -5,7 +5,9 @@
 
 mod arrangement;
 mod composition;
+mod harmony;
 mod pool;
+mod theme;
 
 pub use arrangement::{generate_adventure_arrangement, AdventureArrangement};
 
@@ -15,7 +17,7 @@ use crate::score::{
 };
 use crate::theory::NOTE_NAMES;
 
-pub const GENERATOR_VERSION: &str = "5.0.0";
+pub const GENERATOR_VERSION: &str = "6.0.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -229,10 +231,8 @@ pub fn generate_adventure(input: &AdventureInput) -> Result<PortableScore, Strin
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use super::composition::{
-        dominant_degree, mode_for, phrase_kind, progression, voice_chord, PhraseKind, PieceDna,
-        Scene, SECTION_PLANS,
-    };
+    use super::composition::{mode_for, phrase_kind, PhraseKind, PieceDna, Scene, SECTION_PLANS};
+    use super::harmony::dominant_degree;
     use super::{
         generate_adventure, select_adventure_section, subseed, AdventureInput, AdventureStyle,
         GENERATOR_VERSION,
@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn events_use_acoustic_palette_safe_registers_and_unique_ids() {
-        let allowed_notes = HashSet::from(["harp", "recorder", "vielle", "bell"]);
+        let allowed_notes = HashSet::from(["harp", "recorder", "vielle", "bell", "horn", "timpani"]);
         let allowed_percussion = HashSet::from(["frame-drum", "tambourine"]);
         for style in [
             AdventureStyle::Folk,
@@ -477,14 +477,13 @@ mod tests {
 
                 let phrase_count = plan.bars / 4;
                 for phrase in 0..phrase_count {
-                    let end = (phrase + 1) * 4 * bar_ticks;
-                    let last_melody = section
+                    let arrival_tick = (phrase * 4 + 3) * bar_ticks;
+                    let arrival = section
                         .events
                         .iter()
-                        .filter(|event| event.is_melody() && event.start_tick() < end)
-                        .max_by_key(|event| event.start_tick())
+                        .find(|event| event.is_melody() && event.start_tick() == arrival_tick)
                         .and_then(MusicEvent::pitch)
-                        .expect("every phrase has a melodic arrival");
+                        .unwrap_or_else(|| panic!("{} phrase {phrase} has no arrival", plan.id));
                     let expected_degree = match phrase_kind(phrase, phrase_count) {
                         PhraseKind::Antecedent | PhraseKind::Development => {
                             dominant_degree(mode_for(style, plan.scene))
@@ -494,7 +493,7 @@ mod tests {
                     let interval =
                         mode_intervals(mode_for(style, plan.scene))[expected_degree as usize];
                     assert_eq!(
-                        i32::from(last_melody) % 12,
+                        i32::from(arrival) % 12,
                         (tonic + interval).rem_euclid(12),
                         "{} phrase {phrase} has no directed arrival",
                         plan.id
@@ -511,38 +510,6 @@ mod tests {
                     .and_then(MusicEvent::pitch)
                     .unwrap();
                 assert_eq!(i32::from(final_bass) % 12, tonic);
-            }
-        }
-    }
-
-    #[test]
-    fn harmony_uses_nearest_ordered_chord_tones() {
-        for tonic in [0, 2, 3, 5, 7, 9, 10] {
-            for mode in [
-                "ionian",
-                "dorian",
-                "phrygian",
-                "lydian",
-                "mixolydian",
-                "aeolian",
-            ] {
-                let intervals = mode_intervals(mode);
-                let mut previous = None;
-                for degree in [0, 3, 1, 4, 0, 5, 4, 0] {
-                    let chord = voice_chord(tonic, degree, &intervals, previous);
-                    assert!(chord[0] < chord[1] && chord[1] < chord[2]);
-                    if let Some(old) = previous {
-                        for voice in 0..3 {
-                            assert!(
-                                (chord[voice] - old[voice]).abs() <= 8,
-                                "{mode} degree {degree} voice {voice} leapt from {} to {}",
-                                old[voice],
-                                chord[voice]
-                            );
-                        }
-                    }
-                    previous = Some(chord);
-                }
             }
         }
     }
@@ -643,7 +610,7 @@ mod tests {
 
     #[test]
     fn many_seeds_are_valid_and_varied() {
-        assert_eq!(GENERATOR_VERSION, "5.0.0");
+        assert_eq!(GENERATOR_VERSION, "6.0.0");
         let styles = [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -787,38 +754,6 @@ mod tests {
             (3, 7) => "minor",
             (3, 6) => "diminished",
             _ => "other",
-        }
-    }
-
-    #[test]
-    fn warm_progressions_avoid_diminished_and_land_major() {
-        for mode in ["ionian", "lydian", "mixolydian"] {
-            for variant in 0..3 {
-                for phrase in 0..8 {
-                    for kind in [
-                        PhraseKind::Antecedent,
-                        PhraseKind::Consequent,
-                        PhraseKind::Development,
-                        PhraseKind::Return,
-                        PhraseKind::Cadence,
-                    ] {
-                        let chords = progression(mode, kind, Scene::Town, phrase, variant);
-                        for degree in chords {
-                            assert_ne!(
-                                triad_quality(mode, degree),
-                                "diminished",
-                                "{mode} {kind:?} plants a diminished degree {degree}"
-                            );
-                        }
-                        let arrival = *chords.last().unwrap();
-                        assert_eq!(
-                            triad_quality(mode, arrival),
-                            "major",
-                            "{mode} {kind:?} arrival degree {arrival} is not major"
-                        );
-                    }
-                }
-            }
         }
     }
 

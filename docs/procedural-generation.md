@@ -60,8 +60,8 @@ replace the racing palette. Styles are `folk` (earthy medieval folk), `dark`
 (dark medieval fantasy), and `orchestral` (orchestral RPG). Generation traits
 are wonder, danger, mystery, and motion. Runtime state is `areaPhase` plus
 discovery, threat, and quest progress; quest completion always wins, and a high
-threat escalates combat into `boss`. The voices are harp, recorder, vielle, and
-bell plus frame-drum and tambourine percussion — synthesized, acoustic-inspired
+threat escalates combat into `boss`. The voices are harp, recorder, vielle,
+bell, horn and timpani plus frame-drum and tambourine percussion — synthesized, acoustic-inspired
 timbres rather than sample recordings. The seeded pool adds a combat set
 (`skirmish`, `assault`, `chase`, riding the peak band with combat/boss) and a
 happiness set (`festival`, `reunion`, `dawn`, riding the groove and break bands

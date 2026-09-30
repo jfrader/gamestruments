@@ -24,7 +24,7 @@ Set these before calling `generate`. Later changes apply to the next generation 
   - Racing: `fusion`, `neon`, `funk`, or `chip`; unset (or default init) is `funk`. Explicit empty string for Racing fails generation.
   - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
   - Adventure: `folk`, `dark`, or `orchestral`; empty defaults to `folk`.
-- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices (16): `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`. Racing voice overrides use them; Adventure uses its own acoustic timbres internally (synthesized, not samples); Suspense ignores the voice properties and uses per-style timbres.
+- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices (18): `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`, `horn`, `timpani`. Racing voice overrides use them; Adventure uses its own acoustic timbres internally (synthesized, not samples); Suspense ignores the voice properties and uses per-style timbres.
 - `energy: float` — defaults to `0.62`.
 - `complexity: float` — defaults to `0.60`.
 - `brightness: float` — defaults to `0.52`.

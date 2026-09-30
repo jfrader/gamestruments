@@ -17,6 +17,8 @@ const NOTE_VOICES = new Set([
   "recorder",
   "vielle",
   "bell",
+  "horn",
+  "timpani",
 ]);
 const PERCUSSION_VOICES = new Set([
   "kick",

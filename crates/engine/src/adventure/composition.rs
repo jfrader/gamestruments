@@ -1,7 +1,16 @@
-use crate::rng::DeterministicRandom;
+use std::collections::BTreeMap;
+
+use crate::rng::{keyed_unit, DeterministicRandom};
 use crate::score::{MusicEvent, PortableSection};
 use crate::theory::{mode_intervals, phrase_gain, scale_pitch};
 
+use super::harmony::{
+    chord_at, dominant_degree, phrase_harmony, place_degree, voice_chord, Chord, ChordKind,
+    ChordSpan, PhraseHarmonyInput,
+};
+use super::theme::{
+    compose_theme, counter_line, phrase_melody, PhraseMelodyInput, Tone, Treatment,
+};
 use super::{AdventureStyle, NormalizedTraits};
 
 const BEATS_PER_BAR: u32 = 4;
@@ -191,35 +200,25 @@ pub(super) fn adventure_phase_energy(scene: Scene) -> u32 {
 }
 
 const TONIC_PITCH_CLASSES: [i32; 7] = [0, 2, 3, 5, 7, 9, 10];
-const MOTIFS: [[i32; 6]; 6] = [
-    [0, 2, 1, 3, 2, 0],
-    [0, 1, 3, 2, 4, 2],
-    [0, 3, 2, 1, 2, 0],
-    [0, 2, 4, 3, 1, 2],
-    [0, 1, 2, 4, 3, 1],
-    [0, 3, 1, 2, 4, 2],
-];
 
+/// What one seed fixes for the whole piece: its key and its quest theme.
 pub(super) struct PieceDna {
     pub(super) tonic_pitch_class: i32,
-    motif: [i32; 6],
-    rhythm_variant: usize,
-    harmony_variant: usize,
+    pub(super) theme: Vec<Tone>,
+    /// Which member of each harmonic template family the statements use.
+    pub(super) statement_variant: usize,
 }
 
 impl PieceDna {
     pub(super) fn new(seed: u32) -> Self {
         let mut rng = DeterministicRandom::new(seed);
+        // The tonic stays the seed's first draw, so a seed keeps its key.
         let tonic_pitch_class = *rng.pick(&TONIC_PITCH_CLASSES);
-        let mut motif = *rng.pick(&MOTIFS);
-        let changed = 1 + rng.integer((motif.len() - 1) as u32) as usize;
-        motif[changed] += *rng.pick(&[-1, 1]);
-        motif[0] = 0;
+        let theme = compose_theme(&mut rng);
         Self {
             tonic_pitch_class,
-            motif,
-            rhythm_variant: rng.integer(8) as usize,
-            harmony_variant: rng.integer(3) as usize,
+            theme,
+            statement_variant: rng.integer(3) as usize,
         }
     }
 }
@@ -309,114 +308,68 @@ pub(super) fn phrase_kind(index: u32, phrase_count: u32) -> PhraseKind {
     }
 }
 
-/// Functional chord degrees for a mode, each guaranteed to be a consonant
-/// (major or minor) triad — never the mode's diminished triad. This is what the
-/// old mode-blind progression was missing: degree 4 is a strong major dominant
-/// in Ionian/Lydian but a weak minor v in Mixolydian/Dorian; degree 3 is major
-/// in Ionian but a diminished #iv° in Lydian; degree 2 is a minor iii in
-/// Ionian but a diminished iii° in Mixolydian.
-struct ModeHarmony {
-    /// Degree of the tonic (always 0).
-    tonic: i32,
-    /// Degree of the chord that pulls home (major V, or a modal bVII/bII).
-    dominant: i32,
-    /// Degree of the predominant chord.
-    subdominant: i32,
-    /// Stable color degrees to vary the middle bars without leaving the mode.
-    colors: &'static [i32],
+/// How fast a scene moves: its harmonic rhythm and accompaniment drive.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Pace {
+    Calm,
+    Walking,
+    Driving,
 }
 
-fn mode_harmony(mode: &str) -> ModeHarmony {
-    match mode {
-        "ionian" => ModeHarmony {
-            tonic: 0,
-            dominant: 4,
-            subdominant: 3,
-            colors: &[1, 5],
-        },
-        "lydian" => ModeHarmony {
-            tonic: 0,
-            dominant: 4,
-            subdominant: 1,
-            colors: &[5, 2],
-        },
-        "mixolydian" => ModeHarmony {
-            tonic: 0,
-            dominant: 6,
-            subdominant: 3,
-            colors: &[5, 1],
-        },
-        "dorian" => ModeHarmony {
-            tonic: 0,
-            dominant: 6,
-            subdominant: 3,
-            colors: &[2, 1],
-        },
-        "aeolian" => ModeHarmony {
-            tonic: 0,
-            dominant: 6,
-            subdominant: 5,
-            colors: &[2, 3],
-        },
-        "phrygian" => ModeHarmony {
-            tonic: 0,
-            dominant: 1,
-            subdominant: 5,
-            colors: &[2, 3],
-        },
-        _ => ModeHarmony {
-            tonic: 0,
-            dominant: 4,
-            subdominant: 3,
-            colors: &[1, 5],
-        },
+fn pace(scene: Scene) -> Pace {
+    match scene {
+        Scene::Camp | Scene::Dungeon | Scene::Sanctuary | Scene::Dawn => Pace::Calm,
+        Scene::Explore | Scene::Town | Scene::Reunion | Scene::Victory | Scene::Festival => {
+            Pace::Walking
+        }
+        Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
+            Pace::Driving
+        }
     }
 }
 
-/// The scale degree for an open phrase ending (V or a modal turnaround), so
-/// melody and accompaniment agree on the arrival.
-pub(super) fn dominant_degree(mode: &str) -> i32 {
-    mode_harmony(mode).dominant
+/// The rhythmic lilt of a scene. Written rhythms are straight sixteenths; a
+/// lilt or jig moves each beat's off-beat later, so the same figures dance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Feel {
+    Straight,
+    /// A hornpipe lean: the off-beat lands at 60% of the beat.
+    Lilt,
+    /// Compound time inside four beats: the off-beat is the third triplet.
+    Jig,
 }
 
-pub(super) fn progression(
-    mode: &str,
-    kind: PhraseKind,
-    scene: Scene,
-    phrase_index: u32,
-    variant: usize,
-) -> [i32; 4] {
-    let harmony = mode_harmony(mode);
-    let shift = scene_index(scene);
-    let color = harmony.colors[(shift + phrase_index as usize + variant) % harmony.colors.len()];
-    let color2 =
-        harmony.colors[(shift + phrase_index as usize + variant + 1) % harmony.colors.len()];
-    match kind {
-        // I — predominant — dominant — dominant (open half cadence).
-        PhraseKind::Antecedent => [
-            harmony.tonic,
-            harmony.subdominant,
-            harmony.dominant,
-            harmony.dominant,
-        ],
-        // I — color — turnaround — I (answered return).
-        PhraseKind::Consequent => [harmony.tonic, color, harmony.dominant, harmony.tonic],
-        // Predominant — color — dominant — dominant (departure, half cadence).
-        PhraseKind::Development => [
-            harmony.subdominant,
-            color,
-            harmony.dominant,
-            harmony.dominant,
-        ],
-        // I — predominant — dominant — I (restatement).
-        PhraseKind::Return => [
-            harmony.tonic,
-            harmony.subdominant,
-            harmony.dominant,
-            harmony.tonic,
-        ],
-        // Predominant — color — dominant — I (final cadence).
-        PhraseKind::Cadence => [harmony.subdominant, color2, harmony.dominant, harmony.tonic],
+impl Feel {
+    /// Where a beat's written midpoint is heard, as a fraction of the beat.
+    fn swing_point(self) -> f64 {
+        match self {
+            Self::Straight => 0.5,
+            Self::Lilt => 0.6,
+            Self::Jig => 2.0 / 3.0,
+        }
+    }
+}
+
+fn feel(style: AdventureStyle, scene: Scene) -> Feel {
+    match (style, scene) {
+        (AdventureStyle::Folk, Scene::Festival | Scene::Victory) => Feel::Jig,
+        (AdventureStyle::Folk, Scene::Town | Scene::Reunion) => Feel::Lilt,
+        (AdventureStyle::Orchestral, Scene::Festival) => Feel::Jig,
+        (AdventureStyle::Dark, Scene::Festival) => Feel::Lilt,
+        _ => Feel::Straight,
+    }
+}
+
+fn treatment(style: AdventureStyle, scene: Scene) -> Treatment {
+    match scene {
+        Scene::Camp if style == AdventureStyle::Orchestral => Treatment::Augmented,
+        Scene::Reunion if style == AdventureStyle::Orchestral => Treatment::Augmented,
+        Scene::Sanctuary | Scene::Dawn => Treatment::Augmented,
+        Scene::Dungeon => Treatment::Fragment,
+        Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
+            Treatment::Diminution
+        }
+        _ => Treatment::Statement,
     }
 }
 
@@ -445,141 +398,167 @@ where
         .collect()
 }
 
-struct EventCounters {
-    bass: usize,
-    pedal: usize,
-    harmony: usize,
-    harp: usize,
-    melody: usize,
-    bell: usize,
-    percussion: usize,
-    recorder: usize,
+/// Collects a section's events with stable per-lane ids, applies the scene's
+/// feel to every onset, and keeps everything inside the section.
+struct Sink {
+    section: &'static str,
+    beat: u32,
+    swing_point: f64,
+    length: u32,
+    events: Vec<MusicEvent>,
+    counters: BTreeMap<&'static str, usize>,
 }
 
-impl EventCounters {
-    fn new() -> Self {
-        Self {
-            bass: 0,
-            pedal: 0,
-            harmony: 0,
-            harp: 0,
-            melody: 0,
-            bell: 0,
-            percussion: 0,
-            recorder: 0,
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_note(
-    events: &mut Vec<MusicEvent>,
-    section: &str,
-    lane: &str,
-    index: &mut usize,
-    start_tick: u32,
-    duration_ticks: u32,
-    velocity: f64,
-    pitch: i32,
-    voice: &str,
-    melody: bool,
-) {
-    let pitch = u8::try_from(pitch).expect("adventure pitch must remain within MIDI range");
-    events.push(MusicEvent::Note {
-        id: format!("{section}:{lane}:{}", *index),
-        section: section.to_string(),
-        lane: lane.to_string(),
-        start_tick,
-        duration_ticks: duration_ticks.max(1),
-        velocity: velocity.clamp(0.04, 0.95),
-        pitch,
-        voice: voice.to_string(),
-        role: melody.then(|| "melody".to_string()),
-    });
-    *index += 1;
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_percussion(
-    events: &mut Vec<MusicEvent>,
-    section: &str,
-    index: &mut usize,
-    start_tick: u32,
-    duration_ticks: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:percussion:{}", *index),
-        section: section.to_string(),
-        lane: "percussion".to_string(),
-        start_tick,
-        duration_ticks: duration_ticks.max(1),
-        velocity: velocity.clamp(0.04, 0.95),
-        voice: voice.to_string(),
-    });
-    *index += 1;
-}
-
-fn scene_index(scene: Scene) -> usize {
-    match scene {
-        Scene::Camp => 0,
-        Scene::Explore => 1,
-        Scene::Town => 2,
-        Scene::Dungeon => 3,
-        Scene::Combat => 4,
-        Scene::Boss => 5,
-        Scene::Sanctuary => 6,
-        Scene::Victory => 7,
-        Scene::Skirmish => 8,
-        Scene::Assault => 9,
-        Scene::Chase => 10,
-        Scene::Festival => 11,
-        Scene::Reunion => 12,
-        Scene::Dawn => 13,
-    }
-}
-
-fn nearest_scale_pitch(
-    tonic_pitch_class: i32,
-    degree: i32,
-    intervals: &[i32],
-    target: i32,
-    minimum: i32,
-    maximum: i32,
-) -> i32 {
-    let base = scale_pitch(60 + tonic_pitch_class, degree, intervals);
-    (-5..=5)
-        .map(|octave| base + octave * 12)
-        .filter(|pitch| (minimum..=maximum).contains(pitch))
-        .min_by_key(|pitch| (pitch - target).abs())
-        .expect("adventure register must contain a modal spelling")
-}
-
-pub(super) fn voice_chord(
-    tonic_pitch_class: i32,
-    chord_degree: i32,
-    intervals: &[i32],
-    previous: Option<[i32; 3]>,
-) -> [i32; 3] {
-    let targets = previous.unwrap_or([50, 58, 65]);
-    let mut result = [0; 3];
-    for (voice, chord_offset) in [0, 2, 4].into_iter().enumerate() {
-        let minimum = if voice == 0 {
-            40
+impl Sink {
+    fn swing(&self, tick: u32) -> u32 {
+        let beat = f64::from(self.beat);
+        let position = f64::from(tick % self.beat);
+        let middle = beat / 2.0;
+        let heard = self.swing_point * beat;
+        let moved = if position <= middle {
+            position * heard / middle
         } else {
-            result[voice - 1] + 3
+            heard + (position - middle) * (beat - heard) / middle
         };
-        result[voice] = nearest_scale_pitch(
-            tonic_pitch_class,
-            chord_degree + chord_offset,
-            intervals,
-            targets[voice],
-            minimum,
-            [60, 72, 84][voice],
-        );
+        tick - tick % self.beat + moved.round() as u32
     }
-    result
+
+    /// Onset and length after the feel, clipped to the section.
+    fn place(&self, start: u32, length: u32) -> Option<(u32, u32)> {
+        let onset = self.swing(start);
+        if onset >= self.length {
+            return None;
+        }
+        let end = self.swing(start + length).min(self.length);
+        Some((onset, end.saturating_sub(onset).max(1)))
+    }
+
+    fn next_id(&mut self, lane: &'static str) -> String {
+        let counter = self.counters.entry(lane).or_insert(0);
+        let id = format!("{}:{lane}:{counter}", self.section);
+        *counter += 1;
+        id
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn note(
+        &mut self,
+        lane: &'static str,
+        start: u32,
+        length: u32,
+        velocity: f64,
+        pitch: i32,
+        voice: &str,
+        melody: bool,
+    ) {
+        let Some((start_tick, duration_ticks)) = self.place(start, length) else {
+            return;
+        };
+        let pitch = u8::try_from(pitch).expect("adventure pitch must remain within MIDI range");
+        let id = self.next_id(lane);
+        self.events.push(MusicEvent::Note {
+            id,
+            section: self.section.to_string(),
+            lane: lane.to_string(),
+            start_tick,
+            duration_ticks,
+            velocity: velocity.clamp(0.04, 0.95),
+            pitch,
+            voice: voice.to_string(),
+            role: melody.then(|| "melody".to_string()),
+        });
+    }
+
+    fn hit(&mut self, start: u32, length: u32, velocity: f64, voice: &str) {
+        let Some((start_tick, duration_ticks)) = self.place(start, length) else {
+            return;
+        };
+        let id = self.next_id("percussion");
+        self.events.push(MusicEvent::Percussion {
+            id,
+            section: self.section.to_string(),
+            lane: "percussion".to_string(),
+            start_tick,
+            duration_ticks,
+            velocity: velocity.clamp(0.04, 0.95),
+            voice: voice.to_string(),
+        });
+    }
+
+    fn finish(mut self) -> Vec<MusicEvent> {
+        fn event_id(event: &MusicEvent) -> &str {
+            match event {
+                MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
+            }
+        }
+        self.events.sort_by(|left, right| {
+            left.start_tick()
+                .cmp(&right.start_tick())
+                .then_with(|| event_id(left).cmp(event_id(right)))
+        });
+        self.events
+    }
+}
+
+/// Everything fixed for one section while its lanes are written.
+struct Section<'a> {
+    plan: &'a SectionPlan,
+    style: AdventureStyle,
+    traits: NormalizedTraits,
+    tonic: i32,
+    mode: &'static str,
+    intervals: Vec<i32>,
+    pace: Pace,
+    bar: u32,
+    sixteenth: u32,
+    seed: u32,
+    energy: f64,
+    /// Semitone offset that places the section's melody degrees in register.
+    melody_octave: i32,
+}
+
+impl Section<'_> {
+    fn scene(&self) -> Scene {
+        self.plan.scene
+    }
+
+    /// A melody-space degree as a pitch, before any register folding.
+    fn melody_pitch(&self, degree: i32) -> i32 {
+        scale_pitch(60 + self.tonic, degree, &self.intervals) + self.melody_octave
+    }
+
+    fn place(&self, degree: i32, target: i32, minimum: i32, maximum: i32) -> i32 {
+        place_degree(
+            self.tonic,
+            degree,
+            &self.intervals,
+            target,
+            minimum,
+            maximum,
+        )
+    }
+
+    fn chance(&self, tag: &str, a: u32, b: u32) -> f64 {
+        keyed_unit(self.seed, tag, a, b)
+    }
+
+    fn semitone_rub(&self, upper: i32, lower: i32) -> bool {
+        matches!(
+            (self.melody_pitch(upper) - self.melody_pitch(lower)).rem_euclid(12),
+            1 | 11
+        )
+    }
+}
+
+/// One phrase's material, shared by every lane that follows it.
+struct PhrasePlan {
+    index: u32,
+    kind: PhraseKind,
+    start: u32,
+    chords: Vec<ChordSpan>,
+    melody: Vec<Tone>,
+    /// Folk and Dark camps open with the theme on the harp alone.
+    harp_intro: bool,
 }
 
 fn melody_voice(style: AdventureStyle, scene: Scene) -> &'static str {
@@ -648,555 +627,21 @@ fn texture_gain(kind: PhraseKind, phrase_index: u32) -> f64 {
     base + f64::from(phrase_index.min(5)) * 0.012
 }
 
-fn pedal_start(scene: Scene, style: AdventureStyle, phrase: u32) -> bool {
-    match (style, scene) {
-        (AdventureStyle::Dark, Scene::Dungeon | Scene::Boss | Scene::Assault) => {
-            phrase.is_multiple_of(2)
-        }
-        (_, Scene::Dungeon) => phrase == 0 || phrase == 2,
-        (AdventureStyle::Folk, Scene::Camp | Scene::Sanctuary | Scene::Dawn) => phrase == 0,
-        (AdventureStyle::Orchestral, Scene::Sanctuary) => phrase == 2,
-        _ => false,
+/// Metric weight of a sixteenth position within the bar: downbeat, half bar,
+/// beats, off-beats, then the in-between sixteenths.
+fn metric_accent(position: u32) -> f64 {
+    match position % 16 {
+        0 => 1.0,
+        8 => 0.93,
+        4 | 12 => 0.87,
+        p if p % 2 == 0 => 0.8,
+        _ => 0.74,
     }
 }
 
-fn pedal_covers(scene: Scene, style: AdventureStyle, bar: u32) -> bool {
-    let phrase = bar / PHRASE_BARS;
-    pedal_start(scene, style, phrase) && bar % PHRASE_BARS < 2
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_pedal(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    dna: &PieceDna,
-    intervals: &[i32],
-    phrase: u32,
-    bar_ticks: u32,
-) {
-    if !pedal_start(plan.scene, style, phrase) {
-        return;
-    }
-    let voice = match style {
-        AdventureStyle::Folk => "harp",
-        AdventureStyle::Dark | AdventureStyle::Orchestral => "vielle",
-    };
-    let pitch = nearest_scale_pitch(dna.tonic_pitch_class, 0, intervals, 43, 36, 52);
-    push_note(
-        events,
-        plan.id,
-        "pedal",
-        &mut counters.pedal,
-        phrase * PHRASE_BARS * bar_ticks,
-        2 * bar_ticks,
-        0.1 + scene_energy(plan.scene) * 0.05,
-        pitch,
-        voice,
-        false,
-    );
-}
-
-fn bass_onsets(style: AdventureStyle, scene: Scene, final_bar: bool) -> &'static [(u8, i32)] {
-    if final_bar {
-        return &[(0, 0)];
-    }
-    match (style, scene) {
-        (AdventureStyle::Folk, Scene::Town | Scene::Combat) => &[(0, 0), (4, 4)],
-        (AdventureStyle::Folk, Scene::Boss) => &[(0, 0), (6, 0)],
-        // Folk combat set: skirmish/chase bounce like combat, assault hammers.
-        (AdventureStyle::Folk, Scene::Skirmish | Scene::Chase) => &[(0, 0), (4, 4)],
-        (AdventureStyle::Folk, Scene::Assault) => &[(0, 0), (4, 4), (6, 0)],
-        // Folk happiness set: festival and reunion bounce like the town dance.
-        (AdventureStyle::Folk, Scene::Festival | Scene::Reunion) => &[(0, 0), (4, 4)],
-        (AdventureStyle::Dark, Scene::Combat | Scene::Boss) => &[(0, 0), (3, 4), (6, 0)],
-        (AdventureStyle::Dark, Scene::Skirmish | Scene::Assault | Scene::Chase) => {
-            &[(0, 0), (3, 4), (6, 0)]
-        }
-        (AdventureStyle::Dark, Scene::Festival | Scene::Reunion) => &[(0, 0), (5, 4)],
-        (AdventureStyle::Orchestral, Scene::Town | Scene::Combat | Scene::Victory) => {
-            &[(0, 0), (4, 4)]
-        }
-        (AdventureStyle::Orchestral, Scene::Skirmish | Scene::Chase) => &[(0, 0), (4, 4)],
-        (AdventureStyle::Orchestral, Scene::Assault) => &[(0, 0), (6, 0)],
-        (AdventureStyle::Orchestral, Scene::Festival | Scene::Reunion) => &[(0, 0), (4, 4)],
-        (AdventureStyle::Orchestral, _) => &[(0, 0), (6, 4)],
-        _ => &[(0, 0)],
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_bass(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    traits: NormalizedTraits,
-    dna: &PieceDna,
-    intervals: &[i32],
-    chord_degree: i32,
-    bar: u32,
-    bar_ticks: u32,
-    pulse: u32,
-) {
-    let final_bar = bar == plan.bars - 1;
-    if pedal_covers(plan.scene, style, bar) && !final_bar {
-        return;
-    }
-    if matches!(style, AdventureStyle::Folk)
-        && matches!(plan.scene, Scene::Camp | Scene::Dungeon | Scene::Sanctuary)
-        && bar % 2 == 1
-        && !final_bar
-    {
-        return;
-    }
-    let voice = match style {
-        AdventureStyle::Folk | AdventureStyle::Dark => "harp",
-        AdventureStyle::Orchestral => "vielle",
-    };
-    for &(onset, offset) in bass_onsets(style, plan.scene, final_bar) {
-        let pitch = nearest_scale_pitch(
-            dna.tonic_pitch_class,
-            chord_degree + offset,
-            intervals,
-            42,
-            36,
-            55,
-        );
-        let duration = if onset == 0 && bass_onsets(style, plan.scene, final_bar).len() == 1 {
-            bar_ticks * 3 / 4
-        } else {
-            pulse * 3 / 2
-        };
-        push_note(
-            events,
-            plan.id,
-            "bass",
-            &mut counters.bass,
-            bar * bar_ticks + u32::from(onset) * pulse,
-            duration,
-            0.22 + scene_energy(plan.scene) * 0.13 + traits.danger * 0.04,
-            pitch,
-            voice,
-            false,
-        );
-    }
-}
-
-fn harmony_active(
-    style: AdventureStyle,
-    scene: Scene,
-    kind: PhraseKind,
-    bar: u32,
-    local_bar: u32,
-) -> bool {
-    if bar == 0 && scene == Scene::Camp && style != AdventureStyle::Orchestral {
-        return false;
-    }
-    match style {
-        AdventureStyle::Folk => match scene {
-            Scene::Town => local_bar == 0 || matches!(kind, PhraseKind::Cadence),
-            Scene::Dungeon => local_bar.is_multiple_of(2),
-            _ => local_bar != 1 || matches!(kind, PhraseKind::Development),
-        },
-        AdventureStyle::Dark => local_bar.is_multiple_of(2) || matches!(kind, PhraseKind::Cadence),
-        AdventureStyle::Orchestral => {
-            !matches!(kind, PhraseKind::Antecedent) || local_bar > 0 || scene != Scene::Explore
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_harmony(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    traits: NormalizedTraits,
-    kind: PhraseKind,
-    chord: [i32; 3],
-    bar: u32,
-    local_bar: u32,
-    bar_ticks: u32,
-) {
-    if !harmony_active(style, plan.scene, kind, bar, local_bar) {
-        return;
-    }
-    let voices = match style {
-        AdventureStyle::Folk | AdventureStyle::Dark => 2,
-        AdventureStyle::Orchestral => 3,
-    };
-    let (duration, voice, backing_weight) = match style {
-        AdventureStyle::Folk => (bar_ticks * 3 / 8, "harp", 1.0),
-        AdventureStyle::Dark => (bar_ticks * 7 / 8, "vielle", 1.0),
-        AdventureStyle::Orchestral => (bar_ticks * 15 / 16, "vielle", 0.8),
-    };
-    for &pitch in chord.iter().take(voices) {
-        push_note(
-            events,
-            plan.id,
-            "harmony",
-            &mut counters.harmony,
-            bar * bar_ticks,
-            duration,
-            (0.13 + traits.wonder * 0.06 + scene_energy(plan.scene) * 0.05)
-                * phrase_gain(bar)
-                * backing_weight,
-            pitch,
-            voice,
-            false,
-        );
-    }
-}
-
-fn harp_pattern(
-    style: AdventureStyle,
-    scene: Scene,
-    bar: u32,
-    kind: PhraseKind,
-    variant: usize,
-) -> Vec<(u8, i32)> {
-    if matches!(kind, PhraseKind::Cadence) && bar % PHRASE_BARS == 3 {
-        return vec![(0, 0)];
-    }
-    match style {
-        AdventureStyle::Folk => match scene {
-            Scene::Camp => {
-                if bar.is_multiple_of(2) {
-                    vec![(0, 0), (3, 2), (6, 4)]
-                } else {
-                    vec![(1, 4), (4, 2)]
-                }
-            }
-            Scene::Explore => match (bar + variant as u32) % 3 {
-                0 => vec![(0, 0), (3, 4), (5, 2), (7, 4)],
-                1 => vec![(1, 2), (4, 0), (6, 4)],
-                _ => vec![(0, 4), (2, 2), (6, 0)],
-            },
-            Scene::Town => {
-                if bar.is_multiple_of(2) {
-                    vec![(0, 0), (3, 2), (4, 4), (6, 2)]
-                } else {
-                    vec![(0, 0), (2, 4), (5, 2), (7, 4)]
-                }
-            }
-            Scene::Dungeon => vec![(0, 0), (6, 4)],
-            Scene::Combat => vec![(0, 0), (2, 4), (3, 2), (5, 4), (7, 0)],
-            Scene::Boss => vec![(0, 0), (4, 4), (6, 2)],
-            Scene::Sanctuary => vec![(0, 0), (3, 4), (7, 2)],
-            Scene::Victory => {
-                if matches!(kind, PhraseKind::Return | PhraseKind::Cadence) {
-                    vec![(0, 0), (4, 2)]
-                } else {
-                    vec![(0, 0), (2, 2), (4, 4), (6, 2)]
-                }
-            }
-            // Combat set: driving ostinato, denser than the safe phases.
-            Scene::Skirmish => vec![(0, 0), (2, 4), (3, 2), (5, 4), (7, 0)],
-            Scene::Assault => vec![(0, 0), (1, 4), (3, 2), (4, 4), (6, 2), (7, 0)],
-            Scene::Chase => vec![(0, 0), (2, 4), (4, 2), (6, 4)],
-            // Happiness set: bright dance for the festival, warm for the reunion,
-            // a gentle morning shimmer for dawn.
-            Scene::Festival => vec![(0, 0), (2, 4), (3, 2), (4, 4), (6, 2), (7, 4)],
-            Scene::Reunion => vec![(0, 0), (3, 2), (4, 4), (6, 2)],
-            Scene::Dawn => vec![(0, 0), (3, 4), (7, 2)],
-        },
-        AdventureStyle::Dark => match scene {
-            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
-                if bar.is_multiple_of(2) {
-                    vec![(0, 0), (3, 4), (4, 0), (7, 2)]
-                } else {
-                    vec![(0, 0), (5, 4)]
-                }
-            }
-            Scene::Dungeon => {
-                if bar.is_multiple_of(2) {
-                    vec![(2, 0)]
-                } else {
-                    Vec::new()
-                }
-            }
-            Scene::Town | Scene::Festival | Scene::Reunion => vec![(0, 0), (5, 4)],
-            _ => {
-                if bar.is_multiple_of(2) {
-                    vec![(0, 0), (6, 4)]
-                } else {
-                    vec![(3, 2)]
-                }
-            }
-        },
-        AdventureStyle::Orchestral => {
-            // A few accents, not Folk's running ostinato: the strings carry the
-            // foundation, so the harp only decorates arrivals and landmarks.
-            match scene {
-                Scene::Camp | Scene::Dungeon => vec![(0, 0), (6, 4)],
-                Scene::Town => vec![(0, 0), (3, 2), (6, 4)],
-                Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => {
-                    vec![(0, 0), (4, 4)]
-                }
-                Scene::Festival => vec![(0, 0), (3, 2), (6, 4)],
-                Scene::Reunion | Scene::Dawn => vec![(0, 0), (2, 2), (6, 4)],
-                Scene::Explore | Scene::Sanctuary | Scene::Victory => vec![(0, 0), (2, 2), (6, 4)],
-            }
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_harp(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    traits: NormalizedTraits,
-    dna: &PieceDna,
-    intervals: &[i32],
-    kind: PhraseKind,
-    chord_degree: i32,
-    bar: u32,
-    bar_ticks: u32,
-    pulse: u32,
-    variant: usize,
-) {
-    if matches!(kind, PhraseKind::Return)
-        && bar.is_multiple_of(PHRASE_BARS)
-        && style != AdventureStyle::Orchestral
-    {
-        return;
-    }
-    let pattern = harp_pattern(style, plan.scene, bar, kind, variant);
-    for (position, (onset, offset)) in pattern.iter().enumerate() {
-        let target = match style {
-            AdventureStyle::Dark => 57,
-            AdventureStyle::Folk => 62,
-            AdventureStyle::Orchestral => 66,
-        } + (position as i32 % 2) * 3;
-        let pitch = nearest_scale_pitch(
-            dna.tonic_pitch_class,
-            chord_degree + offset,
-            intervals,
-            target,
-            48,
-            76,
-        );
-        let duration = match style {
-            AdventureStyle::Folk if plan.scene == Scene::Town => pulse * 3 / 4,
-            AdventureStyle::Folk => pulse * 5 / 4,
-            AdventureStyle::Dark => pulse * 7 / 4,
-            AdventureStyle::Orchestral => pulse * 6 / 5,
-        };
-        push_note(
-            events,
-            plan.id,
-            "harp",
-            &mut counters.harp,
-            bar * bar_ticks + u32::from(*onset) * pulse,
-            duration,
-            (0.15 + traits.wonder * 0.08 + scene_energy(plan.scene) * 0.05) * phrase_gain(bar),
-            pitch,
-            "harp",
-            false,
-        );
-    }
-}
-
-fn melody_onsets(
-    style: AdventureStyle,
-    scene: Scene,
-    kind: PhraseKind,
-    local_bar: u32,
-    variant: usize,
-    motion: f64,
-) -> Vec<u8> {
-    if matches!(kind, PhraseKind::Cadence) && local_bar == PHRASE_BARS - 1 {
-        return vec![0];
-    }
-    if scene == Scene::Camp
-        && local_bar == 0
-        && matches!(kind, PhraseKind::Antecedent)
-        && style != AdventureStyle::Orchestral
-    {
-        return Vec::new();
-    }
-    if style == AdventureStyle::Dark && scene == Scene::Dungeon && local_bar == 1 {
-        return Vec::new();
-    }
-    if local_bar == PHRASE_BARS - 1 {
-        return vec![0, 4];
-    }
-    let mut onsets = match style {
-        AdventureStyle::Folk => {
-            if matches!(scene, Scene::Town | Scene::Festival) {
-                match (local_bar as usize + variant) % 3 {
-                    0 => vec![0, 3, 4, 6],
-                    1 => vec![0, 2, 5, 7],
-                    _ => vec![1, 3, 6],
-                }
-            } else {
-                match (local_bar as usize + variant) % 4 {
-                    0 => vec![0, 2, 5],
-                    1 => vec![1, 4, 6],
-                    2 => vec![0, 3, 6],
-                    _ => vec![0, 4],
-                }
-            }
-        }
-        AdventureStyle::Dark => match (local_bar as usize + variant) % 3 {
-            0 => vec![0, 4],
-            1 => vec![2, 6],
-            _ => vec![0, 5],
-        },
-        AdventureStyle::Orchestral => match (local_bar as usize + variant) % 3 {
-            0 => vec![0, 4],
-            1 => vec![0, 3, 6],
-            _ => vec![0, 5],
-        },
-    };
-    if motion < 0.3 && onsets.len() > 2 {
-        onsets.remove(1 + variant % (onsets.len() - 1));
-    } else if motion > 0.78 && style == AdventureStyle::Folk && !onsets.contains(&7) {
-        onsets.push(7);
-        onsets.sort_unstable();
-    }
-    onsets
-}
-
-fn transformed_motif_degree(
-    dna: &PieceDna,
-    kind: PhraseKind,
-    phrase: u32,
-    bar: u32,
-    note: usize,
-) -> i32 {
-    let index = (bar as usize * 2 + note) % dna.motif.len();
-    match kind {
-        PhraseKind::Antecedent => dna.motif[index],
-        PhraseKind::Consequent => {
-            if index < 3 {
-                dna.motif[index]
-            } else {
-                -dna.motif[dna.motif.len() - 1 - index]
-            }
-        }
-        PhraseKind::Development => -dna.motif[index] + 1 + (phrase % 2) as i32,
-        PhraseKind::Return => dna.motif[(index + 1) % dna.motif.len()] - 1,
-        PhraseKind::Cadence => dna.motif[index] / 2,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_melody(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    traits: NormalizedTraits,
-    dna: &PieceDna,
-    intervals: &[i32],
-    mode: &str,
-    kind: PhraseKind,
-    phrase: u32,
-    chord_degree: i32,
-    bar: u32,
-    local_bar: u32,
-    bar_ticks: u32,
-    pulse: u32,
-    variant: usize,
-    previous_pitch: &mut Option<i32>,
-) {
-    let onsets = melody_onsets(style, plan.scene, kind, local_bar, variant, traits.motion);
-    for (note, onset) in onsets.iter().enumerate() {
-        let is_phrase_arrival = local_bar == PHRASE_BARS - 1 && note == onsets.len() - 1;
-        let degree = if is_phrase_arrival {
-            match kind {
-                PhraseKind::Antecedent | PhraseKind::Development => dominant_degree(mode),
-                PhraseKind::Consequent | PhraseKind::Return | PhraseKind::Cadence => 0,
-            }
-        } else if note == 0 && *onset == 0 {
-            // Open a bar on a bright chord tone — the fifth, then the third,
-            // then the root — so phrases lift instead of hovering on the tonic.
-            chord_degree + [4, 2, 0][(bar as usize + phrase as usize) % 3]
-        } else {
-            chord_degree + transformed_motif_degree(dna, kind, phrase, local_bar, note)
-        };
-        let phrase_register = match kind {
-            PhraseKind::Antecedent => 1,
-            PhraseKind::Consequent => 0,
-            PhraseKind::Development => 2,
-            PhraseKind::Return => -1,
-            PhraseKind::Cadence => -2,
-        };
-        let center = melody_center(style, plan.scene)
-            + phrase_register
-            + (traits.wonder * 2.0).round() as i32;
-        let target = previous_pitch
-            .map(|previous| (previous * 2 + center) / 3)
-            .unwrap_or(center);
-        let pitch = nearest_scale_pitch(
-            dna.tonic_pitch_class,
-            degree,
-            intervals,
-            target,
-            MELODY_MIN,
-            MELODY_MAX,
-        );
-        let next = onsets.get(note + 1).copied().unwrap_or(8);
-        let gap = u32::from(next - onset) * pulse;
-        let duration = if matches!(kind, PhraseKind::Cadence) && local_bar == PHRASE_BARS - 1 {
-            pulse * 6
-        } else {
-            match style {
-                AdventureStyle::Folk if plan.scene == Scene::Town => gap * 3 / 5,
-                AdventureStyle::Folk => gap * 3 / 4,
-                AdventureStyle::Dark => gap * 4 / 5,
-                AdventureStyle::Orchestral if matches!(plan.scene, Scene::Combat | Scene::Boss) => {
-                    gap * 2 / 3
-                }
-                AdventureStyle::Orchestral => gap * 7 / 8,
-            }
-            .max(pulse / 2)
-        };
-        let articulation = if note == 0 { 0.02 } else { 0.0 };
-        let velocity =
-            (0.28 + traits.wonder * 0.06 + scene_energy(plan.scene) * 0.1 + articulation)
-                * phrase_gain(bar)
-                * texture_gain(kind, phrase);
-        push_note(
-            events,
-            plan.id,
-            "melody",
-            &mut counters.melody,
-            bar * bar_ticks + u32::from(*onset) * pulse,
-            duration,
-            velocity,
-            pitch,
-            melody_voice(style, plan.scene),
-            true,
-        );
-        *previous_pitch = Some(pitch);
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_recorder_answer(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    dna: &PieceDna,
-    intervals: &[i32],
-    chord_degree: i32,
-    bar: u32,
-    local_bar: u32,
-    bar_ticks: u32,
-    pulse: u32,
-    variant: usize,
-) {
-    // Orchestral bows the lead; the recorder only answers, never leads. A short
-    // echo lands on the second bar of each phrase in the warm scenes.
-    let warm = matches!(
-        plan.scene,
+fn warm(scene: Scene) -> bool {
+    matches!(
+        scene,
         Scene::Camp
             | Scene::Explore
             | Scene::Town
@@ -1205,225 +650,7 @@ fn add_recorder_answer(
             | Scene::Festival
             | Scene::Reunion
             | Scene::Dawn
-    );
-    if style != AdventureStyle::Orchestral || !warm || local_bar != 1 {
-        return;
-    }
-    let degree = chord_degree + [4, 2][(bar as usize + variant) % 2];
-    let pitch = nearest_scale_pitch(
-        dna.tonic_pitch_class,
-        degree,
-        intervals,
-        71,
-        MELODY_MIN,
-        MELODY_MAX,
-    );
-    push_note(
-        events,
-        plan.id,
-        "recorder",
-        &mut counters.recorder,
-        bar * bar_ticks + 4 * pulse,
-        pulse,
-        0.17 + scene_energy(plan.scene) * 0.06,
-        pitch,
-        "recorder",
-        false,
-    );
-}
-
-fn percussion_pattern(
-    style: AdventureStyle,
-    scene: Scene,
-    phrase: u32,
-    local_bar: u32,
-    motion: f64,
-) -> &'static [(&'static str, u8)] {
-    if local_bar == PHRASE_BARS - 1 && phrase > 0 {
-        return &[];
-    }
-    match style {
-        AdventureStyle::Folk => match scene {
-            Scene::Camp if phrase >= 2 => &[("tambourine", 4)],
-            Scene::Explore if phrase % 2 == 1 && motion > 0.45 => {
-                &[("frame-drum", 0), ("tambourine", 6)]
-            }
-            Scene::Town => &[
-                ("frame-drum", 0),
-                ("tambourine", 3),
-                ("frame-drum", 4),
-                ("tambourine", 7),
-            ],
-            Scene::Combat => &[
-                ("frame-drum", 0),
-                ("frame-drum", 3),
-                ("tambourine", 5),
-                ("frame-drum", 6),
-            ],
-            Scene::Boss => &[("frame-drum", 0), ("frame-drum", 4), ("tambourine", 7)],
-            Scene::Victory if phrase < 6 => {
-                &[("frame-drum", 0), ("tambourine", 3), ("tambourine", 6)]
-            }
-            // Combat set: driving frame-drum work, the assault densest of all.
-            Scene::Skirmish => &[
-                ("frame-drum", 0),
-                ("frame-drum", 3),
-                ("tambourine", 5),
-                ("frame-drum", 6),
-            ],
-            Scene::Assault => &[
-                ("frame-drum", 0),
-                ("frame-drum", 2),
-                ("tambourine", 3),
-                ("frame-drum", 4),
-                ("frame-drum", 6),
-                ("tambourine", 7),
-            ],
-            Scene::Chase => &[
-                ("frame-drum", 0),
-                ("frame-drum", 2),
-                ("frame-drum", 4),
-                ("tambourine", 5),
-                ("frame-drum", 6),
-            ],
-            // Happiness set: bright tambourine/frame-drum for the dance and the
-            // hearth, a single shimmer for dawn.
-            Scene::Festival => &[
-                ("frame-drum", 0),
-                ("tambourine", 2),
-                ("frame-drum", 4),
-                ("tambourine", 6),
-            ],
-            Scene::Reunion => &[("frame-drum", 0), ("tambourine", 3), ("tambourine", 6)],
-            Scene::Dawn => &[("tambourine", 4)],
-            _ => &[],
-        },
-        AdventureStyle::Dark => match scene {
-            Scene::Town => &[("frame-drum", 0), ("tambourine", 6)],
-            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => &[
-                ("frame-drum", 0),
-                ("frame-drum", 3),
-                ("frame-drum", 6),
-                ("tambourine", 7),
-            ],
-            Scene::Dungeon if phrase >= 2 => &[("frame-drum", 0)],
-            Scene::Victory if phrase < 4 => &[("frame-drum", 0), ("frame-drum", 6)],
-            Scene::Festival | Scene::Reunion => &[("frame-drum", 0), ("tambourine", 6)],
-            Scene::Dawn => &[("tambourine", 4)],
-            _ => &[],
-        },
-        AdventureStyle::Orchestral => match scene {
-            Scene::Camp if phrase >= 2 => &[("frame-drum", 0), ("tambourine", 6)],
-            Scene::Explore => &[("frame-drum", 0), ("tambourine", 4)],
-            Scene::Town | Scene::Victory => &[
-                ("frame-drum", 0),
-                ("tambourine", 2),
-                ("frame-drum", 4),
-                ("tambourine", 6),
-            ],
-            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Assault | Scene::Chase => &[
-                ("frame-drum", 0),
-                ("tambourine", 2),
-                ("frame-drum", 3),
-                ("frame-drum", 4),
-                ("tambourine", 5),
-                ("frame-drum", 6),
-                ("tambourine", 7),
-            ],
-            Scene::Festival | Scene::Reunion => &[
-                ("frame-drum", 0),
-                ("tambourine", 2),
-                ("frame-drum", 4),
-                ("tambourine", 6),
-            ],
-            Scene::Dawn => &[("tambourine", 4)],
-            Scene::Sanctuary if phrase == 2 => &[("tambourine", 4)],
-            _ => &[],
-        },
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_percussion(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    traits: NormalizedTraits,
-    phrase: u32,
-    local_bar: u32,
-    bar: u32,
-    bar_ticks: u32,
-    pulse: u32,
-) {
-    for &(voice, onset) in percussion_pattern(style, plan.scene, phrase, local_bar, traits.motion) {
-        let is_frame = voice == "frame-drum";
-        push_percussion(
-            events,
-            plan.id,
-            &mut counters.percussion,
-            bar * bar_ticks + u32::from(onset) * pulse,
-            if is_frame { pulse } else { pulse / 2 },
-            0.2 + scene_energy(plan.scene) * 0.15
-                + traits.danger * 0.08
-                + if is_frame { 0.035 } else { 0.0 },
-            voice,
-        );
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_bell_accent(
-    events: &mut Vec<MusicEvent>,
-    counters: &mut EventCounters,
-    plan: &SectionPlan,
-    style: AdventureStyle,
-    dna: &PieceDna,
-    intervals: &[i32],
-    kind: PhraseKind,
-    phrase: u32,
-    bar: u32,
-    local_bar: u32,
-    bar_ticks: u32,
-) {
-    let accent = match style {
-        AdventureStyle::Folk => {
-            local_bar == 3
-                && matches!(plan.scene, Scene::Sanctuary | Scene::Victory)
-                && phrase % 2 == 1
-        }
-        AdventureStyle::Dark => {
-            local_bar == 3
-                && matches!(plan.scene, Scene::Dungeon | Scene::Boss)
-                && phrase.is_multiple_of(2)
-        }
-        AdventureStyle::Orchestral => {
-            local_bar == 3
-                && (matches!(kind, PhraseKind::Development | PhraseKind::Cadence)
-                    || plan.scene == Scene::Victory)
-        }
-    };
-    if !accent {
-        return;
-    }
-    let degree = if matches!(kind, PhraseKind::Cadence) {
-        4
-    } else {
-        2
-    };
-    let pitch = nearest_scale_pitch(dna.tonic_pitch_class, degree, intervals, 78, 67, 84);
-    push_note(
-        events,
-        plan.id,
-        "bell",
-        &mut counters.bell,
-        bar * bar_ticks,
-        bar_ticks / 2,
-        0.15 + scene_energy(plan.scene) * 0.05,
-        pitch,
-        "bell",
-        false,
-    );
+    )
 }
 
 fn build_section(
@@ -1434,159 +661,1143 @@ fn build_section(
     ticks_per_beat: u32,
     section_seed: u32,
 ) -> PortableSection {
-    let bar_ticks = ticks_per_beat * BEATS_PER_BAR;
-    let pulse = ticks_per_beat / 2;
-    let phrase_count = plan.bars / PHRASE_BARS;
+    let bar = ticks_per_beat * BEATS_PER_BAR;
     let mode = mode_for(style, plan.scene);
     let intervals = mode_intervals(mode);
-    let mut rng = DeterministicRandom::new(section_seed);
-    let section_variant = dna.rhythm_variant + rng.integer(8) as usize;
-    let mut events = Vec::new();
-    let mut counters = EventCounters::new();
-    let mut previous_chord = None;
-    let mut previous_melody = None;
+    let mut section = Section {
+        plan,
+        style,
+        traits,
+        tonic: dna.tonic_pitch_class,
+        mode,
+        intervals,
+        pace: pace(plan.scene),
+        bar,
+        sixteenth: ticks_per_beat / 4,
+        seed: section_seed,
+        energy: scene_energy(plan.scene),
+        melody_octave: 0,
+    };
+    let phrases = plan_phrases(&section, dna);
+    section.melody_octave = melody_octave(&section, &phrases);
 
-    for phrase in 0..phrase_count {
-        let kind = phrase_kind(phrase, phrase_count);
-        let chords = progression(mode, kind, plan.scene, phrase, dna.harmony_variant);
-        add_pedal(
-            &mut events,
-            &mut counters,
-            plan,
-            style,
-            dna,
-            &intervals,
-            phrase,
-            bar_ticks,
-        );
-        for local_bar in 0..PHRASE_BARS {
-            let bar = phrase * PHRASE_BARS + local_bar;
-            let chord_degree = chords[local_bar as usize];
-            let chord = voice_chord(
-                dna.tonic_pitch_class,
-                chord_degree,
-                &intervals,
-                previous_chord,
-            );
-            previous_chord = Some(chord);
-            add_bass(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                traits,
-                dna,
-                &intervals,
-                chord_degree,
-                bar,
-                bar_ticks,
-                pulse,
-            );
-            add_harmony(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                traits,
-                kind,
-                chord,
-                bar,
-                local_bar,
-                bar_ticks,
-            );
-            add_harp(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                traits,
-                dna,
-                &intervals,
-                kind,
-                chord_degree,
-                bar,
-                bar_ticks,
-                pulse,
-                section_variant + phrase as usize,
-            );
-            add_melody(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                traits,
-                dna,
-                &intervals,
-                mode,
-                kind,
-                phrase,
-                chord_degree,
-                bar,
-                local_bar,
-                bar_ticks,
-                pulse,
-                section_variant + phrase as usize,
-                &mut previous_melody,
-            );
-            add_recorder_answer(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                dna,
-                &intervals,
-                chord_degree,
-                bar,
-                local_bar,
-                bar_ticks,
-                pulse,
-                section_variant + phrase as usize,
-            );
-            add_percussion(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                traits,
-                phrase,
-                local_bar,
-                bar,
-                bar_ticks,
-                pulse,
-            );
-            add_bell_accent(
-                &mut events,
-                &mut counters,
-                plan,
-                style,
-                dna,
-                &intervals,
-                kind,
-                phrase,
-                bar,
-                local_bar,
-                bar_ticks,
-            );
-        }
+    let mut sink = Sink {
+        section: plan.id,
+        beat: ticks_per_beat,
+        swing_point: feel(style, plan.scene).swing_point(),
+        length: plan.bars * bar,
+        events: Vec::new(),
+        counters: BTreeMap::new(),
+    };
+    let chords: Vec<ChordSpan> = phrases
+        .iter()
+        .flat_map(|p| p.chords.iter().copied())
+        .collect();
+    for phrase in &phrases {
+        add_melody(&mut sink, &section, phrase);
+        add_counter(&mut sink, &section, phrase);
+        add_horn(&mut sink, &section, phrase);
+        add_bell(&mut sink, &section, phrase);
+        add_pedal(&mut sink, &section, phrase);
     }
+    add_harmony(&mut sink, &section, &chords);
+    add_bass(&mut sink, &section, &chords);
+    add_harp(&mut sink, &section, &phrases);
+    add_ostinato(&mut sink, &section, &chords);
+    add_percussion(&mut sink, &section, &phrases);
+    add_timpani(&mut sink, &section, &phrases, &chords);
+    damp_harp(&mut sink.events, &chords, section.sixteenth, bar);
 
-    fn event_id(event: &MusicEvent) -> &str {
-        match event {
-            MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
-        }
-    }
-    events.sort_by(|left, right| {
-        left.start_tick()
-            .cmp(&right.start_tick())
-            .then_with(|| event_id(left).cmp(event_id(right)))
-    });
     PortableSection {
         id: plan.id.to_string(),
         label: plan.label.to_string(),
         feeling: plan.feeling.to_string(),
         color: plan.color.to_string(),
-        length_ticks: plan.bars * bar_ticks,
-        events,
+        length_ticks: plan.bars * bar,
+        events: sink.finish(),
+    }
+}
+
+fn plan_phrases(section: &Section, dna: &PieceDna) -> Vec<PhrasePlan> {
+    let count = section.plan.bars / PHRASE_BARS;
+    let scene_treatment = treatment(section.style, section.scene());
+    let dominant = dominant_degree(section.mode);
+    (0..count)
+        .map(|index| {
+            let kind = phrase_kind(index, count);
+            let start = index * PHRASE_BARS * section.bar;
+            let chords = phrase_harmony(&PhraseHarmonyInput {
+                mode: section.mode,
+                intervals: &section.intervals,
+                kind,
+                pace: section.pace,
+                phrase_start: start,
+                bar_ticks: section.bar,
+                statement_variant: dna.statement_variant,
+                seed: section.seed,
+                phrase: index,
+                danger: section.traits.danger,
+                mystery: section.traits.mystery,
+                open_color: section.style == AdventureStyle::Dark,
+                suspends: section.style != AdventureStyle::Folk,
+            });
+            let melody = phrase_melody(&PhraseMelodyInput {
+                theme: &dna.theme,
+                intervals: &section.intervals,
+                kind,
+                treatment: scene_treatment,
+                dominant,
+                chords: &chords,
+                phrase_start: start,
+                sixteenth: section.sixteenth,
+                seed: section.seed,
+                phrase: index,
+                motion: section.traits.motion,
+                mystery: section.traits.mystery,
+                pickup: index + 1 < count,
+            });
+            PhrasePlan {
+                index,
+                kind,
+                start,
+                chords,
+                melody,
+                harp_intro: index == 0
+                    && section.scene() == Scene::Camp
+                    && section.style != AdventureStyle::Orchestral,
+            }
+        })
+        .collect()
+}
+
+/// One octave placement for the whole section, so phrases join without
+/// register jumps: the mean melody pitch sits nearest the scene's centre.
+fn melody_octave(section: &Section, phrases: &[PhrasePlan]) -> i32 {
+    let degrees: Vec<i32> = phrases
+        .iter()
+        .flat_map(|phrase| phrase.melody.iter().map(|tone| tone.degree))
+        .collect();
+    let center = melody_center(section.style, section.scene())
+        + (section.traits.wonder * 2.0).round() as i32;
+    let base = |degree: i32| scale_pitch(60 + section.tonic, degree, &section.intervals);
+    let mean =
+        degrees.iter().map(|degree| base(*degree)).sum::<i32>() / degrees.len().max(1) as i32;
+    [-24, -12, 0, 12]
+        .into_iter()
+        .min_by_key(|shift| {
+            let low = degrees.iter().map(|d| base(*d) + shift).min().unwrap_or(0);
+            let high = degrees.iter().map(|d| base(*d) + shift).max().unwrap_or(0);
+            let outside = (MELODY_MIN - low).max(0) + (high - MELODY_MAX).max(0);
+            (outside, (mean + shift - center).abs())
+        })
+        .unwrap()
+}
+
+fn fold_into(pitch: i32, minimum: i32, maximum: i32) -> i32 {
+    let mut pitch = pitch;
+    while pitch > maximum {
+        pitch -= 12;
+    }
+    while pitch < minimum {
+        pitch += 12;
+    }
+    pitch
+}
+
+fn articulation(style: AdventureStyle, scene: Scene) -> f64 {
+    match style {
+        AdventureStyle::Folk if matches!(scene, Scene::Town | Scene::Festival) => 0.62,
+        AdventureStyle::Folk => 0.78,
+        AdventureStyle::Dark => 0.86,
+        AdventureStyle::Orchestral if pace(scene) == Pace::Driving => 0.72,
+        AdventureStyle::Orchestral => 0.94,
+    }
+}
+
+fn add_melody(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+    let voice = melody_voice(section.style, section.scene());
+    let bar_arch = [0.9, 1.0, 1.08, 0.95];
+    let base = 0.3 + section.traits.wonder * 0.06 + section.energy * 0.1;
+    let ornaments = section.style != AdventureStyle::Orchestral;
+    let final_bar = section.plan.bars * section.bar - section.bar;
+    let mut previous_end = 0;
+    for (index, tone) in phrase.melody.iter().enumerate() {
+        let start = phrase.start + tone.at * section.sixteenth;
+        let pitch = fold_into(section.melody_pitch(tone.degree), MELODY_MIN, MELODY_MAX);
+        if phrase.harp_intro && tone.at < 32 {
+            sink.note(
+                "harp-theme",
+                start,
+                tone.length * section.sixteenth,
+                0.2 + section.traits.wonder * 0.08,
+                fold_into(pitch, 48, 76),
+                "harp",
+                false,
+            );
+            continue;
+        }
+        let length = ((f64::from(tone.length * section.sixteenth)
+            * articulation(section.style, section.scene())) as u32)
+            .max(section.sixteenth / 2);
+        let long = if tone.length >= 8 { 0.03 } else { 0.0 };
+        let velocity = (base + long)
+            * metric_accent(tone.at)
+            * bar_arch[(tone.at / 16).min(3) as usize]
+            * texture_gain(phrase.kind, phrase.index);
+        let grace = section.sixteenth / 2;
+        let ornament = ornaments
+            && tone.length >= 6
+            && tone.at > 0
+            && start < final_bar
+            && start >= previous_end + grace
+            && section.chance("ornament", phrase.index, index as u32)
+                < 0.12 + section.traits.motion * 0.3;
+        if ornament {
+            let upper = fold_into(
+                section.melody_pitch(tone.degree + 1),
+                MELODY_MIN,
+                MELODY_MAX,
+            );
+            sink.note(
+                "melody",
+                start - grace,
+                grace,
+                velocity * 0.75,
+                upper,
+                voice,
+                true,
+            );
+        }
+        sink.note("melody", start, length, velocity, pitch, voice, true);
+        previous_end = start + length;
+    }
+}
+
+fn counter_voice(style: AdventureStyle) -> &'static str {
+    match style {
+        AdventureStyle::Folk | AdventureStyle::Orchestral => "recorder",
+        AdventureStyle::Dark => "vielle",
+    }
+}
+
+/// A second voice joins after the first statement. Orchestral always answers
+/// in its warm scenes; elsewhere the line appears more often as wonder climbs.
+fn add_counter(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+    if matches!(phrase.kind, PhraseKind::Antecedent) || phrase.harp_intro {
+        return;
+    }
+    let always = section.style == AdventureStyle::Orchestral && warm(section.scene());
+    let likely = section.chance("counter", phrase.index, 0) < 0.2 + section.traits.wonder * 0.7;
+    if !(always || likely) {
+        return;
+    }
+    let line = counter_line(
+        &phrase.melody,
+        &phrase.chords,
+        phrase.start,
+        section.sixteenth,
+        |upper, lower| section.semitone_rub(upper, lower),
+    );
+    let velocity = (0.19 + section.traits.wonder * 0.04 + section.energy * 0.06)
+        * texture_gain(phrase.kind, phrase.index);
+    for tone in line {
+        let pitch = section.melody_pitch(tone.degree);
+        if !(50..=MELODY_MAX).contains(&pitch) {
+            continue;
+        }
+        sink.note(
+            "counter",
+            phrase.start + tone.at * section.sixteenth,
+            tone.length * section.sixteenth * 9 / 10,
+            velocity * metric_accent(tone.at),
+            pitch,
+            counter_voice(section.style),
+            false,
+        );
+    }
+}
+
+/// Orchestral horns: they double the theme an octave down when it returns in
+/// the heroic scenes, carry it in every phrase of the boss fights, and hold a
+/// soft root-and-fifth in the quiet scenes.
+fn add_horn(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+    if section.style != AdventureStyle::Orchestral {
+        return;
+    }
+    let scene = section.scene();
+    let heroic = matches!(
+        scene,
+        Scene::Victory | Scene::Festival | Scene::Combat | Scene::Explore | Scene::Dawn
+    );
+    let fight = matches!(scene, Scene::Boss | Scene::Assault);
+    let returning = matches!(phrase.kind, PhraseKind::Consequent | PhraseKind::Return);
+    if fight || (heroic && returning) {
+        for tone in phrase.melody.iter().filter(|tone| tone.length >= 4) {
+            let pitch = section.melody_pitch(tone.degree) - 12;
+            if !(45..=67).contains(&pitch) {
+                continue;
+            }
+            sink.note(
+                "horn",
+                phrase.start + tone.at * section.sixteenth,
+                tone.length * section.sixteenth * 9 / 10,
+                (0.22 + section.energy * 0.12) * metric_accent(tone.at),
+                pitch,
+                "horn",
+                false,
+            );
+        }
+    } else if matches!(scene, Scene::Camp | Scene::Sanctuary | Scene::Reunion) && returning {
+        for span in &phrase.chords {
+            for (offset, target) in [(0, 45), (4, 52)] {
+                let pitch = section.place(span.chord.degree + offset, target, 41, 60);
+                sink.note(
+                    "horn",
+                    span.start,
+                    span.length * 15 / 16,
+                    0.11 + section.traits.wonder * 0.03,
+                    pitch,
+                    "horn",
+                    false,
+                );
+            }
+        }
+    }
+}
+
+/// Bells mark arrivals: the authored landmarks per style, a sparkle that grows
+/// with wonder, and a stranger glint that grows with mystery.
+fn add_bell(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+    let scene = section.scene();
+    let authored = match section.style {
+        AdventureStyle::Folk => {
+            matches!(scene, Scene::Sanctuary | Scene::Victory) && phrase.index % 2 == 1
+        }
+        AdventureStyle::Dark => {
+            matches!(scene, Scene::Dungeon | Scene::Boss) && phrase.index.is_multiple_of(2)
+        }
+        AdventureStyle::Orchestral => {
+            matches!(phrase.kind, PhraseKind::Development | PhraseKind::Cadence)
+                || scene == Scene::Victory
+        }
+    };
+    let wonder = section.chance("bell-wonder", phrase.index, 0) < section.traits.wonder * 0.35;
+    let arrival = phrase.start + 3 * section.bar;
+    let velocity = 0.15 + section.energy * 0.05;
+    if authored || wonder {
+        let degree = chord_at(&phrase.chords, arrival).map_or(0, |chord| chord.degree + 2);
+        let pitch = section.place(degree, 78, 67, 84);
+        sink.note(
+            "bell",
+            arrival,
+            section.bar / 2,
+            velocity,
+            pitch,
+            "bell",
+            false,
+        );
+    }
+    if section.chance("bell-mystery", phrase.index, 0) < section.traits.mystery * 0.45 {
+        let at = phrase.start + section.bar + section.bar / 2;
+        let degree = chord_at(&phrase.chords, at).map_or(4, |chord| chord.degree + 4);
+        let pitch = section.place(degree, 76, 67, 84);
+        sink.note(
+            "bell",
+            at,
+            section.bar / 2,
+            velocity * 0.8,
+            pitch,
+            "bell",
+            false,
+        );
+    }
+}
+
+/// Dark's bowed drone: the tonic held under every run of chords that contain
+/// it (up to two bars), with the open fifth above only when every chord in
+/// the run contains that too.
+fn add_drone(sink: &mut Sink, section: &Section, phrase: &PhrasePlan, tonic: i32, velocity: f64) {
+    let fifth = section.place(4, tonic + 7, tonic + 5, tonic + 9);
+    let mut run: Vec<ChordSpan> = Vec::new();
+    let flush = |sink: &mut Sink, run: &mut Vec<ChordSpan>| {
+        let (Some(first), Some(last)) = (run.first(), run.last()) else {
+            return;
+        };
+        let (start, end) = (first.start, last.start + last.length);
+        sink.note(
+            "pedal",
+            start,
+            end - start,
+            velocity,
+            tonic,
+            "vielle",
+            false,
+        );
+        if run.iter().all(|span| span.chord.contains(4)) {
+            sink.note(
+                "pedal",
+                start,
+                end - start,
+                velocity,
+                fifth,
+                "vielle",
+                false,
+            );
+        }
+        run.clear();
+    };
+    for span in &phrase.chords {
+        let holds = span.chord.contains(0) && !span.chord.rubs(0, &section.intervals);
+        let fits_run = run
+            .first()
+            .is_some_and(|first| span.start + span.length - first.start <= 2 * section.bar);
+        if !holds || !fits_run {
+            flush(sink, &mut run);
+        }
+        if holds {
+            run.push(*span);
+        }
+    }
+    flush(sink, &mut run);
+}
+
+/// The bed. Dark keeps a bowed open-fifth drone under every chord that
+/// agrees with it; Folk plucks a harp bourdon and Orchestral holds low
+/// strings at the authored landmarks, and both lean on it more with mystery.
+fn add_pedal(sink: &mut Sink, section: &Section, phrase: &PhrasePlan) {
+    let scene = section.scene();
+    let velocity = 0.09 + section.energy * 0.05;
+    let tonic = section.place(0, 43, 36, 50);
+    if section.style == AdventureStyle::Dark {
+        // The battle ostinato drives the fights; the drone holds everywhere else.
+        if section.pace != Pace::Driving {
+            add_drone(sink, section, phrase, tonic, velocity);
+        }
+        return;
+    }
+    let authored = match (section.style, scene) {
+        (_, Scene::Dungeon) => phrase.index == 0 || phrase.index == 2,
+        (AdventureStyle::Folk, Scene::Camp | Scene::Sanctuary | Scene::Dawn) => phrase.index == 0,
+        (AdventureStyle::Orchestral, Scene::Sanctuary) => phrase.index == 2,
+        (AdventureStyle::Orchestral, Scene::Boss) => true,
+        _ => false,
+    };
+    let mysterious = section.pace != Pace::Driving
+        && section.chance("pedal", phrase.index, 0) < section.traits.mystery * 0.5;
+    if !(authored || mysterious) {
+        return;
+    }
+    let voice = match section.style {
+        AdventureStyle::Folk => "harp",
+        _ => "vielle",
+    };
+    // The pedal holds for up to two bars, and only while the harmony keeps
+    // the tonic.
+    let end = phrase
+        .chords
+        .iter()
+        .take_while(|span| span.chord.contains(0) && span.start < phrase.start + 2 * section.bar)
+        .map(|span| (span.start + span.length).min(phrase.start + 2 * section.bar))
+        .last();
+    if let Some(end) = end {
+        sink.note(
+            "pedal",
+            phrase.start,
+            end - phrase.start,
+            velocity,
+            tonic,
+            voice,
+            false,
+        );
+    }
+}
+
+fn pedal_sounds(sink: &Sink, tick: u32) -> bool {
+    sink.events.iter().any(|event| {
+        matches!(event, MusicEvent::Note { lane, start_tick, duration_ticks, .. }
+            if lane == "pedal" && *start_tick <= tick && tick < start_tick + duration_ticks)
+    })
+}
+
+fn add_harmony(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+    let mut previous = None;
+    for span in chords {
+        let voicing = voice_chord(section.tonic, span.chord, &section.intervals, previous);
+        previous = Some(voicing);
+        let bar_index = span.start / section.bar;
+        let velocity =
+            (0.13 + section.traits.wonder * 0.06 + section.energy * 0.05) * phrase_gain(bar_index);
+        match section.style {
+            AdventureStyle::Folk => {
+                // A rolled harp chord, lowest string first.
+                let roll = section.sixteenth / 6;
+                for (index, pitch) in voicing.iter().enumerate() {
+                    sink.note(
+                        "harmony",
+                        span.start + index as u32 * roll,
+                        span.length.min(section.bar / 2),
+                        velocity * (1.0 - index as f64 * 0.06),
+                        *pitch,
+                        "harp",
+                        false,
+                    );
+                }
+            }
+            AdventureStyle::Dark => {
+                let voices: &[i32] = if span.chord.kind == ChordKind::Open5 {
+                    &voicing[..2]
+                } else {
+                    &voicing[1..]
+                };
+                for pitch in voices {
+                    sink.note(
+                        "harmony",
+                        span.start,
+                        span.length * 7 / 8,
+                        velocity,
+                        *pitch,
+                        "vielle",
+                        false,
+                    );
+                }
+            }
+            AdventureStyle::Orchestral => {
+                for pitch in voicing {
+                    sink.note(
+                        "harmony",
+                        span.start,
+                        span.length * 15 / 16,
+                        velocity * 0.8,
+                        pitch,
+                        "vielle",
+                        false,
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// How a harpist phrases the written notes: chord tones ring until the
+/// harmony changes, and a moving line (the bass, a harp melody) is damped
+/// when its next note sounds.
+fn damp_harp(events: &mut [MusicEvent], chords: &[ChordSpan], sixteenth: u32, bar: u32) {
+    let line = |lane: &str| matches!(lane, "bass" | "harp-theme");
+    let onsets: BTreeMap<String, Vec<u32>> =
+        events.iter().fold(BTreeMap::new(), |mut onsets, event| {
+            if let MusicEvent::Note {
+                lane,
+                voice,
+                start_tick,
+                ..
+            } = event
+            {
+                if voice == "harp" && line(lane) {
+                    onsets
+                        .entry(lane.clone())
+                        .or_insert_with(Vec::new)
+                        .push(*start_tick);
+                }
+            }
+            onsets
+        });
+    for event in events.iter_mut() {
+        let MusicEvent::Note {
+            lane,
+            voice,
+            start_tick,
+            duration_ticks,
+            ..
+        } = event
+        else {
+            continue;
+        };
+        if voice != "harp" {
+            continue;
+        }
+        let start = *start_tick;
+        let chord_end = chords
+            .iter()
+            .find(|span| (span.start..span.start + span.length).contains(&start))
+            .map_or(start + bar, |span| span.start + span.length);
+        let next = onsets
+            .get(lane.as_str())
+            .and_then(|starts| {
+                starts
+                    .iter()
+                    .copied()
+                    .filter(|onset| *onset >= start + sixteenth / 2)
+                    .min()
+            })
+            .unwrap_or(u32::MAX);
+        let end = if line(lane) {
+            chord_end.min(next)
+        } else {
+            chord_end
+        };
+        *duration_ticks = (end - start).clamp(sixteenth / 2, bar);
+    }
+}
+
+/// Bass figures in sixteenths from the chord's start: `(position, role)` where
+/// role 0 is the root, 1 the fifth and 2 the octave.
+fn bass_figure(style: AdventureStyle, pace: Pace) -> &'static [(u32, u8)] {
+    match (style, pace) {
+        (_, Pace::Calm) => &[(0, 0)],
+        (_, Pace::Walking) => &[(0, 0), (8, 1)],
+        (AdventureStyle::Folk, Pace::Driving) => &[(0, 0), (4, 1), (8, 0), (12, 1)],
+        (AdventureStyle::Dark, Pace::Driving) => &[(0, 0), (6, 0), (12, 1)],
+        (AdventureStyle::Orchestral, Pace::Driving) => &[
+            (0, 0),
+            (2, 0),
+            (4, 2),
+            (6, 0),
+            (8, 0),
+            (10, 0),
+            (12, 2),
+            (14, 1),
+        ],
+    }
+}
+
+fn add_bass(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+    let voice = match section.style {
+        AdventureStyle::Folk | AdventureStyle::Dark => "harp",
+        AdventureStyle::Orchestral => "vielle",
+    };
+    let final_bar = section.plan.bars * section.bar - section.bar;
+    let root_of = |chord: Chord| section.place(chord.degree, 42, 36, 55);
+    for (index, span) in chords.iter().enumerate() {
+        let root = root_of(span.chord);
+        let velocity = 0.22 + section.energy * 0.13 + section.traits.danger * 0.04;
+        if span.start >= final_bar {
+            sink.note(
+                "bass",
+                span.start,
+                section.bar * 3 / 4,
+                velocity,
+                root,
+                voice,
+                false,
+            );
+            continue;
+        }
+        // Outside battle the bass rests while a pedal or drone carries the root.
+        if section.pace != Pace::Driving && pedal_sounds(sink, span.start) {
+            continue;
+        }
+        let bar_index = span.start / section.bar;
+        // Danger quickens a walking bass into the driving figure bar by bar.
+        let pace = if section.pace == Pace::Walking
+            && section.chance("bass-drive", bar_index, 0) < section.traits.danger * 0.6
+        {
+            Pace::Driving
+        } else {
+            section.pace
+        };
+        let span_sixteenths = span.length / section.sixteenth;
+        let folk_calm_rest = section.style == AdventureStyle::Folk
+            && pace == Pace::Calm
+            && bar_index % 2 == 1
+            && span.length <= section.bar;
+        if folk_calm_rest {
+            continue;
+        }
+        for &(position, role) in bass_figure(section.style, pace) {
+            if position >= span_sixteenths {
+                continue;
+            }
+            let pitch = match role {
+                0 => root,
+                1 => section.place(span.chord.degree + 4, root + 7, root + 5, root + 9),
+                _ => fold_into(root + 12, 36, 57),
+            };
+            let nominal = if pace == Pace::Calm {
+                span.length.min(section.bar) * 3 / 4
+            } else {
+                section.sixteenth * 3
+            };
+            // Every bass note stops at its chord's end, never under the next.
+            let length = nominal.min(span.length - position * section.sixteenth);
+            sink.note(
+                "bass",
+                span.start + position * section.sixteenth,
+                length,
+                velocity * metric_accent(position),
+                pitch,
+                voice,
+                false,
+            );
+        }
+        // A stepwise approach note walks into a distant next root.
+        if let Some(next) = chords.get(index + 1) {
+            let leap = (next.chord.degree - span.chord.degree).rem_euclid(7);
+            let approach = [next.chord.degree - 1, next.chord.degree + 1]
+                .into_iter()
+                .find(|degree| !span.chord.rubs(*degree, &section.intervals));
+            if let Some(approach) = approach
+                .filter(|_| pace != Pace::Calm && matches!(leap, 2..=5) && span_sixteenths >= 8)
+            {
+                let pitch = section.place(approach, root_of(next.chord), 36, 55);
+                sink.note(
+                    "bass",
+                    next.start - 2 * section.sixteenth,
+                    section.sixteenth * 2,
+                    velocity * 0.82,
+                    pitch,
+                    voice,
+                    false,
+                );
+            }
+        }
+    }
+}
+
+/// Harp figuration in sixteenths: `(position, chord tone)` where the tone
+/// index walks root, third, fifth, octave, tenth.
+fn harp_figure(style: AdventureStyle, scene: Scene, variant: u32) -> &'static [(u32, u8)] {
+    let jig = feel(style, scene) == Feel::Jig;
+    match (style, pace(scene)) {
+        (AdventureStyle::Folk, _) if jig => &[
+            (1, 1),
+            (2, 2),
+            (5, 1),
+            (6, 2),
+            (9, 1),
+            (10, 2),
+            (13, 1),
+            (14, 2),
+        ],
+        (AdventureStyle::Folk, Pace::Calm) => &[(0, 0), (1, 1), (2, 2), (3, 3), (8, 2)],
+        (AdventureStyle::Folk, Pace::Walking) => match variant % 3 {
+            0 => &[
+                (0, 0),
+                (2, 2),
+                (4, 1),
+                (6, 2),
+                (8, 3),
+                (10, 2),
+                (12, 1),
+                (14, 2),
+            ],
+            1 => &[(0, 0), (4, 2), (6, 1), (8, 3), (12, 2)],
+            _ => &[(2, 1), (4, 2), (6, 3), (10, 2), (12, 1), (14, 2)],
+        },
+        (AdventureStyle::Folk, Pace::Driving) => &[
+            (0, 0),
+            (2, 2),
+            (4, 3),
+            (6, 2),
+            (8, 0),
+            (10, 2),
+            (12, 3),
+            (14, 2),
+        ],
+        (AdventureStyle::Dark, Pace::Calm) => match variant % 2 {
+            0 => &[(4, 2)],
+            _ => &[(10, 1)],
+        },
+        (AdventureStyle::Dark, Pace::Walking) => &[(0, 0), (10, 2)],
+        (AdventureStyle::Dark, Pace::Driving) => &[(0, 0), (6, 2), (8, 0), (14, 1)],
+        (AdventureStyle::Orchestral, Pace::Calm) => &[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)],
+        (AdventureStyle::Orchestral, Pace::Walking) => &[(0, 0), (6, 2), (12, 1)],
+        (AdventureStyle::Orchestral, Pace::Driving) => &[(0, 0), (8, 2)],
+    }
+}
+
+fn add_harp(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
+    let target = match section.style {
+        AdventureStyle::Dark => 57,
+        AdventureStyle::Folk => 62,
+        AdventureStyle::Orchestral => 66,
+    };
+    for phrase in phrases {
+        let variant = (section.seed % 3) + phrase.index;
+        for local_bar in 0..PHRASE_BARS {
+            let bar_start = phrase.start + local_bar * section.bar;
+            if phrase.harp_intro && local_bar < 2 {
+                continue;
+            }
+            let closing =
+                matches!(phrase.kind, PhraseKind::Cadence) && local_bar == PHRASE_BARS - 1;
+            let figure: &[(u32, u8)] = if closing {
+                &[(0, 0)]
+            } else {
+                harp_figure(section.style, section.scene(), variant)
+            };
+            let bar_index = bar_start / section.bar;
+            for &(position, tone) in figure {
+                let at = bar_start + position * section.sixteenth;
+                let Some(chord) = chord_at(&phrase.chords, at) else {
+                    continue;
+                };
+                let offsets = match chord.kind {
+                    ChordKind::Sus2 => [0, 1, 4, 7, 8],
+                    ChordKind::Sus4 => [0, 3, 4, 7, 10],
+                    _ => [0, 2, 4, 7, 9],
+                };
+                let degree = chord.degree + offsets[usize::from(tone)];
+                let pitch = section.place(degree, target + i32::from(tone) * 3, 48, 76);
+                let length = match section.style {
+                    AdventureStyle::Folk => section.sixteenth * 5 / 2,
+                    AdventureStyle::Dark => section.sixteenth * 7 / 2,
+                    AdventureStyle::Orchestral => section.sixteenth * 12 / 5,
+                };
+                let velocity = (0.15 + section.traits.wonder * 0.08 + section.energy * 0.05)
+                    * phrase_gain(bar_index)
+                    * metric_accent(position);
+                sink.note("harp", at, length, velocity, pitch, "harp", false);
+            }
+        }
+    }
+}
+
+/// The battle ostinato: an Orchestral string gallop (two sixteenths and an
+/// eighth) or a low Dark eighth-note pulse, riding the chord root.
+fn add_ostinato(sink: &mut Sink, section: &Section, chords: &[ChordSpan]) {
+    if section.pace != Pace::Driving || section.style == AdventureStyle::Folk {
+        return;
+    }
+    let gallop: &[(u32, u8)] = &[
+        (0, 0),
+        (1, 0),
+        (2, 1),
+        (4, 0),
+        (5, 0),
+        (6, 2),
+        (8, 0),
+        (9, 0),
+        (10, 1),
+        (12, 0),
+        (13, 0),
+        (14, 2),
+    ];
+    let pulse: &[(u32, u8)] = &[
+        (0, 0),
+        (2, 0),
+        (4, 1),
+        (6, 0),
+        (8, 0),
+        (10, 0),
+        (12, 1),
+        (14, 0),
+    ];
+    let (figure, target) = match section.style {
+        AdventureStyle::Orchestral if section.traits.motion >= 0.3 => (gallop, 55),
+        AdventureStyle::Orchestral => (pulse, 55),
+        _ => (pulse, 50),
+    };
+    let final_bar = section.plan.bars * section.bar - section.bar;
+    let velocity = 0.13 + section.energy * 0.06 + section.traits.danger * 0.04;
+    for span in chords.iter().filter(|span| span.start < final_bar) {
+        let root = section.place(span.chord.degree, target, target - 6, target + 6);
+        let span_sixteenths = span.length / section.sixteenth;
+        let mut offset = 0;
+        while offset < span_sixteenths {
+            for &(position, role) in figure {
+                let local = offset + position;
+                if local >= span_sixteenths {
+                    break;
+                }
+                let pitch = match role {
+                    0 => root,
+                    1 => section.place(span.chord.degree + 4, root + 7, root + 3, root + 9),
+                    _ => root + 12,
+                };
+                let at = span.start + local * section.sixteenth;
+                let quick = figure.iter().any(|&(p, _)| p == position + 1);
+                let length = if quick {
+                    section.sixteenth * 3 / 4
+                } else {
+                    section.sixteenth * 3 / 2
+                };
+                sink.note(
+                    "ostinato",
+                    at,
+                    length,
+                    velocity * metric_accent((at / section.sixteenth) % 16),
+                    fold_into(pitch, 36, 72),
+                    "vielle",
+                    false,
+                );
+            }
+            offset += 16;
+        }
+    }
+}
+
+type Hit = (&'static str, u32, u8);
+
+const FRAME: &str = "frame-drum";
+const TAMB: &str = "tambourine";
+
+/// A scene's one-bar groove as `(voice, sixteenth, accent)`; accent 2 marks
+/// the downbeat stress, 1 an ordinary stroke.
+fn groove(style: AdventureStyle, scene: Scene, phrase: u32, motion: f64) -> &'static [Hit] {
+    let jig = feel(style, scene) == Feel::Jig;
+    match style {
+        AdventureStyle::Folk => match scene {
+            Scene::Camp if phrase >= 2 => &[(TAMB, 8, 1)],
+            Scene::Explore if phrase % 2 == 1 && motion > 0.45 => &[(FRAME, 0, 2), (TAMB, 12, 1)],
+            Scene::Town => &[(FRAME, 0, 2), (TAMB, 6, 1), (FRAME, 8, 1), (TAMB, 14, 1)],
+            Scene::Combat | Scene::Skirmish => {
+                &[(FRAME, 0, 2), (FRAME, 6, 1), (TAMB, 10, 1), (FRAME, 12, 1)]
+            }
+            Scene::Boss => &[(FRAME, 0, 2), (FRAME, 8, 2), (TAMB, 14, 1)],
+            Scene::Victory if phrase < 6 && jig => &[
+                (FRAME, 0, 2),
+                (TAMB, 2, 1),
+                (FRAME, 8, 1),
+                (TAMB, 10, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Assault => &[
+                (FRAME, 0, 2),
+                (TAMB, 2, 1),
+                (FRAME, 4, 1),
+                (TAMB, 6, 1),
+                (FRAME, 8, 2),
+                (FRAME, 10, 1),
+                (FRAME, 12, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Chase => &[
+                (FRAME, 0, 2),
+                (FRAME, 4, 1),
+                (FRAME, 8, 2),
+                (TAMB, 10, 1),
+                (FRAME, 12, 1),
+            ],
+            Scene::Festival => &[
+                (FRAME, 0, 2),
+                (TAMB, 2, 1),
+                (TAMB, 6, 1),
+                (FRAME, 8, 2),
+                (TAMB, 10, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Reunion => &[(FRAME, 0, 2), (TAMB, 6, 1), (TAMB, 12, 1)],
+            Scene::Dawn => &[(TAMB, 8, 1)],
+            _ => &[],
+        },
+        AdventureStyle::Dark => match scene {
+            Scene::Town | Scene::Festival | Scene::Reunion => &[(FRAME, 0, 2), (TAMB, 12, 1)],
+            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Chase => {
+                &[(FRAME, 0, 2), (FRAME, 6, 1), (FRAME, 12, 1), (TAMB, 14, 1)]
+            }
+            Scene::Assault => &[
+                (FRAME, 0, 2),
+                (FRAME, 6, 1),
+                (FRAME, 8, 1),
+                (FRAME, 12, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Dungeon if phrase >= 2 => &[(FRAME, 0, 1)],
+            Scene::Victory if phrase < 4 => &[(FRAME, 0, 2), (FRAME, 12, 1)],
+            Scene::Dawn => &[(TAMB, 8, 1)],
+            _ => &[],
+        },
+        AdventureStyle::Orchestral => match scene {
+            Scene::Camp if phrase >= 2 => &[(FRAME, 0, 1), (TAMB, 12, 1)],
+            Scene::Explore => &[(FRAME, 0, 2), (TAMB, 8, 1)],
+            Scene::Town | Scene::Victory | Scene::Festival | Scene::Reunion => {
+                &[(FRAME, 0, 2), (TAMB, 4, 1), (FRAME, 8, 1), (TAMB, 12, 1)]
+            }
+            Scene::Combat | Scene::Boss | Scene::Skirmish | Scene::Chase => &[
+                (FRAME, 0, 2),
+                (TAMB, 4, 1),
+                (FRAME, 6, 1),
+                (FRAME, 8, 2),
+                (TAMB, 10, 1),
+                (FRAME, 12, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Assault => &[
+                (FRAME, 0, 2),
+                (TAMB, 2, 1),
+                (TAMB, 4, 1),
+                (FRAME, 6, 1),
+                (FRAME, 8, 2),
+                (TAMB, 10, 1),
+                (FRAME, 12, 1),
+                (TAMB, 14, 1),
+            ],
+            Scene::Dawn => &[(TAMB, 8, 1)],
+            Scene::Sanctuary if phrase == 2 => &[(TAMB, 8, 1)],
+            _ => &[],
+        },
+    }
+}
+
+/// A phrase's last bar: calm scenes breathe; walking scenes turn the bar
+/// around; driving scenes roll into the next phrase.
+fn phrase_fill(pace: Pace) -> &'static [Hit] {
+    match pace {
+        Pace::Calm => &[],
+        Pace::Walking => &[(FRAME, 0, 2), (FRAME, 8, 1), (TAMB, 12, 1), (TAMB, 14, 1)],
+        Pace::Driving => &[
+            (FRAME, 0, 2),
+            (FRAME, 4, 1),
+            (FRAME, 8, 1),
+            (FRAME, 10, 1),
+            (FRAME, 12, 1),
+            (FRAME, 13, 1),
+            (FRAME, 14, 2),
+            (FRAME, 15, 2),
+        ],
+    }
+}
+
+fn add_percussion(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan]) {
+    let base = 0.2 + section.energy * 0.15 + section.traits.danger * 0.08;
+    let ghost_chance = 0.04 + section.traits.motion * 0.12 + section.traits.danger * 0.14;
+    for phrase in phrases {
+        let pattern = groove(
+            section.style,
+            section.scene(),
+            phrase.index,
+            section.traits.motion,
+        );
+        if pattern.is_empty() {
+            continue;
+        }
+        for local_bar in 0..PHRASE_BARS {
+            let bar_start = phrase.start + local_bar * section.bar;
+            let bar_index = bar_start / section.bar;
+            let last = local_bar == PHRASE_BARS - 1;
+            if last && section.pace == Pace::Calm && phrase.index > 0 {
+                continue;
+            }
+            let hits = if last && phrase.index > 0 {
+                phrase_fill(section.pace)
+            } else {
+                pattern
+            };
+            let crescendo = last && section.pace == Pace::Driving;
+            for &(voice, position, accent) in hits {
+                let frame = voice == FRAME;
+                let ramp = if crescendo {
+                    0.8 + f64::from(position) / 16.0 * 0.3
+                } else {
+                    1.0
+                };
+                let weight = if accent == 2 { 1.0 } else { 0.85 };
+                sink.hit(
+                    bar_start + position * section.sixteenth,
+                    if frame {
+                        section.sixteenth * 2
+                    } else {
+                        section.sixteenth
+                    },
+                    (base + if frame { 0.035 } else { 0.0 }) * weight * ramp,
+                    voice,
+                );
+            }
+            if section.pace == Pace::Calm || last {
+                continue;
+            }
+            // Ghost strokes on the empty eighths: more with motion and danger.
+            for position in (0..16).step_by(2) {
+                if hits.iter().any(|&(_, p, _)| p == position) {
+                    continue;
+                }
+                if section.chance("ghost", bar_index, position) < ghost_chance {
+                    sink.hit(
+                        bar_start + position * section.sixteenth,
+                        section.sixteenth,
+                        base * 0.5,
+                        TAMB,
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Orchestral timpani on the tonic and dominant: downbeats and rolls in the
+/// fights, arrivals in the heroic scenes, a distant stroke in the dungeon,
+/// and a phrase-opening stroke anywhere once danger runs high.
+fn add_timpani(sink: &mut Sink, section: &Section, phrases: &[PhrasePlan], chords: &[ChordSpan]) {
+    if section.style != AdventureStyle::Orchestral {
+        return;
+    }
+    let tonic = section.place(0, 45, 38, 52);
+    let dominant = section.place(4, tonic - 5, 38, 52);
+    let tuned = |chord: Chord| {
+        if chord.contains(0) {
+            Some(tonic)
+        } else if chord.contains(4) {
+            Some(dominant)
+        } else {
+            None
+        }
+    };
+    let base = 0.2 + section.energy * 0.2 + section.traits.danger * 0.1;
+    let stroke = section.sixteenth * 6;
+    let scene = section.scene();
+    let count = phrases.len() as u32;
+    for phrase in phrases {
+        let roll_in = phrase.index + 1 < count;
+        match section.pace {
+            Pace::Driving => {
+                for local_bar in 0..PHRASE_BARS {
+                    if scene != Scene::Boss && scene != Scene::Assault && local_bar % 2 == 1 {
+                        continue;
+                    }
+                    let at = phrase.start + local_bar * section.bar;
+                    if let Some(pitch) = chord_at(chords, at).and_then(tuned) {
+                        sink.note("timpani", at, stroke, base, pitch, "timpani", false);
+                    }
+                }
+                if roll_in {
+                    let bar_start = phrase.start + 3 * section.bar;
+                    for step in 0..4u32 {
+                        let at = bar_start + (12 + step) * section.sixteenth;
+                        let swell = 0.6 + f64::from(step) * 0.12;
+                        sink.note(
+                            "timpani",
+                            at,
+                            section.sixteenth,
+                            base * swell,
+                            dominant,
+                            "timpani",
+                            false,
+                        );
+                    }
+                }
+            }
+            Pace::Walking if matches!(scene, Scene::Victory | Scene::Festival | Scene::Explore) => {
+                let at = phrase.start + 3 * section.bar;
+                if let Some(pitch) = chord_at(chords, at).and_then(tuned) {
+                    sink.note("timpani", at, stroke, base * 0.9, pitch, "timpani", false);
+                }
+            }
+            _ if scene == Scene::Dungeon => {
+                sink.note(
+                    "timpani",
+                    phrase.start,
+                    stroke,
+                    base * 0.55,
+                    tonic,
+                    "timpani",
+                    false,
+                );
+            }
+            _ if section.chance("timpani-danger", phrase.index, 0)
+                < (section.traits.danger - 0.5) * 1.2 =>
+            {
+                sink.note(
+                    "timpani",
+                    phrase.start,
+                    stroke,
+                    base * 0.7,
+                    tonic,
+                    "timpani",
+                    false,
+                );
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1613,7 +1824,11 @@ mod tests {
             (Scene::Dawn, AdventurePhaseRole::Break, 36),
         ] {
             assert_eq!(adventure_phase_role(scene), role, "role for {scene:?}");
-            assert_eq!(adventure_phase_energy(scene), energy, "energy for {scene:?}");
+            assert_eq!(
+                adventure_phase_energy(scene),
+                energy,
+                "energy for {scene:?}"
+            );
         }
     }
 

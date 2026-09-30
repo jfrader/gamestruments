@@ -1,6 +1,6 @@
 //! The Adventure arrangement selector: the default eight-section output, the
 //! all-phases tour, and the seeded path that adds the shared development arc,
-//! seam gestures with shared tonic pitch class, trait bias, and register
+//! seam gestures with shared tonic pitch class, trait tempo, and register
 //! ceiling.
 
 use crate::development::{
@@ -66,7 +66,7 @@ pub fn generate_adventure_arrangement(
 /// Racing's pool + composer. Role/energy metadata feeds the seeded composer;
 /// the seeded surface then applies: development arc (layers enter/leave over
 /// blocks, pedal continuous), seam gestures (deterministic per seed/pair with
-/// shared tonic pc at joins via Adventure's tonic/mode), XOR-neutral trait bias,
+/// shared tonic pc at joins via Adventure's tonic/mode), a trait tempo widen,
 /// and register ceiling (folds highs, default path pitches untouched).
 fn generate_seeded(input: &AdventureInput) -> Result<PortableScore, String> {
     let mut score = generate_adventure(input)?;
@@ -103,7 +103,6 @@ fn generate_seeded(input: &AdventureInput) -> Result<PortableScore, String> {
     }
     apply_adventure_transition_pass(&mut score, input.style, tonic, form_seed);
     for section in &mut score.sections {
-        apply_adventure_trait_response(section, bar, tonic, &traits);
         anchor_adventure_edges(section, tonic, bar);
         apply_adventure_register_ceiling(section, ceiling);
     }
@@ -190,13 +189,11 @@ fn retime_section(section: &mut PortableSection, bars: u32, bar_ticks: u32) {
     section.length_ticks = target;
 }
 
-/// The continuous magnitude response of the four Adventure traits (0..1), used
-/// by the seeded path. Each trait deviates from the neutral 0.5; the
-/// deviation drives concrete parameters so a knob move changes magnitude, never
-/// a branch.
+/// The seeded path's tempo response to the traits (0..1). Each trait deviates
+/// from the neutral 0.5 and widens the tempo continuously; every other trait
+/// response is composed into the sections by the generator itself.
 #[derive(Clone, Copy)]
 struct AdventureTraits {
-    wonder: f64,
     danger: f64,
     mystery: f64,
     motion: f64,
@@ -205,15 +202,10 @@ struct AdventureTraits {
 impl AdventureTraits {
     fn from_input(input: &AdventureInput) -> Self {
         Self {
-            wonder: input.wonder.clamp(0.0, 1.0),
             danger: input.danger.clamp(0.0, 1.0),
             mystery: input.mystery.clamp(0.0, 1.0),
             motion: input.motion.clamp(0.0, 1.0),
         }
-    }
-
-    fn wonder_dev(self) -> f64 {
-        self.wonder - 0.5
     }
 
     fn danger_dev(self) -> f64 {
@@ -525,177 +517,6 @@ fn anchor_adventure_edges(section: &mut PortableSection, tonic: i32, bar: u32) {
 /// that default (non-biased) generation never moves a pitch.
 fn apply_adventure_register_ceiling(section: &mut PortableSection, ceiling: u8) {
     fold_register_ceiling(section, ceiling);
-}
-
-/// The continuous trait response for a seeded Adventure section, applied on
-/// top of the already-generated material (motion and wonder also answer in the
-/// base generator: tempo/onsets/percussion and melody register/harmonic
-/// brightness). Each effect here grows with its knob and folds back to identity
-/// at the neutral 0.5.
-///
-/// - `danger` adds percussion density, darkens the register and pushes the bass;
-/// - `mystery` adds a pedal drone and bell accents, thins the harmony voices and
-///   pulls the tempo down (tempo lives on the score in [`generate_seeded`]);
-/// - `wonder` brightens the harmony layer.
-fn apply_adventure_trait_response(
-    section: &mut PortableSection,
-    bar: u32,
-    tonic: i32,
-    traits: &AdventureTraits,
-) {
-    if bar == 0 {
-        return;
-    }
-    let pulse = bar / 8;
-    let id = section.id.clone();
-    let mut serial = 0usize;
-
-    // wonder → harmonic brightness: the harmony layer sings brighter.
-    let wonder_scale = (1.0 + traits.wonder_dev() * 0.6).clamp(0.5, 1.6);
-    // danger → bass velocity.
-    let danger_bass = (1.0 + traits.danger_dev() * 0.6).clamp(0.5, 1.6);
-
-    for event in &mut section.events {
-        let MusicEvent::Note {
-            lane, velocity, pitch, ..
-        } = event
-        else {
-            continue;
-        };
-        if lane == "harmony" || lane == "harp" {
-            *velocity = (*velocity * wonder_scale).clamp(0.04, 0.95);
-        }
-        if lane == "bass" {
-            *velocity = (*velocity * danger_bass).clamp(0.04, 0.95);
-        }
-        // danger → darker register: at high danger the melody and accompaniment
-        // fold down an octave (pitch class, and hence the mode, preserved).
-        if traits.danger > 0.66 && matches!(lane.as_str(), "melody" | "harmony" | "harp") {
-            let folded = i32::from(*pitch) - 12;
-            if folded >= 36 {
-                *pitch = folded as u8;
-            }
-        }
-    }
-
-    // danger → percussion density: frame-drums and tambourines fill empty
-    // eighths, the count growing with the knob.
-    let danger_perc = (traits.danger * 6.0).round() as usize;
-    if danger_perc > 0 {
-        let mut placed = 0usize;
-        for start in (0..section.length_ticks).step_by(pulse as usize) {
-            if start + pulse / 2 > section.length_ticks {
-                continue;
-            }
-            if section.events.iter().any(|e| e.start_tick() == start) {
-                continue;
-            }
-            let voice = if placed.is_multiple_of(2) { "frame-drum" } else { "tambourine" };
-            section.events.push(MusicEvent::Percussion {
-                id: format!("{id}:trait:perc:{serial}"),
-                section: id.clone(),
-                lane: "percussion".to_string(),
-                start_tick: start,
-                duration_ticks: pulse / 2,
-                velocity: 0.18,
-                voice: voice.to_string(),
-            });
-            serial += 1;
-            placed += 1;
-            if placed >= danger_perc {
-                break;
-            }
-        }
-    }
-
-    // mystery → pedal drone presence: a low held drone, more present as the
-    // knob climbs.
-    let mystery_pedal = (traits.mystery * 4.0).round() as usize;
-    if mystery_pedal > 0 {
-        let pedal_pitch = (48 + tonic).clamp(0, 127) as u8;
-        let mut placed = 0usize;
-        for start in (bar..section.length_ticks).step_by(bar as usize) {
-            if start + bar > section.length_ticks {
-                continue;
-            }
-            section.events.push(MusicEvent::Note {
-                id: format!("{id}:trait:pedal:{serial}"),
-                section: id.clone(),
-                lane: "pedal".to_string(),
-                start_tick: start,
-                duration_ticks: bar,
-                velocity: 0.1,
-                pitch: pedal_pitch,
-                voice: "vielle".to_string(),
-                role: None,
-            });
-            serial += 1;
-            placed += 1;
-            if placed >= mystery_pedal {
-                break;
-            }
-        }
-    }
-
-    // mystery → bell accents: a bright sparkle, more present as the knob climbs.
-    let mystery_bell = (traits.mystery * 3.0).round() as usize;
-    if mystery_bell > 0 {
-        let bell_pitch = (72 + tonic).clamp(0, 127) as u8;
-        let mut placed = 0usize;
-        for start in (bar / 2..section.length_ticks).step_by(bar as usize) {
-            if start + pulse > section.length_ticks {
-                continue;
-            }
-            section.events.push(MusicEvent::Note {
-                id: format!("{id}:trait:bell:{serial}"),
-                section: id.clone(),
-                lane: "bell".to_string(),
-                start_tick: start,
-                duration_ticks: pulse,
-                velocity: 0.14,
-                pitch: bell_pitch,
-                voice: "bell".to_string(),
-                role: None,
-            });
-            serial += 1;
-            placed += 1;
-            if placed >= mystery_bell {
-                break;
-            }
-        }
-    }
-
-    // mystery → fewer voices: the highest harmony voice drops away as the knob
-    // climbs, so a mysterious section is sparser (never the closing bar).
-    let fewer = (traits.mystery * 4.0).round() as usize;
-    if fewer > 0 {
-        let last_bar = section.length_ticks.saturating_sub(bar);
-        let mut indices: Vec<usize> = section
-            .events
-            .iter()
-            .enumerate()
-            .filter(|(_, e)| {
-                matches!(e, MusicEvent::Note { lane, start_tick, .. }
-                    if lane == "harmony" && *start_tick < last_bar)
-            })
-            .map(|(i, _)| i)
-            .collect();
-        indices.sort_by_key(|&i| {
-            let e = &section.events[i];
-            let pitch = e.pitch().unwrap_or(0);
-            (e.start_tick(), std::cmp::Reverse(pitch))
-        });
-        let remove = indices.into_iter().take(fewer).collect::<Vec<_>>();
-        let mut kept = Vec::with_capacity(section.events.len());
-        for (i, event) in section.events.drain(..).enumerate() {
-            if !remove.contains(&i) {
-                kept.push(event);
-            }
-        }
-        section.events = kept;
-    }
-
-    section.events.sort_by_key(MusicEvent::start_tick);
 }
 
 #[cfg(test)]

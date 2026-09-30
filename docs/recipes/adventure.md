@@ -52,38 +52,73 @@ the `all-phases`/`seeded` tours.
   8–12 steps, always ending on the outro (`victory`), looping from a groove.
   `"composed"` is an alias. The seeded path also re-times sections by role
   (builds/grooves/peaks may stretch one extra 16-bar movement), applies a
-  development arc, seam gestures with a shared tonic pitch class, a continuous
-  trait response, and a register ceiling.
+  development arc, seam gestures with a shared tonic pitch class, and a
+  register ceiling.
 
 With `autoplay = true`, `original`/`all-phases`/`seeded` attach a tour form; the
 native default is `autoplay = false`. The Audio Lab defaults to `seeded`.
 
+## Musical design
+
+Each seed composes one two-bar **quest theme** (`adventure/theme.rs`), chosen
+from many candidate contours for how well it sings: mostly steps, one climax,
+leaps recovered by step. Every section states it in its own way, over the
+scene's mode, so the whole quest is audibly one piece:
+
+| scenes | treatment |
+|---|---|
+| camp, explore, town, festival, reunion, victory | the theme, answered by a continuation to a cadence (Folk and Dark camps open with it on the harp) |
+| sanctuary, dawn (and Orchestral camp and reunion) | augmented: the theme's head at half speed |
+| dungeon | fragmented: the head alone, echoed a step lower across silence |
+| combat, skirmish, chase, assault, boss | diminished: the whole theme in one bar, then sequenced |
+
+Phrases are four bars (antecedent, consequent, development, return, cadence).
+Open phrases arrive on the mode's dominant, closed ones on the tonic, always on
+the last bar's downbeat, with a pickup that steps into the next phrase.
+
+Harmony (`adventure/harmony.rs`) stays diatonic to the scene's mode. Colour
+comes from the mode's own signature chord (Lydian II, Mixolydian bVII, Dorian
+IV, Aeolian bVI, Phrygian bII), from suspended and open-fifth chords, and from
+4–3 suspensions into Dark and Orchestral cadences. Calm scenes change chord
+every two bars, walking scenes every bar, and battles rock between the tonic
+and the signature chord. Strong beats of the melody are chord tones; a note
+that would rub a semitone against the chord only passes through briefly.
+
+Folk town and reunion lilt; Folk festival and victory, and Orchestral festival,
+dance as jigs. Around the melody: a countermelody in thirds and sixths after the
+first statement (recorders in Folk and Orchestral, a vielle in Dark), rolled harp
+chords (Folk) or bowed strings (Dark, Orchestral), a bass that walks into
+distant chords, harp figuration, Dark's open-fifth drone, a string gallop under
+Orchestral battles, horns that double the theme when it returns and carry it in
+the boss fights, and timpani on the tonic and dominant. The harp lets chord
+tones ring until the harmony changes and damps its lines at the next note.
+
 ## Traits
 
 Adventure exposes the four generation traits as `danger` (energy), `mystery`
-(complexity), `wonder` (brightness) and `motion` (syncopation). The base
-generator (`adventure/composition.rs`) and the seeded surface
-(`adventure/arrangement.rs`) both map them:
+(complexity), `wonder` (brightness) and `motion` (syncopation). The generator
+composes them into the music (`adventure/composition.rs`, `harmony.rs`,
+`theme.rs`); each is a continuous magnitude, and every trait-scaled choice uses
+its own keyed draw, so raising a knob only ever adds its effect:
 
-- `wonder` (brightness) — harmony velocity (`0.13 + wonder*0.06`), harp velocity
-  (`0.15 + wonder*0.08`), melody register (`+ wonder*2` semitones) and velocity.
-  On the seeded path it brightens the harmony layer (`1.0 + wonder_dev*0.6`).
-  0 is quiet, low; 1 is bright, high, loud.
-- `danger` (energy) — bass velocity (`+ danger*0.04`) and percussion velocity
-  (`+ danger*0.08`). On the seeded path it adds percussion density (`danger*6`),
-  pushes the bass, and folds melody/harmony/harp down an octave when `> 0.66`,
-  and raises the tempo. 0 is gentle; 1 is driving, dark, percussive.
-- `mystery` (complexity) — tempo (`- mystery*5`). On the seeded path it adds a
-  pedal drone (`mystery*4`), bell accents (`mystery*3`), thins the harmony, and
-  pulls the tempo down further. 0 is fast, full; 1 is slow, drone-heavy, sparse.
+- `wonder` (brightness) — harmony and harp velocity, melody register (up to two
+  semitones), how often the countermelody joins, and bells on phrase arrivals.
+  0 is quiet, low and bare; 1 is bright, high and in two voices.
+- `danger` (energy) — which colour chords a phrase chooses (darker as it rises),
+  bass and percussion velocity, walking basses that break into the driving
+  figure, ghost strokes in the percussion, and Orchestral timpani outside the
+  fights. 0 is gentle; 1 is driving and percussive.
+- `mystery` (complexity) — suspended and open-fifth chords, silences in the
+  phrase continuations (never in the theme), pedal tones, stranger bells, and a
+  slower tempo (`- mystery*5`). 0 is plain and full; 1 is clouded and sparse.
 - `motion` (syncopation) — tempo (`+ motion*20`, base 92 folk / 78 dark / 100
-  orchestral, clamped 70–126), melody onset density (`< 0.3` removes a note,
-  `> 0.78` adds one in folk), and some percussion gating (folk explore drums at
-  `> 0.45`). On the seeded path it widens tempo further. 0 is slow, sparse; 1 is
-  fast, busy.
+  orchestral, clamped 70–126), busier continuation rhythms, folk ornaments,
+  percussion ghost strokes, the Orchestral gallop (below 0.3 it relaxes to an
+  eighth-note pulse), and folk explore drums (from 0.45). 0 is slow and sparse;
+  1 is fast and busy.
 
-The seeded tempo widen is `base + motion_dev*16 + danger_dev*12 - mystery_dev*12`,
-clamped 48–130.
+The seeded path widens the tempo further: `base + motion_dev*16 + danger_dev*12
+- mystery_dev*12`, clamped 48–130.
 
 ## Runtime API
 
@@ -140,9 +175,10 @@ always resolves to `victory`.
 - The composer is deterministic and high-variety: across 250 seeds it produces
   >20 distinct forms, and across 2000 seeds every pool phase (including the six
   added ones) is placed at least once.
-- Styles change the whole ensemble: folk (recorder/vielle leads), dark (bowed
-  vielle, drone-driven, phrygian/aeolian in the dangerous scenes), orchestral
-  (bowed strings always lead). Switch style per region or campaign for a
+- Styles change the whole ensemble: folk (recorder/vielle leads over harp,
+  lilts and jigs), dark (bowed vielle over an open-fifth drone, phrygian/aeolian
+  in the dangerous scenes), orchestral (bowed strings lead, with horns,
+  timpani and a battle gallop). Switch style per region or campaign for a
   different sound without a new seed.
 - To keep one game alive: new level seed per area, sweep `wonder`/`danger` for a
   different brightness/drive, and switch `style` per biome. Generate once at
@@ -193,8 +229,9 @@ finish need explicit calls.
   `reunion`, `dawn`) as `area_phase`: state selection never returns them; use
   `cue_section` or the seeded tour.
 - Treating `quest_complete` as a per-area flag: it always resolves to `victory`.
-- Using traits as on/off: the knobs are continuous; `danger = 1` also folds the
-  whole section down an octave and piles on percussion.
+- Using traits as on/off: the knobs are continuous; `danger = 1` darkens the
+  harmony, drives every walking bass and fills the percussion with ghost
+  strokes.
 - Expecting `set_adventure_state` to change instantly: the switch lands on the
   next bar boundary (sections are 16/32 bars, so it can feel slower than Racing).
 - Cueing every section yourself on a seeded score: the composer's form is the

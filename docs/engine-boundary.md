@@ -117,9 +117,9 @@ Seeded to Original while a new phase (`ignition`, `slipstream`, `redline`, or
 such section.
 
 Audio synthesis / sound stage:
-- The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.
+- The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell/horn/timpani and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.
 - The Rust `Synth` (mono, no room) is the reference for the game engine only.
-  It mirrors the acoustic voices (harp/recorder/vielle/bell plus
+  It mirrors the acoustic voices (harp/recorder/vielle/bell/horn/timpani plus
   frame-drum/tambourine) as acoustic-inspired synthesis, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo

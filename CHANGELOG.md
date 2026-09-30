@@ -5,8 +5,12 @@
 ### Added
 
 - Calling `generate()` on a Godot player that is already playing crossfades the new score over the one still going, for the same two bars a section join uses. The old score is not cut off, and cues during the fade land on the incoming score.
+- `horn` and `timpani` note voices, synthesized in the engine and mirrored in the Audio Lab. Adventure's Orchestral style uses them, and Racing voice overrides accept them.
 
 ### Changed
+
+- Adventure's generator is now `6.0.0` and every Adventure seed sounds different (it keeps its key). Each seed composes one quest theme that every section states in its own way: whole in the safe scenes, augmented in the sanctuary and dawn, fragmented in the dungeon, quickened and sequenced in battle. Phrases arrive on the downbeat and step into the next one. Harmony uses each mode's signature chord, suspensions and open fifths, and changes chord every two bars when calm and every bar when walking, rocking in battle. Strong beats of the melody no longer clash with the chord. Folk dances lilt and jig; a countermelody joins after the first statement; Dark holds an open-fifth drone; Orchestral adds horns, timpani and a string gallop under its battles; percussion accents the downbeat, adds ghost strokes and fills into the next phrase. Traits are composed in rather than layered on the seeded path: `danger` no longer folds the music down an octave, and `mystery` no longer stamps one bell pitch every bar.
+- Harp notes are damped when their written duration ends instead of ringing for three seconds through the next chords, so harp parts stay clean at chord changes and cost less CPU. This changes any Racing score that overrides a voice with `harp`.
 
 - Racing's generator is now `1.11.0`. The garage intro and the Ignition build were re-voiced (GURI-1240): garage's held chord and bass now sound through the bar and the phase gains a light offbeat pulse, and Ignition ramps across its eight bars instead of replaying the garage at reduced level. Grid, Cruise, Attack, Final Lap, Victory, Slipstream, Redline and Cooldown are unchanged. Non-reserved generated takes get new ids; the shipped `tiny-torque-level-004` catalog fixture was regenerated, and the frozen Original-material regression digests were re-baselined for garage alone.
 

@@ -63,7 +63,9 @@ export interface NoteEvent extends EventBase {
     | "harp"
     | "recorder"
     | "vielle"
-    | "bell";
+    | "bell"
+    | "horn"
+    | "timpani";
   role?: "melody";
 }
 

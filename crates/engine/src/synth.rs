@@ -5,6 +5,12 @@ use std::f32::consts::TAU;
 
 const NOTE_TAIL_SECONDS: f32 = 0.16;
 const MIN_GAIN: f32 = 0.0001;
+/// A harpist damps the strings when the harmony moves on: after its written
+/// duration a harp note falls away with this time constant instead of ringing
+/// through the next chord.
+const HARP_DAMPING_SECONDS: f32 = 0.08;
+/// How long a damped harp voice stays alive after its written duration.
+const HARP_DAMPED_TAIL_SECONDS: f32 = 0.45;
 
 /// Baked equal-power pan table, 33 entries for pan steps of 1/16 from -1 to +1.
 /// gL = cos(θ), gR = sin(θ), θ = (pan + 1) * π/4.
@@ -73,6 +79,8 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         VoiceType::Recorder => 0.25,
         VoiceType::Vielle => -0.25,
         VoiceType::Harp => 0.1875,
+        VoiceType::Horn => -0.1875,
+        VoiceType::Timpani => 0.0625,
         // ±0.35
         VoiceType::Pluck => 0.3125,
         VoiceType::Chip => -0.3125,
@@ -103,6 +111,8 @@ enum VoiceType {
     Recorder,
     Vielle,
     Bell,
+    Horn,
+    Timpani,
     FrameDrum,
     Tambourine,
     Bass,
@@ -249,10 +259,11 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Felt
         | VoiceType::Dusk
         | VoiceType::Bell
+        | VoiceType::Timpani
         | VoiceType::FrameDrum
         | VoiceType::Tambourine
         | VoiceType::Chip => 0.82,
-        VoiceType::Recorder | VoiceType::Vielle => 0.84,
+        VoiceType::Recorder | VoiceType::Vielle | VoiceType::Horn => 0.84,
         VoiceType::Kick
         | VoiceType::Snare
         | VoiceType::Hat
@@ -325,20 +336,30 @@ impl Synth {
                 "recorder" => VoiceType::Recorder,
                 "vielle" => VoiceType::Vielle,
                 "bell" => VoiceType::Bell,
+                "horn" => VoiceType::Horn,
+                "timpani" => VoiceType::Timpani,
                 _ => VoiceType::Warm,
             };
             let life = match vtype {
-                VoiceType::Harp => harp_life(base_freq),
+                VoiceType::Harp => {
+                    harp_life(base_freq).min(duration as f32 + HARP_DAMPED_TAIL_SECONDS)
+                }
                 VoiceType::Bell => bell_life(base_freq),
+                VoiceType::Timpani => timpani_life(base_freq),
+                VoiceType::Horn => duration as f32 + 0.32,
                 VoiceType::Felt => duration as f32 + 0.65,
                 VoiceType::Dusk => duration as f32 + 1.25,
                 VoiceType::Recorder => duration as f32 + 0.3,
-                VoiceType::Vielle => duration as f32 + 0.55,
+                VoiceType::Vielle => duration as f32 + vielle_release(duration as f32) + 0.1,
                 _ => duration as f32 + NOTE_TAIL_SECONDS + 0.05,
             };
             let noise_state = if matches!(
                 vtype,
-                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle
+                VoiceType::Harp
+                    | VoiceType::Recorder
+                    | VoiceType::Vielle
+                    | VoiceType::Horn
+                    | VoiceType::Timpani
             ) {
                 match event {
                     MusicEvent::Note { id, .. } => deterministic_noise_state(id),
@@ -740,8 +761,14 @@ impl Synth {
                 } else {
                     0.0
                 };
+                let damping = if age > v.duration {
+                    natural_decay(age - v.duration, HARP_DAMPING_SECONDS)
+                } else {
+                    1.0
+                };
                 (string + excitation)
                     * attack
+                    * damping
                     * 0.105
                     * v.velocity_gain
                     * if is_mel { 1.08 } else { 1.0 }
@@ -801,8 +828,10 @@ impl Synth {
                 );
                 let sig = tone + bow * 0.025;
                 let peak = 0.082 * v.velocity_gain * if is_mel { 1.08 } else { 1.0 };
-                let env =
-                    compute_envelope_with_cap(age, v.duration, peak, 0.72, 0.085, 0.28, 0.45, 0.45);
+                let release = vielle_release(v.duration);
+                let env = compute_envelope_with_cap(
+                    age, v.duration, peak, 0.72, 0.085, 0.28, release, release,
+                );
                 sig * env
             }
             VoiceType::Bell => {
@@ -823,6 +852,68 @@ impl Synth {
                     * 0.09
                     * v.velocity_gain
                     * if is_mel { 1.06 } else { 1.0 }
+            }
+            VoiceType::Horn => {
+                // Additive brass: the upper partials bloom in as the horn
+                // speaks, louder notes bloom brighter, and the tone settles
+                // under a late, shallow vibrato.
+                let vibrato_ramp = ((age - 0.35) / 0.5).clamp(0.0, 1.0);
+                let vibrato_cents = dmath::sin(v.vib_phase) * 3.0 * vibrato_ramp;
+                v.vib_phase += TAU * (4.8 + (v.pitch % 3) as f32 * 0.05) * dt;
+                let frequency = base * dmath::powf(2.0, vibrato_cents / 1200.0);
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let second = generate_osc(v.phase2, Wave::Sine);
+                let third = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 2.0 * dt;
+                v.phase3 += TAU * frequency * 3.0 * dt;
+
+                let bloom = (age / 0.09).clamp(0.0, 1.0);
+                let brightness =
+                    bloom * (0.55 + 0.45 * natural_decay(age, 0.6)) * (0.6 + 0.4 * vel);
+                let tone = fundamental * 0.78
+                    + second * (0.3 + 0.24 * brightness)
+                    + third * (0.08 + 0.2 * brightness);
+                let breath_sample = noise(&mut v.noise_state);
+                let breath = v.filt.process(
+                    breath_sample,
+                    (base * 3.0).clamp(500.0, 1800.0),
+                    0.6,
+                    sr,
+                    FilterMode::Bandpass,
+                );
+                let sig = tone + breath * 0.012 * (1.0 - bloom * 0.6);
+                let peak = 0.078 * v.velocity_gain;
+                let env =
+                    compute_envelope_with_cap(age, v.duration, peak, 0.8, 0.06, 0.22, 0.3, 0.3);
+                sig * env
+            }
+            VoiceType::Timpani => {
+                // A tuned drum: the head settles onto pitch after the strike,
+                // with the inharmonic 1.5 and 2.0 modes of a kettle and a
+                // felt-mallet thump that dies within a few tens of milliseconds.
+                let lower_note = (110.0 / base).clamp(0.4, 1.0);
+                let frequency = compute_freq(base, age, 0.012);
+                let body = generate_osc(v.phase1, Wave::Sine);
+                let fifth_mode = generate_osc(v.phase2, Wave::Sine);
+                let octave_mode = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 1.505 * dt;
+                v.phase3 += TAU * frequency * 1.99 * dt;
+                let modes = body * natural_decay(age, 0.5 + lower_note * 0.45)
+                    + fifth_mode * 0.4 * natural_decay(age, 0.3 + lower_note * 0.15)
+                    + octave_mode * 0.22 * natural_decay(age, 0.18);
+                let thump = if age < 0.03 {
+                    let sample = noise(&mut v.noise_state);
+                    v.filt
+                        .process(sample, 420.0 + base * 2.0, 0.8, sr, FilterMode::Bandpass)
+                        * natural_decay(age, 0.008)
+                        * 0.3
+                } else {
+                    0.0
+                };
+                let strike = (age / 0.002).clamp(0.0, 1.0);
+                (modes + thump) * strike * 0.2 * v.velocity_gain
             }
             VoiceType::Bass => {
                 let f_body = compute_freq(base, age, 0.004);
@@ -1305,6 +1396,17 @@ fn bell_life(frequency: f32) -> f32 {
     3.4 + lower_note * 1.4
 }
 
+/// A bowed note's release: long notes ring off for 0.45 s, short bow strokes
+/// (a spiccato ostinato) stop in proportion to their length.
+fn vielle_release(duration: f32) -> f32 {
+    (0.1 + duration * 1.2).min(0.45)
+}
+
+fn timpani_life(frequency: f32) -> f32 {
+    let lower_note = (110.0 / frequency).clamp(0.4, 1.0);
+    2.0 + lower_note * 1.2
+}
+
 fn rattle_burst(age: f32, start: f32, duration: f32) -> f32 {
     if age < start || age >= start + duration {
         return 0.0;
@@ -1581,7 +1683,7 @@ mod tests {
         );
         let notes = [
             "warm", "glass", "pulse", "pluck", "felt", "dusk", "harp", "recorder", "vielle",
-            "bell", "bass", "epiano", "organ", "supersaw", "triangle", "chip",
+            "bell", "horn", "timpani", "bass", "epiano", "organ", "supersaw", "triangle", "chip",
         ];
         let percussion = [
             "kick",
@@ -1700,7 +1802,7 @@ mod tests {
 
     #[test]
     fn adventure_voices_render_audible_samples_with_finite_output() {
-        for voice in ["harp", "recorder", "vielle", "bell"] {
+        for voice in ["harp", "recorder", "vielle", "bell", "horn", "timpani"] {
             let buffer = render_note(voice, 960, 48000);
             let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
             let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
