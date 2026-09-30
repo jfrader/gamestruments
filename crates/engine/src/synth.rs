@@ -5,6 +5,10 @@ use std::f32::consts::TAU;
 
 const NOTE_TAIL_SECONDS: f32 = 0.16;
 const MIN_GAIN: f32 = 0.0001;
+/// Sidechain pumping: how deep a pumped voice ducks when a club kick lands,
+/// and how fast it recovers.
+const PUMP_DEPTH: f32 = 0.7;
+const PUMP_RECOVERY_SECONDS: f32 = 0.11;
 
 /// Baked equal-power pan table, 33 entries for pan steps of 1/16 from -1 to +1.
 /// gL = cos(θ), gR = sin(θ), θ = (pan + 1) * π/4.
@@ -73,6 +77,12 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         VoiceType::Recorder => 0.25,
         VoiceType::Vielle => -0.25,
         VoiceType::Harp => 0.1875,
+        VoiceType::Stab => 0.125,
+        VoiceType::TrancePad => 0.0,
+        VoiceType::TranceLead => -0.125,
+        VoiceType::TechnoKick => 0.0,
+        VoiceType::Clap => 0.0625,
+        VoiceType::OpenHat => 0.5,
         VoiceType::Brass => -0.1875,
         VoiceType::Cello => -0.125,
         VoiceType::Marimba => 0.25,
@@ -111,6 +121,12 @@ enum VoiceType {
     Recorder,
     Vielle,
     Bell,
+    Stab,
+    TrancePad,
+    TranceLead,
+    TechnoKick,
+    Clap,
+    OpenHat,
     Brass,
     Cello,
     Marimba,
@@ -251,6 +267,8 @@ struct Voice {
     // mono path and non-twin voices only ever touch `filt` (state kept in sync).
     filt_l: Biquad,
     filt_r: Biquad,
+    /// Ducks under every club kick (sidechain pumping).
+    pumped: bool,
 }
 
 fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
@@ -266,6 +284,11 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Dusk
         | VoiceType::Bell
         | VoiceType::Marimba
+        | VoiceType::Stab
+        | VoiceType::TrancePad
+        | VoiceType::TranceLead
+        | VoiceType::Clap
+        | VoiceType::OpenHat
         | VoiceType::WarDrum
         | VoiceType::Woodblock
         | VoiceType::Anvil
@@ -279,6 +302,7 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Snare
         | VoiceType::Hat
         | VoiceType::Tom
+        | VoiceType::TechnoKick
         | VoiceType::ReverseCymbal
         | VoiceType::AirImpact => return 1.0,
     };
@@ -304,6 +328,8 @@ pub struct Synth {
     sample_rate: f32,
     phase: f32,
     voices: Vec<Voice>,
+    /// Start times of the club kicks that pump the pumped voices, ascending.
+    kicks: Vec<f32>,
 }
 
 impl Synth {
@@ -312,6 +338,21 @@ impl Synth {
             sample_rate,
             phase: 0.0,
             voices: Vec::new(),
+            kicks: Vec::new(),
+        }
+    }
+
+    /// The pumped voices' gain at time `t`: a dip at the latest club kick that
+    /// recovers over [`PUMP_RECOVERY_SECONDS`]. Unity when no kick has landed.
+    fn pump_gain(&mut self, t: f32) -> f32 {
+        while self.kicks.len() > 1 && self.kicks[1] <= t {
+            self.kicks.remove(0);
+        }
+        match self.kicks.first() {
+            Some(&kick) if kick <= t => {
+                1.0 - PUMP_DEPTH * natural_decay(t - kick, PUMP_RECOVERY_SECONDS)
+            }
+            _ => 1.0,
         }
     }
 
@@ -351,6 +392,9 @@ impl Synth {
                 "cello" => VoiceType::Cello,
                 "marimba" => VoiceType::Marimba,
                 "saw-bass" => VoiceType::SawBass,
+                "stab" => VoiceType::Stab,
+                "trance-pad" => VoiceType::TrancePad,
+                "trance-lead" => VoiceType::TranceLead,
                 _ => VoiceType::Warm,
             };
             let life = match vtype {
@@ -360,6 +404,9 @@ impl Synth {
                 VoiceType::Brass => duration as f32 + 0.3,
                 VoiceType::Cello => duration as f32 + 0.4,
                 VoiceType::SawBass => duration as f32 + 0.12,
+                VoiceType::Stab => duration as f32 + 0.15,
+                VoiceType::TrancePad => duration as f32 + 0.62,
+                VoiceType::TranceLead => duration as f32 + 0.17,
                 VoiceType::Felt => duration as f32 + 0.65,
                 VoiceType::Dusk => duration as f32 + 1.25,
                 VoiceType::Recorder => duration as f32 + 0.3,
@@ -403,6 +450,10 @@ impl Synth {
                 pan: 0.0,
                 filt_l: Biquad::new(),
                 filt_r: Biquad::new(),
+                pumped: matches!(
+                    vtype,
+                    VoiceType::SawBass | VoiceType::Stab | VoiceType::TrancePad | VoiceType::TranceLead
+                ),
             };
             voice.pan = voice_type_pan(voice.voice_type);
             if matches!(vtype, VoiceType::Felt | VoiceType::Dusk) {
@@ -431,6 +482,9 @@ impl Synth {
             "woodblock" => VoiceType::Woodblock,
             "anvil" => VoiceType::Anvil,
             "hand-drum" => VoiceType::HandDrum,
+            "techno-kick" => VoiceType::TechnoKick,
+            "clap" => VoiceType::Clap,
+            "open-hat" => VoiceType::OpenHat,
             _ => VoiceType::Kick,
         };
         let mut base_freq = 80.0f32;
@@ -445,6 +499,9 @@ impl Synth {
             VoiceType::Woodblock => 0.25,
             VoiceType::Anvil => 1.4,
             VoiceType::HandDrum => 0.5,
+            VoiceType::TechnoKick => 0.6,
+            VoiceType::Clap => 0.35,
+            VoiceType::OpenHat => 0.4,
             VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
             _ => 0.12,
         };
@@ -458,6 +515,9 @@ impl Synth {
                 | VoiceType::Woodblock
                 | VoiceType::Anvil
                 | VoiceType::HandDrum
+                | VoiceType::TechnoKick
+                | VoiceType::Clap
+                | VoiceType::OpenHat
         ) {
             if let MusicEvent::Percussion { id, .. } = event {
                 let u = deterministic_unit(id);
@@ -469,6 +529,7 @@ impl Synth {
                     VoiceType::Woodblock => 820.0 + u * 140.0,
                     VoiceType::Anvil => 230.0 + u * 60.0,
                     VoiceType::HandDrum => 180.0 + u * 60.0,
+                    VoiceType::TechnoKick | VoiceType::Clap | VoiceType::OpenHat => u,
                     _ => unreachable!(),
                 };
                 perc_id = Some(id.clone());
@@ -536,8 +597,14 @@ impl Synth {
             pan: 0.0,
             filt_l: Biquad::new(),
             filt_r: Biquad::new(),
+            pumped: false,
         };
         perc.pan = voice_type_pan(perc.voice_type);
+        if vtype == VoiceType::TechnoKick {
+            let at = perc.start_phase;
+            let index = self.kicks.partition_point(|kick| *kick <= at);
+            self.kicks.insert(index, at);
+        }
         self.voices.push(perc);
     }
 
@@ -547,6 +614,7 @@ impl Synth {
         let mut i = 0;
         while i < buffer.len() {
             let t = self.phase;
+            let pump = self.pump_gain(t);
             let mut mix = 0.0f32;
             let mut j = 0;
             while j < self.voices.len() {
@@ -560,7 +628,7 @@ impl Synth {
                     continue;
                 }
                 let contrib = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt);
-                mix += contrib;
+                mix += if self.voices[j].pumped { contrib * pump } else { contrib };
                 j += 1;
             }
             buffer[i] = mix.clamp(-4.0, 4.0);
@@ -580,6 +648,7 @@ impl Synth {
         let mut i = 0;
         while i < left.len() {
             let t = self.phase;
+            let pump = self.pump_gain(t);
             let mut mix_l = 0.0f32;
             let mut mix_r = 0.0f32;
             let mut j = 0;
@@ -604,8 +673,9 @@ impl Synth {
                     (c, c)
                 };
                 let (gl, gr) = pan_gains(vpan);
-                mix_l += cl * gl;
-                mix_r += cr * gr;
+                let gain = if self.voices[j].pumped { pump } else { 1.0 };
+                mix_l += cl * gl * gain;
+                mix_r += cr * gr * gain;
                 j += 1;
             }
             left[i] = mix_l.clamp(-4.0, 4.0);
@@ -1004,6 +1074,74 @@ impl Synth {
                     * natural_decay(age, 0.03)
                     * vel;
                 (body * natural_decay(age, 0.16) + slap * 0.6) * (age / 0.001).clamp(0.0, 1.0) * 0.22 * v.velocity_gain
+            }
+            VoiceType::Stab => {
+                // An organ-style house stab: four bright partials, gone in a beat.
+                let partials = [
+                    (generate_osc(v.phase1, Wave::Sine), 1.0),
+                    (generate_osc(v.phase2, Wave::Sine), 0.5),
+                    (generate_osc(v.phase3, Wave::Sine), 0.35),
+                    (generate_osc(v.trem_phase, Wave::Sine), 0.2),
+                ];
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 2.0 * dt;
+                v.phase3 += TAU * base * 3.0 * dt;
+                v.trem_phase += TAU * base * 4.0 * dt;
+                let tone: f32 = partials.iter().map(|(wave, gain)| wave * gain).sum();
+                let env = compute_envelope_with_cap(age, v.duration, 0.09 * v.velocity_gain, 0.25, 0.002, 0.22, 0.12, 0.12);
+                tone * env
+            }
+            VoiceType::TrancePad => {
+                // Three detuned saws under a soft filter, swelling in slowly.
+                let spread = [1.0f32, dmath::powf(2.0, 12.0 / 1200.0), dmath::powf(2.0, -12.0 / 1200.0)];
+                let saws = generate_osc(v.phase1, Wave::Saw)
+                    + generate_osc(v.phase2, Wave::Saw)
+                    + generate_osc(v.phase3, Wave::Saw);
+                v.phase1 += TAU * base * spread[0] * dt;
+                v.phase2 += TAU * base * spread[1] * dt;
+                v.phase3 += TAU * base * spread[2] * dt;
+                let sig = v.filt.process(saws / 3.0, (2400.0 + vel * 2000.0).min(sr * 0.44), 0.3, sr, FilterMode::Lowpass);
+                let env = compute_envelope_with_cap(age, v.duration, 0.05 * v.velocity_gain, 0.85, 0.35, 0.5, 0.6, 0.6);
+                sig * env
+            }
+            VoiceType::TranceLead => {
+                // A plucked supersaw lead: the filter snaps open and closes again.
+                let saws = generate_osc(v.phase1, Wave::Saw) + generate_osc(v.phase2, Wave::Saw);
+                v.phase1 += TAU * base * dmath::powf(2.0, 8.0 / 1200.0) * dt;
+                v.phase2 += TAU * base * dmath::powf(2.0, -8.0 / 1200.0) * dt;
+                let cutoff = (600.0 + 5000.0 * vel * natural_decay(age, 0.18)).min(sr * 0.44);
+                let sig = v.filt.process(saws * 0.5, cutoff, 0.8, sr, FilterMode::Lowpass);
+                let env = compute_envelope_with_cap(age, v.duration, 0.07 * v.velocity_gain, 0.35, 0.003, 0.25, 0.15, 0.15);
+                sig * env
+            }
+            VoiceType::TechnoKick => {
+                // A long club kick: a sine that sweeps down onto the sub, a
+                // gentle saturation for weight, and a click on top.
+                let pitch = 48.0 + 110.0 * natural_decay(age, 0.045);
+                let body = generate_osc(v.phase1, Wave::Sine);
+                v.phase1 += TAU * pitch * dt;
+                let driven = body * 1.6;
+                let saturated = driven / (1.0 + driven.abs());
+                let click = v.filt.process(noise(&mut v.noise_state), 2000.0, 0.5, sr, FilterMode::Highpass)
+                    * natural_decay(age, 0.003)
+                    * 0.3;
+                (saturated * natural_decay(age, 0.32) + click) * (age / 0.001).clamp(0.0, 1.0) * 0.55 * v.velocity_gain
+            }
+            VoiceType::Clap => {
+                // Three hands a hair apart, then the room's short tail.
+                let bursts = [0.0f32, 0.011, 0.022]
+                    .iter()
+                    .map(|start| if age >= *start && age < start + 0.006 { 1.0 } else { 0.0 })
+                    .sum::<f32>()
+                    .min(1.0);
+                let tail = if age >= 0.022 { natural_decay(age - 0.022, 0.12) } else { 0.0 };
+                let sig = v.filt.process(noise(&mut v.noise_state), 1200.0, 0.7, sr, FilterMode::Bandpass);
+                sig * (bursts + tail * 0.8) * 0.22 * v.velocity_gain
+            }
+            VoiceType::OpenHat => {
+                // An open hi-hat: bright noise that rings for a sixteenth or two.
+                let sig = v.filt.process(noise(&mut v.noise_state), 7000.0, 0.4, sr, FilterMode::Highpass);
+                sig * natural_decay(age, 0.16) * 0.12 * v.velocity_gain
             }
             VoiceType::Bass => {
                 let f_body = compute_freq(base, age, 0.004);
