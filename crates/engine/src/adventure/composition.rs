@@ -11,7 +11,7 @@ use super::harmony::{
 use super::theme::{counter_line, phrase_melody, PhraseMelodyInput, Treatment, THEME_RHYTHMS};
 use super::{AdventureStyle, NormalizedTraits};
 use crate::event_sink::EventSink;
-use crate::melody::{compose_theme, metric_accent, Tone};
+use crate::melody::{compose_theme, fold_into, metric_accent, register_shift, Tone};
 
 const BEATS_PER_BAR: u32 = 4;
 const PHRASE_BARS: u32 = 4;
@@ -663,29 +663,11 @@ fn melody_octave(section: &Section, phrases: &[PhrasePlan]) -> i32 {
         .collect();
     let center = melody_center(section.style, section.scene())
         + (section.traits.wonder * 2.0).round() as i32;
-    let base = |degree: i32| scale_pitch(60 + section.tonic, degree, &section.intervals);
-    let mean =
-        degrees.iter().map(|degree| base(*degree)).sum::<i32>() / degrees.len().max(1) as i32;
-    [-24, -12, 0, 12]
-        .into_iter()
-        .min_by_key(|shift| {
-            let low = degrees.iter().map(|d| base(*d) + shift).min().unwrap_or(0);
-            let high = degrees.iter().map(|d| base(*d) + shift).max().unwrap_or(0);
-            let outside = (MELODY_MIN - low).max(0) + (high - MELODY_MAX).max(0);
-            (outside, (mean + shift - center).abs())
-        })
-        .unwrap()
-}
-
-fn fold_into(pitch: i32, minimum: i32, maximum: i32) -> i32 {
-    let mut pitch = pitch;
-    while pitch > maximum {
-        pitch -= 12;
-    }
-    while pitch < minimum {
-        pitch += 12;
-    }
-    pitch
+    let pitches: Vec<i32> = degrees
+        .iter()
+        .map(|degree| scale_pitch(60 + section.tonic, *degree, &section.intervals))
+        .collect();
+    register_shift(&pitches, center, MELODY_MIN, MELODY_MAX, &[-24, -12, 0, 12])
 }
 
 fn articulation(style: AdventureStyle, scene: Scene) -> f64 {

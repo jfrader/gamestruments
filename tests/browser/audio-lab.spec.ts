@@ -123,6 +123,34 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   expect(runtimeErrors).toEqual([]);
 });
 
+test("switching to Cozy generates a village day and follows the clock", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+
+  await selectRecipe(page, "cozy");
+  await expect(page.locator("#audition-status")).toContainText("Opened Cozy");
+  await expect(page.locator("#score-title")).toContainText(/Acoustic|Lo-fi|Bossa/);
+  await expect(page.locator("#section-list li")).toHaveCount(8);
+  await expect(page.locator("#section-list li").first()).toContainText("First Light Coffee");
+  await expect(page.locator("#runtime-signal")).toContainText("recipe: cozy");
+
+  await page.locator('#phase-buttons button[data-phase="market"]').click();
+  await page.locator("#center-play").click();
+  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+  await expect(page.locator("#mood-name")).toHaveText("Market Day");
+
+  await page.locator("#start-audio").click();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("All phases and Seeded are the only Suspense arrangements and keep the same seed", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -247,7 +275,7 @@ test("Adventure offers exactly two arrangements: All phases and Seeded", async (
 
 test("every recipe exposes exactly the All phases and Seeded arrangements", async ({ page }) => {
   await page.goto("/#lab");
-  for (const recipe of ["racing", "suspense", "adventure"] as const) {
+  for (const recipe of ["racing", "suspense", "adventure", "cozy"] as const) {
     await selectRecipe(page, recipe);
     await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
     const ids = await page.locator("#arrangement-buttons button").evaluateAll(

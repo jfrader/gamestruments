@@ -69,6 +69,7 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+use crate::cozy::{generate_cozy_arrangement, CozyArrangement, CozyInput, CozyStyle};
 use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
@@ -259,6 +260,40 @@ pub unsafe extern "C" fn gamestruments_score_json(
             .and_then(|score| match autoplay_recipe {
                 Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
                 None => Ok(score),
+            })
+        }
+        "cozy" => {
+            let style = match CozyStyle::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            let arrangement = match CozyArrangement::parse(&inp.arrangement) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_cozy_arrangement(
+                &CozyInput {
+                    secret: inp.secret,
+                    seed: inp.seed,
+                    style,
+                    warmth: inp.brightness,
+                    bustle: inp.energy,
+                    jazz: inp.complexity,
+                    swing: inp.syncopation,
+                },
+                arrangement,
+            )
+            .and_then(|score| match arrangement {
+                CozyArrangement::Original => {
+                    apply_automatic_arrangement(score, ArrangementRecipe::Cozy, inp.autoplay)
+                }
+                CozyArrangement::AllPhases | CozyArrangement::Seeded => Ok(score),
             })
         }
         "suspense" => {

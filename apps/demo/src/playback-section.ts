@@ -20,6 +20,17 @@ export const ADVENTURE_SCENE_SECTIONS: Record<string, SectionId> = {
   victory: "victory",
 };
 
+export const COZY_DAY_SECTIONS: Record<string, SectionId> = {
+  dawn: "dawn",
+  morning: "morning",
+  market: "market",
+  noon: "noon",
+  rain: "rain",
+  evening: "evening",
+  festival: "festival",
+  night: "night",
+};
+
 export function playbackSectionOnScore(
   score: PortableScore,
   requested: SectionId | null,

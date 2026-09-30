@@ -5,6 +5,7 @@
 ### Added
 
 - Calling `generate()` on a Godot player that is already playing crossfades the new score over the one still going, for the same two bars a section join uses. The old score is not cut off, and cues during the fade land on the incoming score.
+- Cozy, a fourth recipe for farming, café and village life sims: a day in eight sections (dawn, morning, market, noon, rain, evening, festival, night) in three styles — `acoustic`, `lofi`, `bossa` — with jazz-pop seventh-chord harmony, one seeded theme through the day, and traits read as bustle, jazz, warmth and swing. Godot exposes `recipe = "cozy"` and `set_cozy_state(hour, place, rain)`, and the Audio Lab can audition it.
 - `horn` and `timpani` note voices, synthesized in the engine and mirrored in the Audio Lab. Adventure's Orchestral style uses them, and Racing voice overrides accept them.
 
 ### Changed

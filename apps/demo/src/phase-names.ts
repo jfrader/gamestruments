@@ -19,6 +19,9 @@
  *   Adventure: camp↔Trailhead Camp · explore↔The Old Forest · town↔Hearth and Hall ·
  *              dungeon↔The Deep Halls · combat↔Steel and Shadow · boss↔No Retreat ·
  *              sanctuary↔The Hidden Glade · victory↔Lanterns at Dawn
+ *   Cozy:      dawn↔First Light Coffee · morning↔Morning Chores · market↔Market Day ·
+ *              noon↔Sunny Fields · rain↔Rain on the Roof · evening↔Golden Hour ·
+ *              festival↔Harvest Festival · night↔Lanterns Out
  */
 export const PHASE_NAMES: Readonly<Record<string, string>> = {
   // Racing game signals.
@@ -42,6 +45,15 @@ export const PHASE_NAMES: Readonly<Record<string, string>> = {
   boss: "No Retreat",
   sanctuary: "The Hidden Glade",
   victory: "Lanterns at Dawn",
+  // Cozy times of day and places.
+  dawn: "First Light Coffee",
+  morning: "Morning Chores",
+  market: "Market Day",
+  noon: "Sunny Fields",
+  rain: "Rain on the Roof",
+  evening: "Golden Hour",
+  festival: "Harvest Festival",
+  night: "Lanterns Out",
 };
 
 /** Title-cases an unmapped id so a new phase never renders blank. */

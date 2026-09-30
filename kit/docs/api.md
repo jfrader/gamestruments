@@ -11,26 +11,28 @@ The player ships three recipes. Set `recipe` before calling `generate`; a genera
 | Racing | `"racing"` (default) | `set_race_state` | `fusion`, `neon`, `funk`, `chip` |
 | Suspense (song-form) | `"suspense"` | `set_trace_state` plus form controls | `terminal`, `cipher`, `noir` |
 | Adventure (fantasy quest) | `"adventure"` | `set_adventure_state` | `folk`, `dark`, `orchestral` |
+| Cozy (life sim) | `"cozy"` | `set_cozy_state` | `acoustic`, `lofi`, `bossa` |
 
 ## Exported Properties
 
 Set these before calling `generate`. Later changes apply to the next generation call.
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
-- `recipe: String` — `racing` (default), `suspense`, or `adventure`.
+- `recipe: String` — `racing` (default), `suspense`, `adventure`, or `cozy`.
 - `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (its native default) and `extended` (ten-section race). Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
-- `autoplay: bool` — Racing and Adventure only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, generation is state-driven. The Audio Lab uses `true` for Racing/Adventure. Ignored by Suspense.
+- `autoplay: bool` — Racing, Adventure and Cozy only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, generation is state-driven. The Audio Lab uses `true` for Racing, Adventure and Cozy. Ignored by Suspense.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; unset (or default init) is `funk`. Explicit empty string for Racing fails generation.
   - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
   - Adventure: `folk`, `dark`, or `orchestral`; empty defaults to `folk`.
+  - Cozy: `acoustic`, `lofi`, or `bossa`; empty defaults to `acoustic`.
 - `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices (18): `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`, `horn`, `timpani`. Racing voice overrides use them; Adventure uses its own acoustic timbres internally (synthesized, not samples); Suspense ignores the voice properties and uses per-style timbres.
 - `energy: float` — defaults to `0.62`.
 - `complexity: float` — defaults to `0.60`.
 - `brightness: float` — defaults to `0.52`.
 - `syncopation: float` — defaults to `0.70`.
-  - Pass finite values in `0.0..1.0`. Finite values are clamped to that range during generation. Suspense and Adventure replace non-finite traits with `0.5`; do not rely on non-finite input handling for Racing (may fail to produce a valid score).
-  - Trait meaning depends on the recipe: Racing reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse; Adventure reads them as danger, mystery, wonder, and motion.
+  - Pass finite values in `0.0..1.0`. Finite values are clamped to that range during generation. Suspense, Adventure and Cozy replace non-finite traits with `0.5`; do not rely on non-finite input handling for Racing (may fail to produce a valid score).
+  - Trait meaning depends on the recipe: Racing reads energy, complexity, brightness, and syncopation; Suspense reads the same four properties as tension, heat, mystery, and pulse; Adventure reads them as danger, mystery, wonder, and motion; Cozy reads them as bustle, jazz, warmth, and swing.
 
 ## `generate`
 
@@ -39,7 +41,7 @@ var generated: bool = player.generate("level-001")
 var race_generated: bool = player.generate("circuit-042", "grid")
 ```
 
-Generates and validates the deterministic score for the current property values. The optional second argument starts the score directly on that section; omitting it starts at the recipe's default — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure. When a score is already playing, the replacement waits for the next bar and hands off over the authored crossfade instead of restarting the output. Pass the intended opening section with the seed so the handoff does not need a second `cue_section` transition.
+Generates and validates the deterministic score for the current property values. The optional second argument starts the score directly on that section; omitting it starts at the recipe's default — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure, `dawn` for Cozy. When a score is already playing, the replacement waits for the next bar and hands off over the authored crossfade instead of restarting the output. Pass the intended opening section with the seed so the handoff does not need a second `cue_section` transition.
 
 Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style/arrangement/voice, or invalid generated score. Non-finite traits are not universally rejected at generate time — pass finite 0..1 values. Do not request state changes after a failed generation.
 
@@ -233,12 +235,35 @@ groove and break bands with town/sanctuary, so the seeded arrangement interleave
 them with their matching scenes. State-driven selection is unchanged and still
 returns only the eight original sections above.
 
+## Cozy — `set_cozy_state`
+
+```gdscript
+var accepted: bool = player.set_cozy_state(9.5, "town", 0.0)
+```
+
+- `set_cozy_state(hour: float, place: String, rain: float) -> bool` — requests the section for the village's day. `hour` must be within `0.0..24.0` and `rain` within `0.0..1.0`.
+- `place == "festival"` always resolves to `festival`, then `rain >= 0.5` to `rain`. Otherwise the clock decides: `night` from 21:00 through 5:00, `dawn` after 5:00 until 8:00, `evening` from 17:00 until 21:00. During the day `place == "town"` resolves to `market`; elsewhere `morning` after 8:00 until 11:00 and `noon` after 11:00 until 17:00. A boundary hour belongs to the earlier-listed section.
+
+## Cozy Sections
+
+| Id | Label | Bars | Development |
+|---|---|---|---|
+| `dawn` | First Light Coffee | 16 | sleepy kettle / first birds |
+| `morning` | Morning Chores | 32 | fresh dew / busy hands |
+| `market` | Market Day | 32 | friendly chatter / warm bread |
+| `noon` | Sunny Fields | 32 | long rows / easy work |
+| `rain` | Rain on the Roof | 16 | window drops / warm blanket |
+| `evening` | Golden Hour | 32 | long shadows / porch light |
+| `festival` | Harvest Festival | 32 | paper lanterns / dancing |
+| `night` | Lanterns Out | 16 | crickets / quiet stars |
+
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
 - Suspense scores contain the 27 pool phases above; `all-phases` and `seeded` are the only arrangements.
 - Adventure scores contain the fourteen sections above and default to `camp`; `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`, `assault`, and `dawn` are 16 bars, and `explore`, `town`, `festival`, `reunion`, `combat`, `chase`, and `victory` are 32.
+- Cozy scores contain the eight sections above and default to `dawn`; `dawn`, `rain`, and `night` are 16 bars, the rest 32.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
 - Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 

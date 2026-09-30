@@ -1,6 +1,7 @@
 pub mod adventure;
 pub mod arrangement;
 pub(crate) mod composer;
+pub mod cozy;
 pub(crate) mod development;
 pub(crate) mod dmath;
 pub(crate) mod event_sink;
@@ -30,6 +31,7 @@ pub use adventure::{
     AdventureStyle,
 };
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+pub use cozy::{generate_cozy, generate_cozy_arrangement, CozyArrangement, CozyInput, CozyStyle};
 pub use form_audio::FormAudio;
 pub use handoff::{crossfade_gains, crossfade_sample_count};
 pub use racing::{
@@ -38,7 +40,7 @@ pub use racing::{
 };
 pub use racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 pub use render::{render_wav, render_wav_stereo};
-pub use score::{AdventureState, GameState, PortableScore, TraceState};
+pub use score::{AdventureState, CozyState, GameState, PortableScore, TraceState};
 pub use suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
 pub use suspense_arrangement::{
     generate_suspense_arrangement, generate_suspense_arrangement_intent,

@@ -1,5 +1,5 @@
 use crate::handoff::RAW_MUSICAL_FLOOR;
-use crate::score::{AdventureState, FormOrigin, GameState, PortableScore, TraceState};
+use crate::score::{AdventureState, CozyState, FormOrigin, GameState, PortableScore, TraceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionPlan {
@@ -161,6 +161,15 @@ impl AdaptiveTransport {
         at_tick: u32,
     ) -> Option<TransitionPlan> {
         let target = crate::adventure::select_adventure_section(state);
+        self.request_section_as(target, at_tick, TransitionSource::Explicit, true)
+    }
+
+    pub fn request_cozy_state(
+        &mut self,
+        state: &CozyState,
+        at_tick: u32,
+    ) -> Option<TransitionPlan> {
+        let target = crate::cozy::select_cozy_section(state);
         self.request_section_as(target, at_tick, TransitionSource::Explicit, true)
     }
 

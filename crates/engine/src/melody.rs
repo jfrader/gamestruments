@@ -112,3 +112,38 @@ pub(crate) fn metric_accent(position: u32) -> f64 {
         _ => 0.74,
     }
 }
+
+/// The octave shift (one of `shifts`) that places a line's `pitches` inside
+/// `low..=high` with its mean nearest `center`. One shift serves the whole
+/// line, so phrases join without register jumps.
+pub(crate) fn register_shift(
+    pitches: &[i32],
+    center: i32,
+    low: i32,
+    high: i32,
+    shifts: &[i32],
+) -> i32 {
+    let mean = pitches.iter().sum::<i32>() / pitches.len().max(1) as i32;
+    shifts
+        .iter()
+        .copied()
+        .min_by_key(|shift| {
+            let lowest = pitches.iter().map(|p| p + shift).min().unwrap_or(0);
+            let highest = pitches.iter().map(|p| p + shift).max().unwrap_or(0);
+            let outside = (low - lowest).max(0) + (highest - high).max(0);
+            (outside, (mean + shift - center).abs())
+        })
+        .expect("at least one register shift")
+}
+
+/// `pitch` moved by whole octaves into `low..=high`.
+pub(crate) fn fold_into(pitch: i32, low: i32, high: i32) -> i32 {
+    let mut pitch = pitch;
+    while pitch > high {
+        pitch -= 12;
+    }
+    while pitch < low {
+        pitch += 12;
+    }
+    pitch
+}

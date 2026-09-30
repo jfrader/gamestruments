@@ -8,6 +8,7 @@ pub enum ArrangementRecipe {
     Racing,
     RacingExtended,
     Adventure,
+    Cozy,
 }
 
 #[derive(Clone, Copy)]
@@ -109,6 +110,38 @@ const ADVENTURE_TOUR: Tour = Tour {
     loop_from: 1,
 };
 
+/// A day in the village: first light, the working day, golden hour and night,
+/// looping back into the morning.
+const COZY_TOUR: Tour = Tour {
+    steps: &[
+        TourStep {
+            section: "dawn",
+            repeats: 1,
+        },
+        TourStep {
+            section: "morning",
+            repeats: 1,
+        },
+        TourStep {
+            section: "noon",
+            repeats: 1,
+        },
+        TourStep {
+            section: "market",
+            repeats: 1,
+        },
+        TourStep {
+            section: "evening",
+            repeats: 1,
+        },
+        TourStep {
+            section: "night",
+            repeats: 1,
+        },
+    ],
+    loop_from: 1,
+};
+
 pub fn apply_automatic_arrangement(
     mut score: PortableScore,
     recipe: ArrangementRecipe,
@@ -125,6 +158,7 @@ pub fn apply_automatic_arrangement(
         ArrangementRecipe::Racing => &RACING_TOUR,
         ArrangementRecipe::RacingExtended => &RACING_EXTENDED_TOUR,
         ArrangementRecipe::Adventure => &ADVENTURE_TOUR,
+        ArrangementRecipe::Cozy => &COZY_TOUR,
     };
     for step in tour.steps {
         if score.section(step.section).is_none() {
@@ -321,5 +355,33 @@ mod tests {
         score
             .validate()
             .expect("arranged extended score must validate");
+    }
+
+    #[test]
+    fn cozy_tour_walks_the_day_and_loops_into_the_morning() {
+        let score = crate::generate_cozy(&crate::CozyInput {
+            secret: "arrangement-test".into(),
+            seed: "tour".into(),
+            style: crate::CozyStyle::Acoustic,
+            warmth: 0.5,
+            bustle: 0.5,
+            jazz: 0.5,
+            swing: 0.5,
+        })
+        .expect("cozy fixture must validate");
+        let form = apply_automatic_arrangement(score, ArrangementRecipe::Cozy, true)
+            .expect("cozy tour must validate")
+            .form
+            .expect("autoplay score must have a form");
+        let steps: Vec<&str> = form
+            .steps
+            .iter()
+            .map(|step| step.section.as_str())
+            .collect();
+        assert_eq!(
+            steps,
+            ["dawn", "morning", "noon", "market", "evening", "night"]
+        );
+        assert_eq!(form.loop_from, Some(1));
     }
 }

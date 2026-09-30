@@ -210,6 +210,15 @@ pub struct AdventureState {
     pub quest_complete: bool,
 }
 
+/// Where the day is for the `cozy` recipe: the clock (`hour`, 0..24), the
+/// `place` ("festival" and "town" pick their own sections), and `rain` (0..1).
+#[derive(Clone, Debug, Default)]
+pub struct CozyState {
+    pub hour: f64,
+    pub place: String,
+    pub rain: f64,
+}
+
 impl PortableScore {
     pub fn bar_ticks(&self) -> u32 {
         self.beats_per_bar.saturating_mul(self.ticks_per_beat)

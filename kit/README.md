@@ -55,7 +55,7 @@ Run the scene to hear music. A fixed generator version and identical settings re
 
 Call `set_race_state` from your countdown, telemetry, and finish handlers
 (Racing), `set_trace_state` plus form controls (Suspense), or
-`set_adventure_state` (Adventure). Changes commit on the next bar boundary
+`set_adventure_state` (Adventure), or `set_cozy_state` (Cozy). Changes commit on the next bar boundary
 (bar-aligned crossfade). These calls are not auto-wired by name — connect them
 to your own events and check each bool return. Complete guarded examples are in
 `kit/docs/quickstart.md`; full selection rules are in `kit/docs/api.md`.
@@ -66,17 +66,18 @@ settings.
 
 ## Recipes
 
-One player, three recipes. **Racing** is state-driven race loops (`racing`;
+One player, four recipes. **Racing** is state-driven race loops (`racing`;
 styles neon, funk, fusion, chip). **Suspense** is a song-form arc for tense
 sessions (`suspense`; terminal, cipher, noir). **Adventure** is an eight-section
-fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
+fantasy quest (`adventure`; folk, dark, orchestral). **Cozy** is a village day
+for life sims (`cozy`; acoustic, lofi, bossa). Set `recipe` before
 `generate`; each generated score belongs to one recipe. Sections and selection
 rules are in `kit/docs/api.md`; complete Racing and Suspense scripts are in
 `kit/docs/quickstart.md`.
 
 `arrangement` is `original` (default) or `extended` for Racing, and `all-phases`
-or `seeded` (default) for Suspense; Adventure ignores it. `autoplay`
-is Racing/Adventure only, defaults to `false` (state-driven), and when `true`
+or `seeded` (default) for Suspense; Adventure and Cozy ignore it. `autoplay`
+is Racing/Adventure/Cozy only, defaults to `false` (state-driven), and when `true`
 tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
 `extended`; the native examples use the state-driven defaults.
 

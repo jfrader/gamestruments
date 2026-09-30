@@ -11,6 +11,7 @@ recipes mid-game, live variety, the copyable patterns and the exact limits).
 | Racing | [racing.md](racing.md) | lap-based racing, arcade driving, timed runs |
 | Suspense | [suspense.md](suspense.md) | stealth, infiltration, pursuit, tense exploration |
 | Adventure | [adventure.md](adventure.md) | quests, overworld/hub, dungeons, combat, boss |
+| Cozy | [cozy.md](cozy.md) | farming, café, crafting, village life sims |
 
 Engine mechanics and the ABI live in [../engine-boundary.md](../engine-boundary.md);
 the buyer-facing API reference is [../../kit/docs/api.md](../../kit/docs/api.md).
@@ -24,7 +25,7 @@ the buyer-facing API reference is [../../kit/docs/api.md](../../kit/docs/api.md)
 - **Traits** are continuous knobs (0..1) that reshape the material; the extremes
   are meant to be used.
 - **States** drive the selection (`set_race_state` / `set_trace_state` /
-  `set_adventure_state`); **cues** (`cue_section`) and the form controls
+  `set_adventure_state` / `set_cozy_state`); **cues** (`cue_section`) and the form controls
   (`set_form_hold`, `advance_form`) override the automatic flow when the game
   needs to be literal.
 - Generation is deterministic: the same inputs always give the same bytes.

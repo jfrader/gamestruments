@@ -480,6 +480,7 @@ func _native_player_smoke() -> void:
 	await _native_racing_original()
 	await _native_racing_extended()
 	await _native_adventure_folk()
+	await _native_cozy_lofi()
 	await _native_suspense_progress_parity()
 
 
@@ -517,6 +518,19 @@ func _native_adventure_folk() -> void:
 	_check(await _wait_section(p, "explore"), "native-adventure-folk: advance -> explore")
 	_check(bool(p.call("set_adventure_state", "explore", 0.4, 0.1, true)), "native-adventure-folk: set_adventure_state victory")
 	_check(await _wait_section(p, "victory"), "native-adventure-folk: quest_complete -> victory")
+	await _native_free(p)
+
+
+func _native_cozy_lofi() -> void:
+	var p := await _native_instantiate("native-cozy-lofi", "cozy", "lofi", "original", true)
+	if p == null:
+		return
+	_check(bool(p.call("generate", "native-cozy")), "native-cozy-lofi: generate")
+	_check(String(p.call("get_current_section")) == "dawn", "native-cozy-lofi: initial dawn")
+	_check(bool(p.call("set_cozy_state", 10.0, "town", 0.0)), "native-cozy-lofi: set_cozy_state market")
+	_check(await _wait_section(p, "market"), "native-cozy-lofi: town at ten -> market")
+	_check(bool(p.call("set_cozy_state", 14.0, "fields", 0.8)), "native-cozy-lofi: set_cozy_state rain")
+	_check(await _wait_section(p, "rain"), "native-cozy-lofi: rain -> rain")
 	await _native_free(p)
 
 

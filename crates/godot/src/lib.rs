@@ -1,10 +1,10 @@
 use gamestruments_engine::{
-    apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
+    apply_automatic_arrangement, generate_adventure, generate_cozy, generate_racing_arrangement,
     generate_suspense_arrangement,
     handoff::{crossfade_gains, crossfade_sample_count, Handoff},
     master::{MasterChain, MasterConfig},
     racing_root_pitch_class, AdaptiveTransport, AdventureInput, AdventureState, AdventureStyle,
-    ArrangementRecipe, FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore,
+    ArrangementRecipe, CozyInput, CozyState, CozyStyle, FormAudio, GameState, GenerateInput, InstrumentPalette, PortableScore,
     RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, Synth, TraceState,
 };
 use godot::classes::{
@@ -477,6 +477,34 @@ impl GamestrumentsPlayer {
                     Some(ArrangementRecipe::Adventure),
                 )
             }
+            "cozy" => {
+                let style = if self.style.is_empty() {
+                    CozyStyle::Acoustic
+                } else {
+                    match CozyStyle::parse(&self.style.to_string()) {
+                        Ok(style) => style,
+                        Err(_) => {
+                            godot_error!(
+                                "Unknown Gamestruments cozy style \"{}\"; use acoustic, lofi, or bossa",
+                                self.style
+                            );
+                            return false;
+                        }
+                    }
+                };
+                (
+                    generate_cozy(&CozyInput {
+                        secret: self.project_secret.to_string(),
+                        seed: seed.to_string(),
+                        style,
+                        warmth: self.brightness,
+                        bustle: self.energy,
+                        jazz: self.complexity,
+                        swing: self.syncopation,
+                    }),
+                    Some(ArrangementRecipe::Cozy),
+                )
+            }
             "suspense" => {
                 let style = if self.style.is_empty() {
                     SuspenseStyle::Terminal
@@ -803,6 +831,33 @@ impl GamestrumentsPlayer {
         });
         if !accepted {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
+        }
+        accepted
+    }
+
+    /// Follow the village's day: `hour` on a 0..24 clock, `place` ("town" and
+    /// "festival" pick their own sections), and `rain` from 0.0 to 1.0.
+    #[func]
+    fn set_cozy_state(&mut self, hour: f64, place: GString, rain: f64) -> bool {
+        if !hour.is_finite() || !(0.0..=24.0).contains(&hour) {
+            godot_error!("Gamestruments cozy hour must be within 0.0..24.0");
+            return false;
+        }
+        if !rain.is_finite() || !(0.0..=1.0).contains(&rain) {
+            godot_error!("Gamestruments cozy rain must be within 0.0..1.0");
+            return false;
+        }
+        let state = CozyState {
+            hour,
+            place: place.to_string(),
+            rain,
+        };
+        let accepted = self.for_each_live_voice(|transport, tick| {
+            transport.request_cozy_state(&state, tick);
+            true
+        });
+        if !accepted {
+            godot_error!("GamestrumentsPlayer.generate must succeed before set_cozy_state");
         }
         accepted
     }
