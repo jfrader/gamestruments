@@ -89,18 +89,25 @@ pub struct StrategyInput {
     pub syncopation: f64,
 }
 
-/// The match phases a game sends, and the section each plays.
-pub const STRATEGY_PHASES: [(&str, &str); 5] = [
+/// The match phases a game sends, and the label of the section each plays.
+pub const STRATEGY_PHASES: [(&str, &str); 10] = [
     ("build", "Build Order"),
+    ("scout", "Recon"),
     ("expand", "Expansion"),
+    ("research", "Tech Up"),
+    ("raid", "Raid"),
     ("tension", "Standoff"),
+    ("siege", "Siege"),
     ("battle", "Battle"),
     ("victory", "Victory"),
+    ("defeat", "Defeat"),
 ];
 
 /// Minor-key progressions as semitones above the tonic: i–VI–III–VII,
 /// i–VII–VI–VII and i–VI–iv–VII.
 const PROGRESSIONS: [[i32; 4]; 3] = [[0, 8, 3, 10], [0, 10, 8, 10], [0, 8, 5, 10]];
+/// The defeat's darker loop: i–iv–i–VII.
+const DARK_PROGRESSION: [i32; 4] = [0, 5, 0, 10];
 /// Chord qualities follow the natural minor: i, iv minor; III, VI, VII major.
 fn triad(root: i32) -> [i32; 3] {
     let minor = matches!(root.rem_euclid(12), 0 | 5);
@@ -117,6 +124,9 @@ struct Plan {
     progression: [i32; 4],
     stab: &'static [u32],
     arp: [usize; 4],
+    /// The acid line: per sixteenth, a rest or an interval above the root
+    /// with an accent that opens the filter.
+    acid: [Option<(i32, bool)>; 16],
 }
 
 struct Writer {
@@ -135,7 +145,16 @@ impl Writer {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn note(&mut self, lane: &str, voice: &str, bar: u32, at: u32, length: u32, pitch: i32, velocity: f64) {
+    fn note(
+        &mut self,
+        lane: &str,
+        voice: &str,
+        bar: u32,
+        at: u32,
+        length: u32,
+        pitch: i32,
+        velocity: f64,
+    ) {
         self.serial += 1;
         self.events.push(MusicEvent::Note {
             id: format!("{}:{lane}:{}", self.section, self.serial),
@@ -164,7 +183,7 @@ impl Writer {
     }
 
     fn finish(mut self, label: &str, feeling: &str, color: &str, bars: u32) -> PortableSection {
-        self.events.sort_by(|a, b| a.start_tick().cmp(&b.start_tick()));
+        self.events.sort_by_key(MusicEvent::start_tick);
         PortableSection {
             id: self.section.into(),
             label: label.into(),
@@ -176,77 +195,168 @@ impl Writer {
     }
 }
 
-/// Which layers a section plays.
-#[derive(Clone, Copy)]
-struct Layers {
-    kick: bool,
-    clap: bool,
-    bass: bool,
-    stab: bool,
-    pad: bool,
-    arp: bool,
-    roll: bool,
+/// Layers and endings of one 8-bar block, as bit flags.
+type Block = u16;
+const KICK: Block = 1;
+const HATS: Block = 1 << 1;
+const CLAP: Block = 1 << 2;
+const BASS: Block = 1 << 3;
+const ACID: Block = 1 << 4;
+const STAB: Block = 1 << 5;
+const PAD: Block = 1 << 6;
+const ARP: Block = 1 << 7;
+/// Claps roll through the block's last beat into the next.
+const FILL: Block = 1 << 8;
+/// The kick and bass drop out for the block's last bar.
+const GAP: Block = 1 << 9;
+/// A snare roll and a riser across the block's last bar.
+const ROLL: Block = 1 << 10;
+const BLOCK_BARS: u32 = 8;
+const GROOVE: Block = KICK | HATS | CLAP | BASS;
+
+/// A section: its 8-bar blocks, whether the bass follows the progression,
+/// and how it reads in the Lab.
+struct SectionPlan {
+    id: &'static str,
+    blocks: &'static [Block],
+    moving: bool,
+    feeling: &'static str,
+    color: &'static str,
 }
 
-fn layers(section: &str, style: StrategyStyle) -> Layers {
-    let trance = style == StrategyStyle::Trance;
-    let all = Layers {
-        kick: true,
-        clap: true,
-        bass: true,
-        stab: false,
-        pad: false,
-        arp: false,
-        roll: false,
-    };
-    match section {
-        "build" => Layers { bass: false, ..all },
-        "expand" => Layers { stab: true, ..all },
-        "tension" => Layers {
-            kick: false,
-            clap: false,
-            bass: false,
-            pad: true,
-            arp: true,
-            roll: true,
-            ..all
-        },
-        "battle" => Layers {
-            stab: !trance,
-            pad: trance,
-            arp: true,
-            ..all
-        },
-        _ => Layers {
-            kick: false,
-            clap: false,
-            bass: false,
-            pad: true,
-            arp: trance,
-            ..all
-        },
+const SECTIONS: [SectionPlan; 10] = [
+    SectionPlan {
+        id: "build",
+        blocks: &[
+            KICK | HATS,
+            KICK | HATS | CLAP,
+            GROOVE,
+            GROOVE | STAB | FILL,
+        ],
+        moving: false,
+        feeling: "first orders / the machine starts",
+        color: "#4d6b8a",
+    },
+    SectionPlan {
+        id: "scout",
+        blocks: &[KICK | HATS | ACID, KICK | HATS | CLAP | ACID | GAP],
+        moving: false,
+        feeling: "eyes on the map / quiet feelers",
+        color: "#4f7f8f",
+    },
+    SectionPlan {
+        id: "expand",
+        blocks: &[
+            GROOVE,
+            GROOVE | STAB,
+            GROOVE | STAB | ARP,
+            GROOVE | STAB | FILL,
+        ],
+        moving: true,
+        feeling: "new ground / the economy hums",
+        color: "#3f8f7a",
+    },
+    SectionPlan {
+        id: "research",
+        blocks: &[HATS | ARP | PAD, KICK | HATS | ARP | PAD | ROLL],
+        moving: true,
+        feeling: "labs humming / something new",
+        color: "#5a7fb0",
+    },
+    SectionPlan {
+        id: "raid",
+        blocks: &[GROOVE | ACID, GROOVE | ACID | STAB | FILL],
+        moving: false,
+        feeling: "hit and run / out before they know",
+        color: "#b0663a",
+    },
+    SectionPlan {
+        id: "tension",
+        blocks: &[PAD | ARP, PAD | ARP | ROLL],
+        moving: true,
+        feeling: "armies face off / nobody moves",
+        color: "#7a5aa6",
+    },
+    SectionPlan {
+        id: "siege",
+        blocks: &[
+            KICK | CLAP | BASS,
+            GROOVE | ACID,
+            GROOVE | ACID | PAD,
+            GROOVE | ACID | PAD | FILL,
+        ],
+        moving: true,
+        feeling: "walls shaking / no way out",
+        color: "#8f3f4a",
+    },
+    SectionPlan {
+        id: "battle",
+        blocks: &[
+            GROOVE | STAB | ARP,
+            GROOVE | STAB | ARP | ACID,
+            GROOVE | STAB | ARP | GAP,
+            GROOVE | STAB | ARP | ACID | FILL,
+        ],
+        moving: true,
+        feeling: "everything committed",
+        color: "#c2453a",
+    },
+    SectionPlan {
+        id: "victory",
+        blocks: &[HATS | PAD | ARP, KICK | HATS | PAD | ARP],
+        moving: true,
+        feeling: "the map is yours",
+        color: "#d9b34a",
+    },
+    SectionPlan {
+        id: "defeat",
+        blocks: &[PAD, PAD | HATS],
+        moving: true,
+        feeling: "the lights go out",
+        color: "#3a3a48",
+    },
+];
+
+/// Trance lays pads under its stabs; techno trades pads under the kick for
+/// the acid line.
+fn styled(block: Block, style: StrategyStyle) -> Block {
+    match style {
+        StrategyStyle::Trance if block & STAB != 0 => block | PAD,
+        StrategyStyle::Techno if block & KICK != 0 && block & PAD != 0 => (block & !PAD) | ACID,
+        _ => block,
     }
 }
 
-fn write_section(id: &'static str, plan: &Plan, input: &StrategyInput, seed: u32) -> PortableSection {
-    let bars = match id {
-        "expand" | "battle" => 16,
-        _ => 8,
+fn write_section(
+    plan_of: &SectionPlan,
+    plan: &Plan,
+    input: &StrategyInput,
+    seed: u32,
+) -> PortableSection {
+    let id = plan_of.id;
+    let bars = plan_of.blocks.len() as u32 * BLOCK_BARS;
+    let progression = if id == "defeat" {
+        DARK_PROGRESSION
+    } else {
+        plan.progression
     };
-    let layer = layers(id, input.style);
     let mut w = Writer::new(id);
     let drive = 0.8 + input.energy * 0.15;
-    let root_pitch = |offset: i32| 33 + (plan.tonic + offset).rem_euclid(12);
+    let bass_pitch = |offset: i32| 33 + (plan.tonic + offset).rem_euclid(12);
     for bar in 0..bars {
-        let chord_root = plan.progression[(bar % 4) as usize];
+        let block = styled(plan_of.blocks[(bar / BLOCK_BARS) as usize], input.style);
+        let has = |layer: Block| block & layer != 0;
+        let last_of_block = bar % BLOCK_BARS == BLOCK_BARS - 1;
+        let gap = has(GAP) && last_of_block;
+        let chord_root = progression[(bar % 4) as usize];
         let chord = triad(chord_root);
-        let moving = id != "build" && id != "expand";
-        if layer.kick {
+        let root = if plan_of.moving { chord_root } else { 0 };
+        if has(KICK) && !gap {
             for beat in 0..4 {
                 w.hit("techno-kick", bar, beat * 4, drive);
             }
         }
-        if layer.kick || id == "victory" {
+        if has(HATS) {
             for beat in 0..4 {
                 w.hit("open-hat", bar, beat * 4 + 2, 0.65);
             }
@@ -258,24 +368,56 @@ fn write_section(id: &'static str, plan: &Plan, input: &StrategyInput, seed: u32
                 w.hit("hat", bar, at, if at % 2 == 0 { 0.34 } else { 0.2 });
             }
         }
-        if layer.clap && (bar >= 2 || id != "build") {
+        let fill = has(FILL) && last_of_block;
+        if has(CLAP) {
             w.hit("clap", bar, 4, 0.8);
-            w.hit("clap", bar, 12, 0.8);
-            if keyed_unit(seed, "clap", bar, 0) < input.syncopation * 0.4 {
+            if !fill {
+                w.hit("clap", bar, 12, 0.8);
+            }
+            if !fill && keyed_unit(seed, "clap", bar, 0) < input.syncopation * 0.4 {
                 w.hit("clap", bar, 15, 0.45);
             }
         }
-        if layer.bass {
-            let root = root_pitch(if moving { chord_root } else { 0 });
-            for at in (0..16).filter(|at| at % 4 != 0) {
-                let up = at % 4 == 2;
-                w.note("bass", "saw-bass", bar, at, 1, root + if up { 12 } else { 0 }, if up { 0.9 } else { 0.55 });
+        if fill {
+            for at in 12..16 {
+                w.hit("clap", bar, at, 0.5 + f64::from(at - 12) * 0.12);
             }
         }
-        if layer.stab {
-            let voicing: Vec<i32> = triad(if moving { chord_root } else { 0 })
+        if has(BASS) && !gap {
+            let pitch = bass_pitch(root);
+            for at in (0..16).filter(|at| at % 4 != 0) {
+                let up = at % 4 == 2;
+                w.note(
+                    "bass",
+                    "saw-bass",
+                    bar,
+                    at,
+                    1,
+                    pitch + if up { 12 } else { 0 },
+                    if up { 0.9 } else { 0.55 },
+                );
+            }
+        }
+        if has(ACID) {
+            let pitch = bass_pitch(root) + 12;
+            for (at, step) in plan.acid.iter().enumerate() {
+                if let Some((interval, accent)) = step {
+                    w.note(
+                        "acid",
+                        "saw-bass",
+                        bar,
+                        at as u32,
+                        1,
+                        pitch + interval,
+                        if *accent { 0.95 } else { 0.45 },
+                    );
+                }
+            }
+        }
+        if has(STAB) {
+            let voicing: Vec<i32> = triad(root)
                 .iter()
-                .chain(&[if moving { chord_root + 10 } else { 10 }])
+                .chain(&[root + 10])
                 .map(|interval| 57 + (plan.tonic + interval - 9).rem_euclid(12))
                 .collect();
             let push = keyed_unit(seed, "push", bar, 0) < input.syncopation * 0.6;
@@ -285,46 +427,69 @@ fn write_section(id: &'static str, plan: &Plan, input: &StrategyInput, seed: u32
                 }
             }
         }
-        if layer.pad {
+        if has(PAD) {
             for interval in chord {
-                w.note("pad", "trance-pad", bar, 0, 16, 55 + (plan.tonic + interval - 7).rem_euclid(12), 0.55 + input.brightness * 0.2);
+                w.note(
+                    "pad",
+                    "trance-pad",
+                    bar,
+                    0,
+                    16,
+                    55 + (plan.tonic + interval - 7).rem_euclid(12),
+                    0.55 + input.brightness * 0.2,
+                );
             }
         }
-        if layer.arp {
+        if has(ARP) {
             let tones: Vec<i32> = chord
                 .iter()
                 .map(|interval| 69 + (plan.tonic + interval - 9).rem_euclid(12))
                 .collect();
-            let build_up = if id == "tension" { 0.35 + bar as f64 / bars as f64 * 0.5 } else { 0.9 };
+            let level = if has(ROLL) {
+                0.35 + f64::from(bar % BLOCK_BARS) / f64::from(BLOCK_BARS) * 0.55
+            } else {
+                0.9
+            };
             for at in 0..16 {
                 let index = plan.arp[(at % 4) as usize];
-                let pitch = if index == 3 { tones[0] + 12 } else { tones[index] };
-                w.note("lead", "trance-lead", bar, at, 1, pitch, build_up * (0.7 + input.brightness * 0.3));
+                let pitch = if index == 3 {
+                    tones[0] + 12
+                } else {
+                    tones[index]
+                };
+                w.note(
+                    "lead",
+                    "trance-lead",
+                    bar,
+                    at,
+                    1,
+                    pitch,
+                    level * (0.7 + input.brightness * 0.3),
+                );
             }
         }
-        if layer.roll && bar == bars - 1 {
+        if has(ROLL) && last_of_block {
             for at in 0..16 {
                 w.hit("snare", bar, at, 0.3 + f64::from(at) * 0.04);
             }
             w.hit("reverse-cymbal", bar, 0, 0.8);
         }
     }
-    let (_, label) = STRATEGY_PHASES.iter().find(|(phase, _)| *phase == id).unwrap();
-    let (feeling, color) = match id {
-        "build" => ("first orders / the machine starts", "#4d6b8a"),
-        "expand" => ("new ground / the economy hums", "#3f8f7a"),
-        "tension" => ("armies face off / nobody moves", "#7a5aa6"),
-        "battle" => ("everything committed", "#c2453a"),
-        _ => ("the map is yours", "#d9b34a"),
-    };
-    w.finish(label, feeling, color, bars)
+    let (_, label) = STRATEGY_PHASES
+        .iter()
+        .find(|(phase, _)| *phase == id)
+        .unwrap();
+    w.finish(label, plan_of.feeling, plan_of.color, bars)
 }
 
 /// Serialized selection rules. The game's `matchPhase` picks its section; a
 /// `won` match plays the victory, a high `threat` forces the battle, and a
 /// strong `economy` moves the build into the expansion.
 pub fn default_rules() -> Vec<AdaptiveRule> {
-    let rule = |target: &str, priority: i32, numeric: serde_json::Value, categorical: serde_json::Value| {
+    let rule = |target: &str,
+                priority: i32,
+                numeric: serde_json::Value,
+                categorical: serde_json::Value| {
         AdaptiveRule {
             target: target.into(),
             priority,
@@ -336,8 +501,18 @@ pub fn default_rules() -> Vec<AdaptiveRule> {
         }
     };
     let mut rules = vec![
-        rule("victory", 30, serde_json::json!({ "won": { "min": 1.0 } }), serde_json::json!({})),
-        rule("battle", 20, serde_json::json!({ "threat": { "min": THREAT_BATTLE } }), serde_json::json!({})),
+        rule(
+            "victory",
+            30,
+            serde_json::json!({ "won": { "min": 1.0 } }),
+            serde_json::json!({}),
+        ),
+        rule(
+            "battle",
+            20,
+            serde_json::json!({ "threat": { "min": THREAT_BATTLE } }),
+            serde_json::json!({}),
+        ),
         rule(
             "expand",
             15,
@@ -346,19 +521,34 @@ pub fn default_rules() -> Vec<AdaptiveRule> {
         ),
     ];
     rules.extend(STRATEGY_PHASES.iter().map(|(phase, _)| {
-        rule(phase, 10, serde_json::json!({}), serde_json::json!({ "matchPhase": phase }))
+        rule(
+            phase,
+            10,
+            serde_json::json!({}),
+            serde_json::json!({ "matchPhase": phase }),
+        )
     }));
     rules
 }
 
-pub fn generate_strategy(input: &StrategyInput, arrangement: StrategyArrangement) -> Result<PortableScore, String> {
-    let seed = hash_text(&format!("{}\0{}\0strategy-{GENERATOR_VERSION}", input.secret, input.seed));
+pub fn generate_strategy(
+    input: &StrategyInput,
+    arrangement: StrategyArrangement,
+) -> Result<PortableScore, String> {
+    let seed = hash_text(&format!(
+        "{}\0{}\0strategy-{GENERATOR_VERSION}",
+        input.secret, input.seed
+    ));
     let mut rng = DeterministicRandom::new(seed);
     let plan = Plan {
         tonic: *rng.pick(&[9, 7, 2, 4, 0, 5]),
         progression: *rng.pick(&PROGRESSIONS),
-        stab: *rng.pick(&STABS),
+        stab: STABS[rng.integer(STABS.len() as u32) as usize],
         arp: *rng.pick(&ARPS),
+        acid: std::array::from_fn(|step| {
+            let rest = step % 4 != 0 && rng.next() < 0.3;
+            (!rest).then(|| (*rng.pick(&[0, 0, 12, 3, 7, 10]), rng.next() < 0.3))
+        }),
     };
     let energy = input.energy.clamp(0.0, 1.0);
     let bpm = match input.style {
@@ -372,9 +562,9 @@ pub fn generate_strategy(input: &StrategyInput, arrangement: StrategyArrangement
         syncopation: input.syncopation.clamp(0.0, 1.0),
         ..input.clone()
     };
-    let sections: Vec<PortableSection> = STRATEGY_PHASES
+    let sections: Vec<PortableSection> = SECTIONS
         .iter()
-        .map(|(id, _)| write_section(id, &plan, &clean, seed ^ hash_text(id)))
+        .map(|section| write_section(section, &plan, &clean, seed ^ hash_text(section.id)))
         .collect();
     let form = (arrangement == StrategyArrangement::AllPhases).then(|| SongForm {
         steps: STRATEGY_PHASES
@@ -389,7 +579,10 @@ pub fn generate_strategy(input: &StrategyInput, arrangement: StrategyArrangement
     });
     let score = PortableScore {
         schema_version: SCORE_SCHEMA_VERSION,
-        id: format!("strategy-generated-v{}-{seed:08x}", GENERATOR_VERSION.replace('.', "-")),
+        id: format!(
+            "strategy-generated-v{}-{seed:08x}",
+            GENERATOR_VERSION.replace('.', "-")
+        ),
         title: format!(
             "{} {} Minor",
             input.style.display(),
@@ -425,11 +618,16 @@ mod tests {
     }
 
     #[test]
-    fn generates_five_valid_sections_for_both_styles() {
+    fn generates_every_phase_as_a_long_valid_section_for_both_styles() {
         for style in [StrategyStyle::Techno, StrategyStyle::Trance] {
-            let score = generate_strategy(&input(style, "m1"), StrategyArrangement::Original).unwrap();
+            let score =
+                generate_strategy(&input(style, "m1"), StrategyArrangement::Original).unwrap();
             let ids: Vec<&str> = score.sections.iter().map(|s| s.id.as_str()).collect();
-            assert_eq!(ids, ["build", "expand", "tension", "battle", "victory"]);
+            let phases: Vec<&str> = STRATEGY_PHASES.iter().map(|(id, _)| *id).collect();
+            assert_eq!(ids, phases);
+            for section in &score.sections {
+                assert!(section.length_ticks >= 16 * BAR, "{} is short", section.id);
+            }
             assert!(score.sections.iter().all(|s| !s.events.is_empty()));
             assert!(score.form.is_none());
         }
@@ -437,12 +635,27 @@ mod tests {
 
     #[test]
     fn deterministic_and_seeded() {
-        let a = generate_strategy(&input(StrategyStyle::Techno, "m1"), StrategyArrangement::Original).unwrap();
-        let b = generate_strategy(&input(StrategyStyle::Techno, "m1"), StrategyArrangement::Original).unwrap();
-        assert_eq!(serde_json::to_vec(&a).unwrap(), serde_json::to_vec(&b).unwrap());
+        let a = generate_strategy(
+            &input(StrategyStyle::Techno, "m1"),
+            StrategyArrangement::Original,
+        )
+        .unwrap();
+        let b = generate_strategy(
+            &input(StrategyStyle::Techno, "m1"),
+            StrategyArrangement::Original,
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_vec(&a).unwrap(),
+            serde_json::to_vec(&b).unwrap()
+        );
         let distinct: std::collections::HashSet<String> = (0..20)
             .map(|i| {
-                let s = generate_strategy(&input(StrategyStyle::Trance, &format!("m{i}")), StrategyArrangement::Original).unwrap();
+                let s = generate_strategy(
+                    &input(StrategyStyle::Trance, &format!("m{i}")),
+                    StrategyArrangement::Original,
+                )
+                .unwrap();
                 serde_json::to_string(&s.sections).unwrap()
             })
             .collect();
@@ -451,12 +664,22 @@ mod tests {
 
     #[test]
     fn the_breakdown_drops_the_kick_and_the_battle_brings_it_back() {
-        let score = generate_strategy(&input(StrategyStyle::Trance, "m1"), StrategyArrangement::AllPhases).unwrap();
+        let score = generate_strategy(
+            &input(StrategyStyle::Trance, "m1"),
+            StrategyArrangement::AllPhases,
+        )
+        .unwrap();
         let kicks = |id: &str| {
-            score.section(id).unwrap().events.iter().filter(|e| e.voice() == "techno-kick").count()
+            score
+                .section(id)
+                .unwrap()
+                .events
+                .iter()
+                .filter(|e| e.voice() == "techno-kick")
+                .count()
         };
         assert_eq!(kicks("tension"), 0);
-        assert!(kicks("battle") > kicks("build"));
-        assert_eq!(score.form.unwrap().steps.len(), 5);
+        assert!(kicks("battle") > 0);
+        assert_eq!(score.form.unwrap().steps.len(), STRATEGY_PHASES.len());
     }
 }

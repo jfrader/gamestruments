@@ -135,7 +135,7 @@ test("switching to Strategy plays the match sections without errors", async ({ p
   await selectRecipe(page, "strategy");
   await expect(page.locator("#audition-status")).toContainText("Opened Strategy");
   await expect(page.locator("#score-title")).toContainText(/Techno|Trance/);
-  await expect(page.locator("#section-list li")).toHaveCount(5);
+  await expect(page.locator("#section-list li")).toHaveCount(10);
   await expect(page.locator("#runtime-signal")).toContainText("recipe: strategy");
 
   await page.locator('#phase-buttons button[data-phase="battle"]').click();

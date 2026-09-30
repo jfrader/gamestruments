@@ -19,7 +19,8 @@
  *   Adventure: camp↔Trailhead Camp · explore↔The Old Forest · town↔Hearth and Hall ·
  *              dungeon↔The Deep Halls · combat↔Steel and Shadow · boss↔No Retreat ·
  *              sanctuary↔The Hidden Glade · victory↔Lanterns at Dawn
- *   Strategy:  build↔Build Order · expand↔Expansion · tension↔Standoff · battle↔Battle
+ *   Strategy:  build↔Build Order · scout↔Recon · expand↔Expansion · research↔Tech Up ·
+ *              raid↔Raid · tension↔Standoff · siege↔Siege · battle↔Battle · defeat↔Defeat
  *              (its victory section is labelled Victory in the score)
  */
 export const PHASE_NAMES: Readonly<Record<string, string>> = {
@@ -46,9 +47,14 @@ export const PHASE_NAMES: Readonly<Record<string, string>> = {
   victory: "Lanterns at Dawn",
   // Strategy match phases.
   build: "Build Order",
+  scout: "Recon",
   expand: "Expansion",
+  research: "Tech Up",
+  raid: "Raid",
   tension: "Standoff",
+  siege: "Siege",
   battle: "Battle",
+  defeat: "Defeat",
 };
 
 /** Title-cases an unmapped id so a new phase never renders blank. */

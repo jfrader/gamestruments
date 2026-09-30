@@ -170,7 +170,7 @@ const ADVENTURE: LabRecipeProfile = {
 const STRATEGY: LabRecipeProfile = {
   id: "strategy",
   label: "Strategy",
-  description: "Build, expand, standoff, battle, victory",
+  description: "Build, recon, expand, tech up, raid, standoff, siege, battle, victory, defeat",
   presets: [
     {
       style: "techno",

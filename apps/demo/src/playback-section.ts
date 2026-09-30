@@ -22,10 +22,15 @@ export const ADVENTURE_SCENE_SECTIONS: Record<string, SectionId> = {
 
 export const STRATEGY_PHASE_SECTIONS: Record<string, SectionId> = {
   build: "build",
+  scout: "scout",
   expand: "expand",
+  research: "research",
+  raid: "raid",
   tension: "tension",
+  siege: "siege",
   battle: "battle",
   victory: "victory",
+  defeat: "defeat",
 };
 
 export function playbackSectionOnScore(
