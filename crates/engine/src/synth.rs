@@ -73,6 +73,14 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         VoiceType::Recorder => 0.25,
         VoiceType::Vielle => -0.25,
         VoiceType::Harp => 0.1875,
+        VoiceType::Brass => -0.1875,
+        VoiceType::Cello => -0.125,
+        VoiceType::Marimba => 0.25,
+        VoiceType::SawBass => 0.0,
+        VoiceType::WarDrum => 0.0,
+        VoiceType::Woodblock => 0.375,
+        VoiceType::Anvil => -0.375,
+        VoiceType::HandDrum => 0.125,
         // ±0.35
         VoiceType::Pluck => 0.3125,
         VoiceType::Chip => -0.3125,
@@ -103,6 +111,14 @@ enum VoiceType {
     Recorder,
     Vielle,
     Bell,
+    Brass,
+    Cello,
+    Marimba,
+    SawBass,
+    WarDrum,
+    Woodblock,
+    Anvil,
+    HandDrum,
     FrameDrum,
     Tambourine,
     Bass,
@@ -249,10 +265,16 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Felt
         | VoiceType::Dusk
         | VoiceType::Bell
+        | VoiceType::Marimba
+        | VoiceType::WarDrum
+        | VoiceType::Woodblock
+        | VoiceType::Anvil
+        | VoiceType::HandDrum
         | VoiceType::FrameDrum
         | VoiceType::Tambourine
         | VoiceType::Chip => 0.82,
-        VoiceType::Recorder | VoiceType::Vielle => 0.84,
+        VoiceType::Recorder | VoiceType::Vielle | VoiceType::Brass | VoiceType::Cello => 0.84,
+        VoiceType::SawBass => 0.78,
         VoiceType::Kick
         | VoiceType::Snare
         | VoiceType::Hat
@@ -325,11 +347,19 @@ impl Synth {
                 "recorder" => VoiceType::Recorder,
                 "vielle" => VoiceType::Vielle,
                 "bell" => VoiceType::Bell,
+                "brass" => VoiceType::Brass,
+                "cello" => VoiceType::Cello,
+                "marimba" => VoiceType::Marimba,
+                "saw-bass" => VoiceType::SawBass,
                 _ => VoiceType::Warm,
             };
             let life = match vtype {
                 VoiceType::Harp => harp_life(base_freq),
                 VoiceType::Bell => bell_life(base_freq),
+                VoiceType::Marimba => 1.2 + (220.0 / base_freq).clamp(0.3, 1.0) * 0.8,
+                VoiceType::Brass => duration as f32 + 0.3,
+                VoiceType::Cello => duration as f32 + 0.4,
+                VoiceType::SawBass => duration as f32 + 0.12,
                 VoiceType::Felt => duration as f32 + 0.65,
                 VoiceType::Dusk => duration as f32 + 1.25,
                 VoiceType::Recorder => duration as f32 + 0.3,
@@ -338,7 +368,11 @@ impl Synth {
             };
             let noise_state = if matches!(
                 vtype,
-                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle
+                VoiceType::Harp
+                    | VoiceType::Recorder
+                    | VoiceType::Vielle
+                    | VoiceType::Cello
+                    | VoiceType::Marimba
             ) {
                 match event {
                     MusicEvent::Note { id, .. } => deterministic_noise_state(id),
@@ -393,6 +427,10 @@ impl Synth {
             "air-impact" => VoiceType::AirImpact,
             "frame-drum" => VoiceType::FrameDrum,
             "tambourine" => VoiceType::Tambourine,
+            "war-drum" => VoiceType::WarDrum,
+            "woodblock" => VoiceType::Woodblock,
+            "anvil" => VoiceType::Anvil,
+            "hand-drum" => VoiceType::HandDrum,
             _ => VoiceType::Kick,
         };
         let mut base_freq = 80.0f32;
@@ -403,13 +441,23 @@ impl Synth {
             VoiceType::Tom => 0.20,
             VoiceType::FrameDrum => 0.62,
             VoiceType::Tambourine => 0.48,
+            VoiceType::WarDrum => 1.6,
+            VoiceType::Woodblock => 0.25,
+            VoiceType::Anvil => 1.4,
+            VoiceType::HandDrum => 0.5,
             VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
             _ => 0.12,
         };
         let mut perc_id: Option<String> = None;
         if matches!(
             vtype,
-            VoiceType::Tom | VoiceType::FrameDrum | VoiceType::Tambourine
+            VoiceType::Tom
+                | VoiceType::FrameDrum
+                | VoiceType::Tambourine
+                | VoiceType::WarDrum
+                | VoiceType::Woodblock
+                | VoiceType::Anvil
+                | VoiceType::HandDrum
         ) {
             if let MusicEvent::Percussion { id, .. } = event {
                 let u = deterministic_unit(id);
@@ -417,6 +465,10 @@ impl Synth {
                     VoiceType::Tom => 155.0 + u * 58.0,
                     VoiceType::FrameDrum => 82.0 + u * 24.0,
                     VoiceType::Tambourine => u,
+                    VoiceType::WarDrum => 52.0 + u * 14.0,
+                    VoiceType::Woodblock => 820.0 + u * 140.0,
+                    VoiceType::Anvil => 230.0 + u * 60.0,
+                    VoiceType::HandDrum => 180.0 + u * 60.0,
                     _ => unreachable!(),
                 };
                 perc_id = Some(id.clone());
@@ -823,6 +875,135 @@ impl Synth {
                     * 0.09
                     * v.velocity_gain
                     * if is_mel { 1.06 } else { 1.0 }
+            }
+            VoiceType::Brass => {
+                // A brass section: two detuned saws whose filter swells open
+                // as the players lean in, louder notes opening brighter.
+                let saw_a = generate_osc(v.phase1, Wave::Saw);
+                let saw_b = generate_osc(v.phase2, Wave::Saw);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 1.004 * dt;
+                let swell = 1.0 - natural_decay(age, 0.12);
+                let settle = 0.75 + 0.25 * natural_decay(age, 0.8);
+                let cutoff = (base * 1.2 + (base * 5.0 + 2200.0 * vel) * swell * settle).min(sr * 0.44);
+                let sig = v.filt.process((saw_a + saw_b) * 0.5, cutoff, 0.5, sr, FilterMode::Lowpass);
+                let env =
+                    compute_envelope_with_cap(age, v.duration, 0.075 * v.velocity_gain, 0.82, 0.07, 0.3, 0.25, 0.25);
+                sig * env
+            }
+            VoiceType::Cello => {
+                // A bowed low-string section: an ensemble of two saws with a
+                // late vibrato, a fixed body filter and a little bow noise.
+                let vibrato_ramp = ((age - 0.15) / 0.4).clamp(0.0, 1.0);
+                let cents = dmath::sin(v.vib_phase) * 7.0 * vibrato_ramp;
+                v.vib_phase += TAU * 5.2 * dt;
+                let frequency = base * dmath::powf(2.0, cents / 1200.0);
+                let saw_a = generate_osc(v.phase1, Wave::Saw);
+                let saw_b = generate_osc(v.phase2, Wave::Saw);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 1.003 * dt;
+                let body = v.filt.process((saw_a + saw_b) * 0.5, 1700.0 + vel * 900.0, 0.6, sr, FilterMode::Lowpass);
+                let bow = v.filt_l.process(noise(&mut v.noise_state), (base * 4.0).clamp(600.0, 3000.0), 0.7, sr, FilterMode::Bandpass);
+                let release = (0.08 + v.duration * 1.2).min(0.35);
+                let attack = (v.duration * 0.3).min(0.09);
+                let env =
+                    compute_envelope_with_cap(age, v.duration, 0.07 * v.velocity_gain, 0.8, attack, 0.2, release, release);
+                (body + bow * 0.04) * env
+            }
+            VoiceType::Marimba => {
+                // A tuned wooden bar: the fundamental and the bar's 1:4 and
+                // 1:10 overtones, struck by a soft mallet.
+                let lower = (220.0 / base).clamp(0.3, 1.0);
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let fourth = generate_osc(v.phase2, Wave::Sine);
+                let tenth = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 3.93 * dt;
+                v.phase3 += TAU * base * 9.8 * dt;
+                let bar = fundamental * natural_decay(age, 0.3 + lower * 0.5)
+                    + fourth * 0.35 * natural_decay(age, 0.08)
+                    + tenth * 0.08 * natural_decay(age, 0.02);
+                let mallet = if age < 0.02 {
+                    v.filt.process(noise(&mut v.noise_state), 2000.0, 0.5, sr, FilterMode::Lowpass)
+                        * natural_decay(age, 0.006)
+                        * 0.2
+                } else {
+                    0.0
+                };
+                (bar + mallet) * (age / 0.001).clamp(0.0, 1.0) * 0.14 * v.velocity_gain
+            }
+            VoiceType::SawBass => {
+                // A resonant sawtooth bass whose filter snaps shut after the attack.
+                let saw = generate_osc(v.phase1, Wave::Saw);
+                let sub = generate_osc(v.phase2, Wave::Square);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 0.5 * dt;
+                let cutoff = 180.0 + 1400.0 * vel * natural_decay(age, 0.09);
+                let sig = v.filt.process(saw + sub * 0.35, cutoff, 1.2, sr, FilterMode::Lowpass);
+                let env =
+                    compute_envelope_with_cap(age, v.duration, 0.09 * v.velocity_gain, 0.7, 0.004, 0.15, 0.08, 0.08);
+                sig * env
+            }
+            VoiceType::WarDrum => {
+                // A large barrel drum: a low head that drops in pitch after the
+                // strike, its first overtone, the beater, and the shell's roar.
+                let pitch = base * (1.0 + 0.9 * natural_decay(age, 0.035));
+                let body = generate_osc(v.phase1, Wave::Sine);
+                let overtone = generate_osc(v.phase2, Wave::Sine);
+                v.phase1 += TAU * pitch * dt;
+                v.phase2 += TAU * pitch * 1.52 * dt;
+                let beater = v.filt.process(noise(&mut v.noise_state), 900.0, 0.5, sr, FilterMode::Lowpass)
+                    * natural_decay(age, 0.012)
+                    * 0.6;
+                let shell = v.filt_l.process(noise(&mut v.noise_state), 180.0, 0.9, sr, FilterMode::Bandpass)
+                    * natural_decay(age, 0.09)
+                    * 0.35;
+                (body * natural_decay(age, 0.55) + overtone * 0.35 * natural_decay(age, 0.18) + beater + shell)
+                    * (age / 0.002).clamp(0.0, 1.0)
+                    * 0.34
+                    * v.velocity_gain
+            }
+            VoiceType::Woodblock => {
+                // A hollow wooden click: a short resonant tone and its knock.
+                let tone = generate_osc(v.phase1, Wave::Sine) * natural_decay(age, 0.045)
+                    + generate_osc(v.phase2, Wave::Sine) * 0.35 * natural_decay(age, 0.02);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 2.63 * dt;
+                let knock = v.filt.process(noise(&mut v.noise_state), base * 1.5, 2.0, sr, FilterMode::Bandpass)
+                    * natural_decay(age, 0.004)
+                    * 0.5;
+                (tone + knock) * 0.16 * v.velocity_gain
+            }
+            VoiceType::Anvil => {
+                // Struck metal: four inharmonic partials ringing at their own
+                // rates over a bright strike.
+                let partials = [
+                    (generate_osc(v.phase1, Wave::Sine), 1.0, 0.9),
+                    (generate_osc(v.phase2, Wave::Sine), 0.6, 0.5),
+                    (generate_osc(v.phase3, Wave::Sine), 0.4, 0.3),
+                    (generate_osc(v.trem_phase, Wave::Sine), 0.25, 0.15),
+                ];
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 2.76 * dt;
+                v.phase3 += TAU * base * 5.4 * dt;
+                v.trem_phase += TAU * base * 8.93 * dt;
+                let ring: f32 = partials
+                    .iter()
+                    .map(|(wave, gain, decay)| wave * gain * natural_decay(age, *decay))
+                    .sum();
+                let strike = v.filt.process(noise(&mut v.noise_state), 3000.0, 0.5, sr, FilterMode::Highpass)
+                    * natural_decay(age, 0.01);
+                (ring + strike) * 0.09 * v.velocity_gain
+            }
+            VoiceType::HandDrum => {
+                // A goblet hand drum: a round tone with a small pitch fall and
+                // a slap that grows with how hard it is hit.
+                let body = generate_osc(v.phase1, Wave::Sine);
+                v.phase1 += TAU * compute_freq(base, age, 0.25) * dt;
+                let slap = v.filt.process(noise(&mut v.noise_state), 2500.0, 0.8, sr, FilterMode::Bandpass)
+                    * natural_decay(age, 0.03)
+                    * vel;
+                (body * natural_decay(age, 0.16) + slap * 0.6) * (age / 0.001).clamp(0.0, 1.0) * 0.22 * v.velocity_gain
             }
             VoiceType::Bass => {
                 let f_body = compute_freq(base, age, 0.004);

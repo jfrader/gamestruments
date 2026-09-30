@@ -388,9 +388,10 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 16] = [
+            const NOTE_VOICES: [&str; 20] = [
                 "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle", "felt", "dusk", "harp", "recorder", "vielle", "bell",
+                "triangle", "felt", "dusk", "harp", "recorder", "vielle", "bell", "brass", "cello", "marimba",
+                "saw-bass",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -403,7 +404,11 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 8] = [
+            const PERCUSSION_VOICES: [&str; 12] = [
+                "war-drum",
+                "woodblock",
+                "anvil",
+                "hand-drum",
                 "kick",
                 "snare",
                 "hat",
