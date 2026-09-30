@@ -421,7 +421,7 @@ fn create_arrangement(
         SuspenseStyle::Noir => 64.0,
         SuspenseStyle::Terminal => 72.0,
         SuspenseStyle::Cipher => 78.0,
-        SuspenseStyle::Trance => 88.0,
+        SuspenseStyle::Trance => 80.0,
     };
     ArrangementDna {
         bpm: (base + traits.pulse * 8.0 + jitter).clamp(60.0, 88.0),
@@ -1050,6 +1050,27 @@ mod tests {
 
     fn melody(events: &[MusicEvent]) -> Vec<&MusicEvent> {
         events.iter().filter(|event| event.is_melody()).collect()
+    }
+
+    #[test]
+    fn pulse_moves_the_tempo_in_every_style() {
+        let styles = [
+            SuspenseStyle::Terminal,
+            SuspenseStyle::Cipher,
+            SuspenseStyle::Noir,
+            SuspenseStyle::Trance,
+        ];
+        for style in styles {
+            let bpm = |pulse| {
+                generate_suspense(&SuspenseInput {
+                    pulse,
+                    ..input("tempo", style)
+                })
+                .unwrap()
+                .bpm
+            };
+            assert!(bpm(1.0) > bpm(0.0), "{style:?} ignores the pulse");
+        }
     }
 
     #[test]
