@@ -79,10 +79,9 @@ form.
 | `terminal` | warm | glass | pulse | pulse | dusk | kick / snare |
 | `cipher` | warm | pluck | bass | glass | dusk | kick / snare |
 | `noir` | organ | epiano | bass | warm | dusk | kick / snare |
-| `techno` | trance-pad | stab | saw-bass | trance-lead | trance-pad | techno-kick / clap |
 | `trance` | trance-pad | trance-lead | saw-bass | trance-lead | trance-pad | techno-kick / clap |
 
-Saw bass, stab and the trance voices duck under every club kick.
+Saw bass and the trance voices duck under every club kick.
 
 ## Arrangements
 
@@ -133,7 +132,7 @@ so every trait deviates from there.
 ```gdscript
 player.project_secret = "my-game"
 player.recipe = "suspense"
-player.style = "terminal"          # terminal | cipher | noir | techno | trance
+player.style = "terminal"          # terminal | cipher | noir | trance
 player.arrangement = "seeded"      # all-phases | seeded (default)
 var ok: bool = player.generate("level-001")
 ```

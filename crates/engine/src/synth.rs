@@ -77,12 +77,10 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         VoiceType::Recorder => 0.25,
         VoiceType::Vielle => -0.25,
         VoiceType::Harp => 0.1875,
-        VoiceType::Stab => 0.125,
         VoiceType::TrancePad => 0.0,
         VoiceType::TranceLead => -0.125,
         VoiceType::TechnoKick => 0.0,
         VoiceType::Clap => 0.0625,
-        VoiceType::OpenHat => 0.5,
         VoiceType::SawBass => 0.0,
         // ±0.35
         VoiceType::Pluck => 0.3125,
@@ -114,12 +112,10 @@ enum VoiceType {
     Recorder,
     Vielle,
     Bell,
-    Stab,
     TrancePad,
     TranceLead,
     TechnoKick,
     Clap,
-    OpenHat,
     SawBass,
     FrameDrum,
     Tambourine,
@@ -269,11 +265,9 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Felt
         | VoiceType::Dusk
         | VoiceType::Bell
-        | VoiceType::Stab
         | VoiceType::TrancePad
         | VoiceType::TranceLead
         | VoiceType::Clap
-        | VoiceType::OpenHat
         | VoiceType::FrameDrum
         | VoiceType::Tambourine
         | VoiceType::Chip => 0.82,
@@ -370,7 +364,6 @@ impl Synth {
                 "vielle" => VoiceType::Vielle,
                 "bell" => VoiceType::Bell,
                 "saw-bass" => VoiceType::SawBass,
-                "stab" => VoiceType::Stab,
                 "trance-pad" => VoiceType::TrancePad,
                 "trance-lead" => VoiceType::TranceLead,
                 _ => VoiceType::Warm,
@@ -379,7 +372,6 @@ impl Synth {
                 VoiceType::Harp => harp_life(base_freq),
                 VoiceType::Bell => bell_life(base_freq),
                 VoiceType::SawBass => duration as f32 + 0.12,
-                VoiceType::Stab => duration as f32 + 0.15,
                 VoiceType::TrancePad => duration as f32 + 0.62,
                 VoiceType::TranceLead => duration as f32 + 0.17,
                 VoiceType::Felt => duration as f32 + 0.65,
@@ -423,7 +415,7 @@ impl Synth {
                 filt_r: Biquad::new(),
                 pumped: matches!(
                     vtype,
-                    VoiceType::SawBass | VoiceType::Stab | VoiceType::TrancePad | VoiceType::TranceLead
+                    VoiceType::SawBass | VoiceType::TrancePad | VoiceType::TranceLead
                 ),
             };
             voice.pan = voice_type_pan(voice.voice_type);
@@ -451,7 +443,6 @@ impl Synth {
             "tambourine" => VoiceType::Tambourine,
             "techno-kick" => VoiceType::TechnoKick,
             "clap" => VoiceType::Clap,
-            "open-hat" => VoiceType::OpenHat,
             _ => VoiceType::Kick,
         };
         let mut base_freq = 80.0f32;
@@ -464,7 +455,6 @@ impl Synth {
             VoiceType::Tambourine => 0.48,
             VoiceType::TechnoKick => 0.6,
             VoiceType::Clap => 0.35,
-            VoiceType::OpenHat => 0.4,
             VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
             _ => 0.12,
         };
@@ -476,7 +466,6 @@ impl Synth {
                 | VoiceType::Tambourine
                 | VoiceType::TechnoKick
                 | VoiceType::Clap
-                | VoiceType::OpenHat
         ) {
             if let MusicEvent::Percussion { id, .. } = event {
                 let u = deterministic_unit(id);
@@ -484,7 +473,7 @@ impl Synth {
                     VoiceType::Tom => 155.0 + u * 58.0,
                     VoiceType::FrameDrum => 82.0 + u * 24.0,
                     VoiceType::Tambourine => u,
-                    VoiceType::TechnoKick | VoiceType::Clap | VoiceType::OpenHat => u,
+                    VoiceType::TechnoKick | VoiceType::Clap => u,
                     _ => unreachable!(),
                 };
                 perc_id = Some(id.clone());
@@ -583,7 +572,11 @@ impl Synth {
                     continue;
                 }
                 let contrib = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt);
-                mix += if self.voices[j].pumped { contrib * pump } else { contrib };
+                mix += if self.voices[j].pumped {
+                    contrib * pump
+                } else {
+                    contrib
+                };
                 j += 1;
             }
             buffer[i] = mix.clamp(-4.0, 4.0);
@@ -908,38 +901,51 @@ impl Synth {
                 v.phase1 += TAU * base * dt;
                 v.phase2 += TAU * base * 0.5 * dt;
                 let cutoff = 180.0 + 1400.0 * vel * natural_decay(age, 0.09);
-                let sig = v.filt.process(saw + sub * 0.35, cutoff, 1.2, sr, FilterMode::Lowpass);
-                let env =
-                    compute_envelope_with_cap(age, v.duration, 0.09 * v.velocity_gain, 0.7, 0.004, 0.15, 0.08, 0.08);
+                let sig = v
+                    .filt
+                    .process(saw + sub * 0.35, cutoff, 1.2, sr, FilterMode::Lowpass);
+                let env = compute_envelope_with_cap(
+                    age,
+                    v.duration,
+                    0.09 * v.velocity_gain,
+                    0.7,
+                    0.004,
+                    0.15,
+                    0.08,
+                    0.08,
+                );
                 sig * env
-            }
-            VoiceType::Stab => {
-                // An organ-style house stab: four bright partials, gone in a beat.
-                let partials = [
-                    (generate_osc(v.phase1, Wave::Sine), 1.0),
-                    (generate_osc(v.phase2, Wave::Sine), 0.5),
-                    (generate_osc(v.phase3, Wave::Sine), 0.35),
-                    (generate_osc(v.trem_phase, Wave::Sine), 0.2),
-                ];
-                v.phase1 += TAU * base * dt;
-                v.phase2 += TAU * base * 2.0 * dt;
-                v.phase3 += TAU * base * 3.0 * dt;
-                v.trem_phase += TAU * base * 4.0 * dt;
-                let tone: f32 = partials.iter().map(|(wave, gain)| wave * gain).sum();
-                let env = compute_envelope_with_cap(age, v.duration, 0.09 * v.velocity_gain, 0.25, 0.002, 0.22, 0.12, 0.12);
-                tone * env
             }
             VoiceType::TrancePad => {
                 // Three detuned saws under a soft filter, swelling in slowly.
-                let spread = [1.0f32, dmath::powf(2.0, 12.0 / 1200.0), dmath::powf(2.0, -12.0 / 1200.0)];
+                let spread = [
+                    1.0f32,
+                    dmath::powf(2.0, 12.0 / 1200.0),
+                    dmath::powf(2.0, -12.0 / 1200.0),
+                ];
                 let saws = generate_osc(v.phase1, Wave::Saw)
                     + generate_osc(v.phase2, Wave::Saw)
                     + generate_osc(v.phase3, Wave::Saw);
                 v.phase1 += TAU * base * spread[0] * dt;
                 v.phase2 += TAU * base * spread[1] * dt;
                 v.phase3 += TAU * base * spread[2] * dt;
-                let sig = v.filt.process(saws / 3.0, (2400.0 + vel * 2000.0).min(sr * 0.44), 0.3, sr, FilterMode::Lowpass);
-                let env = compute_envelope_with_cap(age, v.duration, 0.05 * v.velocity_gain, 0.85, 0.35, 0.5, 0.6, 0.6);
+                let sig = v.filt.process(
+                    saws / 3.0,
+                    (2400.0 + vel * 2000.0).min(sr * 0.44),
+                    0.3,
+                    sr,
+                    FilterMode::Lowpass,
+                );
+                let env = compute_envelope_with_cap(
+                    age,
+                    v.duration,
+                    0.05 * v.velocity_gain,
+                    0.85,
+                    0.35,
+                    0.5,
+                    0.6,
+                    0.6,
+                );
                 sig * env
             }
             VoiceType::TranceLead => {
@@ -948,8 +954,19 @@ impl Synth {
                 v.phase1 += TAU * base * dmath::powf(2.0, 8.0 / 1200.0) * dt;
                 v.phase2 += TAU * base * dmath::powf(2.0, -8.0 / 1200.0) * dt;
                 let cutoff = (600.0 + 5000.0 * vel * natural_decay(age, 0.18)).min(sr * 0.44);
-                let sig = v.filt.process(saws * 0.5, cutoff, 0.8, sr, FilterMode::Lowpass);
-                let env = compute_envelope_with_cap(age, v.duration, 0.07 * v.velocity_gain, 0.35, 0.003, 0.25, 0.15, 0.15);
+                let sig = v
+                    .filt
+                    .process(saws * 0.5, cutoff, 0.8, sr, FilterMode::Lowpass);
+                let env = compute_envelope_with_cap(
+                    age,
+                    v.duration,
+                    0.07 * v.velocity_gain,
+                    0.35,
+                    0.003,
+                    0.25,
+                    0.15,
+                    0.15,
+                );
                 sig * env
             }
             VoiceType::TechnoKick => {
@@ -960,8 +977,13 @@ impl Synth {
                 let body = generate_osc(v.phase1, Wave::Sine);
                 v.phase1 += TAU * pitch * dt;
                 let envelope = 0.6 * natural_decay(age, 0.06) + 0.4 * natural_decay(age, 0.22);
-                let click = v.filt.process(noise(&mut v.noise_state), 2500.0, 0.5, sr, FilterMode::Highpass)
-                    * natural_decay(age, 0.002)
+                let click = v.filt.process(
+                    noise(&mut v.noise_state),
+                    2500.0,
+                    0.5,
+                    sr,
+                    FilterMode::Highpass,
+                ) * natural_decay(age, 0.002)
                     * 0.15;
                 (body * envelope + click) * (age / 0.001).clamp(0.0, 1.0) * 0.32 * vel
             }
@@ -969,17 +991,28 @@ impl Synth {
                 // Three hands a hair apart, then the room's short tail.
                 let bursts = [0.0f32, 0.011, 0.022]
                     .iter()
-                    .map(|start| if age >= *start && age < start + 0.006 { 1.0 } else { 0.0 })
+                    .map(|start| {
+                        if age >= *start && age < start + 0.006 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
                     .sum::<f32>()
                     .min(1.0);
-                let tail = if age >= 0.022 { natural_decay(age - 0.022, 0.12) } else { 0.0 };
-                let sig = v.filt.process(noise(&mut v.noise_state), 1200.0, 0.7, sr, FilterMode::Bandpass);
+                let tail = if age >= 0.022 {
+                    natural_decay(age - 0.022, 0.12)
+                } else {
+                    0.0
+                };
+                let sig = v.filt.process(
+                    noise(&mut v.noise_state),
+                    1200.0,
+                    0.7,
+                    sr,
+                    FilterMode::Bandpass,
+                );
                 sig * (bursts + tail * 0.8) * 0.22 * v.velocity_gain
-            }
-            VoiceType::OpenHat => {
-                // An open hi-hat: bright noise that rings for a sixteenth or two.
-                let sig = v.filt.process(noise(&mut v.noise_state), 7000.0, 0.4, sr, FilterMode::Highpass);
-                sig * natural_decay(age, 0.16) * 0.12 * v.velocity_gain
             }
             VoiceType::Bass => {
                 let f_body = compute_freq(base, age, 0.004);

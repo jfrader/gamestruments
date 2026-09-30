@@ -106,10 +106,6 @@ const SUSPENSE: LabRecipeProfile = {
       traits: { energy: 0.7, complexity: 0.4, brightness: 0.78, syncopation: 0.42 },
     },
     {
-      style: "techno",
-      traits: { energy: 0.6, complexity: 0.5, brightness: 0.5, syncopation: 0.5 },
-    },
-    {
       style: "trance",
       traits: { energy: 0.55, complexity: 0.4, brightness: 0.75, syncopation: 0.35 },
     },

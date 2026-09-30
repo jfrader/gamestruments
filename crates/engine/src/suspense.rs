@@ -12,8 +12,6 @@ pub enum SuspenseStyle {
     Terminal,
     Cipher,
     Noir,
-    /// The Suspense composition on club instruments.
-    Techno,
     /// The Suspense composition on trance instruments.
     Trance,
 }
@@ -24,7 +22,6 @@ impl SuspenseStyle {
             "terminal" => Ok(Self::Terminal),
             "cipher" => Ok(Self::Cipher),
             "noir" => Ok(Self::Noir),
-            "techno" => Ok(Self::Techno),
             "trance" => Ok(Self::Trance),
             other => Err(format!("Unknown suspense style: {other}")),
         }
@@ -35,7 +32,6 @@ impl SuspenseStyle {
             Self::Terminal => "terminal",
             Self::Cipher => "cipher",
             Self::Noir => "noir",
-            Self::Techno => "techno",
             Self::Trance => "trance",
         }
     }
@@ -45,7 +41,6 @@ impl SuspenseStyle {
             Self::Terminal => "Terminal",
             Self::Cipher => "Cipher",
             Self::Noir => "Noir",
-            Self::Techno => "Techno",
             Self::Trance => "Trance",
         }
     }
@@ -333,15 +328,6 @@ impl SoundWorld {
 impl SuspenseStyle {
     /// The style's sound world; Terminal is the reference the piece is written in.
     fn sound_world(self) -> Option<SoundWorld> {
-        let club = |cell| SoundWorld {
-            drone: "trance-pad",
-            cell,
-            pulse: "saw-bass",
-            arp: "trance-lead",
-            pad: "trance-pad",
-            kick: "techno-kick",
-            snare: "clap",
-        };
         match self {
             Self::Terminal => None,
             Self::Cipher => Some(SoundWorld {
@@ -362,8 +348,15 @@ impl SuspenseStyle {
                 kick: "kick",
                 snare: "snare",
             }),
-            Self::Techno => Some(club("stab")),
-            Self::Trance => Some(club("trance-lead")),
+            Self::Trance => Some(SoundWorld {
+                drone: "trance-pad",
+                cell: "trance-lead",
+                pulse: "saw-bass",
+                arp: "trance-lead",
+                pad: "trance-pad",
+                kick: "techno-kick",
+                snare: "clap",
+            }),
         }
     }
 }
@@ -428,7 +421,6 @@ fn create_arrangement(
         SuspenseStyle::Noir => 64.0,
         SuspenseStyle::Terminal => 72.0,
         SuspenseStyle::Cipher => 78.0,
-        SuspenseStyle::Techno => 84.0,
         SuspenseStyle::Trance => 88.0,
     };
     ArrangementDna {

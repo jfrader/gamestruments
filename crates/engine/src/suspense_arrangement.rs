@@ -4643,11 +4643,10 @@ mod tests {
         assert!(!lanes.contains(&"probe-arp"), "the arp layer must be masked");
     }
 
-    const WORLDS: [SuspenseStyle; 5] = [
+    const WORLDS: [SuspenseStyle; 4] = [
         SuspenseStyle::Terminal,
         SuspenseStyle::Cipher,
         SuspenseStyle::Noir,
-        SuspenseStyle::Techno,
         SuspenseStyle::Trance,
     ];
 
@@ -4718,20 +4717,18 @@ mod tests {
             !noir.contains("glass"),
             "Terminal's glass cells leak into Noir"
         );
-        for style in [SuspenseStyle::Techno, SuspenseStyle::Trance] {
-            let club = voices(style);
-            for voice in [
-                "techno-kick",
-                "clap",
-                "saw-bass",
-                "trance-pad",
-                "trance-lead",
-            ] {
-                assert!(club.contains(voice), "{style:?} lacks {voice}");
-            }
-            for voice in ["kick", "snare", "warm", "glass", "pulse", "dusk"] {
-                assert!(!club.contains(voice), "{style:?} still plays {voice}");
-            }
+        let trance = voices(SuspenseStyle::Trance);
+        for voice in [
+            "techno-kick",
+            "clap",
+            "saw-bass",
+            "trance-pad",
+            "trance-lead",
+        ] {
+            assert!(trance.contains(voice), "Trance lacks {voice}");
+        }
+        for voice in ["kick", "snare", "warm", "glass", "pulse", "dusk"] {
+            assert!(!trance.contains(voice), "Trance still plays {voice}");
         }
     }
 }

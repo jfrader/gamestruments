@@ -115,7 +115,7 @@ var music_ready := false
 func _ready() -> void:
     music.project_secret = "my-game"
     music.recipe = "suspense"
-    music.style = "terminal"        # terminal, cipher, noir, techno, or trance
+    music.style = "terminal"        # terminal, cipher, noir, or trance
     music.arrangement = "all-phases"  # all-phases (canonical tour) or seeded (composer)
 
     music_ready = music.generate("chapter-001")

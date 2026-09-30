@@ -31,7 +31,6 @@ type SynthVoice = Exclude<
   | "vielle"
   | "bell"
   | "saw-bass"
-  | "stab"
   | "trance-pad"
   | "trance-lead"
 >;
@@ -801,7 +800,6 @@ export class DemoAudioEngine {
         this.#scheduleVielle(event, start, duration, destination),
       bell: () => this.#scheduleBell(event, start, destination),
       "saw-bass": () => this.#scheduleSawBass(event, start, duration, this.#pumpInput(destination)),
-      stab: () => this.#scheduleStab(event, start, duration, this.#pumpInput(destination)),
       "trance-pad": () => this.#scheduleTrancePad(event, start, duration, this.#pumpInput(destination)),
       "trance-lead": () => this.#scheduleTranceLead(event, start, duration, this.#pumpInput(destination)),
     } as const;
@@ -1361,25 +1359,6 @@ export class DemoAudioEngine {
     );
   }
 
-  #scheduleStab(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
-    const velocity = clamp(event.velocity, 0, 1);
-    this.#scheduleFilteredVoice(
-      event,
-      start,
-      duration,
-      destination,
-      [
-        { type: "sine", ratio: 1, gain: 1 },
-        { type: "sine", ratio: 2, gain: 0.5 },
-        { type: "sine", ratio: 3, gain: 0.35 },
-        { type: "sine", ratio: 4, gain: 0.2 },
-      ],
-      { frequency: 12000, q: 0.1 },
-      { peak: 0.09 * Math.pow(Math.max(0.02, velocity), 0.82), sustain: 0.25, attack: 0.002, decay: 0.22, release: 0.12 },
-      0.125,
-    );
-  }
-
   #scheduleTrancePad(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
     const velocity = clamp(event.velocity, 0, 1);
     const cents = (value: number) => Math.pow(2, value / 1200);
@@ -1450,11 +1429,6 @@ export class DemoAudioEngine {
       this.#scheduleNoise(level, start + offset, 0.006, "bandpass", 1200, 0.7, destination, `${seed}:${offset}`, 0.0625);
     }
     this.#scheduleNoise(level * 0.8, start + 0.022, 0.35, "bandpass", 1200, 0.7, destination, `${seed}:tail`, 0.0625);
-  }
-
-  #scheduleOpenHat(eventVelocity: number, start: number, destination: AudioNode, seed: string): void {
-    const level = 0.12 * Math.pow(Math.max(0.02, clamp(eventVelocity, 0, 1)), 0.82);
-    this.#scheduleNoise(level, start, 0.4, "highpass", 7000, 0.4, destination, seed, 0.5);
   }
 
   #scheduleBass(
@@ -1847,8 +1821,6 @@ export class DemoAudioEngine {
         this.#scheduleTechnoKick(event.velocity, start, destination, event.id),
       clap: () =>
         this.#scheduleClap(event.velocity, start, destination, event.id),
-      "open-hat": () =>
-        this.#scheduleOpenHat(event.velocity, start, destination, event.id),
       snare: () =>
         this.#scheduleSnare(event.velocity, start, destination, event.id),
       hat: () =>

@@ -18,7 +18,6 @@ const NOTE_VOICES = new Set([
   "vielle",
   "bell",
   "saw-bass",
-  "stab",
   "trance-pad",
   "trance-lead",
 ]);
@@ -26,7 +25,6 @@ const PERCUSSION_VOICES = new Set([
   "kick",
   "techno-kick",
   "clap",
-  "open-hat",
   "snare",
   "hat",
   "tom",

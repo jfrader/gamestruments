@@ -9,7 +9,7 @@ The player ships three recipes. Set `recipe` before calling `generate`; a genera
 | Recipe | `recipe` | Drive it with | Styles |
 |---|---|---|---|
 | Racing | `"racing"` (default) | `set_race_state` | `fusion`, `neon`, `funk`, `chip` |
-| Suspense (song-form) | `"suspense"` | `set_trace_state` plus form controls | `terminal`, `cipher`, `noir`, `techno`, `trance` |
+| Suspense (song-form) | `"suspense"` | `set_trace_state` plus form controls | `terminal`, `cipher`, `noir`, `trance` |
 | Adventure (fantasy quest) | `"adventure"` | `set_adventure_state` | `folk`, `dark`, `orchestral` |
 
 ## Exported Properties
