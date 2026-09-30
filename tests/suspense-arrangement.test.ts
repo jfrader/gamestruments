@@ -10,8 +10,8 @@ import { validatePortableScore, type PortableScore } from "../packages/runtime/s
 // these digests freeze byte-for-byte.
 const seededDigests = {
   terminal: "fa51e74f61b464d85df980afc9e0495cd84f2ebdaf3c9534792cd68e49bc8b3a",
-  cipher: "28d2457de7d8928fedfe34b8c8da009a27f2cb6283110594d362c52df8eb6978",
-  noir: "b25280cf6940a2b59e18aeec7613e297eccb06a5d5d54b35bdd700299b9c71b8",
+  cipher: "ee4b18b3de2ead2d9dbeda617f0a0681ad95fda670ffa617819276426b3c1b2f",
+  noir: "4ab83462d7747419964a8fb84d157db8db6b1cc2626b4e371d8bc8966c7e5636",
 };
 
 const { instance } = await WebAssembly.instantiate(new Uint8Array(await readFile(

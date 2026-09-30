@@ -142,10 +142,6 @@ pub(crate) const MATCH_PHASES: [MatchPhase; 10] = [
     },
 ];
 
-pub(crate) fn match_phase(id: &str) -> Option<&'static MatchPhase> {
-    MATCH_PHASES.iter().find(|phase| phase.id == id)
-}
-
 /// The block at `bar` of a phase that cycles `blocks`, and whether `bar` is
 /// the last bar of its block within a section of `bars`.
 pub(crate) fn block_at(blocks: &[Block], bar: u32, bars: u32) -> (Block, bool) {

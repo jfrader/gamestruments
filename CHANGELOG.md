@@ -5,7 +5,8 @@
 ### Added
 
 - Suspense gains ten match phases for strategy games — Build Order, Recon, Expansion, Tech Up, Raid, Standoff, Siege, Battle, Victory and Defeat — written as 8-bar block plans that every style plays in its own instruments. The pool grows to 38 phases, so `seeded` and `all-phases` takes of Terminal, Cipher and Noir change for the same seed.
-- Suspense gains two club styles, `techno` and `trance`, that play every Suspense phase as club music: breaks become breakdowns with a snare roll, peaks become the drop, and bridges carry an acid line. New voices: `techno-kick`, `clap` and `open-hat` percussion, and `saw-bass`, `stab`, `trance-pad` and `trance-lead` notes, which duck under every club kick.
+- Suspense gains two styles, `techno` and `trance`: the same Suspense composition on club instruments. New voices: `techno-kick`, `clap` and `open-hat` percussion, and `saw-bass`, `stab`, `trance-pad` and `trance-lead` notes, which duck under every club kick.
+- A Suspense style now changes only the instruments: every phase, including the pool phases that used to keep Terminal's voices in Cipher and Noir, plays in the style's sound world, and the notes are the same in every style. Cipher and Noir takes change for the same seed; Terminal is unchanged.
 
 - Calling `generate()` on a Godot player that is already playing crossfades the new score over the one still going, for the same two bars a section join uses. The old score is not cut off, and cues during the fade land on the incoming score.
 

@@ -1,5 +1,4 @@
-use crate::club::revoice;
-use crate::suspense::compose_suspense;
+use crate::suspense::{apply_sound_world, compose_suspense};
 use std::collections::HashMap;
 
 use crate::development::{
@@ -288,13 +287,6 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
     section.events.sort_by_key(MusicEvent::start_tick);
 }
 
-/// Club styles rewrite the composed form's material as techno or trance.
-fn apply_club_voicing(score: &mut PortableScore, input: &SuspenseInput, take: u32) {
-    if let Some(club) = input.style.club() {
-        revoice(score, club, input.club_traits(), pool_seed(input, take));
-    }
-}
-
 fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
@@ -303,7 +295,7 @@ fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore
     apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     apply_trait_response(&mut score, &traits);
-    apply_club_voicing(&mut score, input, take);
+    apply_sound_world(&mut score, input.style);
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
     score.validate()?;
@@ -325,7 +317,7 @@ fn generate_seeded(
     apply_development_pass(&mut score, pool_seed(input, take), traits)?;
     apply_transition_pass(&mut score, pool_seed(input, take));
     apply_trait_response(&mut score, &traits);
-    apply_club_voicing(&mut score, input, take);
+    apply_sound_world(&mut score, input.style);
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
     score.validate()?;
@@ -1777,8 +1769,8 @@ fn build_new_phases(root: u8, bar: u32, seed: u32) -> Vec<(String, PortableSecti
     .collect()
 }
 
-/// A match phase in the Suspense sound: the same 8-bar block plan the club
-/// styles play, on the drone, pulse, glass and kit.
+/// A match phase: its 8-bar block plan on the reference drone, pulse, glass,
+/// pad and kit; the style's sound world re-instruments it like every phase.
 fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> PortableSection {
     let id = phase.id;
     let bars = phase.bars();
@@ -4649,5 +4641,97 @@ mod tests {
             .collect();
         assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
         assert!(!lanes.contains(&"probe-arp"), "the arp layer must be masked");
+    }
+
+    const WORLDS: [SuspenseStyle; 5] = [
+        SuspenseStyle::Terminal,
+        SuspenseStyle::Cipher,
+        SuspenseStyle::Noir,
+        SuspenseStyle::Techno,
+        SuspenseStyle::Trance,
+    ];
+
+    fn world_input(style: SuspenseStyle) -> SuspenseInput {
+        SuspenseInput {
+            style,
+            ..input("worlds")
+        }
+    }
+
+    /// Everything about an event except the instrument it plays on.
+    fn notes_without_voices(score: &PortableScore) -> Vec<(String, u32, u32, Option<u8>)> {
+        score
+            .sections
+            .iter()
+            .flat_map(|section| section.events.iter())
+            .map(|event| {
+                let lane = match event {
+                    MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => lane,
+                };
+                (
+                    lane.clone(),
+                    event.start_tick(),
+                    event.duration_ticks(),
+                    event.pitch(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn sound_worlds_change_the_instruments_and_never_the_composition() {
+        for arrangement in [SuspenseArrangement::AllPhases, SuspenseArrangement::Seeded] {
+            let reference =
+                generate_suspense_arrangement(&world_input(SuspenseStyle::Terminal), arrangement)
+                    .unwrap();
+            for style in WORLDS {
+                let score =
+                    generate_suspense_arrangement(&world_input(style), arrangement).unwrap();
+                assert_eq!(
+                    notes_without_voices(&score),
+                    notes_without_voices(&reference),
+                    "{style:?} must play the same notes as Terminal"
+                );
+                assert_eq!(
+                    serde_json::to_string(&score.form).unwrap(),
+                    serde_json::to_string(&reference.form).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_world_plays_its_own_instruments_in_every_phase() {
+        let voices = |style: SuspenseStyle| {
+            let score =
+                generate_suspense_arrangement(&world_input(style), SuspenseArrangement::AllPhases)
+                    .unwrap();
+            score
+                .sections
+                .iter()
+                .flat_map(|section| section.events.iter())
+                .map(|event| event.voice().to_string())
+                .collect::<std::collections::HashSet<_>>()
+        };
+        let noir = voices(SuspenseStyle::Noir);
+        assert!(
+            !noir.contains("glass"),
+            "Terminal's glass cells leak into Noir"
+        );
+        for style in [SuspenseStyle::Techno, SuspenseStyle::Trance] {
+            let club = voices(style);
+            for voice in [
+                "techno-kick",
+                "clap",
+                "saw-bass",
+                "trance-pad",
+                "trance-lead",
+            ] {
+                assert!(club.contains(voice), "{style:?} lacks {voice}");
+            }
+            for voice in ["kick", "snare", "warm", "glass", "pulse", "dusk"] {
+                assert!(!club.contains(voice), "{style:?} still plays {voice}");
+            }
+        }
     }
 }

@@ -66,6 +66,24 @@ Phases keep their authored length only as a starting point: the composed path
 re-times them per take (`phase_bars` in `suspense_arrangement.rs`) — breaks and
 waits may shrink to 1–2 bars, momentum phases may stretch to 24/32 bars.
 
+## Sound worlds
+
+A style changes only the instruments. The piece is composed once in
+Terminal's instruments; `apply_sound_world` (`crates/engine/src/suspense.rs`)
+then moves every part — drone, cell, pulse, arpeggio, pad — and the kick and
+snare to the style's voices, so every style plays the same notes, phases and
+form.
+
+| style | drone | cell | pulse | arp | pad | kick / snare |
+|---|---|---|---|---|---|---|
+| `terminal` | warm | glass | pulse | pulse | dusk | kick / snare |
+| `cipher` | warm | pluck | bass | glass | dusk | kick / snare |
+| `noir` | organ | epiano | bass | warm | dusk | kick / snare |
+| `techno` | trance-pad | stab | saw-bass | trance-lead | trance-pad | techno-kick / clap |
+| `trance` | trance-pad | trance-lead | saw-bass | trance-lead | trance-pad | techno-kick / clap |
+
+Saw bass, stab and the trance voices duck under every club kick.
+
 ## Arrangements
 
 `arrangement` accepts two values (`crates/engine/src/suspense_arrangement.rs`,
