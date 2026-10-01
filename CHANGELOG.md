@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- The Audio Lab uses far less CPU. Every animation frame rewrote all its section rows, even while stopped, and re-blurred the orbit's glow. It now writes only what changed, and the glow is a static layer. In a desktop Chromium window, playing Suspense Trance dropped from about 1.4 cores to about a quarter of one, and a stopped Lab from about 1.2 cores to about 6% of one.
 - `kit/docs/limitations.md` shows how to quit while the music plays without Godot's `ObjectDB instance was leaked at exit` warning. Godot 4.7 prints it for any audio still playing at quit ([godot#76745](https://github.com/godotengine/godot/issues/76745)). The kit contract no longer promises that removing the player alone avoids it.
 - A Godot game can now change seed and choose the incoming section in one `generate(seed, opening_section)` call. The new score waits for the same bar-aligned handoff as before but starts directly on that section, instead of fading into its default section and then stacking a second phase transition on top.
 - The garage intro no longer falls into near-silence at the end of every bar: its held chord stopped at 69% of the bar and the Funk style dropped its only hat, so the sparse kit could not cover the gap. Ignition inherited the same hole and, opening at reduced level, read as a dropout rather than a build.
