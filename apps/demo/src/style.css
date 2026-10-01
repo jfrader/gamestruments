@@ -973,10 +973,20 @@ input[type="range"]::-webkit-slider-thumb {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 0 38px color-mix(in srgb, var(--mood-color), transparent 84%));
   transform: scale(var(--orbit-scale));
-  transition: filter 100ms linear, transform 140ms ease-out;
+  transition: transform 140ms ease-out;
   will-change: transform;
+}
+
+/* The halo is its own static layer: a filter on .orbit re-blurred the whole
+   orbit on every animation frame. */
+.orbit::after {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow: 0 0 38px color-mix(in srgb, var(--mood-color), transparent 84%);
+  pointer-events: none;
 }
 
 .orbit::before {

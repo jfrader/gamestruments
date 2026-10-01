@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mkdirSync } from "node:fs";
+import { selectRecipe } from "./recipe.ts";
 
 test("the orbit advances while music is playing", async ({ page }) => {
   const runtimeErrors: string[] = [];
@@ -127,4 +128,27 @@ test("orbit part rings represent instruments and animate independently (racing s
   await page.locator("#start-audio").click();
   await expect(orbit).not.toHaveClass(/is-running/);
   expect(runtimeErrors).toEqual([]);
+});
+
+test("a stopped Lab leaves the page untouched between frames", async ({ page }) => {
+  await page.goto("/#lab");
+  await expect(page.locator("#generator-summary")).toContainText("engine: wasm");
+  // Suspense renders the most section rows, the largest per-frame surface.
+  await selectRecipe(page, "suspense");
+  await page.waitForTimeout(500);
+  const mutations = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let count = 0;
+        const observer = new MutationObserver((records) => {
+          count += records.length;
+        });
+        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+        setTimeout(() => {
+          observer.disconnect();
+          resolve(count);
+        }, 1000);
+      }),
+  );
+  expect(mutations).toBe(0);
 });

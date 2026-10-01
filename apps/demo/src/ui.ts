@@ -31,6 +31,25 @@ function fmt(value: number): string {
   return String(Math.round(value * 10000) / 10000);
 }
 
+// renderFrame runs on every animation frame, so its DOM writes go through these:
+// an unchanged value is never rewritten, and a still frame costs no style,
+// layout or paint work.
+function setText(element: HTMLElement, text: string): void {
+  if (element.textContent !== text) element.textContent = text;
+}
+
+function setAttribute(element: Element, name: string, value: string): void {
+  if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+}
+
+function setStyleProperty(element: HTMLElement, property: string, value: string): void {
+  if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
+}
+
+function setDisabled(control: HTMLButtonElement | HTMLInputElement | HTMLSelectElement, disabled: boolean): void {
+  if (control.disabled !== disabled) control.disabled = disabled;
+}
+
 /** The score's real phases: the debugger's transient bar slices are not phases. */
 function phaseSections(score: PortableScore): readonly PortableSection[] {
   return score.sections.filter((section) => !isDebugBarSection(section.id));
@@ -110,35 +129,37 @@ export function renderSections(
   );
   const view = cueView(score, transport.snapshot(), tick, audio.running, requested, transport.formHeld);
   const next = transport.nextFormSection(tick);
-  elements.holdForm.disabled = busy || score.form === undefined;
-  elements.holdForm.setAttribute("aria-pressed", String(transport.formHeld));
-  elements.holdForm.textContent = transport.formHeld ? "Resume auto tour" : "Hold auto tour";
-  elements.advanceForm.disabled = busy || next === null || transport.snapshot().transition !== null;
-  elements.advanceForm.textContent = next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`;
+  setDisabled(elements.holdForm, busy || score.form === undefined);
+  setAttribute(elements.holdForm, "aria-pressed", String(transport.formHeld));
+  setText(elements.holdForm, transport.formHeld ? "Resume auto tour" : "Hold auto tour");
+  setDisabled(elements.advanceForm, busy || next === null || transport.snapshot().transition !== null);
+  setText(elements.advanceForm, next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`);
   const status = busy ? "Preparing playback…" : view.status;
   const detail = busy ? "Please wait before cueing a section." : view.detail;
-  if (elements.cueStatus.textContent !== status) elements.cueStatus.textContent = status;
-  if (elements.cueDetail.textContent !== detail) elements.cueDetail.textContent = detail;
-  elements.cancelCue.disabled = busy || !view.cancellable;
-  elements.sectionSelect.disabled = busy;
-  for (const control of [elements.intensity, elements.pressure, elements.finalLap, ...elements.phaseButtons.querySelectorAll<HTMLButtonElement>("button")]) control.disabled = busy;
-  if (document.activeElement !== elements.sectionSelect) elements.sectionSelect.value = view.select;
+  setText(elements.cueStatus, status);
+  setText(elements.cueDetail, detail);
+  setDisabled(elements.cancelCue, busy || !view.cancellable);
+  setDisabled(elements.sectionSelect, busy);
+  for (const control of [elements.intensity, elements.pressure, elements.finalLap, ...elements.phaseButtons.querySelectorAll<HTMLButtonElement>("button")]) setDisabled(control, busy);
+  if (document.activeElement !== elements.sectionSelect && elements.sectionSelect.value !== view.select) {
+    elements.sectionSelect.value = view.select;
+  }
   for (const section of score.sections) {
     const row = sectionRows.get(section.id);
     if (row === undefined) {
       continue;
     }
     const gain = mix.get(section.id) ?? 0;
-    row.item.style.setProperty("--gain-width", `${gain * 100}%`);
+    setStyleProperty(row.item, "--gain-width", `${gain * 100}%`);
     row.item.classList.toggle("is-audible", gain > 0.001);
     const queued = section.id === view.target;
     const current = section.id === view.current;
     row.item.classList.toggle("is-cued", queued);
-    if (current) row.item.setAttribute("aria-current", "true");
+    if (current) setAttribute(row.item, "aria-current", "true");
     else row.item.removeAttribute("aria-current");
-    row.button.textContent = queued ? view.cancellable ? "Queued" : "Next" : current ? audio.running ? "Playing" : "Selected" : "Cue";
-    row.button.disabled = busy || (current && !view.cancellable);
-    row.output.value = `${Math.round(gain * 100)}%`;
+    setText(row.button, queued ? view.cancellable ? "Queued" : "Next" : current ? audio.running ? "Playing" : "Selected" : "Cue");
+    setDisabled(row.button, busy || (current && !view.cancellable));
+    setText(row.output, `${Math.round(gain * 100)}%`);
   }
 }
 
@@ -378,12 +399,10 @@ export function renderSectionSteps(
     { button: elements.nextSection, target: nextTarget, label: "Next" },
   ];
   for (const { button, target, label } of targets) {
-    button.disabled = !enabled;
+    setDisabled(button, !enabled);
     const title = `${label} section: ${target.label}`;
-    if (button.title !== title) {
-      button.title = title;
-      button.setAttribute("aria-label", title);
-    }
+    setAttribute(button, "title", title);
+    setAttribute(button, "aria-label", title);
   }
 }
 
@@ -429,8 +448,8 @@ export function renderEngineButton(
     }
   }
 
-  button.setAttribute("data-engine-state", state);
-  button.setAttribute("aria-label", ariaLabel);
+  setAttribute(button, "data-engine-state", state);
+  setAttribute(button, "aria-label", ariaLabel);
   // aria-pressed kept by setStartButton
 
   const fromEl = button.querySelector<HTMLElement>(".engine-label--from");
@@ -453,29 +472,25 @@ export function renderEngineButton(
           arrow,
           document.createTextNode(` ${toSec.label}`),
         );
-        fromEl.setAttribute("title", plain);
+        setAttribute(fromEl, "title", plain);
       }
     } else {
-      if (fromEl.textContent !== plain) {
-        fromEl.textContent = plain;
-      }
-      fromEl.setAttribute("title", plain.length > 12 ? plain : "");
+      setText(fromEl, plain);
+      setAttribute(fromEl, "title", plain.length > 12 ? plain : "");
     }
   }
   if (toEl) {
-    if (toEl.textContent !== toText) {
-      toEl.textContent = toText;
-    }
-    toEl.setAttribute("title", toText.length > 12 ? toText : "");
+    setText(toEl, toText);
+    setAttribute(toEl, "title", toText.length > 12 ? toText : "");
   }
   if (stopEl) {
-    stopEl.style.display = state === "offline" ? "none" : "";
+    setStyleProperty(stopEl, "display", state === "offline" ? "none" : "");
   }
   if (progEl) {
     if (state === "crossing") {
-      progEl.style.setProperty("--cross-progress", crossProgress.toFixed(4));
-      progEl.style.setProperty("--from-color", fromColor);
-      progEl.style.setProperty("--to-color", toColor);
+      setStyleProperty(progEl, "--cross-progress", crossProgress.toFixed(4));
+      setStyleProperty(progEl, "--from-color", fromColor);
+      setStyleProperty(progEl, "--to-color", toColor);
     } else {
       progEl.style.removeProperty("--cross-progress");
       progEl.style.removeProperty("--from-color");
@@ -484,9 +499,9 @@ export function renderEngineButton(
   }
   // also expose on button for gradient targeting
   if (state === "crossing") {
-    button.style.setProperty("--cross-progress", crossProgress.toFixed(4));
-    button.style.setProperty("--from-color", fromColor);
-    button.style.setProperty("--to-color", toColor);
+    setStyleProperty(button, "--cross-progress", crossProgress.toFixed(4));
+    setStyleProperty(button, "--from-color", fromColor);
+    setStyleProperty(button, "--to-color", toColor);
   } else {
     button.style.removeProperty("--cross-progress");
     button.style.removeProperty("--from-color");
@@ -557,13 +572,13 @@ export function renderFrame(
       : snapshot.currentSection;
   const section = sectionById(primarySection);
 
-  elements.bar.textContent = String(Math.floor(tick / barTicks) + 1).padStart(2, "0");
-  elements.beat.textContent = String(
+  setText(elements.bar, String(Math.floor(tick / barTicks) + 1).padStart(2, "0"));
+  setText(elements.beat, String(
     Math.floor((tick % barTicks) / score.ticksPerBeat) + 1,
-  ).padStart(2, "0");
-  if (elements.moodName.textContent !== section.label) elements.moodName.textContent = section.label;
-  elements.moodFeeling.textContent = section.feeling;
-  elements.transitionLabel.textContent = !audio.running
+  ).padStart(2, "0"));
+  setText(elements.moodName, section.label);
+  setText(elements.moodFeeling, section.feeling);
+  setText(elements.transitionLabel, !audio.running
     ? "Engine offline"
     : snapshot.pendingSection !== null
       ? `Queued: ${sectionById(snapshot.pendingSection).label} · after this blend`
@@ -573,8 +588,8 @@ export function renderFrame(
            : transport.formHeld ? "Holding section" : "Form playing"
         : tick < activeTransition.startTick
            ? `Waiting for next bar → ${sectionById(activeTransition.to).label}`
-          : `Crossing from ${sectionById(activeTransition.from).label}`;
-  elements.orbit.style.setProperty("--mood-color", section.color);
+          : `Crossing from ${sectionById(activeTransition.from).label}`);
+  setStyleProperty(elements.orbit, "--mood-color", section.color);
   elements.orbit.classList.toggle("is-running", audio.running);
   const frame: OrbitFrame = audio.running
     ? orbitFrameAt(
@@ -586,7 +601,7 @@ export function renderFrame(
       )
     : { beatPulse: 0, playheadTurns: 0, glowPulse: 0, parts: [] };
   for (const [property, value] of Object.entries(orbitStyleAt(frame))) {
-    elements.orbit.style.setProperty(property, value);
+    setStyleProperty(elements.orbit, property, value);
   }
   const rings = getPartRings();
   const n = frame.parts.length;
@@ -600,43 +615,20 @@ export function renderFrame(
     }
     if (el.hasAttribute("hidden")) el.removeAttribute("hidden");
 
-    if (el.getAttribute("data-part") !== part.id) {
-      el.setAttribute("data-part", part.id);
-    }
+    setAttribute(el, "data-part", part.id);
     const title = `${part.label} · ${part.instrument}`;
-    if (el.title !== title) {
-      el.title = title;
-      el.setAttribute("aria-label", title);
-    }
-
-    const color = PART_COLORS[part.colorIndex % PART_COLORS.length]!;
-    if (el.style.getPropertyValue("--part-color") !== color) {
-      el.style.setProperty("--part-color", color);
-    }
-
+    setAttribute(el, "title", title);
+    setAttribute(el, "aria-label", title);
+    setStyleProperty(el, "--part-color", PART_COLORS[part.colorIndex % PART_COLORS.length]!);
     // spread ~4% to ~34% for up to 6 rings
-    const insetPct = 4 + i * 6;
-    const inset = `${insetPct}%`;
-    if (el.style.getPropertyValue("--part-inset") !== inset) {
-      el.style.setProperty("--part-inset", inset);
-    }
+    setStyleProperty(el, "--part-inset", `${4 + i * 6}%`);
 
     const p = part.pulse;
     const opacity = 0.5 + p * 0.45;
     const scale = 1 + p * 0.06;
-    const rot = `${fmt(part.turns)}turn`;
-    const opStr = fmt(opacity);
-    const scStr = fmt(scale);
-
-    if (el.style.getPropertyValue("--part-rotation") !== rot) {
-      el.style.setProperty("--part-rotation", rot);
-    }
-    if (el.style.getPropertyValue("--part-opacity") !== opStr) {
-      el.style.setProperty("--part-opacity", opStr);
-    }
-    if (el.style.getPropertyValue("--part-scale") !== scStr) {
-      el.style.setProperty("--part-scale", scStr);
-    }
+    setStyleProperty(el, "--part-rotation", `${fmt(part.turns)}turn`);
+    setStyleProperty(el, "--part-opacity", fmt(opacity));
+    setStyleProperty(el, "--part-scale", fmt(scale));
   }
   renderSections(score, transport, audio, requested, busy);
 

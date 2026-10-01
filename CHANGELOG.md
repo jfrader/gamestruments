@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- The Audio Lab uses far less CPU. Every animation frame rewrote all its section rows, even while stopped, and re-blurred the orbit's glow. It now writes only what changed, and the glow is a static layer. In Chromium, playing Suspense Trance dropped from about 93% of one core to about 35%, and a stopped Lab from about 46% to about 3%.
 - A Godot game can now change seed and choose the incoming section in one `generate(seed, opening_section)` call. The new score waits for the same bar-aligned handoff as before but starts directly on that section, instead of fading into its default section and then stacking a second phase transition on top.
 - The garage intro no longer falls into near-silence at the end of every bar: its held chord stopped at 69% of the bar and the Funk style dropped its only hat, so the sparse kit could not cover the gap. Ignition inherited the same hole and, opening at reduced level, read as a dropout rather than a build.
 - A seed change no longer dips the mix toward silence during the crossfade: the outgoing holds at full level until the incoming score's level clears a musical floor (its RMS, not its first non-zero sample), then crossfades with the incoming gain-matched to the outgoing so the summed level stays even.
