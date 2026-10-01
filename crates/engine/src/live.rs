@@ -3,11 +3,37 @@
 //! and routes cues and game state to the transport. Godot and the browser Lab
 //! both play through it, so they sound the same.
 
+use serde::Serialize;
+
 use crate::handoff::{crossfade_gains, crossfade_sample_count, Handoff};
 use crate::master::{MasterChain, MasterConfig};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
 use crate::synth::{events_starting_at, tick_at_sample, Synth};
+use crate::transport::TransitionPlan;
 use crate::{AdaptiveTransport, FormAudio};
+
+/// What the player is sounding, for a UI to show.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackStatus {
+    /// The playing score; a replacement waiting for the bar is not shown yet.
+    pub score_id: String,
+    pub tick: u32,
+    pub current_section: String,
+    /// The section queued behind the active transition.
+    pub pending_section: Option<String>,
+    pub transition: Option<TransitionPlan>,
+    pub form_held: bool,
+    pub next_form_section: Option<String>,
+    /// Every section sounding now, with its gain.
+    pub mix: Vec<SectionGain>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SectionGain {
+    pub section: String,
+    pub gain: f32,
+}
 
 /// Live playback state for one generated score.
 struct Voice {
@@ -337,6 +363,11 @@ impl LivePlayer {
         })
     }
 
+    /// Drop a queued cue, and a transition that has not started yet.
+    pub fn cancel_pending(&mut self) -> bool {
+        self.for_each_live_voice(|transport, tick| transport.cancel_pending(tick).is_some())
+    }
+
     pub fn set_form_held(&mut self, held: bool) -> bool {
         self.for_each_live_voice(|transport, tick| {
             if transport.has_form() {
@@ -381,6 +412,30 @@ impl LivePlayer {
     /// The playing score's clock, in ticks.
     pub fn current_tick(&self) -> Option<u32> {
         self.active.as_ref().map(|voice| voice.tick)
+    }
+
+    /// What the playing score is sounding now.
+    pub fn status(&self) -> Option<PlaybackStatus> {
+        let voice = self.active.as_ref()?;
+        let transport = &voice.transport;
+        Some(PlaybackStatus {
+            score_id: voice.score.id.clone(),
+            tick: voice.tick,
+            current_section: transport.current_section().to_string(),
+            pending_section: transport.pending_section().map(str::to_string),
+            transition: transport.transition(),
+            form_held: transport.is_form_held(),
+            next_form_section: transport.next_form_section(voice.tick),
+            mix: transport
+                .playback_at(voice.tick)
+                .into_iter()
+                .flatten()
+                .map(|part| SectionGain {
+                    section: part.section.to_string(),
+                    gain: part.gain,
+                })
+                .collect(),
+        })
     }
 }
 
@@ -431,15 +486,50 @@ mod tests {
     #[test]
     fn a_new_seed_waits_for_the_bar_and_keeps_the_tempo() {
         let mut player = LivePlayer::new(RATE);
-        player.load(suspense("a"), "a", "suspense", 0, None).unwrap();
+        player
+            .load(suspense("a"), "a", "suspense", 0, None)
+            .unwrap();
         play(&mut player, 0.3);
         let tempo = player.active.as_ref().unwrap().score.bpm;
-        player.load(suspense("b"), "b", "suspense", 0, None).unwrap();
-        assert!(player.is_playing_seed("a"), "the new seed waits for the bar");
+        player
+            .load(suspense("b"), "b", "suspense", 0, None)
+            .unwrap();
+        assert!(
+            player.is_playing_seed("a"),
+            "the new seed waits for the bar"
+        );
         // Longer than one bar at any Suspense tempo.
         play(&mut player, 4.0);
         assert!(player.is_playing_seed("b"));
         assert_eq!(player.active.as_ref().unwrap().score.bpm, tempo);
+    }
+
+    #[test]
+    fn status_shows_the_sounding_section_and_a_cancellable_cue() {
+        let score = suspense("a");
+        let id = score.id.clone();
+        let opening = score.default_section.clone();
+        let target = score
+            .sections
+            .iter()
+            .map(|section| section.id.clone())
+            .find(|section| *section != opening)
+            .unwrap();
+        let mut player = LivePlayer::new(RATE);
+        assert!(player.status().is_none());
+        player.load(score, "a", "suspense", 0, None).unwrap();
+        play(&mut player, 0.5);
+        let status = player.status().unwrap();
+        assert_eq!(status.score_id, id);
+        assert_eq!(status.current_section, opening);
+        assert!(status.transition.is_none());
+        assert_eq!(status.mix.len(), 1);
+        assert_eq!(status.mix[0].gain, 1.0);
+
+        assert!(player.cue_section(&target));
+        assert_eq!(player.status().unwrap().transition.unwrap().to, target);
+        assert!(player.cancel_pending());
+        assert!(player.status().unwrap().transition.is_none());
     }
 
     #[test]

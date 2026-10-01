@@ -1,7 +1,10 @@
+use serde::Serialize;
+
 use crate::handoff::RAW_MUSICAL_FLOOR;
 use crate::score::{AdventureState, FormOrigin, GameState, PortableScore, TraceState};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransitionPlan {
     pub from: String,
     pub to: String,
@@ -219,6 +222,37 @@ impl AdaptiveTransport {
         let plan = self.create_plan(&self.current_section, target, at_tick);
         self.begin_transition(plan.clone(), source);
         Some(plan)
+    }
+
+    /// Drop a queued cue, and the active transition if it has not started yet.
+    /// Returns the cancelled transition.
+    pub fn cancel_pending(&mut self, at_tick: u32) -> Option<TransitionPlan> {
+        self.pending_section = None;
+        if self
+            .transition
+            .as_ref()
+            .is_none_or(|plan| at_tick >= plan.start_tick)
+        {
+            return None;
+        }
+        let plan = self.clear_transition();
+        self.sync_form_to(&self.current_section.clone());
+        self.cue_target = None;
+        plan
+    }
+
+    /// The section queued behind the active transition.
+    pub fn pending_section(&self) -> Option<&str> {
+        self.pending_section.as_deref()
+    }
+
+    /// The active transition, ending where it really ends: a held cue runs
+    /// past its authored end while the incoming section is still quiet.
+    pub fn transition(&self) -> Option<TransitionPlan> {
+        self.transition.as_ref().map(|plan| TransitionPlan {
+            end_tick: self.effective_end(plan),
+            ..plan.clone()
+        })
     }
 
     pub fn advance(&mut self, at_tick: u32) {
@@ -633,6 +667,33 @@ mod tests {
     }
 
     #[test]
+    fn cancel_pending_drops_a_cue_that_has_not_started() {
+        let generated = score();
+        let bar = generated.bar_ticks();
+        let mut transport = AdaptiveTransport::new(generated, None).unwrap();
+        transport.request_section("cruise", 1);
+        assert_eq!(transport.transition().unwrap().to, "cruise");
+        let cancelled = transport.cancel_pending(2).unwrap();
+        assert_eq!(cancelled.to, "cruise");
+        assert!(transport.transition().is_none());
+        transport.advance(bar * 4);
+        assert_eq!(transport.current_section(), "garage");
+    }
+
+    #[test]
+    fn cancel_pending_keeps_a_transition_already_crossing() {
+        let generated = score();
+        let bar = generated.bar_ticks();
+        let mut transport = AdaptiveTransport::new(generated, None).unwrap();
+        transport.request_section("cruise", 1);
+        transport.request_section("attack", bar + 1);
+        assert_eq!(transport.pending_section(), Some("attack"));
+        assert!(transport.cancel_pending(bar + 2).is_none());
+        assert_eq!(transport.pending_section(), None);
+        assert_eq!(transport.transition().unwrap().to, "cruise");
+    }
+
+    #[test]
     fn finish_result_selects_victory_on_a_win_and_defeat_on_a_loss() {
         let composed = composed_score();
         assert_eq!(
@@ -1033,7 +1094,6 @@ mod tests {
             );
         }
     }
-
 
     #[test]
     fn a_stale_alert_cue_does_not_swallow_later_alerts() {
