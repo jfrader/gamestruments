@@ -2,7 +2,7 @@
 
 ## Product Scope
 
-- This release ships three fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory; extended adds four more), **Suspense** (song-form: a 27-phase pool, rendered `all-phases` or `seeded`), and **Adventure** (fantasy quest: camp, explore, town, dungeon, combat, boss, sanctuary, victory — 16-bar camp/dungeon/boss/sanctuary and 32-bar explore/town/combat/victory). All use the same `GamestrumentsPlayer`.
+- This release ships three fixed state models: **Racing** (racing: garage, grid, cruise, attack, final lap, victory; extended adds four more), **Suspense** (song-form: a 38-phase pool, rendered `all-phases` or `seeded`), and **Adventure** (fantasy quest: camp, explore, town, dungeon, combat, boss, sanctuary, victory — 16-bar camp/dungeon/boss/sanctuary and 32-bar explore/town/combat/victory). All use the same `GamestrumentsPlayer`.
 - It is not a general-purpose music graph, editor plugin, DAW, pattern editor, or complete game. `kit/examples/` contains integration reference scenes, not a game or a game template.
 - Racing ships four sound styles: fusion, neon, funk, and chip. Suspense ships terminal, cipher, noir, and trance. Adventure ships folk, dark, and orchestral. Voice overrides apply to Racing; arbitrary samples and plugins are unsupported. Adventure's acoustic timbres (harp, recorder, vielle, bell) are synthesized — acoustic-inspired, not sample recordings.
 
@@ -19,6 +19,18 @@
 - The macOS universal library is ad-hoc signed for loading but is not Developer ID-signed or notarized. The Linux and Windows libraries are not publisher-signed. Operating-system quarantine or application-signing rules may apply when you redistribute the libraries as part of your own game.
 - The node prefers an audible `Music` bus and otherwise uses `Master`. State requests require a successful `generate(seed)` first.
 - State transitions wait for bar boundaries; instant cuts are not supported by the public API.
+- Quitting while the music plays prints `ObjectDB instance was leaked at exit` for an `AudioStreamGeneratorPlayback`. Godot 4.7 does this for any `AudioStreamPlayer` still playing at quit ([godot#76745](https://github.com/godotengine/godot/issues/76745)). Free the player and wait a quarter second before quitting:
+
+```gdscript
+extends Node
+
+@onready var music: GamestrumentsPlayer = $GamestrumentsPlayer
+
+func quit_game() -> void:
+    music.queue_free()
+    await get_tree().create_timer(0.25).timeout
+    get_tree().quit()
+```
 
 ## Determinism and Persistence
 

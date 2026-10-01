@@ -1,16 +1,17 @@
 extends SceneTree
 
-## Runtime smoke for the shipped documentation snippets (kit/README.md and
-## kit/docs/quickstart.md). The harness extracts each fenced GDScript block into
-## res://snippets/*.gd in a fresh, minimal project and then runs this script.
+## Runtime smoke for the shipped documentation snippets (kit/README.md,
+## kit/docs/quickstart.md and kit/docs/limitations.md). The harness extracts
+## each fenced GDScript block into res://snippets/*.gd in a fresh, minimal
+## project and then runs this script.
 ## Each snippet is attached to a bare Node with a real GamestrumentsPlayer
 ## child, its documented _ready is verified to have generated a score, and every
 ## documented callback is invoked by name and checked against the real section
 ## it produces after bounded bar-boundary waits.
 ##
 ## The fresh project has no "Music" audio bus, so this also proves the player
-## falls back to Master. On teardown each snippet is freed and a final 250 ms
-## lets the audio thread retire its buffer so the run exits without leaks.
+## falls back to Master. Each snippet is freed after its probes, and the run
+## quits through the limitations.md quit recipe with music still playing.
 
 var failures: Array[String] = []
 
@@ -47,15 +48,29 @@ func _run() -> void:
 		{"method": "chapter_finished", "args": [], "section": "coda"},
 		{"method": "set_hold", "args": [false], "held": false},
 	])
-	# Retire the final audio buffer before exit so no stream leaks.
-	await create_timer(0.25).timeout
 	if not failures.is_empty():
 		for f in failures:
 			push_error(f)
 		quit(1)
 		return
 	print("DOCS_SMOKE_PASS")
-	quit(0)
+	await _quit_through_snippet("res://snippets/limitations_quit.gd")
+
+
+## limitations.md ships the quit recipe for music still playing at quit. The
+## run exits through it, so a leak warning at exit fails the smoke.
+func _quit_through_snippet(path: String) -> void:
+	var holder := Node.new()
+	var player: Node = ClassDB.instantiate("GamestrumentsPlayer")
+	player.name = "GamestrumentsPlayer"
+	player.set("project_secret", "docs-smoke")
+	holder.add_child(player)
+	holder.set_script(load(path))
+	root.add_child(holder)
+	player.call("generate", "quit")
+	for _f in range(SETTLE_FRAMES):
+		await process_frame
+	holder.call("quit_game")
 
 
 func _run_snippet(path: String, initial: String, probes: Array) -> void:

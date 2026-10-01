@@ -13,7 +13,7 @@ const harness = fileURLToPath(new URL("./godot-package-smoke.mjs", import.meta.u
 // A tiny stand-in for the Godot binary: it only records its invocation and emits
 // the markers/errors the harness is expected to accept or reject. It never
 // touches an engine, browser, or extension. For the docs smoke it also verifies
-// the three snippets were actually staged (so the harness wiring is exercised,
+// the four snippets were actually staged (so the harness wiring is exercised,
 // not just a hardcoded "3").
 const STUB_SOURCE = String.raw`#!/usr/bin/env node
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -56,11 +56,12 @@ if (isEditor) {
 
 const isDocs = args.includes("res://docs_smoke.gd");
 if (isDocs) {
-  // Prove the harness staged all three extracted snippets, not just one.
+  // Prove the harness staged all four extracted snippets, not just one.
   const snippets = [
     "snippets/readme_racing.gd",
     "snippets/quickstart_racing.gd",
     "snippets/quickstart_suspense.gd",
+    "snippets/limitations_quit.gd",
   ];
   for (const snippet of snippets) {
     const full = path.join(cwd, snippet);
@@ -143,7 +144,9 @@ interface StubInvocation {
   args: string[];
 }
 
-async function createFixture(options: { readmeFences?: number; quickstartFences?: number } = {}): Promise<Fixture> {
+async function createFixture(
+  options: { readmeFences?: number; quickstartFences?: number; limitationsFences?: number } = {},
+): Promise<Fixture> {
   const root = await mkdtemp(path.join(os.tmpdir(), "gamestruments-godot-smoke-test-"));
   const projectRoot = path.join(root, "project");
   const examples = path.join(projectRoot, "kit", "examples");
@@ -158,7 +161,8 @@ async function createFixture(options: { readmeFences?: number; quickstartFences?
     '[configuration]\nentry_symbol = "gdext_rust_init"\n',
   );
 
-  // Shipped buyer docs: kit/README.md (one fence) and kit/docs/quickstart.md (two).
+  // Shipped buyer docs: kit/README.md (one fence), kit/docs/quickstart.md (two)
+  // and kit/docs/limitations.md (one).
   await mkdir(path.join(projectRoot, "kit"), { recursive: true });
   await mkdir(path.join(projectRoot, "kit", "docs"), { recursive: true });
   await writeFile(
@@ -168,6 +172,10 @@ async function createFixture(options: { readmeFences?: number; quickstartFences?
   await writeFile(
     path.join(projectRoot, "kit", "docs", "quickstart.md"),
     markdownWithFences(options.quickstartFences ?? 2),
+  );
+  await writeFile(
+    path.join(projectRoot, "kit", "docs", "limitations.md"),
+    markdownWithFences(options.limitationsFences ?? 1),
   );
 
   const stub = path.join(root, "fake-godot.mjs");
@@ -249,7 +257,7 @@ describe.skipIf(process.platform === "win32")("godot package smoke harness", () 
     ]);
   });
 
-  it("stages all three extracted docs snippets and checks the docs marker", async () => {
+  it("stages all four extracted docs snippets and checks the docs marker", async () => {
     const { status, output, entries } = await runHarness("happy");
     expect(status).toBe(0);
     expect(output).toContain("DOCS_SMOKE_PASS");
@@ -349,6 +357,25 @@ describe.skipIf(process.platform === "win32")("godot package smoke harness", () 
       const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
       expect(result.status).not.toBe(0);
       expect(output).toContain("kit/docs/quickstart.md must contain exactly two gdscript fences");
+    } finally {
+      await rm(malformed.root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects malformed limitations with the wrong fence count", async () => {
+    const malformed = await createFixture({ limitationsFences: 0 });
+    try {
+      const { root, projectRoot, stub, library, screenshots } = malformed;
+      const logPath = path.join(root, "logs", `malformed-${randomUUID()}.log`);
+      await mkdir(path.dirname(logPath), { recursive: true });
+      const result = spawnSync(
+        process.execPath,
+        [harness, "--project-root", projectRoot, "--godot", stub, "--library", library, "--screenshots", screenshots],
+        { encoding: "utf8", env: { ...process.env, STUB_MODE: "happy", STUB_LOG: logPath } },
+      );
+      const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+      expect(result.status).not.toBe(0);
+      expect(output).toContain("kit/docs/limitations.md must contain exactly one gdscript fence");
     } finally {
       await rm(malformed.root, { recursive: true, force: true });
     }
