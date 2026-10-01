@@ -1,19 +1,19 @@
 # Gamestruments
 
-**The first runtime product** is Gamestruments, a seed-driven, sample-free
-adaptive music engine for Godot 4. Games generate a deterministic score at level load
-from a per-title namespace, instrument palette, and seed, then drive
-bar-quantized state changes at runtime. No samples, no Strudel, and no
-authoring UI cross the game boundary.
+Gamestruments is a seed-driven, sample-free adaptive music engine for Godot 4.
+A game generates a deterministic score at level load from a per-title
+namespace, instrument palette and seed, then drives bar-quantized state changes
+at runtime. Only the GDExtension and its synthesized voices cross the game
+boundary: no samples, no Strudel, no authoring UI.
 
-**Audio Lab** (the browser playground in `apps/demo`) is for exploration and
-validation only. It drives the same shared engine and is not part of the kit
-shipped to games.
+A level seed plus the title namespace gives a stable musical identity. Runtime
+parameters select and crossfade pre-generated arrangements inside that identity.
 
-A level seed + secret creates a stable musical identity. Runtime parameters
-select and crossfade pre-generated arrangements inside that identity.
+The Audio Lab in `apps/demo` is a browser playground for exploration and
+validation. It drives the same engine and is not part of the kit shipped to
+games.
 
-## How Games Use It (the shipped product)
+## How games use it
 
 In a Godot 4 project:
 
@@ -26,37 +26,37 @@ In a Godot 4 project:
 4. At level load call `generate(seed)` and check its boolean result.
 5. During play call `set_race_state(phase, intensity, pressure, final_lap, finish_result)` as game state changes.
 
-The engine produces the score once, keeps it, and performs musically coherent
-crossovers on bar boundaries. See `docs/kit-contract.md` for the exact public
-API surface and `docs/kit-opportunity.md` for scope.
+The engine produces the score once, keeps it, and crosses over between
+sections on bar boundaries. `docs/kit-contract.md` has the exact public API and
+`docs/kit-opportunity.md` the scope.
 
-Example native-engine listening-pack render:
+Render a listening pack from the native engine:
 
 ```bash
 cargo run -p gamestruments-engine --example render_listen -- /tmp/gamestruments-listen
 ```
 
-## Development (Audio Lab + research)
+## Development
 
-Requires Node.js 24 for the authoring Lab.
+The Audio Lab needs Node.js 24.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite, choose a level seed, sound world, and
-generation traits, then start audio and change race phase, speed intensity,
-position pressure, and final-lap state. (Run `npm run wasm:build` once to make
-the shared engine available to the lab.) The lab generates and plays through
-the shared WASM engine (`crates/engine`): the same live player the Godot addon
-runs, so it sounds like the kit. Runtime changes are committed on bar
-boundaries and overlap through a musical crossover.
+Open the URL Vite prints, choose a level seed, sound world and generation
+traits, start audio, then change race phase, speed intensity, position pressure
+and final-lap state. Run `npm run wasm:build` once so the lab can load the
+shared engine. Generation runs through the shared WASM engine
+(`crates/engine`); the Web Audio stage and runtime transport stay in the lab to
+preserve the signed-off sound. Runtime changes commit on bar boundaries and
+overlap through a crossover.
 
-The Audition controls isolate melody or backing, jump directly to any section,
-and compare two level seeds while preserving the section being reviewed.
+The Audition controls isolate melody or backing, jump to any section, and
+compare two level seeds while keeping the section under review.
 
-The app has URL-addressable views:
+Views:
 
 - `#lab` runs the active adaptive score;
 - `#games` organizes experiments by game interaction model;
@@ -67,51 +67,39 @@ npm run check
 npm run test:e2e
 ```
 
-**Pinned-build note**: the GDExtension is built against a specific gdext +
-Godot API surface. Rebuild from the exact source tree + toolchain used for the
-release tag. The release workflow builds and runs the extension under Godot on
-Linux x86_64, Windows x86_64, and macOS with a universal arm64/x86_64 binary.
+The GDExtension is built against a specific gdext and Godot API surface, so
+rebuild it from the exact source tree and toolchain of the release tag. The
+release workflow builds and runs the extension under Godot on Linux x86_64,
+Windows x86_64 and macOS with a universal arm64/x86_64 binary.
 
 ## Architecture
 
-### Runtime (the kit product)
+Runtime (the kit), in Rust:
 
-The in-game engine lives in Rust:
+- `crates/engine`: generator, transport and synth. Deterministic from
+  namespace, seed, palette and traits. Racing, Suspense and Adventure recipes.
+- `crates/godot`: GDExtension wrapper exposing `GamestrumentsPlayer`.
 
-- `crates/engine` — MIT generator + transport + synth (no Strudel). Deterministic
-  from namespace + seed + palette + traits. Racing, Suspense, and Adventure
-  recipes.
-- `crates/godot` — GDExtension wrapper exposing `GamestrumentsPlayer`.
+Authoring and research (Audio Lab only): `packages/runtime` is the TypeScript
+transport used inside the Lab and `apps/demo` is the browser playground and
+validation harness. The Rust engine is the single generation authority; the
+Lab calls it through the committed WASM build (`apps/demo/public/engine`), and
+in games generation happens inside the extension at `generate(seed)`. See
+`docs/kit-contract.md`, `crates/README.md`,
+[`docs/engine-boundary.md`](docs/engine-boundary.md) and
+[`docs/procedural-generation.md`](docs/procedural-generation.md).
 
-Games never see the authoring code. See `docs/kit-contract.md` and
-`crates/README.md`.
-
-### Authoring / Research (Audio Lab only)
-
-`packages/runtime` is the TypeScript transport used inside the Lab. `apps/demo`
-is the browser playground and validation harness. Generation runs through the
-shared WASM engine; the Rust engine is the single generation authority.
-
-The first collection follows the racing music brief (see
-[`docs/racing-music-brief.md`](docs/racing-music-brief.md)).
-
-## Procedural API
-
-Generation is owned by the Rust engine in `crates/engine`; the Audio Lab calls
-it through the committed WASM build (`apps/demo/public/engine`). See
-[`docs/engine-boundary.md`](docs/engine-boundary.md) for the boundary and
-[`docs/procedural-generation.md`](docs/procedural-generation.md) for the
-generation model. In games, generation happens inside the extension at
-`generate(seed)`.
+The first collection follows the racing music brief in
+[`docs/racing-music-brief.md`](docs/racing-music-brief.md).
 
 All voices are synthesized; no samples are used or redistributed.
 
-## Scope and Limits (kit product)
+## Scope and licence
 
 - The runtime kit is Godot 4 + GDExtension + synthesized voices only.
-- Release binaries target Linux x86_64, Windows x86_64, and macOS arm64/x86_64.
-- No samples, no authoring UI, no Strudel, no pre-baked WAVs ship to buyers.
-- See `docs/kit-contract.md` (exact inventory, API, non-goals) for the
-  authoritative commercial contract. The product price is $12.99.
-- Every component in this repository — runtime and Audio Lab — is MIT. There is
-  no bundled authoring dependency; see `LICENSE.md`.
+- Release binaries target Linux x86_64, Windows x86_64 and macOS arm64/x86_64.
+- No samples, authoring UI, Strudel or pre-baked WAVs ship to buyers.
+- `docs/kit-contract.md` is the commercial contract (inventory, API,
+  non-goals). The product price is $12.99.
+- Everything in this repository, runtime and Audio Lab, is MIT, with no bundled
+  authoring dependency; see `LICENSE.md`.

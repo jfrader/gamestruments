@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The repository README and the kit README are rewritten in plain language; the GDScript examples are unchanged.
+
+
 ## [1.1.0] - 2026-10-01
 
 ### Added
