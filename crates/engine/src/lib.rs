@@ -5,6 +5,7 @@ pub(crate) mod development;
 pub(crate) mod dmath;
 pub mod form_audio;
 pub mod handoff;
+pub mod live;
 pub mod master;
 pub(crate) mod match_phases;
 pub mod racing;
@@ -30,6 +31,7 @@ pub use adventure::{
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 pub use form_audio::FormAudio;
 pub use handoff::{crossfade_gains, crossfade_sample_count};
+pub use live::LivePlayer;
 pub use racing::{
     generate_racing, racing_root_pitch_class, GenerateInput, InstrumentPalette, RacingPhaseRole,
     Style,
