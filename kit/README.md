@@ -1,31 +1,27 @@
 # Gamestruments — Adaptive Music for Godot 4
 
-**Procedural music that adapts to your game.** Gamestruments generates
-deterministic, sample-free music inside Godot — no audio files, no authoring
-tool, no external services. Add one node, call `generate()` when a scene loads,
-then tell it what's happening; it blends between sections on bar boundaries.
+Gamestruments generates music inside Godot from a seed. There are no audio
+files, no authoring tool and no external services. Add one node, call
+`generate()` when a scene loads, then tell it what is happening in the game. It
+blends between sections on bar boundaries.
 
-Hear it in the browser at <https://gamestruments.gurisitos.games> — Godot
-and HTML5, one engine. Open `kit/examples/` to run it inside Godot.
-
-## Use It in Your Game
+## Use it in your game
 
 ### 1. Add the addon
 
-Place the archive's `gamestruments/` addon inside your project's `addons/`
-directory, preserving other addons. Create `addons/` next to `project.godot` if
-needed. Restart Godot and wait for import to finish. This file should exist:
+Copy the archive's `gamestruments/` addon into your project's `addons/`
+directory, next to any other addons. Create `addons/` next to `project.godot`
+if it does not exist. Restart Godot and wait for the import to finish. This
+file should exist:
 
 ```text
 res://addons/gamestruments/gamestruments.gdextension
 ```
 
-Godot loads only the platform-matching binary from the folder. The shipped
-`addons/gamestruments/bin/` contains the three native libraries (Linux x86_64,
-Windows x86_64, macOS x86_64+arm64). Keep the folder intact when copying it.
-
-`GamestrumentsPlayer` now appears in the Create New Node dialog. Requires Godot
-4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
+`addons/gamestruments/bin/` holds the three native libraries (Linux x86_64,
+Windows x86_64, macOS x86_64+arm64) and Godot loads the one for its platform.
+Copy the folder whole. `GamestrumentsPlayer` then appears in the Create New
+Node dialog.
 
 ### 2. Make some music
 
@@ -49,67 +45,61 @@ func _ready() -> void:
         push_error("Gamestruments generation failed")
 ```
 
-Run the scene to hear music. A fixed generator version and identical settings reproduce the same score.
+Run the scene. The same generator version and settings always produce the same
+score.
 
 ### 3. Drive it from game events
 
-Call `set_race_state` from your countdown, telemetry, and finish handlers
-(Racing), `set_trace_state` plus form controls (Suspense), or
-`set_adventure_state` (Adventure). Changes commit on the next bar boundary
-(bar-aligned crossfade). These calls are not auto-wired by name — connect them
-to your own events and check each bool return. Complete guarded examples are in
-`kit/docs/quickstart.md`; full selection rules are in `kit/docs/api.md`.
+Call `set_race_state` from your countdown, telemetry and finish handlers
+(Racing), `set_trace_state` plus the form controls (Suspense), or
+`set_adventure_state` (Adventure). Changes commit on the next bar boundary with
+a crossfade. Nothing is wired by name: connect these calls to your own events
+and check each bool return. Complete examples are in `kit/docs/quickstart.md`;
+the selection rules are in `kit/docs/api.md`.
 
-The player routes to a Godot `Music` bus when you have one, and falls back to
-`Master` when you don't, so a fresh project makes sound before you touch audio
-settings.
+The player routes to a `Music` bus when the project has one and to `Master`
+otherwise.
 
 ## Recipes
 
-One player, three recipes. **Racing** is state-driven race loops (`racing`;
-styles neon, funk, fusion, chip). **Suspense** is a song-form arc for tense
-sessions (`suspense`; terminal, cipher, noir, trance). **Adventure** is an eight-section
+One player, three recipes. Racing is state-driven race loops (`racing`; styles
+neon, funk, fusion, chip). Suspense is a song-form arc for tense sessions
+(`suspense`; terminal, cipher, noir, trance). Adventure is an eight-section
 fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
-`generate`; each generated score belongs to one recipe. Sections and selection
-rules are in `kit/docs/api.md`; complete Racing and Suspense scripts are in
-`kit/docs/quickstart.md`.
+`generate`; each score belongs to one recipe.
 
 `arrangement` is `original` (default) or `extended` for Racing, and `all-phases`
-or `seeded` (default) for Suspense; Adventure ignores it. `autoplay`
-is Racing/Adventure only, defaults to `false` (state-driven), and when `true`
+or `seeded` (default) for Suspense; Adventure ignores it. `autoplay` is
+Racing/Adventure only, defaults to `false` (state-driven), and when `true`
 tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
 `extended`; the native examples use the state-driven defaults.
 
-## See It Working
+## Examples
 
-- **Browser / HTML5:** <https://gamestruments.gurisitos.games> — hear the
-  engine in your browser.
-- **Native examples:** open `kit/examples/project.godot`. F5 runs the playback
-  reference by design; open another `.tscn` and press F6. See
-  `kit/examples/README.md`.
+- Browser / HTML5: <https://gamestruments.gurisitos.games>.
+- Native: open `kit/examples/project.godot`. F5 runs the playback reference;
+  open another `.tscn` and press F6 for the others. See `kit/examples/README.md`.
 
-## Requirements and Platforms
+## Requirements
 
-- Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
-- Godot 4 only; other engines and custom adapters are not supported.
-- Offline runtime; no external audio assets, services, middleware, or telemetry.
+- Godot 4.7.x on Linux x86_64, Windows x86_64 or macOS arm64/x86_64.
+- Godot 4 only. Other engines and custom adapters are not supported.
+- Runs offline. No external audio assets, services, middleware or telemetry.
 
-## What's in the Archive
+## What is in the archive
 
-One ZIP contains the addon, native examples, documentation, and source.
-
-- `addons/gamestruments/` — the full directory (GDExtension + bin/ with all
-  platform libraries). Copy the entire folder; Godot loads the matching one.
-- `kit/examples/` — a self-contained Godot project with three reference scenes
-  and its own addon copy.
-- `kit/docs/` — quickstart, API, limitations, and troubleshooting.
-- `crates/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` — full source and
+- `addons/gamestruments/`: the addon, GDExtension plus `bin/` with all platform
+  libraries.
+- `kit/examples/`: a Godot project with three reference scenes and its own
+  addon copy.
+- `kit/docs/`: quickstart, API, limitations and troubleshooting.
+- `crates/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`: full source and
   pinned rebuild inputs.
-- `LICENSE.md`, `THIRD_PARTY_NOTICES.md`, `licenses/` — license terms.
-- `RELEASE-MANIFEST.json` — build provenance and library hashes.
-- `CHANGELOG.md` — release history.
+- `LICENSE.md`, `THIRD_PARTY_NOTICES.md`, `licenses/`: licence terms.
+- `RELEASE-MANIFEST.json`: build provenance and library hashes.
+- `CHANGELOG.md`: release history.
 
-## Rebuild and Test
+## Rebuild and test
 
 From the archive root:
 
@@ -118,16 +108,16 @@ cargo test --workspace --locked
 cargo build --workspace --all-targets --release --locked
 ```
 
-Cargo downloads the exact checksummed dependencies in `Cargo.lock` unless
-they're already cached or vendored.
+Cargo fetches the checksummed dependencies in `Cargo.lock` unless they are
+cached or vendored.
 
-## License
+## Licence
 
-The runtime, addon descriptor, docs, and example integration are MIT licensed —
-use them in closed-source commercial games. See `LICENSE.md`; third-party terms
-are in `THIRD_PARTY_NOTICES.md` and `licenses/`.
+The runtime, addon descriptor, docs and example integration are MIT licensed,
+including use in closed-source commercial games. See `LICENSE.md`; third-party
+terms are in `THIRD_PARTY_NOTICES.md` and `licenses/`.
 
 ## Support
 
-Questions or bugs? Post in the public comments on the itch.io product page with
-your kit version, Godot version, OS, and full Output text.
+Post bugs and questions in the comments on the itch.io product page with your
+kit version, Godot version, OS and the full Output text.
