@@ -5,9 +5,13 @@ use crate::development::{
 };
 #[cfg(test)]
 use crate::development::{mask_to_schedule, seam_lane};
+use crate::match_phases::{
+    block_at, Block, MatchPhase, ARP, BASS, BLOCK_BARS, CELL, FILL, GAP, HATS, KICK, MATCH_PHASES,
+    PAD, ROLL, RUN, SNARE,
+};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection};
-use crate::suspense::{generate_suspense, SuspenseInput};
+use crate::suspense::{apply_sound_world, compose_suspense, SuspenseInput};
 use crate::suspense_pool::{
     all_phases_form, compose, figure_for_composition, figure_spec, phase_spec, take_seed,
     FigureSpec, Intent, PhaseRole, PhaseSpec, FIGURE_POOL, PHASE_POOL,
@@ -143,7 +147,7 @@ impl SuspenseTraits {
 /// harmonic/melodic progression; the form is chosen afterwards, over this
 /// pool, by [`generate_all_phases`] and [`generate_seeded`].
 fn build_pool_score(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
-    let mut score = generate_suspense(input)?;
+    let mut score = compose_suspense(input)?;
     let root = arrangement_root(&score)?;
     let bar = score.bar_ticks();
     let seed = pool_seed(input, take);
@@ -286,10 +290,7 @@ fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
     score.form = Some(all_phases_form());
-    apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
-    apply_transition_pass(&mut score, pool_seed(input, take));
-    apply_trait_response(&mut score, &traits);
+    finish_arrangement(&mut score, input, take, traits)?;
     score.id.push_str("-all-phases");
     score.title.push_str(" — All phases");
     score.validate()?;
@@ -307,14 +308,27 @@ fn generate_seeded(
     let mut score = build_pool_score(input, take)?;
     let traits = SuspenseTraits::from_input(input);
     score.form = Some(compose(form_seed, intent));
-    apply_surface_variation(&mut score, input, take);
-    apply_development_pass(&mut score, pool_seed(input, take), traits)?;
-    apply_transition_pass(&mut score, pool_seed(input, take));
-    apply_trait_response(&mut score, &traits);
+    finish_arrangement(&mut score, input, take, traits)?;
     score.id.push_str(&format!("-seeded-{}", intent.as_str()));
     score.title.push_str(" — Seeded");
     score.validate()?;
     Ok(score)
+}
+
+/// The passes every arrangement runs once its form is chosen, ending in the
+/// style's sound world.
+fn finish_arrangement(
+    score: &mut PortableScore,
+    input: &SuspenseInput,
+    take: u32,
+    traits: SuspenseTraits,
+) -> Result<(), String> {
+    apply_surface_variation(score, input, take);
+    apply_development_pass(score, pool_seed(input, take), traits)?;
+    apply_transition_pass(score, pool_seed(input, take));
+    apply_trait_response(score, &traits);
+    apply_sound_world(score, input.style);
+    Ok(())
 }
 
 /// The seam vocabulary: how one phase hands the music to the next.
@@ -1754,6 +1768,176 @@ fn build_new_phases(root: u8, bar: u32, seed: u32) -> Vec<(String, PortableSecti
         ),
         ("theme-ride".into(), build_theme_ride(root, bar, seed)),
     ]
+    .into_iter()
+    .chain(MATCH_PHASES.iter().map(|phase| {
+        let section = build_match_phase(phase, root, bar, seed ^ hash_text(phase.id));
+        (phase.id.to_string(), section)
+    }))
+    .collect()
+}
+
+/// A match phase: its 8-bar block plan on the reference drone, pulse, glass,
+/// pad and kit; the style's sound world re-instruments it like every phase.
+fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> PortableSection {
+    let id = phase.id;
+    let bars = phase.bars();
+    let mut section = new_phase_section(id, phase.label, phase.feeling, phase.color, bars * bar);
+    let degrees = progression_degrees(bars, seed, true);
+    let eighth = bar / 8;
+    let sixteenth = bar / 16;
+    let events = &mut section.events;
+    for bar_index in 0..bars {
+        let (block, last) = block_at(phase.blocks, bar_index, bars);
+        let has = |layer: Block| block & layer != 0;
+        let start = bar_index * bar;
+        let degree = if phase.moving {
+            degrees[bar_index as usize]
+        } else {
+            0
+        };
+        let gap = has(GAP) && last;
+        // The drone is Suspense's bed: it holds under every bar.
+        push_dev_note(
+            events,
+            id,
+            "drone",
+            start,
+            bar,
+            0.15,
+            aeolian(root - 12, degree),
+            "warm",
+            false,
+        );
+        if has(BASS) && !gap {
+            for step in [1u32, 3, 5, 7] {
+                let pitch = aeolian(root - 12, degree);
+                push_dev_note(
+                    events,
+                    id,
+                    "bass",
+                    start + step * eighth,
+                    eighth / 2,
+                    0.18,
+                    pitch,
+                    "pulse",
+                    false,
+                );
+            }
+        }
+        if has(KICK) && !gap {
+            push_dev_perc(events, id, start, eighth, 0.4, "kick");
+            push_dev_perc(events, id, start + 4 * eighth, eighth, 0.3, "kick");
+        }
+        if has(HATS) {
+            for step in [1u32, 3, 5, 7] {
+                push_dev_perc(events, id, start + step * eighth, eighth / 3, 0.16, "hat");
+            }
+        }
+        let fill = has(FILL) && last;
+        if has(SNARE) {
+            push_dev_perc(events, id, start + 2 * eighth, eighth, 0.22, "snare");
+            if !fill {
+                push_dev_perc(events, id, start + 6 * eighth, eighth, 0.22, "snare");
+            }
+        }
+        if fill {
+            for step in 12..16u32 {
+                let velocity = 0.2 + f64::from(step - 12) * 0.05;
+                push_dev_perc(
+                    events,
+                    id,
+                    start + step * sixteenth,
+                    sixteenth,
+                    velocity,
+                    "tom",
+                );
+            }
+        }
+        if has(RUN) {
+            for step in 0..16u32 {
+                let pitch = aeolian(root, degree + [0, 2, 4, 2][(step % 4) as usize]);
+                push_dev_note(
+                    events,
+                    id,
+                    "pulse",
+                    start + step * sixteenth,
+                    sixteenth / 2,
+                    0.16,
+                    pitch,
+                    "pulse",
+                    false,
+                );
+            }
+        }
+        if has(CELL) {
+            for step in [3u32, 6, 10] {
+                let pitch = aeolian(root + 12, degree + 4);
+                push_dev_note(
+                    events,
+                    id,
+                    "cell",
+                    start + step * sixteenth,
+                    2 * sixteenth,
+                    0.2,
+                    pitch,
+                    "glass",
+                    false,
+                );
+            }
+        }
+        if has(PAD) {
+            for offset in [0, 2, 4] {
+                push_dev_note(
+                    events,
+                    id,
+                    "pad",
+                    start,
+                    bar,
+                    0.12,
+                    aeolian(root, degree + offset),
+                    "dusk",
+                    false,
+                );
+            }
+        }
+        if has(ARP) {
+            let level = if has(ROLL) {
+                0.1 + f64::from(bar_index % BLOCK_BARS) * 0.02
+            } else {
+                0.16
+            };
+            for step in 0..8u32 {
+                let pitch = aeolian(root + 12, degree + [0, 2, 4, 2][(step % 4) as usize]);
+                push_dev_note(
+                    events,
+                    id,
+                    "arp",
+                    start + step * eighth,
+                    eighth,
+                    level,
+                    pitch,
+                    "glass",
+                    step == 0,
+                );
+            }
+        }
+        if has(ROLL) && last {
+            for step in 0..16u32 {
+                let velocity = 0.15 + f64::from(step) * 0.017;
+                push_dev_perc(
+                    events,
+                    id,
+                    start + step * sixteenth,
+                    sixteenth,
+                    velocity,
+                    "snare",
+                );
+            }
+            push_dev_perc(events, id, start, bar, 0.4, "reverse-cymbal");
+        }
+    }
+    section.events.sort_by_key(MusicEvent::start_tick);
+    section
 }
 
 fn build_half_time(root: u8, bar: u32, seed: u32) -> PortableSection {
@@ -2848,7 +3032,7 @@ fn anomaly(root: u8, bar: u32, seed: u32, entry: usize) -> PortableSection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::suspense::SuspenseStyle;
+    use crate::suspense::{generate_suspense, SuspenseStyle};
     use crate::suspense_pool::{validate_form_rules, Intent, PhaseRole, PHASE_POOL};
 
     fn input(seed: &str) -> SuspenseInput {
@@ -4464,5 +4648,94 @@ mod tests {
             .collect();
         assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
         assert!(!lanes.contains(&"probe-arp"), "the arp layer must be masked");
+    }
+
+    const WORLDS: [SuspenseStyle; 4] = [
+        SuspenseStyle::Terminal,
+        SuspenseStyle::Cipher,
+        SuspenseStyle::Noir,
+        SuspenseStyle::Trance,
+    ];
+
+    fn world_input(style: SuspenseStyle) -> SuspenseInput {
+        SuspenseInput {
+            style,
+            ..input("worlds")
+        }
+    }
+
+    /// Everything about an event except the instrument it plays on.
+    fn notes_without_voices(score: &PortableScore) -> Vec<(String, u32, u32, Option<u8>)> {
+        score
+            .sections
+            .iter()
+            .flat_map(|section| section.events.iter())
+            .map(|event| {
+                let lane = match event {
+                    MusicEvent::Note { lane, .. } | MusicEvent::Percussion { lane, .. } => lane,
+                };
+                (
+                    lane.clone(),
+                    event.start_tick(),
+                    event.duration_ticks(),
+                    event.pitch(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn sound_worlds_change_the_instruments_and_never_the_composition() {
+        for arrangement in [SuspenseArrangement::AllPhases, SuspenseArrangement::Seeded] {
+            let reference =
+                generate_suspense_arrangement(&world_input(SuspenseStyle::Terminal), arrangement)
+                    .unwrap();
+            for style in WORLDS {
+                let score =
+                    generate_suspense_arrangement(&world_input(style), arrangement).unwrap();
+                assert_eq!(
+                    notes_without_voices(&score),
+                    notes_without_voices(&reference),
+                    "{style:?} must play the same notes as Terminal"
+                );
+                assert_eq!(
+                    serde_json::to_string(&score.form).unwrap(),
+                    serde_json::to_string(&reference.form).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_world_plays_its_own_instruments_in_every_phase() {
+        let voices = |style: SuspenseStyle| {
+            let score =
+                generate_suspense_arrangement(&world_input(style), SuspenseArrangement::AllPhases)
+                    .unwrap();
+            score
+                .sections
+                .iter()
+                .flat_map(|section| section.events.iter())
+                .map(|event| event.voice().to_string())
+                .collect::<std::collections::HashSet<_>>()
+        };
+        let noir = voices(SuspenseStyle::Noir);
+        assert!(
+            !noir.contains("glass"),
+            "Terminal's glass cells leak into Noir"
+        );
+        let trance = voices(SuspenseStyle::Trance);
+        for voice in [
+            "techno-kick",
+            "clap",
+            "saw-bass",
+            "trance-pad",
+            "trance-lead",
+        ] {
+            assert!(trance.contains(voice), "Trance lacks {voice}");
+        }
+        for voice in ["kick", "snare", "warm", "glass", "pulse", "dusk"] {
+            assert!(!trance.contains(voice), "Trance still plays {voice}");
+        }
     }
 }

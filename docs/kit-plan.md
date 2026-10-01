@@ -43,7 +43,7 @@ Failure at any gate returns the work to the relevant implementation or documenta
 |---|---|
 | Deterministic score from namespace, seed, style, palette, traits, and version | Rust repeat-generation assertions plus native/WASM parity fixtures |
 | Safe generated score | Engine validation tests and 256-seed stress test across all styles and trait ranges |
-| Adaptive sections (Racing six+four, Suspense 27-phase pool, Adventure eight) with bar-quantized crossover | Transport tests plus exact-runtime Godot smoke and human example run |
+| Adaptive sections (Racing six+four, Suspense 38-phase pool, Adventure eight) with bar-quantized crossover | Transport tests plus exact-runtime Godot smoke and human example run |
 | Zero samples and offline runtime | Archive audio-extension scan and source dependency review |
 | Linux, Windows, and universal macOS support | Successful target-native release jobs and GDExtension mappings |
 | Godot 4.7.x support | Fresh-project smoke with the pinned 4.7.2 release on every target OS |

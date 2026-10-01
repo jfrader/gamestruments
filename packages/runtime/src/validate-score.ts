@@ -17,9 +17,14 @@ const NOTE_VOICES = new Set([
   "recorder",
   "vielle",
   "bell",
+  "saw-bass",
+  "trance-pad",
+  "trance-lead",
 ]);
 const PERCUSSION_VOICES = new Set([
   "kick",
+  "techno-kick",
+  "clap",
   "snare",
   "hat",
   "tom",

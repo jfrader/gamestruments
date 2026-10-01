@@ -12,18 +12,13 @@ import type { Arrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.ts";
 import { cueView } from "./section-cues.ts";
-import {
-  ADVENTURE_SCENE_SECTIONS,
-  isDebugBarSection,
-  SUSPENSE_PHASE_SECTIONS,
-} from "./playback-section.ts";
+import { isDebugBarSection } from "./playback-section.ts";
 import { phaseName } from "./phase-names.ts";
 import { APPLY_PIECE, NEW_PIECE, NEW_VERSION, PIECE_AXIS, versionLabel } from "./lab-copy.ts";
-import { LAB_RECIPES, labRecipeInfo, nextVersionNumber, type LabRecipe, type NormalizedMusicTraits } from "./state.ts";
+import { labRecipeInfo, nextVersionNumber } from "./state.ts";
+import { LAB_RECIPES, type LabRecipe, type NormalizedMusicTraits } from "./recipes.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
-
-const RACING_PHASES = ["garage", "grid", "race", "finish"] as const;
 
 function getPartRings(): HTMLElement[] {
   // Re-query each frame: N=6 is trivial; survives DOM clones in tests (e.g. firefox compat)
@@ -193,31 +188,19 @@ export function renderRecipeSelect(recipe: LabRecipe): void {
 }
 
 export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
-  const suspense = recipe === "suspense";
-  const adventure = recipe === "adventure";
+  const profile = labRecipeInfo(recipe);
   elements.shell.dataset.recipe = recipe;
   elements.gameSignals.dataset.recipe = recipe;
   renderRecipeSelect(recipe);
-  elements.traitEnergyLabel.textContent = suspense ? "Tension" : adventure ? "Danger" : "Energy";
-  elements.traitComplexityLabel.textContent = suspense ? "Heat" : adventure ? "Mystery" : "Complexity";
-  elements.traitBrightnessLabel.textContent = suspense ? "Mystery" : adventure ? "Wonder" : "Brightness";
-  elements.traitSyncopationLabel.textContent = suspense ? "Pulse" : adventure ? "Motion" : "Syncopation";
-  elements.meterIntensityLabel.textContent = suspense ? "Detection heat" : adventure ? "Discovery" : "Speed intensity";
-  elements.meterPressureLabel.textContent = suspense ? "Focus" : adventure ? "Threat" : "Position pressure";
-  elements.meterFinalLabel.textContent = suspense ? "Extracted" : adventure ? "Quest complete" : "Final lap";
-  elements.meterFinalCopy.textContent = suspense
-    ? "Hold the coda / disconnect"
-    : adventure
-      ? "Mark the quest complete"
-      : "Add the maximum-commitment layer";
-  const phaseSections = suspense
-    ? SUSPENSE_PHASE_SECTIONS
-    : adventure
-      ? ADVENTURE_SCENE_SECTIONS
-      : null;
-  const phaseIds: readonly string[] = phaseSections === null
-    ? RACING_PHASES
-    : Object.keys(phaseSections);
+  elements.traitEnergyLabel.textContent = profile.traitLabels.energy;
+  elements.traitComplexityLabel.textContent = profile.traitLabels.complexity;
+  elements.traitBrightnessLabel.textContent = profile.traitLabels.brightness;
+  elements.traitSyncopationLabel.textContent = profile.traitLabels.syncopation;
+  elements.meterIntensityLabel.textContent = profile.meters.intensity;
+  elements.meterPressureLabel.textContent = profile.meters.pressure;
+  elements.meterFinalLabel.textContent = profile.meters.flag;
+  elements.meterFinalCopy.textContent = profile.meters.flagCopy;
+  const phaseIds = profile.phases;
   const buttons = phaseIds.map((id) => {
     const button = document.createElement("button");
     button.type = "button";

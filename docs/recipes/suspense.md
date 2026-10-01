@@ -12,7 +12,7 @@ progress gates the payoff.
 
 ## Phases
 
-A 27-phase pool in canonical order (`crates/engine/src/suspense_pool.rs`,
+A 38-phase pool in canonical order (`crates/engine/src/suspense_pool.rs`,
 `PHASE_POOL`). Roles and energy are authored in the pool; each phase carries a
 preferred rhythm figure, and the actual figure is chosen by seeded selection
 among role+energy matches (`figure_for_composition`).
@@ -44,12 +44,44 @@ among role+energy matches (`figure_for_composition`).
 | `solo` | Decrypt | Build | 8 bars | energy 70; no pulse lane |
 | `anomaly` | Anomaly | Build | 8 bars | one-shot; energy 60 |
 | `chorus-final` | Full Breach | Peak | 8 bars | energy 90 |
+| `theme-ride` | Theme Ride | Groove | 8 bars | energy 68; the Theme's rock-backbeat ride |
+| `build` | Build Order | Groove | 32 bars | energy 40; match phase: kick and hats, then clap, bass, stab and a fill |
+| `scout` | Recon | Groove | 16 bars | energy 35; match phase: a running line over the groove, a one-bar kick gap |
+| `expand` | Expansion | Groove | 32 bars | energy 55; match phase: groove, stab, arpeggio, fill |
+| `research` | Tech Up | Build | 16 bars | one-shot; energy 50; match phase: arpeggio and pad, then the kick and a roll |
+| `raid` | Raid | Groove | 16 bars | energy 65; match phase: running line and bass, stab and fill |
+| `tension` | Standoff | Break | 16 bars | one-shot; energy 30; match phase: breakdown into a roll |
+| `siege` | Siege | Bridge | 32 bars | one-shot; energy 60; match phase: pounding kick, running line, then pad |
+| `battle` | Battle | Peak | 32 bars | one-shot; energy 90; match phase: the full drop, a kick gap, fills |
+| `victory` | Victory | Outro | 16 bars | one-shot; energy 40; match phase: pad and arpeggio, then the kick |
+| `defeat` | Defeat | Outro | 16 bars | one-shot; energy 15; match phase: pad alone |
 | `outro` | Disconnect | Outro | 4 bars | one-shot; energy 20; **drumless** (no kit flow) |
 | `coda` | Closed Session | Outro | 4 bars | one-shot; energy 20; **drumless** |
+
+The ten match phases (`crates/engine/src/match_phases.rs`) follow a strategy
+game's arc and are written as 8-bar block plans, so every style plays the same
+shape in its own instruments.
 
 Phases keep their authored length only as a starting point: the composed path
 re-times them per take (`phase_bars` in `suspense_arrangement.rs`) — breaks and
 waits may shrink to 1–2 bars, momentum phases may stretch to 24/32 bars.
+
+## Sound worlds
+
+A style changes only the instruments. The piece is composed once in
+Terminal's instruments; `apply_sound_world` (`crates/engine/src/suspense.rs`)
+then moves every part — drone, cell, pulse, arpeggio, pad — and the kick and
+snare to the style's voices, so every style plays the same notes, phases and
+form.
+
+| style | drone | cell | pulse | arp | pad | kick / snare |
+|---|---|---|---|---|---|---|
+| `terminal` | warm | glass | pulse | pulse | dusk | kick / snare |
+| `cipher` | warm | pluck | bass | glass | dusk | kick / snare |
+| `noir` | organ | epiano | bass | warm | dusk | kick / snare |
+| `trance` | trance-pad | trance-lead | saw-bass | trance-lead | trance-pad | techno-kick / clap |
+
+Saw bass and the trance voices duck under every club kick.
 
 ## Arrangements
 
@@ -100,7 +132,7 @@ so every trait deviates from there.
 ```gdscript
 player.project_secret = "my-game"
 player.recipe = "suspense"
-player.style = "terminal"          # terminal | cipher | noir
+player.style = "terminal"          # terminal | cipher | noir | trance
 player.arrangement = "seeded"      # all-phases | seeded (default)
 var ok: bool = player.generate("level-001")
 ```

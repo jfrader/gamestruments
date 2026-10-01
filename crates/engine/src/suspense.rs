@@ -12,6 +12,8 @@ pub enum SuspenseStyle {
     Terminal,
     Cipher,
     Noir,
+    /// The Suspense composition on trance instruments.
+    Trance,
 }
 
 impl SuspenseStyle {
@@ -20,6 +22,7 @@ impl SuspenseStyle {
             "terminal" => Ok(Self::Terminal),
             "cipher" => Ok(Self::Cipher),
             "noir" => Ok(Self::Noir),
+            "trance" => Ok(Self::Trance),
             other => Err(format!("Unknown suspense style: {other}")),
         }
     }
@@ -29,6 +32,16 @@ impl SuspenseStyle {
             Self::Terminal => "terminal",
             Self::Cipher => "cipher",
             Self::Noir => "noir",
+            Self::Trance => "trance",
+        }
+    }
+
+    fn display(self) -> &'static str {
+        match self {
+            Self::Terminal => "Terminal",
+            Self::Cipher => "Cipher",
+            Self::Noir => "Noir",
+            Self::Trance => "Trance",
         }
     }
 }
@@ -267,26 +280,133 @@ fn create_motif(seed: u32) -> MotifDna {
     }
 }
 
-fn create_timbre(style: SuspenseStyle) -> TimbreDna {
-    match style {
-        SuspenseStyle::Terminal => TimbreDna {
-            drone_voice: "warm".into(),
-            cell_voice: "glass".into(),
-            pulse_voice: "pulse".into(),
-            arp_voice: "pulse".into(),
+/// The one Suspense composition is written in Terminal's instruments; every
+/// other style is a sound world applied afterwards ([`apply_sound_world`]).
+fn reference_timbre() -> TimbreDna {
+    TimbreDna {
+        drone_voice: "warm".into(),
+        cell_voice: "glass".into(),
+        pulse_voice: "pulse".into(),
+        arp_voice: "pulse".into(),
+    }
+}
+
+/// The parts of the composition a sound world re-instruments.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Part {
+    Drone,
+    Cell,
+    Pulse,
+    Arp,
+    Pad,
+}
+
+/// A style's instruments: one voice per part and its kick and snare. The notes,
+/// rhythms, lengths and form never change between worlds.
+struct SoundWorld {
+    drone: &'static str,
+    cell: &'static str,
+    pulse: &'static str,
+    arp: &'static str,
+    pad: &'static str,
+    kick: &'static str,
+    snare: &'static str,
+}
+
+impl SoundWorld {
+    fn voice(&self, part: Part) -> &'static str {
+        match part {
+            Part::Drone => self.drone,
+            Part::Cell => self.cell,
+            Part::Pulse => self.pulse,
+            Part::Arp => self.arp,
+            Part::Pad => self.pad,
+        }
+    }
+}
+
+impl SuspenseStyle {
+    /// The style's sound world; Terminal is the reference the piece is written in.
+    fn sound_world(self) -> Option<SoundWorld> {
+        match self {
+            Self::Terminal => None,
+            Self::Cipher => Some(SoundWorld {
+                drone: "warm",
+                cell: "pluck",
+                pulse: "bass",
+                arp: "glass",
+                pad: "dusk",
+                kick: "kick",
+                snare: "snare",
+            }),
+            Self::Noir => Some(SoundWorld {
+                drone: "organ",
+                cell: "epiano",
+                pulse: "bass",
+                arp: "warm",
+                pad: "dusk",
+                kick: "kick",
+                snare: "snare",
+            }),
+            Self::Trance => Some(SoundWorld {
+                drone: "trance-pad",
+                cell: "trance-lead",
+                pulse: "saw-bass",
+                arp: "trance-lead",
+                pad: "trance-pad",
+                kick: "techno-kick",
+                snare: "clap",
+            }),
+        }
+    }
+}
+
+/// The part an event plays, from its lane (`{section}-{part}`), falling back
+/// to its reference voice for lanes that carry no part name.
+fn part_of(section: &str, lane: &str, voice: &str) -> Option<Part> {
+    let name = lane
+        .strip_prefix(section)
+        .and_then(|rest| rest.strip_prefix('-'))
+        .unwrap_or(lane);
+    match name {
+        "drone" | "anchor" | "drone-upper" | "extension-drone" => Some(Part::Drone),
+        "cell" | "echo-cells" | "hook" => Some(Part::Cell),
+        "pulse" | "bass" | "extension-pulse" | "fractured-pulse" | "response-pulse" => {
+            Some(Part::Pulse)
+        }
+        "arp" => Some(Part::Arp),
+        "pad" | "answer" | "extension-echo" | "response-echo" => Some(Part::Pad),
+        _ => match voice {
+            "warm" | "organ" => Some(Part::Drone),
+            "glass" | "pluck" | "epiano" => Some(Part::Cell),
+            "pulse" | "bass" | "felt" => Some(Part::Pulse),
+            "dusk" => Some(Part::Pad),
+            _ => None,
         },
-        SuspenseStyle::Cipher => TimbreDna {
-            drone_voice: "warm".into(),
-            cell_voice: "pluck".into(),
-            pulse_voice: "bass".into(),
-            arp_voice: "glass".into(),
-        },
-        SuspenseStyle::Noir => TimbreDna {
-            drone_voice: "organ".into(),
-            cell_voice: "epiano".into(),
-            pulse_voice: "bass".into(),
-            arp_voice: "warm".into(),
-        },
+    }
+}
+
+/// Re-instrument the whole score in the style's sound world: every part and
+/// the kick and snare move to the world's instruments; nothing else changes.
+pub(crate) fn apply_sound_world(score: &mut PortableScore, style: SuspenseStyle) {
+    let Some(world) = style.sound_world() else {
+        return;
+    };
+    for section in &mut score.sections {
+        for event in &mut section.events {
+            match event {
+                MusicEvent::Note { lane, voice, .. } => {
+                    if let Some(part) = part_of(&section.id, lane, voice) {
+                        *voice = world.voice(part).into();
+                    }
+                }
+                MusicEvent::Percussion { voice, .. } => match voice.as_str() {
+                    "kick" => *voice = world.kick.into(),
+                    "snare" => *voice = world.snare.into(),
+                    _ => {}
+                },
+            }
+        }
     }
 }
 
@@ -301,6 +421,7 @@ fn create_arrangement(
         SuspenseStyle::Noir => 64.0,
         SuspenseStyle::Terminal => 72.0,
         SuspenseStyle::Cipher => 78.0,
+        SuspenseStyle::Trance => 80.0,
     };
     ArrangementDna {
         bpm: (base + traits.pulse * 8.0 + jitter).clamp(60.0, 88.0),
@@ -862,11 +983,21 @@ fn score_id(secret: &str, seed: &str, style: SuspenseStyle, traits: &NormalizedT
     )
 }
 
+/// Generate a Suspense score in the style's sound world.
 pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String> {
+    let mut score = compose_suspense(input)?;
+    apply_sound_world(&mut score, input.style);
+    score.validate()?;
+    Ok(score)
+}
+
+/// The Suspense composition in its reference instruments, before the style's
+/// sound world is applied.
+pub(crate) fn compose_suspense(input: &SuspenseInput) -> Result<PortableScore, String> {
     let traits = normalize(input);
     let harmony = create_harmony(subseed(&input.secret, &input.seed, "harmony"));
     let motif = create_motif(subseed(&input.secret, &input.seed, "motif"));
-    let timbre = create_timbre(input.style);
+    let timbre = reference_timbre();
     let arrangement = create_arrangement(
         subseed(&input.secret, &input.seed, "arrangement"),
         input.style,
@@ -883,11 +1014,7 @@ pub fn generate_suspense(input: &SuspenseInput) -> Result<PortableScore, String>
         id: score_id(&input.secret, &input.seed, input.style, &traits),
         title: format!(
             "{} {} drone",
-            match input.style {
-                SuspenseStyle::Terminal => "Terminal",
-                SuspenseStyle::Cipher => "Cipher",
-                SuspenseStyle::Noir => "Noir",
-            },
+            input.style.display(),
             harmony.key.to_uppercase()
         ),
         bpm: arrangement.bpm,
@@ -923,6 +1050,27 @@ mod tests {
 
     fn melody(events: &[MusicEvent]) -> Vec<&MusicEvent> {
         events.iter().filter(|event| event.is_melody()).collect()
+    }
+
+    #[test]
+    fn pulse_moves_the_tempo_in_every_style() {
+        let styles = [
+            SuspenseStyle::Terminal,
+            SuspenseStyle::Cipher,
+            SuspenseStyle::Noir,
+            SuspenseStyle::Trance,
+        ];
+        for style in styles {
+            let bpm = |pulse| {
+                generate_suspense(&SuspenseInput {
+                    pulse,
+                    ..input("tempo", style)
+                })
+                .unwrap()
+                .bpm
+            };
+            assert!(bpm(1.0) > bpm(0.0), "{style:?} ignores the pulse");
+        }
     }
 
     #[test]

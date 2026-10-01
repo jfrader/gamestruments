@@ -388,9 +388,26 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 16] = [
-                "warm", "glass", "pulse", "bass", "pluck", "chip", "epiano", "organ", "supersaw",
-                "triangle", "felt", "dusk", "harp", "recorder", "vielle", "bell",
+            const NOTE_VOICES: [&str; 19] = [
+                "warm",
+                "glass",
+                "pulse",
+                "bass",
+                "pluck",
+                "chip",
+                "epiano",
+                "organ",
+                "supersaw",
+                "triangle",
+                "felt",
+                "dusk",
+                "harp",
+                "recorder",
+                "vielle",
+                "bell",
+                "saw-bass",
+                "trance-pad",
+                "trance-lead",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -403,7 +420,9 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 8] = [
+            const PERCUSSION_VOICES: [&str; 10] = [
+                "techno-kick",
+                "clap",
                 "kick",
                 "snare",
                 "hat",
@@ -529,8 +548,15 @@ mod tests {
     }
 
     #[test]
+    fn accepts_the_club_percussion_voices() {
+        for voice in ["techno-kick", "clap"] {
+            assert_eq!(percussion_score(voice).validate(), Ok(()), "{voice}");
+        }
+    }
+
+    #[test]
     fn rejects_unknown_percussion_voices() {
-        for voice in ["frame_drum", "tamb", "clap", "bongo"] {
+        for voice in ["frame_drum", "tamb", "cowbell", "bongo"] {
             assert_eq!(
                 percussion_score(voice).validate(),
                 Err(format!(

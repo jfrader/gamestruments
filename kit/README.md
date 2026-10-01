@@ -68,7 +68,7 @@ settings.
 
 One player, three recipes. **Racing** is state-driven race loops (`racing`;
 styles neon, funk, fusion, chip). **Suspense** is a song-form arc for tense
-sessions (`suspense`; terminal, cipher, noir). **Adventure** is an eight-section
+sessions (`suspense`; terminal, cipher, noir, trance). **Adventure** is an eight-section
 fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
 `generate`; each generated score belongs to one recipe. Sections and selection
 rules are in `kit/docs/api.md`; complete Racing and Suspense scripts are in

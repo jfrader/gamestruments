@@ -485,7 +485,7 @@ impl GamestrumentsPlayer {
                         Ok(style) => style,
                         Err(_) => {
                             godot_error!(
-                                "Unknown Gamestruments suspense style \"{}\"; use terminal, cipher, or noir",
+                                "Unknown Gamestruments suspense style \"{}\"; use terminal, cipher, noir, or trance",
                                 self.style
                             );
                             return false;

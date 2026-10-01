@@ -34,7 +34,7 @@ The archive contains no Strudel code, TypeScript authoring packages, browser Aud
 The kit generates deterministic scores from three shipped recipes, each from a per-title namespace, level seed, style, voice palette (Racing), traits, and generator version:
 
 - **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` (original); `extended` adds four more (ignition/slipstream/redline/cooldown) — driven by `set_race_state`. Native default arrangement original.
-- **Suspense (song-form):** a 27-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
+- **Suspense (song-form):** a 38-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
 - **Adventure:** eight sections (camp, explore, town, dungeon, combat, boss, sanctuary, victory) driven by `set_adventure_state`. 3 styles. 8 real phases.
 
 The `kit/examples/` project is three independent reference scenes, not a
@@ -56,7 +56,7 @@ Exported properties:
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`
 - `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (default) and `extended`. Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
 - `autoplay: bool` — Racing and Adventure (default `false`); when true attaches form tour (arrangement tour, not audio autostart). Ignored by Suspense. Native default false.
-- `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`; Adventure `folk`, `dark`, `orchestral`
+- `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`, `trance`; Adventure `folk`, `dark`, `orchestral`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only
 - `energy`, `complexity`, `brightness`, `syncopation: float` — read as energy/complexity/brightness/syncopation by Racing, as tension/heat/mystery/pulse by Suspense, as danger/mystery/wonder/motion by Adventure
 

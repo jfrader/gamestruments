@@ -121,7 +121,7 @@ Confirm directly from the extracted archive and examples:
 - [ ] `kit/examples/` is described as three independent integration references (PlaybackSeededPool, GameSignalsOriginalRacing, SongFormAllPhases), not a playable game or a four-circuit race series.
 - [ ] Godot 4.7.x and the three supported desktop platform families are explicit.
 - [ ] `generate(seed, opening_section = "") -> bool`, `set_race_state(...) -> bool`, `set_trace_state(...) -> bool`, `set_adventure_state(...) -> bool`, and the form methods match runtime behavior.
-- [ ] The six Racing sections (original) and the 27-phase Suspense pool are reachable via `all-phases` and `seeded`. Adventure's eight sections are reachable via `set_adventure_state`.
+- [ ] The six Racing sections (original) and the 38-phase Suspense pool are reachable via `all-phases` and `seeded`. Adventure's eight sections are reachable via `set_adventure_state`.
 - [ ] No WAV, OGG, MP3, Strudel, browser Lab, or TypeScript authoring package is present.
 - [ ] The exact-runtime sound is accurately represented by proposed storefront media.
 - [ ] Complete Rust rebuild inputs, changelog, licenses, and third-party notices are present.

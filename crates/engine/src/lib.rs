@@ -6,6 +6,7 @@ pub(crate) mod dmath;
 pub mod form_audio;
 pub mod handoff;
 pub mod master;
+pub(crate) mod match_phases;
 pub mod racing;
 pub mod racing_arrangement;
 pub mod racing_pool;

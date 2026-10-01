@@ -13,6 +13,13 @@ const NOTE_TAIL_SECONDS = 0.16;
 
 // Ambience send gain, applied to every phase and every recipe. Set to 0.0 to A/B it off.
 const AMBIENCE = 1.0;
+/** Mirrors the engine's sidechain pumping under the club kick. */
+const PUMP_DEPTH = 0.7;
+const PUMP_RECOVERY_SECONDS = 0.11;
+
+function centsToRatio(cents: number): number {
+  return Math.pow(2, cents / 1200);
+}
 
 type NoteEvent = Extract<MusicEvent, { kind: "note" }>;
 type SynthVoice = Exclude<
@@ -27,6 +34,9 @@ type SynthVoice = Exclude<
   | "recorder"
   | "vielle"
   | "bell"
+  | "saw-bass"
+  | "trance-pad"
+  | "trance-lead"
 >;
 
 export type SoloMode = "full" | "melody" | "rhythm" | { voice: string; mute: boolean };
@@ -260,6 +270,8 @@ export class DemoAudioEngine {
   readonly #secondsPerTick: number;
   #context: AudioContext | null = null;
   #sectionBuses = new Map<SectionId, SectionBus>();
+  #pumpNodes = new Map<AudioNode, GainNode>();
+  #kickTimes: number[] = [];
   #activeSections = new Set<SectionId>();
   #sectionReleaseTimers = new Map<SectionId, number>();
   #scheduledUntilBySection = new Map<SectionId, number>();
@@ -448,6 +460,8 @@ export class DemoAudioEngine {
       window.clearTimeout(timer);
     }
     this.#sectionBuses.clear();
+    this.#pumpNodes.clear();
+    this.#kickTimes = [];
     this.#sourcesBySection.clear();
     this.#activeSections.clear();
     this.#sectionReleaseTimers.clear();
@@ -791,6 +805,9 @@ export class DemoAudioEngine {
       vielle: () =>
         this.#scheduleVielle(event, start, duration, destination),
       bell: () => this.#scheduleBell(event, start, destination),
+      "saw-bass": () => this.#scheduleSawBass(event, start, duration, this.#pumpInput(destination)),
+      "trance-pad": () => this.#scheduleTrancePad(event, start, duration, this.#pumpInput(destination)),
+      "trance-lead": () => this.#scheduleTranceLead(event, start, duration, this.#pumpInput(destination)),
     } as const;
     const scheduleDedicated = dedicated[event.voice as keyof typeof dedicated];
     if (scheduleDedicated !== undefined) {
@@ -1241,6 +1258,183 @@ export class DemoAudioEngine {
     }
   }
 
+  /** The pump bus in front of `destination`: pumped voices duck under every club kick. */
+  #pumpInput(destination: AudioNode): AudioNode {
+    const context = this.#context;
+    if (context === null) {
+      return destination;
+    }
+    let pump = this.#pumpNodes.get(destination);
+    if (pump === undefined) {
+      pump = context.createGain();
+      pump.connect(destination);
+      this.#pumpNodes.set(destination, pump);
+      for (const kick of this.#kickTimes) {
+        if (kick >= context.currentTime) this.#duck(pump.gain, kick);
+      }
+    }
+    return pump;
+  }
+
+  #duck(gain: AudioParam, at: number): void {
+    gain.setValueAtTime(1 - PUMP_DEPTH, at);
+    gain.setTargetAtTime(1, at, PUMP_RECOVERY_SECONDS);
+  }
+
+  #pumpAt(at: number): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    this.#kickTimes = this.#kickTimes.filter((kick) => kick >= context.currentTime);
+    this.#kickTimes.push(at);
+    for (const pump of this.#pumpNodes.values()) this.#duck(pump.gain, at);
+  }
+
+  /** Oscillators summed into one filtered, enveloped voice. */
+  #scheduleFilteredVoice(
+    event: NoteEvent,
+    start: number,
+    duration: number,
+    destination: AudioNode,
+    oscillators: readonly { type: OscillatorType; ratio: number; gain: number }[],
+    filter: { frequency: number; settle?: { to: number; timeConstant: number }; q: number },
+    envelope: { peak: number; sustain: number; attack: number; decay: number; release: number },
+    pan: number,
+  ): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const frequency = midiToFrequency(event.pitch);
+    const stop = start + duration + envelope.release + 0.02;
+    const mix = context.createGain();
+    const lowpass = context.createBiquadFilter();
+    const amp = context.createGain();
+    const panner = context.createStereoPanner();
+    lowpass.type = "lowpass";
+    lowpass.Q.value = filter.q;
+    lowpass.frequency.setValueAtTime(Math.min(filter.frequency, context.sampleRate * 0.44), start);
+    if (filter.settle !== undefined) {
+      lowpass.frequency.setTargetAtTime(filter.settle.to, start, filter.settle.timeConstant);
+    }
+    this.#scheduleEnvelope(
+      amp.gain,
+      start,
+      duration,
+      envelope.peak,
+      envelope.sustain,
+      envelope.attack,
+      envelope.decay,
+      envelope.release,
+      envelope.release,
+    );
+    panner.pan.value = pan;
+    mix.connect(lowpass).connect(amp).connect(panner).connect(destination);
+    const nodes: AudioNode[] = [mix, lowpass, amp, panner];
+    const sources = oscillators.map(({ type, ratio, gain }) => {
+      const oscillator = context.createOscillator();
+      const level = context.createGain();
+      oscillator.type = type;
+      oscillator.frequency.value = frequency * ratio;
+      level.gain.value = gain;
+      oscillator.connect(level).connect(mix);
+      oscillator.start(start);
+      oscillator.stop(stop);
+      nodes.push(oscillator, level);
+      return oscillator;
+    });
+    const lead = sources[0];
+    if (lead !== undefined) this.#cleanupAfter(lead, nodes);
+  }
+
+  #scheduleSawBass(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
+    const velocity = clamp(event.velocity, 0, 1);
+    this.#scheduleFilteredVoice(
+      event,
+      start,
+      duration,
+      destination,
+      [
+        { type: "sawtooth", ratio: 1, gain: 1 },
+        { type: "square", ratio: 0.5, gain: 0.35 },
+      ],
+      { frequency: 180 + 1400 * velocity, settle: { to: 180, timeConstant: 0.09 }, q: 6 },
+      { peak: 0.09 * Math.pow(Math.max(0.02, velocity), 0.78), sustain: 0.7, attack: 0.004, decay: 0.15, release: 0.08 },
+      0,
+    );
+  }
+
+  #scheduleTrancePad(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
+    const velocity = clamp(event.velocity, 0, 1);
+    this.#scheduleFilteredVoice(
+      event,
+      start,
+      duration,
+      destination,
+      [
+        { type: "sawtooth", ratio: 1, gain: 1 / 3 },
+        { type: "sawtooth", ratio: centsToRatio(12), gain: 1 / 3 },
+        { type: "sawtooth", ratio: centsToRatio(-12), gain: 1 / 3 },
+      ],
+      { frequency: 2400 + velocity * 2000, q: 0.3 },
+      { peak: 0.05 * Math.pow(Math.max(0.02, velocity), 0.82), sustain: 0.85, attack: 0.35, decay: 0.5, release: 0.6 },
+      0,
+    );
+  }
+
+  #scheduleTranceLead(event: NoteEvent, start: number, duration: number, destination: AudioNode): void {
+    const velocity = clamp(event.velocity, 0, 1);
+    this.#scheduleFilteredVoice(
+      event,
+      start,
+      duration,
+      destination,
+      [
+        { type: "sawtooth", ratio: centsToRatio(8), gain: 0.5 },
+        { type: "sawtooth", ratio: centsToRatio(-8), gain: 0.5 },
+      ],
+      { frequency: 600 + 5000 * velocity, settle: { to: 600, timeConstant: 0.18 }, q: 2 },
+      { peak: 0.07 * Math.pow(Math.max(0.02, velocity), 0.82), sustain: 0.35, attack: 0.003, decay: 0.25, release: 0.15 },
+      -0.125,
+    );
+  }
+
+  /** Mirrors the engine's club kick: a clean sine sweeping onto the sub, a fast punch over a sub tail. */
+  #scheduleTechnoKick(eventVelocity: number, start: number, destination: AudioNode, seed: string): void {
+    const context = this.#context;
+    if (context === null) {
+      return;
+    }
+    const velocity = clamp(eventVelocity, 0, 1);
+    const oscillator = context.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(158, start);
+    oscillator.frequency.setTargetAtTime(48, start, 0.045);
+    const nodes: AudioNode[] = [oscillator];
+    for (const [share, timeConstant] of [[0.6, 0.06], [0.4, 0.22]] as const) {
+      const stage = context.createGain();
+      stage.gain.setValueAtTime(MIN_GAIN, start);
+      stage.gain.linearRampToValueAtTime(0.32 * velocity * share, start + 0.001);
+      stage.gain.setTargetAtTime(0, start + 0.001, timeConstant);
+      oscillator.connect(stage).connect(destination);
+      nodes.push(stage);
+    }
+    oscillator.start(start);
+    oscillator.stop(start + 0.6);
+    this.#scheduleNoise(0.048 * velocity, start, 0.012, "highpass", 2500, 0.5, destination, `${seed}:click`);
+    this.#cleanupAfter(oscillator, nodes);
+    this.#pumpAt(start);
+  }
+
+  #scheduleClap(eventVelocity: number, start: number, destination: AudioNode, seed: string): void {
+    const level = 0.22 * Math.pow(Math.max(0.02, clamp(eventVelocity, 0, 1)), 0.82);
+    for (const offset of [0, 0.011, 0.022]) {
+      this.#scheduleNoise(level, start + offset, 0.006, "bandpass", 1200, 0.7, destination, `${seed}:${offset}`, 0.0625);
+    }
+    this.#scheduleNoise(level * 0.8, start + 0.022, 0.35, "bandpass", 1200, 0.7, destination, `${seed}:tail`, 0.0625);
+  }
+
   #scheduleBass(
     event: NoteEvent,
     start: number,
@@ -1627,6 +1821,10 @@ export class DemoAudioEngine {
     const schedulers = {
       kick: () =>
         this.#scheduleKick(event.velocity, start, destination, event.id),
+      "techno-kick": () =>
+        this.#scheduleTechnoKick(event.velocity, start, destination, event.id),
+      clap: () =>
+        this.#scheduleClap(event.velocity, start, destination, event.id),
       snare: () =>
         this.#scheduleSnare(event.velocity, start, destination, event.id),
       hat: () =>
