@@ -33,6 +33,8 @@ pub struct PlaybackStatus {
 pub struct SectionGain {
     pub section: String,
     pub gain: f32,
+    /// The tick the section's own phrase started at.
+    pub origin: u32,
 }
 
 /// Live playback state for one generated score.
@@ -433,6 +435,7 @@ impl LivePlayer {
                 .map(|part| SectionGain {
                     section: part.section.to_string(),
                     gain: part.gain,
+                    origin: part.origin,
                 })
                 .collect(),
         })

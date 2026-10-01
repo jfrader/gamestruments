@@ -39,7 +39,7 @@ interface Status {
   scoreId: string;
   currentSection: string;
   transition: { to: string } | null;
-  mix: { section: string; gain: number }[];
+  mix: { section: string; gain: number; origin: number }[];
 }
 
 describe("the live player through the shipped WASM", () => {
@@ -60,7 +60,7 @@ describe("the live player through the shipped WASM", () => {
     const status = run(player, "status") as Status;
     assert.equal(status.scoreId, score.id);
     assert.equal(status.currentSection, score.defaultSection);
-    assert.deepEqual(status.mix, [{ section: score.defaultSection, gain: 1 }]);
+    assert.deepEqual(status.mix, [{ section: score.defaultSection, gain: 1, origin: 0 }]);
   });
 
   it("cues a section and cancels the cue before it starts", async () => {
