@@ -10,7 +10,7 @@ use crate::handoff::{crossfade_gains, crossfade_sample_count, Handoff};
 use crate::master::{MasterChain, MasterConfig};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
 use crate::suspense::select_trace_section;
-use crate::synth::{events_starting_at, tick_at_sample, Synth};
+use crate::synth::{events_starting_at, tick_at_sample, Solo, Synth};
 use crate::transport::{select_section, TransitionPlan};
 use crate::{AdaptiveTransport, FormAudio};
 
@@ -107,6 +107,13 @@ impl Voice {
         })
     }
 
+    fn set_solo(&mut self, solo: &Solo) {
+        self.synth.set_solo(solo);
+        if let Some(form_audio) = self.form_audio.as_mut() {
+            form_audio.set_solo(solo);
+        }
+    }
+
     /// Render `frames` samples into the voice's own scratch, sample-accurately.
     fn fill(&mut self, frames: usize, sample_rate: f64) {
         self.scratch.clear();
@@ -163,6 +170,8 @@ pub struct LivePlayer {
     outgoing: Option<Voice>,
     /// Crossfade progress between the outgoing and the active voice.
     handoff: Handoff,
+    /// Which voices every score lets through.
+    solo: Solo,
 }
 
 impl LivePlayer {
@@ -173,7 +182,19 @@ impl LivePlayer {
             pending: None,
             outgoing: None,
             handoff: Handoff::idle(),
+            solo: Solo::Full,
         }
+    }
+
+    /// Audition part of the mix: only the voices `solo` names keep sounding.
+    pub fn set_solo(&mut self, solo: Solo) {
+        for voice in [&mut self.active, &mut self.pending, &mut self.outgoing]
+            .into_iter()
+            .flatten()
+        {
+            voice.set_solo(&solo);
+        }
+        self.solo = solo;
     }
 
     pub fn sample_rate(&self) -> f32 {
@@ -216,7 +237,7 @@ impl LivePlayer {
         // Record the key the score actually sounds in, so a later seed change
         // carries from the sounding key rather than the generated one.
         let sounding_root = carried.map_or(root_pitch_class, |(key, _)| key);
-        let voice = Voice::new(
+        let mut voice = Voice::new(
             score,
             seed.to_string(),
             recipe.to_string(),
@@ -224,6 +245,7 @@ impl LivePlayer {
             opening_section,
             self.sample_rate,
         )?;
+        voice.set_solo(&self.solo);
         if self.active.is_some() || self.pending.is_some() {
             self.pending = Some(voice);
         } else {

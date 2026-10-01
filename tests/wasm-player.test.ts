@@ -110,6 +110,21 @@ describe("the live player through the shipped WASM", () => {
     assert.equal((run(player, "status") as Status).transition?.to, section);
   });
 
+  it("auditions the melody, the rhythm or one instrument", async () => {
+    const instance = await instantiate();
+    const score = suspenseScore(instance);
+    const render = (solo: unknown): number[] => {
+      const player = new WasmPlayer(instance, 48000);
+      run(player, { load: { score, seed: "level-001", recipe: "suspense", rootPitchClass: 0, openingSection: null } });
+      assert.deepEqual(run(player, { solo }), { accepted: true });
+      const samples: number[] = [];
+      for (let block = 0; block < 100; block++) samples.push(...player.fill(512));
+      return samples;
+    };
+    assert.notDeepEqual(render("melody"), render("rhythm"), "melody and rhythm are different parts");
+    assert.notDeepEqual(render({ voice: { voice: "warm", mute: true } }), render("full"), "muting the bed changes the mix");
+  });
+
   it("knows the key a Racing seed sounds in, so a new seed can join it", async () => {
     const instance = await instantiate();
     const roots = ["level-001", "level-002", "level-003", "level-004"].map((seed) =>

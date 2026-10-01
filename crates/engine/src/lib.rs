@@ -45,5 +45,5 @@ pub use suspense_arrangement::{
     generate_suspense_arrangement_take, SuspenseArrangement,
 };
 pub use suspense_pool::{take_seed, Intent};
-pub use synth::Synth;
+pub use synth::{Solo, Synth};
 pub use transport::AdaptiveTransport;

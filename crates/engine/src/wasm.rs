@@ -83,6 +83,7 @@ use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
+use crate::synth::Solo;
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
@@ -579,6 +580,7 @@ enum PlayerCommand {
     Advance,
     Update(GameUpdate),
     SectionFor(GameUpdate),
+    Solo(Solo),
     Status,
 }
 
@@ -617,6 +619,10 @@ fn run_player_command(player: &mut LivePlayer, command: PlayerCommand) -> Result
         PlayerCommand::Hold { held } => accepted(player.set_form_held(held)),
         PlayerCommand::Advance => accepted(player.advance_form()),
         PlayerCommand::Update(update) => accepted(player.request(&update)),
+        PlayerCommand::Solo(solo) => {
+            player.set_solo(solo);
+            accepted(true)
+        }
         PlayerCommand::SectionFor(update) => serde_json::to_string(&player.section_for(&update))
             .map_err(|error| format!("section must serialize: {error}")),
         PlayerCommand::Status => serde_json::to_string(&player.status())
