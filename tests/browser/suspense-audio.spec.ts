@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
-import { installAudioCapture } from "./audio-capture.ts";
+import { captureEngineAudio } from "./engine-audio.ts";
 
 async function playSeededDefault(page: Page, style: string): Promise<void> {
   await page.goto("/#lab");
@@ -21,12 +21,10 @@ async function playSeededDefault(page: Page, style: string): Promise<void> {
 
 test("the seeded pool plays the default Suspense engine and swaps to all-phases", async ({ page }) => {
   test.setTimeout(120000);
-  await installAudioCapture(page);
+  await captureEngineAudio(page);
   await playSeededDefault(page, "Terminal");
-  // The development arc exposes the opening block without the kit, so assert the
-  // stage is rendering (any voice) rather than waiting for the drums.
-  await page.waitForFunction(() => window.scanAudio.firstStart !== null, null, { timeout: 30000 });
-  const rendered = await page.evaluate(() => window.scanAudio.blocks.length);
+  await page.waitForFunction(() => window.engineAudio.peak > 0, null, { timeout: 30000 });
+  const rendered = await page.evaluate(() => window.engineAudio.blocks);
   await page.locator("#start-audio").click();
   expect(rendered).toBeGreaterThan(0);
 
@@ -43,9 +41,9 @@ for (const style of ["Terminal", "Cipher", "Noir", "Trance"]) {
     test.setTimeout(90000);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await installAudioCapture(page);
+    await captureEngineAudio(page);
     await playSeededDefault(page, style);
-    await page.waitForFunction(() => window.scanAudio.firstStart !== null, null, { timeout: 20000 });
+    await page.waitForFunction(() => window.engineAudio.peak > 0, null, { timeout: 20000 });
     await page.locator("#start-audio").click();
     expect(errors).toEqual([]);
   });

@@ -1,6 +1,6 @@
 use crate::handoff::buffer_rms;
 use crate::score::{MusicEvent, PortableScore};
-use crate::synth::Synth;
+use crate::synth::{Solo, Synth};
 use crate::transport::AdaptiveTransport;
 
 /// Identity of the incoming section the hold probe is watching: its tonal
@@ -23,6 +23,7 @@ pub struct FormAudio {
     /// the transport gates it against [`crate::handoff::RAW_MUSICAL_FLOOR`].
     incoming: Option<IncomingId>,
     incoming_probe: Vec<f32>,
+    solo: Solo,
 }
 
 impl FormAudio {
@@ -45,7 +46,23 @@ impl FormAudio {
                 .collect(),
             incoming: None,
             incoming_probe: Vec::new(),
+            solo: Solo::Full,
         }
+    }
+
+    /// Let only the voices `solo` names through, in every section.
+    pub fn set_solo(&mut self, solo: &Solo) {
+        self.solo = solo.clone();
+        for synth in self.tonal.iter_mut().chain(self.drums.iter_mut()) {
+            synth.set_solo(solo);
+        }
+    }
+
+    /// A fresh synth for a section that restarts, under the current solo.
+    fn synth(&self) -> Synth {
+        let mut synth = Synth::new(self.sample_rate);
+        synth.set_solo(&self.solo);
+        synth
     }
 
     pub fn tick(&self, ticks_per_second: f64) -> u32 {
@@ -79,8 +96,8 @@ impl FormAudio {
                     };
                     let section = &score.sections[index];
                     if self.origins[index] != Some(playback.origin) {
-                        self.tonal[index] = Synth::new(self.sample_rate);
-                        self.drums[index] = Synth::new(self.sample_rate);
+                        self.tonal[index] = self.synth();
+                        self.drums[index] = self.synth();
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
@@ -174,8 +191,8 @@ impl FormAudio {
                     };
                     let section = &score.sections[index];
                     if self.origins[index] != Some(playback.origin) {
-                        self.tonal[index] = Synth::new(self.sample_rate);
-                        self.drums[index] = Synth::new(self.sample_rate);
+                        self.tonal[index] = self.synth();
+                        self.drums[index] = self.synth();
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
@@ -437,7 +454,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn native_full_form_has_one_rhythm_owner_and_no_extra_opening_bars() {
         let score = generate_suspense_arrangement(
@@ -647,7 +663,7 @@ mod tests {
         let score = drum_bus_carry_score();
         let mut transport = AdaptiveTransport::new(score.clone(), Some("a")).unwrap();
         transport.request_section("b", 0).unwrap();
-        
+
         let rate = 8000.0f32;
         let mut fa = FormAudio::new(&score, rate);
         let mut buf = vec![0.0f32; 512];
@@ -660,7 +676,7 @@ mod tests {
             max_rms = max_rms.max(buffer_rms(&buf[..n]));
             frame += n;
         }
-        
+
         assert!(
             max_rms > crate::handoff::RAW_MUSICAL_FLOOR,
             "outgoing drums were cut during the hold: max chunk rms {max_rms}"

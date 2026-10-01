@@ -48,9 +48,9 @@ npm run dev
 Open the local URL printed by Vite, choose a level seed, sound world, and
 generation traits, then start audio and change race phase, speed intensity,
 position pressure, and final-lap state. (Run `npm run wasm:build` once to make
-the shared engine available to the lab.) Generation now uses the shared WASM
-engine (`crates/engine`); the Web Audio stage and runtime transport stay in
-the lab to preserve the signed-off sound. Runtime changes are committed on bar
+the shared engine available to the lab.) The lab generates and plays through
+the shared WASM engine (`crates/engine`): the same live player the Godot addon
+runs, so it sounds like the kit. Runtime changes are committed on bar
 boundaries and overlap through a musical crossover.
 
 The Audition controls isolate melody or backing, jump directly to any section,

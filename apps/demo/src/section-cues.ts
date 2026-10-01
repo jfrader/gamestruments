@@ -1,4 +1,5 @@
-import type { PortableScore, SectionId, TransportSnapshot } from "../../../packages/runtime/src/index.ts";
+import type { PortableScore, SectionId } from "../../../packages/runtime/src/index.ts";
+import type { PlaybackSnapshot } from "./playback.ts";
 
 export interface CueView {
   current: SectionId;
@@ -9,7 +10,7 @@ export interface CueView {
   select: SectionId;
 }
 
-export function cueView(score: PortableScore, snapshot: TransportSnapshot, tick: number, running: boolean, requested: SectionId | null, held = false): CueView {
+export function cueView(score: PortableScore, snapshot: PlaybackSnapshot, tick: number, running: boolean, requested: SectionId | null, held = false): CueView {
   const transition = snapshot.transition;
   const started = transition !== null && tick >= transition.startTick;
   const current = started ? transition.to : snapshot.currentSection;

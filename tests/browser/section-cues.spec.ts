@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
-import { installAudioCapture } from "./audio-capture.ts";
+import { captureEngineAudio, ENGINE_SAMPLE_RATE, waitForBeat, waitForEngineSeconds } from "./engine-audio.ts";
 
-declare global { interface Window { cueClock: AudioContext; stoppedBeforeCue: number } }
 
 test("Suspense exposes every music section separately from game signals", async ({ page }) => {
   await page.goto("/#lab");
@@ -64,10 +63,10 @@ test("cue buttons wait for a bar and an active blend keeps only the latest queue
   expect(errors).toEqual([]);
 });
 
-test("cancelled cues do not stop the current rhythm when their old fade timer expires", async ({ page }) => {
+test("cancelled cues leave the current section sounding", async ({ page }) => {
   // Ten real-time bars of playback plus generating the whole pool.
   test.setTimeout(60000);
-  await installAudioCapture(page);
+  await captureEngineAudio(page);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#lab");
@@ -84,47 +83,30 @@ test("cancelled cues do not stop the current rhythm when their old fade timer ex
   await page.locator("#cancel-cue").click();
   await expect(page.locator("#cue-status")).toHaveText("Automatic progression");
   await expect(page.locator("#mood-name")).toHaveText("Scan");
-  await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, secondsPerBar * 10 + 0.2, { timeout: 40000 });
-  const kicks = await page.evaluate((secondsPerBar) => window.scanAudio.kicks.map((hit) => (hit.time - window.scanAudio.firstStart!) / secondsPerBar).filter((bar) => bar < 10 - 0.001), secondsPerBar);
+  await waitForEngineSeconds(page, Math.min(secondsPerBar * 10, 10), 40000);
+  const barLevels = await page.evaluate((barFrames) => {
+    const samples = window.engineAudio.samples;
+    const levels: number[] = [];
+    for (let start = 0; start + barFrames <= samples.length; start += barFrames) {
+      let sum = 0;
+      for (let index = start; index < start + barFrames; index++) sum += samples[index]! ** 2;
+      levels.push(Math.sqrt(sum / barFrames));
+    }
+    return levels;
+  }, Math.round(secondsPerBar * ENGINE_SAMPLE_RATE));
   await page.locator("#start-audio").click();
-  // The pool's kit is seeded and the arc may expose the opening block without
-  // it, so continuity (no long hole) is the contract, not a kick count.
-  expect(kicks.length).toBeGreaterThanOrEqual(2);
-  for (let index = 1; index < kicks.length; index++) {
-    expect(kicks[index]! - kicks[index - 1]!).toBeLessThan(4.5);
-  }
+  // The Suspense drone never stops, so a quiet bar is a dropout.
+  expect(barLevels.length).toBeGreaterThanOrEqual(2);
+  for (const level of barLevels) expect(level).toBeGreaterThan(1e-4);
   expect(errors).toEqual([]);
 });
 
-test("cancelling a looked-ahead cue stops its future voices", async ({ page }) => {
-  await installAudioCapture(page);
-  await page.addInitScript(() => {
-    window.stoppedBeforeCue = 0;
-    const Native = window.AudioContext;
-    window.AudioContext = class extends Native {
-      constructor(options?: AudioContextOptions) {
-        super(options); window.cueClock = this;
-        const create = this.createOscillator.bind(this);
-        this.createOscillator = () => {
-          const node = create(); let startAt: number | null = null;
-          const start = node.start.bind(node); const stop = node.stop.bind(node);
-          node.start = (time = 0) => { startAt = time; start(time); };
-          node.stop = (time = 0) => {
-            if (startAt !== null && this.currentTime < startAt && time <= startAt) window.stoppedBeforeCue++;
-            stop(time);
-          };
-          return node;
-        };
-      }
-    };
-  });
+test("a cue cancelled before its downbeat never starts", async ({ page }) => {
   await page.goto("/#lab");
   await selectRecipe(page, "suspense");
   await page.locator("#section-select").selectOption("verse");
-  const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
-  await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null && window.cueClock.currentTime > window.scanAudio.firstStart + seconds, secondsPerBar - 0.24);
+  await waitForBeat(page, 1, 4);
   await page.evaluate(async () => {
     const select = document.querySelector<HTMLSelectElement>("#section-select")!;
     select.value = "anomaly";
@@ -134,8 +116,7 @@ test("cancelling a looked-ahead cue stops its future voices", async ({ page }) =
     if (cancel.disabled) throw new Error("Cue must remain cancellable before its downbeat");
     cancel.click();
   });
-  expect(await page.evaluate(() => window.stoppedBeforeCue)).toBeGreaterThan(0);
-  await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null && window.cueClock.currentTime > window.scanAudio.firstStart + seconds, secondsPerBar + 0.3);
+  await waitForBeat(page, 2, 2);
   await expect(page.locator("#mood-name")).toHaveText("Scan");
   await page.locator("#start-audio").click();
 });

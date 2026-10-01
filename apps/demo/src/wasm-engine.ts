@@ -2,7 +2,9 @@ import {
   type PortableScore,
   validatePortableScore,
 } from "../../../packages/runtime/src/index.ts";
+import { WasmPlayer } from "./wasm-player.ts";
 
+let moduleRef: WebAssembly.Module | null = null;
 let exportsRef: WebAssembly.Exports | null = null;
 let memoryRef: WebAssembly.Memory | null = null;
 
@@ -14,10 +16,11 @@ async function ensureLoaded(): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to load WASM engine: ${response.status}`);
   }
-  const { instance } = await WebAssembly.instantiateStreaming(response, {});
+  const { module, instance } = await WebAssembly.instantiateStreaming(response, {});
   if (!instance.exports.memory) {
     throw new Error("WASM module has no exported memory");
   }
+  moduleRef = module;
   exportsRef = instance.exports;
   memoryRef = instance.exports.memory as WebAssembly.Memory;
 }
@@ -85,17 +88,13 @@ export interface GenerateScoreParams {
   reelIndex?: number;
 }
 
-export async function generateScore(params: GenerateScoreParams): Promise<PortableScore> {
-  await ensureLoaded();
-  const exp = getExports();
-  (exp.gamestruments_reset as () => void)();
-
-  const recipe = params.recipe ?? "racing";
-  const input = {
+/** The generation input JSON the engine takes, for `params`. */
+function generationInput(params: GenerateScoreParams): string {
+  return JSON.stringify({
     secret: "",
     seed: params.seed,
     style: params.style,
-    recipe,
+    recipe: params.recipe ?? "racing",
     // Every recipe's arrangements are `all-phases` or `seeded`, so an
     // unspecified arrangement defaults to the seeded composer.
     arrangement: params.arrangement ?? "seeded",
@@ -111,8 +110,14 @@ export async function generateScore(params: GenerateScoreParams): Promise<Portab
     mystery: params.mystery ?? params.brightness,
     pulse: params.pulse ?? params.syncopation,
     reelIndex: params.reelIndex ?? 0,
-  };
-  const { ptr, len } = allocAndWrite(JSON.stringify(input));
+  });
+}
+
+export async function generateScore(params: GenerateScoreParams): Promise<PortableScore> {
+  await ensureLoaded();
+  const exp = getExports();
+  (exp.gamestruments_reset as () => void)();
+  const { ptr, len } = allocAndWrite(generationInput(params));
   const outPtr = (exp.gamestruments_score_json as (p: number, l: number) => number)(ptr, len);
   const bytes = readOutput(outPtr);
   const text = new TextDecoder().decode(bytes);
@@ -163,4 +168,22 @@ export async function renderWavStereo(
     ph: number,
   ) => number)(s.ptr, s.len, sec.ptr, sec.len, phrases);
   return readOutput(outPtr);
+}
+
+/** The key the score for `params` sounds in, for the live player's `load`. */
+export async function rootPitchClass(params: GenerateScoreParams): Promise<number> {
+  await ensureLoaded();
+  const exp = getExports();
+  (exp.gamestruments_reset as () => void)();
+  const { ptr, len } = allocAndWrite(generationInput(params));
+  return (exp.gamestruments_root_pitch_class as (p: number, l: number) => number)(ptr, len);
+}
+
+/** A live player on its own engine instance. */
+export async function createPlayer(sampleRate: number): Promise<WasmPlayer> {
+  await ensureLoaded();
+  if (moduleRef === null) {
+    throw new Error("WASM engine not loaded");
+  }
+  return new WasmPlayer(await WebAssembly.instantiate(moduleRef, {}), sampleRate);
 }

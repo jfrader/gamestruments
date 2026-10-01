@@ -183,7 +183,8 @@ pub struct AdaptiveCondition {
     pub categorical: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameState {
     pub intensity: f64,
     pub position_pressure: f64,
@@ -192,7 +193,8 @@ pub struct GameState {
     pub finish_result: String,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TraceState {
     pub phase: String,
     pub heat: f64,
@@ -202,7 +204,8 @@ pub struct TraceState {
 
 /// Area state a game is in for the `adventure` recipe. Discovery and threat
 /// drive section choice; `quest_complete` always wins.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdventureState {
     pub area_phase: String,
     pub discovery: f64,

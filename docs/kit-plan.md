@@ -48,7 +48,7 @@ Failure at any gate returns the work to the relevant implementation or documenta
 | Linux, Windows, and universal macOS support | Successful target-native release jobs and GDExtension mappings |
 | Godot 4.7.x support | Fresh-project smoke with the pinned 4.7.2 release on every target OS |
 | MIT source included and rebuildable | Extracted archive build using root manifests, lockfile, and pinned toolchain |
-| Exact buyer sound shown publicly | Media captured from the immutable packaged Godot examples, not the Web Audio Lab |
+| Exact buyer sound shown publicly | Media captured from the immutable packaged Godot examples, not the browser Lab |
 
 ## Clean-Room Buyer Tasks
 
@@ -69,7 +69,7 @@ The independent tester receives only `gamestruments-<version>-godot4.zip` and pr
 - **Native lifecycle:** Godot playback resources can leak at shutdown. Automated repeated-free smoke blocks release.
 - **Cross-platform ABI:** compilation does not prove loadability. Every advertised binary must run under Godot on its own OS.
 - **Native signing:** the macOS library is ad-hoc signed but not Developer ID-signed or notarized; Linux and Windows libraries are not publisher-signed. Quarantine or platform security may require buyer action. Troubleshooting must remain explicit and target testing must use downloaded artifacts.
-- **Audio expectation mismatch:** the mono runtime is intentionally leaner than the stereo Web Audio Lab. Storefront evidence must use the runtime.
+- **Audio expectation mismatch:** the Lab plays the same mono engine as the kit; storefront evidence must still come from the packaged runtime.
 - **Recipe boundary:** the engine ships exactly the three recipes — Racing (original six state-driven phases or extended 10-phase autoplay tour), Suspense (song-form), and Adventure (eight-section quest). Parameters and sections are recipe-specific, and there is no general-purpose adaptive-music authoring model beyond them. The product is sold with that explicit boundary rather than as a general adaptive-music engine. Lab enables autoplay tour for Racing/Adventure (not audio autostart).
 - **Determinism drift:** output identity is scoped to generator version. Version changes require fixture regeneration and changelog coverage.
 - **Licensing:** any AGPL authoring dependency or missing MPL notice blocks the archive.

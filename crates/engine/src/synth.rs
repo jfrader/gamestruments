@@ -1,6 +1,7 @@
 use crate::dmath;
 use crate::score::MusicEvent;
 
+use serde::Deserialize;
 use std::collections::VecDeque;
 use std::f32::consts::TAU;
 
@@ -10,6 +11,8 @@ const MIN_GAIN: f32 = 0.0001;
 /// and how fast it recovers.
 const PUMP_DEPTH: f32 = 0.7;
 const PUMP_RECOVERY_SECONDS: f32 = 0.11;
+/// How long a voice takes to fade in or out when the solo changes.
+const SOLO_FADE_SECONDS: f32 = 0.018;
 
 /// Baked equal-power pan table, 33 entries for pan steps of 1/16 from -1 to +1.
 /// gL = cos(θ), gR = sin(θ), θ = (pan + 1) * π/4.
@@ -252,6 +255,8 @@ struct Voice {
     filt_r: Biquad,
     /// Ducks under every club kick (sidechain pumping).
     pumped: bool,
+    /// The voice's level under the synth's [`Solo`]: it ramps to 0 or 1.
+    solo_level: f32,
 }
 
 fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
@@ -285,6 +290,105 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
     velocity_curve(velocity, exponent)
 }
 
+fn note_voice_type(name: &str) -> Option<VoiceType> {
+    Some(match name {
+        "warm" => VoiceType::Warm,
+        "glass" => VoiceType::Glass,
+        "pulse" => VoiceType::Pulse,
+        "pluck" => VoiceType::Pluck,
+        "chip" => VoiceType::Chip,
+        "organ" => VoiceType::Organ,
+        "supersaw" => VoiceType::Supersaw,
+        "triangle" => VoiceType::Triangle,
+        "bass" => VoiceType::Bass,
+        "epiano" => VoiceType::Epiano,
+        "felt" => VoiceType::Felt,
+        "dusk" => VoiceType::Dusk,
+        "harp" => VoiceType::Harp,
+        "recorder" => VoiceType::Recorder,
+        "vielle" => VoiceType::Vielle,
+        "bell" => VoiceType::Bell,
+        "saw-bass" => VoiceType::SawBass,
+        "trance-pad" => VoiceType::TrancePad,
+        "trance-lead" => VoiceType::TranceLead,
+        _ => return None,
+    })
+}
+
+fn percussion_voice_type(name: &str) -> Option<VoiceType> {
+    Some(match name {
+        "kick" => VoiceType::Kick,
+        "snare" => VoiceType::Snare,
+        "hat" => VoiceType::Hat,
+        "tom" => VoiceType::Tom,
+        "reverse-cymbal" => VoiceType::ReverseCymbal,
+        "air-impact" => VoiceType::AirImpact,
+        "frame-drum" => VoiceType::FrameDrum,
+        "tambourine" => VoiceType::Tambourine,
+        "techno-kick" => VoiceType::TechnoKick,
+        "clap" => VoiceType::Clap,
+        _ => return None,
+    })
+}
+
+/// Which voices a synth lets through, to audition part of a mix.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum Solo {
+    #[default]
+    Full,
+    /// Only the melody line.
+    Melody,
+    /// Everything but the melody line.
+    Rhythm,
+    /// One instrument alone, or everything but it when `mute`.
+    Voice { voice: String, mute: bool },
+}
+
+/// A [`Solo`] resolved to the synth's voice types.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum SoloFilter {
+    Full,
+    Melody,
+    Rhythm,
+    Voice {
+        voice: Option<VoiceType>,
+        mute: bool,
+    },
+}
+
+impl SoloFilter {
+    fn new(solo: &Solo) -> Self {
+        match solo {
+            Solo::Full => Self::Full,
+            Solo::Melody => Self::Melody,
+            Solo::Rhythm => Self::Rhythm,
+            Solo::Voice { voice, mute } => Self::Voice {
+                voice: note_voice_type(voice).or_else(|| percussion_voice_type(voice)),
+                mute: *mute,
+            },
+        }
+    }
+
+    fn passes(self, voice: &Voice) -> bool {
+        match self {
+            Self::Full => true,
+            Self::Melody => voice.is_melody,
+            Self::Rhythm => !voice.is_melody,
+            Self::Voice { voice: solo, mute } => (Some(voice.voice_type) == solo) != mute,
+        }
+    }
+
+    /// The level a voice starts at, so a note that begins soloed out stays silent.
+    fn level(self, voice: &Voice) -> f32 {
+        if self.passes(voice) {
+            1.0
+        } else {
+            0.0
+        }
+    }
+}
+
 fn voice_frequency_multipliers(voice_type: VoiceType) -> [f32; 3] {
     let multiplier = |cents: f32| dmath::powf(2.0, cents / 1200.0);
     match voice_type {
@@ -308,6 +412,9 @@ pub struct Synth {
     voices: Vec<Voice>,
     /// Start times of the club kicks that pump the pumped voices, ascending.
     kicks: VecDeque<f32>,
+    solo: SoloFilter,
+    /// How far a voice's solo level moves per sample.
+    solo_step: f32,
 }
 
 impl Synth {
@@ -317,7 +424,27 @@ impl Synth {
             phase: 0.0,
             voices: Vec::new(),
             kicks: VecDeque::new(),
+            solo: SoloFilter::Full,
+            solo_step: 1.0 / (SOLO_FADE_SECONDS * sample_rate),
         }
+    }
+
+    /// Let only the voices `solo` names through; the others fade out.
+    pub fn set_solo(&mut self, solo: &Solo) {
+        self.solo = SoloFilter::new(solo);
+    }
+
+    /// Move a voice's level toward what the solo lets through.
+    fn solo_gain(solo: SoloFilter, step: f32, voice: &mut Voice) -> f32 {
+        let target = solo.level(voice);
+        if voice.solo_level != target {
+            voice.solo_level = if voice.solo_level < target {
+                (voice.solo_level + step).min(target)
+            } else {
+                (voice.solo_level - step).max(target)
+            };
+        }
+        voice.solo_level
     }
 
     /// The pumped voices' gain at time `t`: a dip at the latest club kick that
@@ -349,28 +476,7 @@ impl Synth {
         let is_melody = event.is_melody();
         if let Some(pitch) = event.pitch() {
             let base_freq = midi_to_freq(pitch);
-            let vtype = match voice {
-                "warm" => VoiceType::Warm,
-                "glass" => VoiceType::Glass,
-                "pulse" => VoiceType::Pulse,
-                "pluck" => VoiceType::Pluck,
-                "chip" => VoiceType::Chip,
-                "organ" => VoiceType::Organ,
-                "supersaw" => VoiceType::Supersaw,
-                "triangle" => VoiceType::Triangle,
-                "bass" => VoiceType::Bass,
-                "epiano" => VoiceType::Epiano,
-                "felt" => VoiceType::Felt,
-                "dusk" => VoiceType::Dusk,
-                "harp" => VoiceType::Harp,
-                "recorder" => VoiceType::Recorder,
-                "vielle" => VoiceType::Vielle,
-                "bell" => VoiceType::Bell,
-                "saw-bass" => VoiceType::SawBass,
-                "trance-pad" => VoiceType::TrancePad,
-                "trance-lead" => VoiceType::TranceLead,
-                _ => VoiceType::Warm,
-            };
+            let vtype = note_voice_type(voice).unwrap_or(VoiceType::Warm);
             let life = match vtype {
                 VoiceType::Harp => harp_life(base_freq),
                 VoiceType::Bell => bell_life(base_freq),
@@ -420,7 +526,9 @@ impl Synth {
                     vtype,
                     VoiceType::SawBass | VoiceType::TrancePad | VoiceType::TranceLead
                 ),
+                solo_level: 1.0,
             };
+            voice.solo_level = self.solo.level(&voice);
             voice.pan = voice_type_pan(voice.voice_type);
             if matches!(vtype, VoiceType::Felt | VoiceType::Dusk) {
                 let mut echo = voice.clone();
@@ -435,19 +543,7 @@ impl Synth {
             return;
         }
         // percussion
-        let vtype = match voice {
-            "kick" => VoiceType::Kick,
-            "snare" => VoiceType::Snare,
-            "hat" => VoiceType::Hat,
-            "tom" => VoiceType::Tom,
-            "reverse-cymbal" => VoiceType::ReverseCymbal,
-            "air-impact" => VoiceType::AirImpact,
-            "frame-drum" => VoiceType::FrameDrum,
-            "tambourine" => VoiceType::Tambourine,
-            "techno-kick" => VoiceType::TechnoKick,
-            "clap" => VoiceType::Clap,
-            _ => VoiceType::Kick,
-        };
+        let vtype = percussion_voice_type(voice).unwrap_or(VoiceType::Kick);
         let mut base_freq = 80.0f32;
         let life = match vtype {
             VoiceType::Kick => 0.225,
@@ -545,7 +641,9 @@ impl Synth {
             filt_l: Biquad::new(),
             filt_r: Biquad::new(),
             pumped: false,
+            solo_level: 1.0,
         };
+        perc.solo_level = self.solo.level(&perc);
         perc.pan = voice_type_pan(perc.voice_type);
         if vtype == VoiceType::TechnoKick {
             let at = perc.start_phase;
@@ -574,7 +672,8 @@ impl Synth {
                     self.voices.swap_remove(j);
                     continue;
                 }
-                let contrib = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt);
+                let contrib = Synth::generate_voice_sample(&mut self.voices[j], age, sr, dt)
+                    * Synth::solo_gain(self.solo, self.solo_step, &mut self.voices[j]);
                 mix += if self.voices[j].pumped {
                     contrib * pump
                 } else {
@@ -624,7 +723,8 @@ impl Synth {
                     (c, c)
                 };
                 let (gl, gr) = pan_gains(vpan);
-                let gain = if self.voices[j].pumped { pump } else { 1.0 };
+                let gain = if self.voices[j].pumped { pump } else { 1.0 }
+                    * Synth::solo_gain(self.solo, self.solo_step, &mut self.voices[j]);
                 mix_l += cl * gl * gain;
                 mix_r += cr * gr * gain;
                 j += 1;
@@ -1643,7 +1743,7 @@ use crate::score::PortableScore;
 
 #[cfg(test)]
 mod tests {
-    use super::{Biquad, FilterMode, Synth};
+    use super::{Biquad, FilterMode, Solo, Synth};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::score::MusicEvent;
     use std::time::{Duration, Instant};
@@ -2073,5 +2173,107 @@ mod tests {
             );
         }
         assert!(produced > 48_000 * 60 * 5, "simulation should span minutes");
+    }
+
+    /// A melody lead, an accompanying bed and a hat.
+    fn solo_events() -> Vec<MusicEvent> {
+        let note = |id: &str, voice: &str, role: Option<&str>| MusicEvent::Note {
+            id: id.into(),
+            section: "solo".into(),
+            lane: "solo".into(),
+            start_tick: 0,
+            duration_ticks: 3840,
+            velocity: 0.6,
+            pitch: 64,
+            voice: voice.into(),
+            role: role.map(Into::into),
+        };
+        vec![
+            note("lead", "glass", Some("melody")),
+            note("bed", "warm", None),
+            MusicEvent::Percussion {
+                id: "hat".into(),
+                section: "solo".into(),
+                lane: "solo".into(),
+                start_tick: 0,
+                duration_ticks: 120,
+                velocity: 0.6,
+                voice: "hat".into(),
+            },
+        ]
+    }
+
+    fn render_solo(events: &[MusicEvent], solo: &Solo) -> Vec<f32> {
+        let mut synth = Synth::new(48000.0);
+        synth.set_solo(solo);
+        for event in events {
+            synth.trigger(event, 960.0);
+        }
+        let mut samples = vec![0.0; 4800];
+        synth.fill(&mut samples);
+        samples
+    }
+
+    fn only(ids: &[&str]) -> Vec<MusicEvent> {
+        solo_events()
+            .into_iter()
+            .filter(|event| match event {
+                MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => {
+                    ids.contains(&id.as_str())
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_solo_lets_through_exactly_the_voices_it_names() {
+        let all = solo_events();
+        let voice = |voice: &str, mute| Solo::Voice {
+            voice: voice.into(),
+            mute,
+        };
+        for (solo, ids) in [
+            (Solo::Melody, vec!["lead"]),
+            (Solo::Rhythm, vec!["bed", "hat"]),
+            (voice("warm", false), vec!["bed"]),
+            (voice("warm", true), vec!["lead", "hat"]),
+            (voice("hat", false), vec!["hat"]),
+        ] {
+            assert_eq!(
+                render_solo(&all, &solo),
+                render_solo(&only(&ids), &Solo::Full),
+                "{solo:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn changing_the_solo_fades_the_other_voices_out() {
+        let mut synth = Synth::new(48000.0);
+        let mut lead_only = Synth::new(48000.0);
+        for event in solo_events() {
+            synth.trigger(&event, 960.0);
+        }
+        for event in only(&["lead"]) {
+            lead_only.trigger(&event, 960.0);
+        }
+        let mut before = vec![0.0; 2400];
+        synth.fill(&mut before);
+        lead_only.fill(&mut before.clone());
+        synth.set_solo(&Solo::Melody);
+        let mut after = vec![0.0; 2400];
+        let mut lead = vec![0.0; 2400];
+        synth.fill(&mut after);
+        lead_only.fill(&mut lead);
+        let fade = (super::SOLO_FADE_SECONDS * 48000.0).ceil() as usize + 1;
+        assert_ne!(
+            after[8], lead[8],
+            "the bed fades rather than stopping at once"
+        );
+        assert_eq!(
+            after[fade..],
+            lead[fade..],
+            "after the fade only the melody sounds"
+        );
     }
 }

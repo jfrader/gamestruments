@@ -74,7 +74,7 @@ form tours the eight sections and loops from `explore`.
 Generation is owned by the Rust engine in `crates/engine`. The Audio Lab
 (`apps/demo`) calls it through the committed WASM build
 (`apps/demo/public/engine/gamestruments_engine.wasm`, rebuilt with
-`npm run wasm:build`); the Web Audio render stage stays local. Games generate
+`npm run wasm:build`) and plays it with the engine's live player. Games generate
 inside the GDExtension at `generate(seed)`. See `docs/engine-boundary.md` for
 the boundary and `crates/engine/src/<recipe>.rs` for each deterministic
 generator.

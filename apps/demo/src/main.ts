@@ -1,6 +1,6 @@
 import "./style.css";
 import type { SectionId } from "../../../packages/runtime/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
+import type { SoloMode } from "./playback.ts";
 import { versionLabel } from "./lab-copy.ts";
 import { isArrangement, type Arrangement } from "./wasm-engine.ts";
 import {
@@ -16,8 +16,7 @@ import {
 } from "./ui";
 import {
   activeExperimentIndex,
-  pendingCue,
-  audio,
+  playback,
   generationTraits,
   generationPreset,
   initializeLab,
@@ -28,10 +27,7 @@ import {
   currentPresets,
   phase,
   score,
-  sectionById,
   soloMode,
-  transport,
-  applyPlan,
   requestMusicState,
   requestPhase,
   cueSection,
@@ -104,7 +100,7 @@ function applyGenerationRequest(request: Promise<boolean>, onApplied: () => void
 }
 
 function animate(): void {
-  renderFrame(audio, score, transport, pendingCue(), applyPlan, sectionById, cueControlsBusy());
+  renderFrame(playback.frame(), playback.running, cueControlsBusy());
   window.requestAnimationFrame(animate);
 }
 
@@ -129,12 +125,12 @@ syncStickyBarHeight();
 window.addEventListener("resize", syncStickyBarHeight);
 window.addEventListener("load", syncStickyBarHeight);
 
-elements.masterVolume.value = String(Math.round(audio.volume * 100));
+elements.masterVolume.value = String(Math.round(playback.volume * 100));
 elements.volumeReadout.textContent = `${elements.masterVolume.value}%`;
 
 elements.masterVolume.addEventListener("input", () => {
   const vol = parseInt(elements.masterVolume.value, 10) / 100;
-  audio.volume = vol;
+  playback.volume = vol;
   elements.volumeReadout.textContent = `${elements.masterVolume.value}%`;
 });
 
@@ -257,7 +253,7 @@ elements.newVersion.addEventListener("click", () => {
     async () => {
       advanceVersion();
       renderCurrentScore();
-      if (!audio.running) {
+      if (!playback.running) {
         setStartButton(await toggleEngine());
       }
       announceAudition(versionLabel(levelSeed, take));
@@ -276,7 +272,7 @@ elements.sectionList.addEventListener("click", (event) => {
 
 elements.sectionSelect.addEventListener("change", () => cueSection(elements.sectionSelect.value));
 elements.cancelCue.addEventListener("click", cancelCue);
-elements.holdForm.addEventListener("click", () => setFormHold(!transport.formHeld));
+elements.holdForm.addEventListener("click", () => setFormHold(!playback.frame().formHeld));
 elements.advanceForm.addEventListener("click", advanceSection);
 
 elements.genreIndex.addEventListener("click", (event) => {

@@ -16,6 +16,12 @@
 //!                                   const uint8_t* section_ptr, size_t section_len,
 //!                                   size_t phrases);
 //! void     gamestruments_reset(void);  // optional: resets bump for fresh allocs
+//!
+//! // Live player (one per module instance), the same player Godot runs:
+//! void     gamestruments_player_new(float sample_rate);
+//! uint8_t* gamestruments_player_command(const uint8_t* json_ptr, size_t json_len);
+//! float*   gamestruments_player_fill(size_t frames);  // mono, <= 8192 frames
+//! int32_t  gamestruments_root_pitch_class(const uint8_t* input_ptr, size_t input_len);
 //! ```
 //!
 //! Input JSON for score_json (exact shape, all keys lowercase):
@@ -69,13 +75,15 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
-use crate::racing::{GenerateInput, InstrumentPalette, Style};
+use crate::live::{GameUpdate, LivePlayer};
+use crate::racing::{racing_root_pitch_class, GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
+use crate::synth::Solo;
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
 static mut BUFFER: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
@@ -144,6 +152,74 @@ fn default_intent() -> String {
     "arc".to_string()
 }
 
+#[derive(Default, serde::Deserialize)]
+struct PaletteInput {
+    #[serde(default)]
+    melody: String,
+    #[serde(default)]
+    harmony: String,
+    #[serde(default)]
+    drive: String,
+    #[serde(default)]
+    bass: String,
+}
+
+/// The generation input JSON `gamestruments_score_json` takes.
+#[derive(serde::Deserialize)]
+struct GenerationInput {
+    #[serde(default)]
+    recipe: String,
+    #[serde(default)]
+    arrangement: String,
+    #[serde(default = "default_intent")]
+    intent: String,
+    #[serde(default)]
+    autoplay: bool,
+    secret: String,
+    seed: String,
+    style: String,
+    #[serde(default)]
+    palette: PaletteInput,
+    #[serde(default = "default_generation_trait")]
+    energy: f64,
+    #[serde(default = "default_generation_trait")]
+    complexity: f64,
+    #[serde(default = "default_generation_trait")]
+    brightness: f64,
+    #[serde(default = "default_generation_trait")]
+    syncopation: f64,
+    #[serde(default = "default_generation_trait")]
+    tension: f64,
+    #[serde(default = "default_generation_trait")]
+    heat: f64,
+    #[serde(default = "default_generation_trait")]
+    mystery: f64,
+    #[serde(default = "default_generation_trait")]
+    pulse: f64,
+    #[serde(default, rename = "reelIndex")]
+    reel_index: u32,
+}
+
+impl GenerationInput {
+    fn racing(&self, style: Style) -> GenerateInput {
+        GenerateInput {
+            secret: self.secret.clone(),
+            seed: self.seed.clone(),
+            style,
+            palette: InstrumentPalette {
+                melody: self.palette.melody.clone(),
+                harmony: self.palette.harmony.clone(),
+                drive: self.palette.drive.clone(),
+                bass: self.palette.bass.clone(),
+            },
+            energy: self.energy,
+            complexity: self.complexity,
+            brightness: self.brightness,
+            syncopation: self.syncopation,
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn gamestruments_output_len() -> usize {
     unsafe { OUT_LEN }
@@ -168,53 +244,7 @@ pub unsafe extern "C" fn gamestruments_score_json(
         }
     };
 
-    #[derive(Default, serde::Deserialize)]
-    struct Pal {
-        #[serde(default)]
-        melody: String,
-        #[serde(default)]
-        harmony: String,
-        #[serde(default)]
-        drive: String,
-        #[serde(default)]
-        bass: String,
-    }
-    #[derive(serde::Deserialize)]
-    struct Inp {
-        #[serde(default)]
-        recipe: String,
-        #[serde(default)]
-        arrangement: String,
-        #[serde(default = "default_intent")]
-        intent: String,
-        #[serde(default)]
-        autoplay: bool,
-        secret: String,
-        seed: String,
-        style: String,
-        #[serde(default)]
-        palette: Pal,
-        #[serde(default = "default_generation_trait")]
-        energy: f64,
-        #[serde(default = "default_generation_trait")]
-        complexity: f64,
-        #[serde(default = "default_generation_trait")]
-        brightness: f64,
-        #[serde(default = "default_generation_trait")]
-        syncopation: f64,
-        #[serde(default = "default_generation_trait")]
-        tension: f64,
-        #[serde(default = "default_generation_trait")]
-        heat: f64,
-        #[serde(default = "default_generation_trait")]
-        mystery: f64,
-        #[serde(default = "default_generation_trait")]
-        pulse: f64,
-        #[serde(default, rename = "reelIndex")]
-        reel_index: u32,
-    }
-
-    let inp: Inp = match serde_json::from_str(json_str) {
+    let inp: GenerationInput = match serde_json::from_str(json_str) {
         Ok(value) => value,
         Err(error) => {
             write_error(format!("invalid generation input JSON: {error}"));
@@ -313,12 +343,6 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
-            let palette = InstrumentPalette {
-                melody: inp.palette.melody,
-                harmony: inp.palette.harmony,
-                drive: inp.palette.drive,
-                bass: inp.palette.bass,
-            };
             // Seeded already carries a song form, so there is no automatic
             // arrangement to layer on top of it; all-phases carries its own form.
             let autoplay_recipe = match arrangement {
@@ -326,22 +350,11 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
                 RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
             };
-            generate_racing_arrangement(
-                &GenerateInput {
-                    secret: inp.secret,
-                    seed: inp.seed,
-                    style,
-                    palette,
-                    energy: inp.energy,
-                    complexity: inp.complexity,
-                    brightness: inp.brightness,
-                    syncopation: inp.syncopation,
-                },
-                arrangement,
-            )
-            .and_then(|score| match autoplay_recipe {
-                Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
-                None => Ok(score),
+            generate_racing_arrangement(&inp.racing(style), arrangement).and_then(|score| {
+                match autoplay_recipe {
+                    Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
+                    None => Ok(score),
+                }
             })
         }
         other => {
@@ -357,6 +370,24 @@ pub unsafe extern "C" fn gamestruments_score_json(
         Err(error) => write_error(error),
     }
     unsafe { OUT_PTR }
+}
+
+/// The root pitch class the score for a generation input sounds in, for the
+/// player's `load` command: a new Racing seed is moved into the playing key.
+/// Other recipes, and input that does not parse, answer 0.
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_root_pitch_class(
+    input_ptr: *const u8,
+    input_len: usize,
+) -> i32 {
+    let input = slice::from_raw_parts(input_ptr, input_len);
+    let Ok(inp) = serde_json::from_slice::<GenerationInput>(input) else {
+        return 0;
+    };
+    match (inp.recipe.as_str(), Style::parse(&inp.style)) {
+        ("" | "racing", Ok(style)) => racing_root_pitch_class(&inp.racing(style)),
+        _ => 0,
+    }
 }
 
 #[no_mangle]
@@ -520,4 +551,127 @@ pub unsafe extern "C" fn gamestruments_render_wav_stereo_chunk(
     let wav = render_wav_stereo_chunk(&score, section, start_phrases, phrases, 48000);
     write_output(&wav);
     unsafe { OUT_PTR }
+}
+
+/// The most frames one `gamestruments_player_fill` call renders.
+const MAX_FILL_FRAMES: usize = 8192;
+static mut PLAYER: Option<LivePlayer> = None;
+static mut PCM: [f32; MAX_FILL_FRAMES] = [0.0; MAX_FILL_FRAMES];
+
+/// A live player command, as JSON: `{"cue": {"section": "verse"}}`, `"cancel"`,
+/// `{"update": {"trace": {"phase": "scan", "heat": 0.4, ...}}}`.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum PlayerCommand {
+    Load {
+        score: PortableScore,
+        seed: String,
+        recipe: String,
+        root_pitch_class: i32,
+        opening_section: Option<String>,
+    },
+    Cue {
+        section: String,
+    },
+    Cancel,
+    Hold {
+        held: bool,
+    },
+    Advance,
+    Update(GameUpdate),
+    SectionFor(GameUpdate),
+    Solo(Solo),
+    Status,
+}
+
+fn accepted(accepted: bool) -> Result<String, String> {
+    Ok(format!("{{\"accepted\":{accepted}}}"))
+}
+
+fn run_player_command(player: &mut LivePlayer, command: PlayerCommand) -> Result<String, String> {
+    match command {
+        PlayerCommand::Load {
+            score,
+            seed,
+            recipe,
+            root_pitch_class,
+            opening_section,
+        } => {
+            score
+                .validate()
+                .map_err(|error| format!("invalid score: {error}"))?;
+            player.load(
+                score,
+                &seed,
+                &recipe,
+                root_pitch_class,
+                opening_section.as_deref(),
+            )?;
+            accepted(true)
+        }
+        PlayerCommand::Cue { section } => {
+            if !player.has_section(&section) {
+                return Err(format!("unknown score section: {section}"));
+            }
+            accepted(player.cue_section(&section))
+        }
+        PlayerCommand::Cancel => accepted(player.cancel_pending()),
+        PlayerCommand::Hold { held } => accepted(player.set_form_held(held)),
+        PlayerCommand::Advance => accepted(player.advance_form()),
+        PlayerCommand::Update(update) => accepted(player.request(&update)),
+        PlayerCommand::Solo(solo) => {
+            player.set_solo(solo);
+            accepted(true)
+        }
+        PlayerCommand::SectionFor(update) => serde_json::to_string(&player.section_for(&update))
+            .map_err(|error| format!("section must serialize: {error}")),
+        PlayerCommand::Status => serde_json::to_string(&player.status())
+            .map_err(|error| format!("status must serialize: {error}")),
+    }
+}
+
+/// Start a live player at `sample_rate`, replacing any previous one.
+#[no_mangle]
+pub extern "C" fn gamestruments_player_new(sample_rate: f32) {
+    unsafe { PLAYER = Some(LivePlayer::new(sample_rate)) }
+}
+
+/// Run one JSON player command; the response is JSON: `{"accepted":true}`,
+/// the status for `"status"`, or the selected section for `sectionFor`.
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_player_command(
+    input_ptr: *const u8,
+    input_len: usize,
+) -> *const u8 {
+    let input = slice::from_raw_parts(input_ptr, input_len);
+    let command: PlayerCommand = match serde_json::from_slice(input) {
+        Ok(command) => command,
+        Err(error) => {
+            write_error(format!("player command must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    let Some(player) = (unsafe { PLAYER.as_mut() }) else {
+        write_error("call gamestruments_player_new first");
+        return unsafe { OUT_PTR };
+    };
+    match run_player_command(player, command) {
+        Ok(response) => write_output(response.as_bytes()),
+        Err(error) => write_error(error),
+    }
+    unsafe { OUT_PTR }
+}
+
+/// Render the next `frames` mono samples (at most 8192) as f32; silence until
+/// a score is loaded. The pointer is valid until the next fill.
+#[no_mangle]
+pub extern "C" fn gamestruments_player_fill(frames: usize) -> *const f32 {
+    unsafe {
+        let out = &mut PCM[..frames.min(MAX_FILL_FRAMES)];
+        match PLAYER.as_mut() {
+            Some(player) if player.is_loaded() => player.fill(out),
+            _ => out.fill(0.0),
+        }
+        PCM.as_ptr()
+    }
 }
