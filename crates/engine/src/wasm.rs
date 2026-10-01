@@ -21,6 +21,7 @@
 //! void     gamestruments_player_new(float sample_rate);
 //! uint8_t* gamestruments_player_command(const uint8_t* json_ptr, size_t json_len);
 //! float*   gamestruments_player_fill(size_t frames);  // mono, <= 8192 frames
+//! int32_t  gamestruments_root_pitch_class(const uint8_t* input_ptr, size_t input_len);
 //! ```
 //!
 //! Input JSON for score_json (exact shape, all keys lowercase):
@@ -75,7 +76,7 @@ use crate::adventure::{
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
 use crate::live::LivePlayer;
-use crate::racing::{GenerateInput, InstrumentPalette, Style};
+use crate::racing::{racing_root_pitch_class, GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
@@ -150,6 +151,74 @@ fn default_intent() -> String {
     "arc".to_string()
 }
 
+#[derive(Default, serde::Deserialize)]
+struct PaletteInput {
+    #[serde(default)]
+    melody: String,
+    #[serde(default)]
+    harmony: String,
+    #[serde(default)]
+    drive: String,
+    #[serde(default)]
+    bass: String,
+}
+
+/// The generation input JSON `gamestruments_score_json` takes.
+#[derive(serde::Deserialize)]
+struct GenerationInput {
+    #[serde(default)]
+    recipe: String,
+    #[serde(default)]
+    arrangement: String,
+    #[serde(default = "default_intent")]
+    intent: String,
+    #[serde(default)]
+    autoplay: bool,
+    secret: String,
+    seed: String,
+    style: String,
+    #[serde(default)]
+    palette: PaletteInput,
+    #[serde(default = "default_generation_trait")]
+    energy: f64,
+    #[serde(default = "default_generation_trait")]
+    complexity: f64,
+    #[serde(default = "default_generation_trait")]
+    brightness: f64,
+    #[serde(default = "default_generation_trait")]
+    syncopation: f64,
+    #[serde(default = "default_generation_trait")]
+    tension: f64,
+    #[serde(default = "default_generation_trait")]
+    heat: f64,
+    #[serde(default = "default_generation_trait")]
+    mystery: f64,
+    #[serde(default = "default_generation_trait")]
+    pulse: f64,
+    #[serde(default, rename = "reelIndex")]
+    reel_index: u32,
+}
+
+impl GenerationInput {
+    fn racing(&self, style: Style) -> GenerateInput {
+        GenerateInput {
+            secret: self.secret.clone(),
+            seed: self.seed.clone(),
+            style,
+            palette: InstrumentPalette {
+                melody: self.palette.melody.clone(),
+                harmony: self.palette.harmony.clone(),
+                drive: self.palette.drive.clone(),
+                bass: self.palette.bass.clone(),
+            },
+            energy: self.energy,
+            complexity: self.complexity,
+            brightness: self.brightness,
+            syncopation: self.syncopation,
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn gamestruments_output_len() -> usize {
     unsafe { OUT_LEN }
@@ -174,53 +243,7 @@ pub unsafe extern "C" fn gamestruments_score_json(
         }
     };
 
-    #[derive(Default, serde::Deserialize)]
-    struct Pal {
-        #[serde(default)]
-        melody: String,
-        #[serde(default)]
-        harmony: String,
-        #[serde(default)]
-        drive: String,
-        #[serde(default)]
-        bass: String,
-    }
-    #[derive(serde::Deserialize)]
-    struct Inp {
-        #[serde(default)]
-        recipe: String,
-        #[serde(default)]
-        arrangement: String,
-        #[serde(default = "default_intent")]
-        intent: String,
-        #[serde(default)]
-        autoplay: bool,
-        secret: String,
-        seed: String,
-        style: String,
-        #[serde(default)]
-        palette: Pal,
-        #[serde(default = "default_generation_trait")]
-        energy: f64,
-        #[serde(default = "default_generation_trait")]
-        complexity: f64,
-        #[serde(default = "default_generation_trait")]
-        brightness: f64,
-        #[serde(default = "default_generation_trait")]
-        syncopation: f64,
-        #[serde(default = "default_generation_trait")]
-        tension: f64,
-        #[serde(default = "default_generation_trait")]
-        heat: f64,
-        #[serde(default = "default_generation_trait")]
-        mystery: f64,
-        #[serde(default = "default_generation_trait")]
-        pulse: f64,
-        #[serde(default, rename = "reelIndex")]
-        reel_index: u32,
-    }
-
-    let inp: Inp = match serde_json::from_str(json_str) {
+    let inp: GenerationInput = match serde_json::from_str(json_str) {
         Ok(value) => value,
         Err(error) => {
             write_error(format!("invalid generation input JSON: {error}"));
@@ -319,12 +342,6 @@ pub unsafe extern "C" fn gamestruments_score_json(
                     return unsafe { OUT_PTR };
                 }
             };
-            let palette = InstrumentPalette {
-                melody: inp.palette.melody,
-                harmony: inp.palette.harmony,
-                drive: inp.palette.drive,
-                bass: inp.palette.bass,
-            };
             // Seeded already carries a song form, so there is no automatic
             // arrangement to layer on top of it; all-phases carries its own form.
             let autoplay_recipe = match arrangement {
@@ -332,19 +349,7 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
                 RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
             };
-            generate_racing_arrangement(
-                &GenerateInput {
-                    secret: inp.secret,
-                    seed: inp.seed,
-                    style,
-                    palette,
-                    energy: inp.energy,
-                    complexity: inp.complexity,
-                    brightness: inp.brightness,
-                    syncopation: inp.syncopation,
-                },
-                arrangement,
-            )
+            generate_racing_arrangement(&inp.racing(style), arrangement)
             .and_then(|score| match autoplay_recipe {
                 Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
                 None => Ok(score),
@@ -363,6 +368,24 @@ pub unsafe extern "C" fn gamestruments_score_json(
         Err(error) => write_error(error),
     }
     unsafe { OUT_PTR }
+}
+
+/// The root pitch class the score for a generation input sounds in, for the
+/// player's `load` command: a new Racing seed is moved into the playing key.
+/// Other recipes, and input that does not parse, answer 0.
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_root_pitch_class(
+    input_ptr: *const u8,
+    input_len: usize,
+) -> i32 {
+    let input = slice::from_raw_parts(input_ptr, input_len);
+    let Ok(inp) = serde_json::from_slice::<GenerationInput>(input) else {
+        return 0;
+    };
+    match (inp.recipe.as_str(), Style::parse(&inp.style)) {
+        ("" | "racing", Ok(style)) => racing_root_pitch_class(&inp.racing(style)),
+        _ => 0,
+    }
 }
 
 #[no_mangle]

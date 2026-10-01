@@ -14,18 +14,37 @@ async function instantiate(): Promise<WebAssembly.Instance> {
   return (await WebAssembly.instantiate(wasm)).instance;
 }
 
+interface GenerationExports {
+  memory: WebAssembly.Memory;
+  gamestruments_reset(): void;
+  gamestruments_alloc(size: number): number;
+  gamestruments_output_len(): number;
+  gamestruments_score_json(ptr: number, length: number): number;
+  gamestruments_root_pitch_class(ptr: number, length: number): number;
+}
+
+function write(instance: WebAssembly.Instance, input: unknown): { exports: GenerationExports; ptr: number; length: number } {
+  const exports = instance.exports as unknown as GenerationExports;
+  const bytes = encoder.encode(JSON.stringify(input));
+  exports.gamestruments_reset();
+  const ptr = exports.gamestruments_alloc(bytes.length);
+  new Uint8Array(exports.memory.buffer).set(bytes, ptr);
+  return { exports, ptr, length: bytes.length };
+}
+
 function suspenseScore(instance: WebAssembly.Instance): PortableScore {
-  const exports = instance.exports as Record<string, CallableFunction> & { memory: WebAssembly.Memory };
-  const input = encoder.encode(JSON.stringify({
+  const { exports, ptr, length } = write(instance, {
     recipe: "suspense", secret: "", seed: "level-001", style: "terminal",
     tension: 0.62, heat: 0.48, mystery: 0.72, pulse: 0.55,
-  }));
-  exports.gamestruments_reset();
-  const ptr = exports.gamestruments_alloc(input.length) as number;
-  new Uint8Array(exports.memory.buffer).set(input, ptr);
-  const output = exports.gamestruments_score_json(ptr, input.length) as number;
-  const length = exports.gamestruments_output_len() as number;
-  return JSON.parse(decoder.decode(new Uint8Array(exports.memory.buffer, output, length))) as PortableScore;
+  });
+  const output = exports.gamestruments_score_json(ptr, length);
+  const outputLength = exports.gamestruments_output_len();
+  return JSON.parse(decoder.decode(new Uint8Array(exports.memory.buffer, output, outputLength))) as PortableScore;
+}
+
+function rootPitchClass(instance: WebAssembly.Instance, input: unknown): number {
+  const { exports, ptr, length } = write(instance, input);
+  return exports.gamestruments_root_pitch_class(ptr, length);
 }
 
 function run(player: WasmPlayer, command: unknown): unknown {
@@ -74,6 +93,17 @@ describe("the live player through the shipped WASM", () => {
     assert.equal((run(player, "status") as Status).transition?.to, target);
     assert.deepEqual(run(player, "cancel"), { accepted: true });
     assert.equal((run(player, "status") as Status).transition, null);
+  });
+
+  it("knows the key a Racing seed sounds in, so a new seed can join it", async () => {
+    const instance = await instantiate();
+    const roots = ["level-001", "level-002", "level-003", "level-004"].map((seed) =>
+      rootPitchClass(instance, { recipe: "racing", secret: "", seed, style: "funk" }),
+    );
+    for (const root of roots) assert.ok(Number.isInteger(root) && root >= 0 && root < 12, `root ${root}`);
+    assert.ok(new Set(roots).size > 1, "different seeds land in different keys");
+    assert.equal(rootPitchClass(instance, { recipe: "suspense", secret: "", seed: "a", style: "terminal" }), 0);
+    assert.equal(rootPitchClass(instance, { recipe: "racing", secret: "", seed: "a", style: "polka" }), 0);
   });
 
   it("answers an unknown section or a malformed command with an error", async () => {
