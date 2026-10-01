@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
-import { installAudioCapture } from "./audio-capture.ts";
+import { waitForBeat } from "./engine-audio.ts";
 
 test("the pool selector exposes every phase and a held form step survives regeneration", async ({ page }) => {
   await page.goto("/#lab");
@@ -36,21 +36,18 @@ test("the pool selector exposes every phase and a held form step survives regene
 
 test("hold prevents the automatic boundary, Next enters the next phase held, and Resume continues naturally", async ({ page }) => {
   test.setTimeout(160000);
-  await installAudioCapture(page);
   await page.goto("/#lab");
   await selectRecipe(page, "suspense");
   await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await page.locator("#section-select").selectOption("verse");
-  const secondsPerBar = 240 / Number(await page.locator("#tempo-value").textContent());
   await page.locator("#center-play").click();
-  await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, 16 * secondsPerBar - 0.2, { timeout: 75000 });
+  // Hold on the last beat before the verse's automatic boundary at bar 17.
+  await waitForBeat(page, 16, 4, 75000);
   const before = (await page.locator("#mood-name").textContent()) ?? "";
   await page.evaluate(() => document.querySelector<HTMLButtonElement>("#hold-form")!.click());
   await expect(page.locator("#cue-status")).toContainText("Holding:");
-  await page.waitForFunction((seconds) => window.scanAudio.firstStart !== null &&
-    (window.scanAudio.blocks.at(-1)?.time ?? 0) > window.scanAudio.firstStart + seconds, 17 * secondsPerBar, { timeout: 20000 });
+  await waitForBeat(page, 17, 2, 20000);
   await expect(page.locator("#mood-name")).toHaveText(before);
   await page.locator("#advance-form").click();
   await expect(page.locator("#mood-name")).not.toHaveText(before, { timeout: 9000 });

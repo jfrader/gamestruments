@@ -246,8 +246,8 @@ function playBar(sectionId: SectionId, barIndex: number): void {
   const barSectionId = `${sectionId}-bar-${barIndex}`;
   const sections = score.sections as PortableSection[];
 
-  // The transport reads sections off the shared score, so the bar slice has to
-  // live there. Keep exactly one: drop whatever a previous Play bar injected.
+  // The bar slice lives on the shared score, and the engine reloads it from
+  // there. Keep exactly one: drop whatever a previous Play bar injected.
   for (let index = sections.length - 1; index >= 0; index -= 1) {
     const candidate = sections[index];
     if (candidate !== undefined && isDebugBarSection(candidate.id)) {
@@ -267,6 +267,7 @@ function playBar(sectionId: SectionId, barIndex: number): void {
         section: barSectionId,
       })),
   });
+  playback.reloadScore();
 
   setFormHold(true);
   cueSection(barSectionId);

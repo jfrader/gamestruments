@@ -6,11 +6,9 @@ import {
   type Arrangement,
   type GenerateScoreParams,
 } from "./wasm-engine.ts";
-import type { SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
 import { isDebugBarSection } from "./playback-section.ts";
-import { soundingSection, type LabPlayback, type LabScore } from "./playback.ts";
-import { ScriptedPlayback } from "./scripted-playback.ts";
+import { soundingSection, type LabScore, type SoloMode } from "./playback.ts";
 import { EnginePlayback } from "./engine-playback.ts";
 import {
   LAB_RECIPE_PROFILES,
@@ -37,18 +35,8 @@ export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...LAB_RECIPE_PROFILES.racing.presets[0]!.traits };
 export let phase = "garage";
 export let score!: PortableScore;
-export let playback!: LabPlayback;
+export let playback!: EnginePlayback;
 export let soloMode: SoloMode = "full";
-
-/** `?engine` plays the Lab through the engine games run, for comparing it
- *  with the browser synth by ear. */
-const ENGINE_PLAYBACK = new URLSearchParams(window.location.search).has("engine");
-
-function createPlayback(lab: LabScore, opening: SectionId): Promise<LabPlayback> {
-  return ENGINE_PLAYBACK
-    ? EnginePlayback.create(lab, opening, false)
-    : Promise.resolve(new ScriptedPlayback(lab, opening, false));
-}
 
 /** Version axis: steps the current piece (seed) through an unbounded run of
  *  takes. The engine derives each take's seed from the project secret, the
@@ -145,7 +133,7 @@ async function generateRequestedScore(
 export async function initializeLab(): Promise<void> {
   const lab = await generateCurrentScore();
   score = lab.score;
-  playback = await createPlayback(lab, score.defaultSection);
+  playback = await EnginePlayback.create(lab, score.defaultSection, false);
 }
 
 function sectionById(id: string): PortableSection {
@@ -242,7 +230,7 @@ export async function activateExperiment(
     if (requestId !== latestGenerationRequest) {
       return false;
     }
-    playback = await playback.switchTo(next);
+    playback.switchTo(next);
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };

@@ -36,7 +36,7 @@ onto its own vocabulary and exposes its own runtime state:
 
 - Generation and development: Node.js 24 and modern evergreen browsers.
 - Runtime contract: plain JSON-compatible data and a Godot 4.7 GDScript consumer.
-- Audio: browser Web Audio demonstration; the Rust synth is the game reference.
+- Audio: the Rust engine renders both the game and the browser Lab.
 - Reproducibility: seed stability is scoped to a declared generator version.
 
 ## Constraints

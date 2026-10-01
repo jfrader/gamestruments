@@ -67,9 +67,8 @@ Transport / section selection + transition planning:
   collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar; the latest request made
   during a blend queues after it. Cancel removes only a waiting request, never
   an in-progress blend. Stopped selection sets the next starting section.
-- For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).
-- The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) mirror the behavior for Godot/games.
-- This small state machine duplication is accepted until the Lab plays the engine (GURI-874, Play the engine in the Lab and retire the JS synth): with `?engine` the Lab already runs the Rust transport through `LivePlayer`. Native/WASM parity covers Rust score identity and synthesis; transport implementations have their own behavior tests.
+- The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) decide sections and transitions for Godot and for the Audio Lab, which runs them through `LivePlayer`. `@gamestruments/runtime` keeps a TypeScript transport for other consumers; the Lab no longer uses it.
+- A sounding section keeps its phrase origin (where it began fading in): a finished blend or a form repeat moves only the form's count, so the renderer never restarts a section that is still sounding.
 - Pool forms leave `form.origin` unset: the incoming fade overlaps the previous
   section instead of replaying two opening bars before the next handoff. The
   Godot aligned-form renderer uses a sample-count clock, overlapping tonal synths
@@ -117,19 +116,14 @@ Seeded to Original while a new phase (`ignition`, `slipstream`, `redline`, or
 such section.
 
 Audio synthesis / sound stage:
-- The browser sound stage (warm/glass/pulse/pluck/chip, dedicated epiano/organ/supersaw/triangle/bass, Adventure harp/recorder/vielle/bell and frame-drum/tambourine, plus room, stereo imaging, and compression) lives in `apps/demo/src/audio-engine.ts` (Web Audio). Adventure's musical direction remains subject to listening approval.
-- The Rust `Synth` (mono, no room) is the reference for the game engine only.
+- The Rust `Synth` (mono, no room) renders the game and the Lab.
   It mirrors the acoustic voices (harp/recorder/vielle/bell plus
   frame-drum/tambourine) as acoustic-inspired synthesis, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo
-  controls and crossfades also control the effect. The lab additionally filters
-  the repeat and retains its stereo room stage.
-- Noise effects use their event duration and finite cleanup tails. Reverse swells
-  use the tonal fade bus in the lab so their peak/tail is not hard-muted at a
-  section boundary; impacts use the percussion bus.
-- By default the Lab plays the browser sound stage, so it is an authoring interface, not evidence of the exact sound shipped in the Godot kit. Storefront audio and video must come from the packaged Godot runtime.
-- `?engine` plays the Lab through the engine itself (decision A of GURI-822, Decide how the Lab stays faithful to the engine): `LivePlayer` (`crates/engine/src/live.rs`, the player the Godot addon runs) renders in WASM on the page and `apps/demo/src/pcm-queue-worklet.ts` plays its mono output. It sounds like the shipped kit (mono, no room). The browser stage retires once that A/B is approved by ear.
+  controls and crossfades also control the effect.
+- Noise effects use their event duration and finite cleanup tails.
+- The Lab plays the engine itself (decision A of GURI-822, Decide how the Lab stays faithful to the engine): `LivePlayer` (`crates/engine/src/live.rs`, the player the Godot addon runs) renders in WASM on the page and `apps/demo/src/pcm-queue-worklet.ts` plays its mono output, so the Lab sounds like the shipped kit. The Audition controls use the engine's `Solo`. Storefront audio and video still come from the packaged Godot runtime.
 
 WASM loader for lab: `apps/demo/src/wasm-engine.ts` (plain instantiateStreaming + typed `generateScore` / `renderWav` / `createPlayer` wrappers; follows the ownership/alloc contract from wasm.rs and tests/wasm-parity.mjs). The live player's JSON commands are documented in `crates/engine/src/wasm.rs`.
 

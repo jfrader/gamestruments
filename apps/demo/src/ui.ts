@@ -4,7 +4,7 @@ import type {
   PortableSection,
   SectionId,
 } from "../../../packages/runtime/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
+import type { SoloMode } from "./playback.ts";
 import {
   soundingSection,
   type PlaybackFrame,

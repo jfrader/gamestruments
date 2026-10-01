@@ -1,6 +1,8 @@
 import type { PortableScore, SectionGain, SectionId } from "../../../packages/runtime/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
-import type { LabRecipeProfile, SignalReadings } from "./recipes.ts";
+import type { LabRecipeProfile } from "./recipes.ts";
+
+/** Which part of the mix the Lab auditions. */
+export type SoloMode = "full" | "melody" | "rhythm" | { voice: string; mute: boolean };
 
 export interface PlaybackTransition {
   from: SectionId;
@@ -39,27 +41,6 @@ export interface LabScore {
   /** The key the score was generated in. */
   rootPitchClass: number;
   profile: LabRecipeProfile;
-}
-
-/** Plays scores in the Lab: the browser synth, or the engine games run. */
-export interface LabPlayback {
-  readonly running: boolean;
-  volume: number;
-  soloMode: SoloMode;
-  start(): Promise<void>;
-  /** Stop; the next start resumes on the section that was sounding. */
-  stop(): Promise<void>;
-  frame(): PlaybackFrame;
-  cue(section: SectionId): void;
-  /** Send the signal panel's game state. */
-  request(phase: string, readings: SignalReadings): void;
-  setHold(held: boolean): void;
-  /** Move on to the next section of the song form. */
-  advance(): void;
-  cancelCue(): void;
-  /** Play `next` from here on, from the section that is sounding; resolves
-   *  to the playback that plays it. */
-  switchTo(next: LabScore): Promise<LabPlayback>;
 }
 
 /** The section that is audible: the incoming one once a transition starts. */

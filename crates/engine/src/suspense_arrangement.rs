@@ -4685,6 +4685,38 @@ mod tests {
     }
 
     #[test]
+    fn decrypt_other_hall_and_full_breach_keep_their_backing_without_the_glass_cell() {
+        let score =
+            generate_suspense_arrangement(&input("level-001"), SuspenseArrangement::AllPhases)
+                .unwrap();
+        for id in ["solo", "bridge-b", "chorus-final"] {
+            let section = score.section(id).unwrap();
+            let cell = format!("{id}-cell");
+            let has = |found: &dyn Fn(&MusicEvent) -> bool| section.events.iter().any(found);
+            assert!(
+                !has(&|event| matches!(
+                    event,
+                    MusicEvent::Note { lane, voice, .. } if *lane == cell && voice == "glass"
+                )),
+                "{id} still plays the glass cell"
+            );
+            assert!(
+                has(&|event| matches!(
+                    event,
+                    MusicEvent::Note { lane, .. } if lane.ends_with("-drone") || lane.ends_with("-pulse")
+                )),
+                "{id} lost its bed"
+            );
+            assert!(
+                has(
+                    &|event| matches!(event, MusicEvent::Percussion { voice, .. } if voice == "kick")
+                ),
+                "{id} lost its kick"
+            );
+        }
+    }
+
+    #[test]
     fn sound_worlds_change_the_instruments_and_never_the_composition() {
         for arrangement in [SuspenseArrangement::AllPhases, SuspenseArrangement::Seeded] {
             let reference =

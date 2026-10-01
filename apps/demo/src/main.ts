@@ -1,6 +1,6 @@
 import "./style.css";
 import type { SectionId } from "../../../packages/runtime/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
+import type { SoloMode } from "./playback.ts";
 import { versionLabel } from "./lab-copy.ts";
 import { isArrangement, type Arrangement } from "./wasm-engine.ts";
 import {

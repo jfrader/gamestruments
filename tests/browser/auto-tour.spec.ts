@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
-import { installAudioCapture } from "./audio-capture.ts";
+import { captureEngineAudio, waitForEngineSeconds } from "./engine-audio.ts";
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -124,9 +124,9 @@ const ADVENTURE_STYLES = [
 ] as const;
 
 for (const { label, title } of ADVENTURE_STYLES) {
-  test(`${label}: Web Audio voices stay audible, finite, and free of heavy clipping`, async ({ page }) => {
+  test(`${label}: the engine's mix stays audible, finite, and free of heavy clipping`, async ({ page }) => {
     test.setTimeout(40000);
-    await installAudioCapture(page);
+    await captureEngineAudio(page);
     const errors = watchErrors(page);
 
     await page.goto("/#lab");
@@ -140,31 +140,24 @@ for (const { label, title } of ADVENTURE_STYLES) {
     await page.locator("#center-play").click();
     await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
 
-    await page.waitForFunction(() => {
-      const capture = window.scanAudio;
-      const samples = capture.blocks.reduce((sum, block) => sum + block.samples.length, 0);
-      return capture.sampleRate > 0 && samples >= capture.sampleRate * 3;
-    }, undefined, { timeout: 30000 });
+    await waitForEngineSeconds(page, 3, 30000);
 
     const stats = await page.evaluate(() => {
-      const capture = window.scanAudio;
       let sumSquares = 0;
       let count = 0;
       let peak = 0;
       let clipped = 0;
       let nonFinite = 0;
-      for (const block of capture.blocks) {
-        for (const sample of block.samples) {
-          if (!Number.isFinite(sample)) {
-            nonFinite++;
-            continue;
-          }
-          const magnitude = Math.abs(sample);
-          if (magnitude > peak) peak = magnitude;
-          if (magnitude >= 0.99) clipped++;
-          sumSquares += sample * sample;
-          count++;
+      for (const sample of window.engineAudio.samples) {
+        if (!Number.isFinite(sample)) {
+          nonFinite++;
+          continue;
         }
+        const magnitude = Math.abs(sample);
+        if (magnitude > peak) peak = magnitude;
+        if (magnitude >= 0.99) clipped++;
+        sumSquares += sample * sample;
+        count++;
       }
       return { rms: Math.sqrt(sumSquares / count), peak, clipped, nonFinite, count };
     });

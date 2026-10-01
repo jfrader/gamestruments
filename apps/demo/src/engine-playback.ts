@@ -1,15 +1,14 @@
 import type { PortableScore, SectionGain, SectionId } from "../../../packages/runtime/src/index.ts";
-import type { SoloMode } from "./audio-engine.ts";
 import { savedVolume, saveVolume, VOLUME_GLIDE_SECONDS } from "./lab-volume.ts";
 import { PCM_QUEUE_PROCESSOR, type PcmPlayedReport } from "./pcm-queue.ts";
 import pcmQueueWorkletUrl from "./pcm-queue-worklet.ts?worker&url";
 import { playbackSectionOnScore } from "./playback-section.ts";
 import {
   soundingSection,
-  type LabPlayback,
   type LabScore,
   type PlaybackFrame,
   type PlaybackTransition,
+  type SoloMode,
 } from "./playback.ts";
 import type { SignalReadings } from "./recipes.ts";
 import { createPlayer } from "./wasm-engine.ts";
@@ -43,9 +42,9 @@ interface EngineAudio {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/** The engine games run: the WASM live player renders here, and a worklet
- *  plays its audio. */
-export class EnginePlayback implements LabPlayback {
+/** Plays the Lab through the engine games run: the WASM live player renders
+ *  here, and a worklet plays its audio. */
+export class EnginePlayback {
   static async create(lab: LabScore, opening: SectionId, held: boolean): Promise<EnginePlayback> {
     const playback = new EnginePlayback(await createPlayer(ENGINE_SAMPLE_RATE), lab);
     playback.#reload(opening, held);
@@ -63,8 +62,7 @@ export class EnginePlayback implements LabPlayback {
   #rendered = 0;
   #played = 0;
   #playedAt = 0;
-  /** The engine always plays the full mix. */
-  soloMode: SoloMode = "full";
+  #soloMode: SoloMode = "full";
 
   private constructor(player: WasmPlayer, lab: LabScore) {
     this.#player = player;
@@ -83,6 +81,15 @@ export class EnginePlayback implements LabPlayback {
     this.#volume = saveVolume(value);
     const audio = this.#audio;
     audio?.gain.gain.setTargetAtTime(this.#volume, audio.context.currentTime, VOLUME_GLIDE_SECONDS);
+  }
+
+  get soloMode(): SoloMode {
+    return this.#soloMode;
+  }
+
+  set soloMode(mode: SoloMode) {
+    this.#soloMode = mode;
+    this.#command({ solo: typeof mode === "object" ? { voice: mode } : mode });
   }
 
   async start(): Promise<void> {
@@ -178,21 +185,26 @@ export class EnginePlayback implements LabPlayback {
     this.#manualCue = null;
   }
 
-  async switchTo(next: LabScore): Promise<LabPlayback> {
+  /** Play `next` from here on, from the section that is sounding. */
+  switchTo(next: LabScore): void {
     const status = this.#status();
     const opening = playbackSectionOnScore(next.score, soundingSection(status, this.#audibleTick(status)));
     this.#lab = next;
     this.#manualCue = null;
     if (!this.running) {
       this.#reload(opening, status.formHeld);
-      return this;
+      return;
     }
     // A new version waits for the next bar and blends in, like a seed change
     // in a game.
     this.#scores.set(next.score.id, next.score);
     this.#load(next, opening);
     if (status.formHeld) this.setHold(true);
-    return this;
+  }
+
+  /** Hand the engine the playing score again after the Lab edited it. */
+  reloadScore(): void {
+    this.switchTo(this.#lab);
   }
 
   /** Start over on the newest version at `section`. */
@@ -202,6 +214,7 @@ export class EnginePlayback implements LabPlayback {
     this.#scores.set(this.#lab.score.id, this.#lab.score);
     this.#load(this.#lab, section);
     if (held) this.setHold(true);
+    if (this.#soloMode !== "full") this.soloMode = this.#soloMode;
   }
 
   #load(lab: LabScore, opening: SectionId): void {

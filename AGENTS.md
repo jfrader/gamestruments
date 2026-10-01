@@ -21,7 +21,9 @@
   project secret, instrument palette, and seed. Do not pre-bake every
   procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
   Arkhos), and Adventure (an eight-section fantasy quest arc).
-- `@gamestruments/runtime` is the TypeScript MIT transport used by the lab.
+- `@gamestruments/runtime` is the TypeScript MIT runtime (score types, validation,
+  transport). The lab plays the engine's own live player (`LivePlayer`) through
+  the WASM build, so it sounds like the Godot kit.
 - The existing `apps/demo` browser Audio Lab is the single musical showcase. Do
   not duplicate it in Godot or embed a browser in the addon, and do not build an
   independent showcase UI, renamed substitute phases/scenario layer, or code/docs
