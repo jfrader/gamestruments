@@ -1,21 +1,17 @@
-import {
-  AdaptiveTransport,
-  selectSection,
-  type GameState,
-  type PortableScore,
-  type PortableSection,
-  type SectionId,
-  type TransitionPlan,
-  type TransitionRequest,
-} from "../../../packages/runtime/src/index.ts";
+import type { PortableScore, PortableSection, SectionId } from "../../../packages/runtime/src/index.ts";
 import {
   generateScore,
   isArrangement,
+  rootPitchClass,
   type Arrangement,
+  type GenerateScoreParams,
 } from "./wasm-engine.ts";
-import { DemoAudioEngine, type SoloMode } from "./audio-engine.ts";
+import type { SoloMode } from "./audio-engine.ts";
 import { elements } from "./dom";
-import { playbackSectionOnScore, isDebugBarSection } from "./playback-section.ts";
+import { isDebugBarSection } from "./playback-section.ts";
+import { soundingSection, type LabPlayback, type LabScore } from "./playback.ts";
+import { ScriptedPlayback } from "./scripted-playback.ts";
+import { EnginePlayback } from "./engine-playback.ts";
 import {
   LAB_RECIPE_PROFILES,
   type GenerationPreset,
@@ -41,10 +37,18 @@ export let levelSeed = "level-001";
 export let generationTraits: NormalizedMusicTraits = { ...LAB_RECIPE_PROFILES.racing.presets[0]!.traits };
 export let phase = "garage";
 export let score!: PortableScore;
-export let transport!: AdaptiveTransport;
-export let audio!: DemoAudioEngine;
+export let playback!: LabPlayback;
 export let soloMode: SoloMode = "full";
-let manualCue: SectionId | null = null;
+
+/** `?engine` plays the Lab through the engine games run, for comparing it
+ *  with the browser synth by ear. */
+const ENGINE_PLAYBACK = new URLSearchParams(window.location.search).has("engine");
+
+function createPlayback(lab: LabScore, opening: SectionId): Promise<LabPlayback> {
+  return ENGINE_PLAYBACK
+    ? EnginePlayback.create(lab, opening, false)
+    : Promise.resolve(new ScriptedPlayback(lab, opening, false));
+}
 
 /** Version axis: steps the current piece (seed) through an unbounded run of
  *  takes. The engine derives each take's seed from the project secret, the
@@ -92,7 +96,7 @@ export function generationPreset(index = activeExperimentIndex): GenerationPrese
   return preset;
 }
 
-export async function generateCurrentScore(): Promise<PortableScore> {
+export async function generateCurrentScore(): Promise<LabScore> {
   return generateRequestedScore(
     activeExperimentIndex,
     levelSeed,
@@ -109,12 +113,12 @@ async function generateRequestedScore(
   recipe: LabRecipe,
   arrangement: Arrangement,
   reelIndex = 0,
-): Promise<PortableScore> {
+): Promise<LabScore> {
   const preset = presetsFor(recipe)[index];
   if (preset === undefined) {
     throw new Error(`Missing generation preset: ${index}`);
   }
-  return generateScore({
+  const params: GenerateScoreParams = {
     seed: requestedSeed,
     style: preset.style,
     recipe,
@@ -129,24 +133,22 @@ async function generateRequestedScore(
     mystery: requestedTraits.brightness,
     pulse: requestedTraits.syncopation,
     reelIndex,
-  });
+  };
+  return {
+    score: await generateScore(params),
+    seed: requestedSeed,
+    rootPitchClass: await rootPitchClass(params),
+    profile: LAB_RECIPE_PROFILES[recipe],
+  };
 }
 
 export async function initializeLab(): Promise<void> {
-  score = await generateCurrentScore();
-  transport = new AdaptiveTransport(score);
-  audio = new DemoAudioEngine(score);
+  const lab = await generateCurrentScore();
+  score = lab.score;
+  playback = await createPlayback(lab, score.defaultSection);
 }
 
-export function currentState(): GameState {
-  return LAB_RECIPE_PROFILES[labRecipe].gameState(phase, {
-    intensity: Number(elements.intensity.value),
-    pressure: Number(elements.pressure.value),
-    flag: elements.finalLap.checked,
-  });
-}
-
-export function sectionById(id: string): PortableSection {
+function sectionById(id: string): PortableSection {
   const section = score.sections.find((candidate) => candidate.id === id);
   if (section === undefined) {
     throw new Error(`Missing score section: ${id}`);
@@ -154,71 +156,27 @@ export function sectionById(id: string): PortableSection {
   return section;
 }
 
-export function applyPlan(plan: TransitionPlan): void {
-  audio.applyTransition(plan);
-  elements.orbit.style.setProperty("--mood-color", sectionById(plan.to).color);
-}
-
-function applyRequest(request: TransitionRequest): void {
-  if (request.status === "scheduled") {
-    if (request.replacedPlan !== undefined) audio.cancelTransition(request.replacedPlan);
-    manualCue = request.plan.to;
-    applyPlan(request.plan);
-  } else if (request.status === "queued") {
-    manualCue = request.target;
-  } else if (request.status === "cancelled") {
-    manualCue = null;
-    audio.cancelTransition(request.plan);
-  }
-}
-
-export function pendingCue(): SectionId | null {
-  const snapshot = transport.snapshot();
-  const target = snapshot.pendingSection ?? (snapshot.transition !== null && audio.currentTick() < snapshot.transition.startTick ? snapshot.transition.to : null);
-  if (target !== manualCue) manualCue = null;
-  return manualCue;
-}
-
 export function requestMusicState(): void {
   if (cueControlsBusy()) return;
-  if (!audio.running) {
-    cueSection(selectSection(score, currentState()));
-    return;
-  }
-  const tick = audio.currentTick();
-  const automatic = transport.advance(tick);
-  if (automatic !== null) applyPlan(automatic);
-  applyRequest(transport.requestState(currentState(), tick));
+  playback.request(phase, {
+    intensity: Number(elements.intensity.value),
+    pressure: Number(elements.pressure.value),
+    flag: elements.finalLap.checked,
+  });
 }
 
 export function cueSection(target: SectionId): void {
   if (cueControlsBusy()) return;
   sectionById(target);
-  if (!audio.running) {
-    manualCue = null;
-    const held = transport.formHeld;
-    transport = new AdaptiveTransport(score, target);
-    transport.setFormHeld(held, 0);
-    return;
-  }
-  const tick = audio.currentTick();
-  const automatic = transport.advance(tick);
-  if (automatic !== null) applyPlan(automatic);
-  applyRequest(transport.requestSection(target, tick));
-  const snapshot = transport.snapshot();
-  if (snapshot.transition?.to === target && tick < snapshot.transition.startTick) manualCue = target;
+  playback.cue(target);
 }
 
 // Cue the previous (-1) or next (+1) section in the score order, wrapping at the ends.
 export function stepSection(delta: number): void {
   const phases = score.sections.filter((section) => !isDebugBarSection(section.id));
   if (cueControlsBusy() || phases.length === 0) return;
-  const tick = audio.currentTick();
-  const snapshot = transport.snapshot();
-  const active =
-    snapshot.transition !== null && tick >= snapshot.transition.startTick
-      ? snapshot.transition.to
-      : snapshot.currentSection;
+  const frame = playback.frame();
+  const active = soundingSection(frame.snapshot, frame.tick);
   const index = phases.findIndex((section) => section.id === active);
   const base = index === -1 ? 0 : index;
   const nextIndex = (base + delta + phases.length) % phases.length;
@@ -229,22 +187,17 @@ export function stepSection(delta: number): void {
 
 export function setFormHold(held: boolean): void {
   if (cueControlsBusy()) return;
-  const cancelled = transport.setFormHeld(held, audio.currentTick());
-  if (cancelled !== null && audio.running) audio.cancelTransition(cancelled);
+  playback.setHold(held);
 }
 
 export function advanceSection(): void {
-  if (cueControlsBusy() || transport.snapshot().transition !== null) return;
-  const target = transport.nextFormSection(audio.currentTick());
-  if (target !== null) cueSection(target);
+  if (cueControlsBusy()) return;
+  playback.advance();
 }
 
 export function cancelCue(): void {
   if (cueControlsBusy()) return;
-  if (pendingCue() === null) return;
-  const plan = transport.cancelPending(audio.currentTick());
-  if (plan !== null) audio.cancelTransition(plan);
-  manualCue = null;
+  playback.cancelCue();
 }
 
 export function cueControlsBusy(): boolean {
@@ -277,17 +230,8 @@ export async function activateExperiment(
     return false;
   }
   switchingScore = true;
-  const previousAudio = audio;
-  const wasRunning = previousAudio.running;
-  const currentTick = previousAudio.currentTick();
-  const previousSnapshot = transport.snapshot();
-  const requestedSection =
-    (previousSnapshot.transition !== null &&
-    currentTick >= previousSnapshot.transition.startTick
-      ? previousSnapshot.transition.to
-      : previousSnapshot.currentSection);
   try {
-    const nextScore = await generateRequestedScore(
+    const next = await generateRequestedScore(
       index,
       nextSeed,
       nextTraits,
@@ -298,26 +242,12 @@ export async function activateExperiment(
     if (requestId !== latestGenerationRequest) {
       return false;
     }
-    const initialSection = playbackSectionOnScore(nextScore, requestedSection);
-    const nextTransport = new AdaptiveTransport(nextScore, initialSection);
-    nextTransport.setFormHeld(transport.formHeld, 0);
-    const nextAudio = new DemoAudioEngine(nextScore);
-    nextAudio.soloMode = soloMode;
-    const startNext = wasRunning
-      ? nextAudio.start(
-          initialSection,
-          nextScore.form === undefined ? undefined : nextTransport.advance.bind(nextTransport),
-        )
-      : Promise.resolve();
-    await Promise.all([startNext, previousAudio.stop()]);
+    playback = await playback.switchTo(next);
     activeExperimentIndex = index;
     levelSeed = nextSeed;
     generationTraits = { ...nextTraits };
     arrangements[requestedRecipe] = nextArrangement;
-    score = nextScore;
-    transport = nextTransport;
-    audio = nextAudio;
-    manualCue = null;
+    score = next.score;
     return true;
   } finally {
     switchingScore = false;
@@ -364,28 +294,15 @@ export function traitsFromControls(): NormalizedMusicTraits {
 
 export async function toggleEngine(): Promise<boolean> {
   if (switchingAudio || switchingScore) {
-    return audio.running;
+    return playback.running;
   }
   switchingAudio = true;
   try {
-    if (audio.running) {
-      const tick = audio.currentTick();
-      const snapshot = transport.snapshot();
-      const currentSection =
-        (snapshot.transition !== null && tick >= snapshot.transition.startTick
-          ? snapshot.transition.to
-          : snapshot.currentSection);
-      const held = transport.formHeld;
-      transport = new AdaptiveTransport(score, currentSection);
-      transport.setFormHeld(held, 0);
-      manualCue = null;
-      await audio.stop();
+    if (playback.running) {
+      await playback.stop();
       return false;
     }
-    await audio.start(
-      transport.snapshot().currentSection,
-      score.form === undefined ? undefined : transport.advance.bind(transport),
-    );
+    await playback.start();
     return true;
   } finally {
     switchingAudio = false;
@@ -414,7 +331,6 @@ export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
   }
   labRecipe = recipe;
   activeExperimentIndex = 0;
-  manualCue = null;
   phase = LAB_RECIPE_PROFILES[recipe].openingPhase;
   generationTraits = { ...generationPreset(0).traits };
   return requestExperiment(0, levelSeed, generationTraits);
@@ -422,5 +338,5 @@ export async function setLabRecipe(recipe: LabRecipe): Promise<boolean> {
 
 export function setSoloMode(value: SoloMode): void {
   soloMode = value;
-  audio.soloMode = value;
+  playback.soloMode = value;
 }

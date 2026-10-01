@@ -1,6 +1,7 @@
 import type { GameState, SectionId } from "../../../packages/runtime/src/index.ts";
 import { ADVENTURE_SCENE_SECTIONS, SUSPENSE_PHASE_SECTIONS } from "./playback-section.ts";
 import { phaseName } from "./phase-names.ts";
+import type { GameUpdate } from "./wasm-player.ts";
 
 export type LabRecipe = "racing" | "suspense" | "adventure";
 
@@ -42,6 +43,8 @@ export interface LabRecipeProfile {
   meters: { intensity: string; pressure: string; flag: string; flagCopy: string };
   signal(phase: string): string;
   gameState(phase: string, readings: SignalReadings): GameState;
+  /** The same readings as the engine's game-state update. */
+  engineUpdate(phase: string, readings: SignalReadings): GameUpdate;
 }
 
 const RACING: LabRecipeProfile = {
@@ -86,6 +89,9 @@ const RACING: LabRecipeProfile = {
     numeric: { intensity, positionPressure: pressure, finalLap: flag ? 1 : 0 },
     categorical: { racePhase: phase, finishResult: "win" },
   }),
+  engineUpdate: (phase, { intensity, pressure, flag }) => ({
+    race: { intensity, positionPressure: pressure, finalLap: flag, racePhase: phase, finishResult: "win" },
+  }),
 };
 
 const SUSPENSE: LabRecipeProfile = {
@@ -126,6 +132,9 @@ const SUSPENSE: LabRecipeProfile = {
     numeric: { heat: intensity, focus: pressure, progress: flag ? 1 : 0 },
     categorical: { tracePhase: phase },
   }),
+  engineUpdate: (phase, { intensity, pressure, flag }) => ({
+    trace: { phase, heat: intensity, focus: pressure, progress: flag ? 1 : 0 },
+  }),
 };
 
 const ADVENTURE: LabRecipeProfile = {
@@ -164,6 +173,9 @@ const ADVENTURE: LabRecipeProfile = {
   gameState: (phase, { intensity, pressure, flag }) => ({
     numeric: { discovery: intensity, threat: pressure, questComplete: flag ? 1 : 0 },
     categorical: { areaPhase: phase },
+  }),
+  engineUpdate: (phase, { intensity, pressure, flag }) => ({
+    adventure: { areaPhase: phase, discovery: intensity, threat: pressure, questComplete: flag },
   }),
 };
 

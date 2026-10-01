@@ -5,6 +5,7 @@ import {
   type SectionId,
   type TransitionPlan,
 } from "../../../packages/runtime/src/index.ts";
+import { savedVolume, saveVolume, VOLUME_GLIDE_SECONDS } from "./lab-volume.ts";
 
 const SCHEDULE_INTERVAL_MS = 50;
 const LOOKAHEAD_SECONDS = 0.3;
@@ -284,24 +285,12 @@ export class DemoAudioEngine {
   #schedulingSection: SectionId | null = null;
   #sourcesBySection = new Map<SectionId, Set<() => void>>();
   #advanceTransport: ((atTick: number, lookaheadTicks: number) => TransitionPlan | null) | undefined;
-  #volume = 1.0;
+  #volume = savedVolume();
   #masterGain: GainNode | null = null;
 
   constructor(score: PortableScore) {
     this.#score = score;
     this.#secondsPerTick = 60 / score.bpm / score.ticksPerBeat;
-
-    try {
-      const savedVolume = localStorage.getItem("gamestruments-volume");
-      if (savedVolume !== null) {
-        const parsed = parseFloat(savedVolume);
-        if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 1) {
-          this.#volume = parsed;
-        }
-      }
-    } catch {
-      // Ignore errors in environments without localStorage
-    }
   }
 
   get running(): boolean {
@@ -313,16 +302,9 @@ export class DemoAudioEngine {
   }
 
   set volume(value: number) {
-    const clamped = Math.max(0, Math.min(1, value));
-    this.#volume = clamped;
-    try {
-      localStorage.setItem("gamestruments-volume", clamped.toString());
-    } catch {
-      // Ignore
-    }
-
+    this.#volume = saveVolume(value);
     if (this.#masterGain && this.#context) {
-      this.#masterGain.gain.setTargetAtTime(clamped, this.#context.currentTime, 0.05);
+      this.#masterGain.gain.setTargetAtTime(this.#volume, this.#context.currentTime, VOLUME_GLIDE_SECONDS);
     }
   }
 

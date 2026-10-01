@@ -10,7 +10,7 @@ import {
   setSoloMode,
   soloMode,
   toggleEngine,
-  audio,
+  playback,
 } from "./state.ts";
 import { isDebugBarSection } from "./playback-section.ts";
 
@@ -227,7 +227,7 @@ export function setupScoreDebugger(): void {
         setSoloMode("full");
         setFormHold(false);
         cueSection(phaseSelect.value);
-        if (!audio.running) {
+        if (!playback.running) {
           toggleEngine();
         }
       }
@@ -270,7 +270,7 @@ function playBar(sectionId: SectionId, barIndex: number): void {
 
   setFormHold(true);
   cueSection(barSectionId);
-  if (!audio.running) {
+  if (!playback.running) {
     toggleEngine();
   }
 }

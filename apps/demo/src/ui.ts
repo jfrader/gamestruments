@@ -1,13 +1,16 @@
 import { racingGenreExperiments } from "./genre-catalog.ts";
 import type {
-  AdaptiveTransport,
   PortableScore,
   PortableSection,
   SectionId,
-  TransitionPlan,
-  TransportSnapshot,
 } from "../../../packages/runtime/src/index.ts";
-import type { DemoAudioEngine, SoloMode } from "./audio-engine.ts";
+import type { SoloMode } from "./audio-engine.ts";
+import {
+  soundingSection,
+  type PlaybackFrame,
+  type PlaybackSnapshot,
+  type PlaybackTransition,
+} from "./playback.ts";
 import type { Arrangement } from "./wasm-engine.ts";
 import { requireElement, elements } from "./dom";
 import { orbitStyleAt, orbitFrameAt, type OrbitFrame } from "./orbit-visualizer.ts";
@@ -115,24 +118,16 @@ export function createSectionRows(score: PortableScore): void {
   }));
 }
 
-export function renderSections(
-  score: PortableScore,
-  transport: AdaptiveTransport,
-  audio: DemoAudioEngine,
-  requested: SectionId | null,
-  busy: boolean,
-): void {
-  const visualTick = audio.currentVisualTick();
-  const tick = Math.floor(visualTick);
-  const mix = new Map(
-    transport.mixAt(tick).map((item) => [item.section, item.gain]),
-  );
-  const view = cueView(score, transport.snapshot(), tick, audio.running, requested, transport.formHeld);
-  const next = transport.nextFormSection(tick);
+export function renderSections(frame: PlaybackFrame, running: boolean, busy: boolean): void {
+  const { score } = frame;
+  const tick = Math.floor(frame.tick);
+  const mix = new Map(frame.mix.map((item) => [item.section, item.gain]));
+  const view = cueView(score, frame.snapshot, tick, running, frame.requestedCue, frame.formHeld);
+  const next = frame.nextFormSection;
   setDisabled(elements.holdForm, busy || score.form === undefined);
-  setAttribute(elements.holdForm, "aria-pressed", String(transport.formHeld));
-  setText(elements.holdForm, transport.formHeld ? "Resume auto tour" : "Hold auto tour");
-  setDisabled(elements.advanceForm, busy || next === null || transport.snapshot().transition !== null);
+  setAttribute(elements.holdForm, "aria-pressed", String(frame.formHeld));
+  setText(elements.holdForm, frame.formHeld ? "Resume auto tour" : "Hold auto tour");
+  setDisabled(elements.advanceForm, busy || next === null || frame.snapshot.transition !== null);
   setText(elements.advanceForm, next === null ? "Next section" : `Next: ${score.sections.find((section) => section.id === next)?.label ?? next}`);
   const status = busy ? "Preparing playback…" : view.status;
   const detail = busy ? "Please wait before cueing a section." : view.detail;
@@ -157,7 +152,7 @@ export function renderSections(
     row.item.classList.toggle("is-cued", queued);
     if (current) setAttribute(row.item, "aria-current", "true");
     else row.item.removeAttribute("aria-current");
-    setText(row.button, queued ? view.cancellable ? "Queued" : "Next" : current ? audio.running ? "Playing" : "Selected" : "Cue");
+    setText(row.button, queued ? view.cancellable ? "Queued" : "Next" : current ? running ? "Playing" : "Selected" : "Cue");
     setDisabled(row.button, busy || (current && !view.cancellable));
     setText(row.output, `${Math.round(gain * 100)}%`);
   }
@@ -380,7 +375,7 @@ export function setStartButton(running: boolean): void {
 export function renderSectionSteps(
   score: PortableScore,
   tick: number,
-  snapshot: TransportSnapshot,
+  snapshot: PlaybackSnapshot,
   busy: boolean,
 ): void {
   const sections = phaseSections(score);
@@ -410,7 +405,7 @@ export function renderEngineButton(
   button: HTMLButtonElement,
   running: boolean,
   tick: number,
-  activeTransition: TransitionPlan | null,
+  activeTransition: PlaybackTransition | null,
   section: PortableSection,
   sectionById: (id: string) => PortableSection,
 ): void {
@@ -548,29 +543,13 @@ export function renderView(): void {
   }
 }
 
-export function renderFrame(
-  audio: DemoAudioEngine,
-  score: PortableScore,
-  transport: AdaptiveTransport,
-  requested: SectionId | null,
-  applyPlan: (plan: TransitionPlan) => void,
-  sectionById: (id: string) => PortableSection,
-  busy = false,
-): void {
-  const visualTick = audio.currentVisualTick();
-  const tick = Math.floor(visualTick);
+export function renderFrame(frame: PlaybackFrame, running: boolean, busy = false): void {
+  const { score, snapshot } = frame;
+  const sectionById = sectionLookup(score);
+  const tick = Math.floor(frame.tick);
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
-  const nextPlan = score.form === undefined ? transport.advance(tick) : null;
-  if (nextPlan !== null) {
-    applyPlan(nextPlan);
-  }
-  const snapshot = transport.snapshot();
   const activeTransition = snapshot.transition;
-  const primarySection =
-    activeTransition !== null && tick >= activeTransition.startTick
-      ? activeTransition.to
-      : snapshot.currentSection;
-  const section = sectionById(primarySection);
+  const section = sectionById(soundingSection(snapshot, tick));
 
   setText(elements.bar, String(Math.floor(tick / barTicks) + 1).padStart(2, "0"));
   setText(elements.beat, String(
@@ -578,36 +557,36 @@ export function renderFrame(
   ).padStart(2, "0"));
   setText(elements.moodName, section.label);
   setText(elements.moodFeeling, section.feeling);
-  setText(elements.transitionLabel, !audio.running
+  setText(elements.transitionLabel, !running
     ? "Engine offline"
     : snapshot.pendingSection !== null
       ? `Queued: ${sectionById(snapshot.pendingSection).label} · after this blend`
       : activeTransition === null
         ? score.form === undefined
           ? "Pattern locked"
-           : transport.formHeld ? "Holding section" : "Form playing"
+           : frame.formHeld ? "Holding section" : "Form playing"
         : tick < activeTransition.startTick
            ? `Waiting for next bar → ${sectionById(activeTransition.to).label}`
           : `Crossing from ${sectionById(activeTransition.from).label}`);
   setStyleProperty(elements.orbit, "--mood-color", section.color);
-  elements.orbit.classList.toggle("is-running", audio.running);
-  const frame: OrbitFrame = audio.running
+  elements.orbit.classList.toggle("is-running", running);
+  const orbit: OrbitFrame = running
     ? orbitFrameAt(
         section,
-        visualTick,
-        audio.sectionVisualTick(section.id, visualTick),
+        frame.tick,
+        frame.sectionTick(section.id),
         score.ticksPerBeat,
         score.beatsPerBar,
       )
     : { beatPulse: 0, playheadTurns: 0, glowPulse: 0, parts: [] };
-  for (const [property, value] of Object.entries(orbitStyleAt(frame))) {
+  for (const [property, value] of Object.entries(orbitStyleAt(orbit))) {
     setStyleProperty(elements.orbit, property, value);
   }
   const rings = getPartRings();
-  const n = frame.parts.length;
+  const n = orbit.parts.length;
   for (let i = 0; i < rings.length; i++) {
     const el = rings[i]!;
-    const part = i < n ? frame.parts[i] : undefined;
+    const part = i < n ? orbit.parts[i] : undefined;
     const shouldHide = !part;
     if (shouldHide) {
       if (!el.hasAttribute("hidden")) el.setAttribute("hidden", "");
@@ -630,15 +609,24 @@ export function renderFrame(
     setStyleProperty(el, "--part-opacity", fmt(opacity));
     setStyleProperty(el, "--part-scale", fmt(scale));
   }
-  renderSections(score, transport, audio, requested, busy);
+  renderSections(frame, running, busy);
 
   renderEngineButton(
     elements.start,
-    audio.running,
+    running,
     tick,
     activeTransition,
     section,
     sectionById,
   );
   renderSectionSteps(score, tick, snapshot, busy);
+}
+
+/** Look sections up by id in `score`. */
+function sectionLookup(score: PortableScore): (id: SectionId) => PortableSection {
+  return (id) => {
+    const section = score.sections.find((candidate) => candidate.id === id);
+    if (section === undefined) throw new Error(`Missing score section: ${id}`);
+    return section;
+  };
 }
