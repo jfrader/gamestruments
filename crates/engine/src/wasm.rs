@@ -16,6 +16,11 @@
 //!                                   const uint8_t* section_ptr, size_t section_len,
 //!                                   size_t phrases);
 //! void     gamestruments_reset(void);  // optional: resets bump for fresh allocs
+//!
+//! // Live player (one per module instance), the same player Godot runs:
+//! void     gamestruments_player_new(float sample_rate);
+//! uint8_t* gamestruments_player_command(const uint8_t* json_ptr, size_t json_len);
+//! float*   gamestruments_player_fill(size_t frames);  // mono, <= 8192 frames
 //! ```
 //!
 //! Input JSON for score_json (exact shape, all keys lowercase):
@@ -69,10 +74,11 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+use crate::live::LivePlayer;
 use crate::racing::{GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
-use crate::score::PortableScore;
+use crate::score::{AdventureState, GameState, PortableScore, TraceState};
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
@@ -520,4 +526,122 @@ pub unsafe extern "C" fn gamestruments_render_wav_stereo_chunk(
     let wav = render_wav_stereo_chunk(&score, section, start_phrases, phrases, 48000);
     write_output(&wav);
     unsafe { OUT_PTR }
+}
+
+/// The most frames one `gamestruments_player_fill` call renders.
+const MAX_FILL_FRAMES: usize = 8192;
+static mut PLAYER: Option<LivePlayer> = None;
+static mut PCM: [f32; MAX_FILL_FRAMES] = [0.0; MAX_FILL_FRAMES];
+
+/// A live player command, as JSON: `{"cue": {"section": "verse"}}`, `"cancel"`.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum PlayerCommand {
+    Load {
+        score: PortableScore,
+        seed: String,
+        recipe: String,
+        root_pitch_class: i32,
+        opening_section: Option<String>,
+    },
+    Cue {
+        section: String,
+    },
+    Cancel,
+    Hold {
+        held: bool,
+    },
+    Advance,
+    RaceState(GameState),
+    TraceState(TraceState),
+    AdventureState(AdventureState),
+    Status,
+}
+
+fn accepted(accepted: bool) -> Result<String, String> {
+    Ok(format!("{{\"accepted\":{accepted}}}"))
+}
+
+fn run_player_command(player: &mut LivePlayer, command: PlayerCommand) -> Result<String, String> {
+    match command {
+        PlayerCommand::Load {
+            score,
+            seed,
+            recipe,
+            root_pitch_class,
+            opening_section,
+        } => {
+            score
+                .validate()
+                .map_err(|error| format!("invalid score: {error}"))?;
+            player.load(
+                score,
+                &seed,
+                &recipe,
+                root_pitch_class,
+                opening_section.as_deref(),
+            )?;
+            accepted(true)
+        }
+        PlayerCommand::Cue { section } => {
+            if !player.has_section(&section) {
+                return Err(format!("unknown score section: {section}"));
+            }
+            accepted(player.cue_section(&section))
+        }
+        PlayerCommand::Cancel => accepted(player.cancel_pending()),
+        PlayerCommand::Hold { held } => accepted(player.set_form_held(held)),
+        PlayerCommand::Advance => accepted(player.advance_form()),
+        PlayerCommand::RaceState(state) => accepted(player.request_state(&state)),
+        PlayerCommand::TraceState(state) => accepted(player.request_trace_state(&state)),
+        PlayerCommand::AdventureState(state) => accepted(player.request_adventure_state(&state)),
+        PlayerCommand::Status => serde_json::to_string(&player.status())
+            .map_err(|error| format!("status must serialize: {error}")),
+    }
+}
+
+/// Start a live player at `sample_rate`, replacing any previous one.
+#[no_mangle]
+pub extern "C" fn gamestruments_player_new(sample_rate: f32) {
+    unsafe { PLAYER = Some(LivePlayer::new(sample_rate)) }
+}
+
+/// Run one JSON player command; the response is JSON (`{"accepted":true}`, or
+/// the status for `"status"`).
+#[no_mangle]
+pub unsafe extern "C" fn gamestruments_player_command(
+    input_ptr: *const u8,
+    input_len: usize,
+) -> *const u8 {
+    let input = slice::from_raw_parts(input_ptr, input_len);
+    let command: PlayerCommand = match serde_json::from_slice(input) {
+        Ok(command) => command,
+        Err(error) => {
+            write_error(format!("player command must parse: {error}"));
+            return unsafe { OUT_PTR };
+        }
+    };
+    let Some(player) = (unsafe { PLAYER.as_mut() }) else {
+        write_error("call gamestruments_player_new first");
+        return unsafe { OUT_PTR };
+    };
+    match run_player_command(player, command) {
+        Ok(response) => write_output(response.as_bytes()),
+        Err(error) => write_error(error),
+    }
+    unsafe { OUT_PTR }
+}
+
+/// Render the next `frames` mono samples (at most 8192) as f32; silence until
+/// a score is loaded. The pointer is valid until the next fill.
+#[no_mangle]
+pub extern "C" fn gamestruments_player_fill(frames: usize) -> *const f32 {
+    unsafe {
+        let out = &mut PCM[..frames.min(MAX_FILL_FRAMES)];
+        match PLAYER.as_mut() {
+            Some(player) if player.is_loaded() => player.fill(out),
+            _ => out.fill(0.0),
+        }
+        PCM.as_ptr()
+    }
 }
