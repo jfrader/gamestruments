@@ -69,7 +69,7 @@ Transport / section selection + transition planning:
   an in-progress blend. Stopped selection sets the next starting section.
 - For the web Audio Lab: blessed implementation is `@gamestruments/runtime` (`AdaptiveTransport` + `selectSection` over score rules + nested GameState).
 - The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) mirror the behavior for Godot/games.
-- This small state machine duplication is accepted and documented. Native/WASM parity covers Rust score identity and synthesis; transport implementations have their own behavior tests.
+- This small state machine duplication is accepted until the Lab plays the engine (GURI-874, Play the engine in the Lab and retire the JS synth): with `?engine` the Lab already runs the Rust transport through `LivePlayer`. Native/WASM parity covers Rust score identity and synthesis; transport implementations have their own behavior tests.
 - Pool forms leave `form.origin` unset: the incoming fade overlaps the previous
   section instead of replaying two opening bars before the next handoff. The
   Godot aligned-form renderer uses a sample-count clock, overlapping tonal synths
@@ -128,9 +128,9 @@ Audio synthesis / sound stage:
 - Noise effects use their event duration and finite cleanup tails. Reverse swells
   use the tonal fade bus in the lab so their peak/tail is not hard-muted at a
   section boundary; impacts use the percussion bus.
-- Path A chosen: WASM owns generation (and could own transport math), Web Audio owns the voices. No AudioWorklet streaming of Rust synth (would lose the signed-off room sound without a full port; listening comparison impossible here).
-- The Audio Lab is therefore an authoring interface, not evidence of the exact sound shipped in the Godot kit. Storefront audio and video must come from the packaged Godot runtime.
+- By default the Lab plays the browser sound stage, so it is an authoring interface, not evidence of the exact sound shipped in the Godot kit. Storefront audio and video must come from the packaged Godot runtime.
+- `?engine` plays the Lab through the engine itself (decision A of GURI-822, Decide how the Lab stays faithful to the engine): `LivePlayer` (`crates/engine/src/live.rs`, the player the Godot addon runs) renders in WASM on the page and `apps/demo/src/pcm-queue-worklet.ts` plays its mono output. It sounds like the shipped kit (mono, no room). The browser stage retires once that A/B is approved by ear.
 
-WASM loader for lab: `apps/demo/src/wasm-engine.ts` (plain instantiateStreaming + typed `generateScore` / `renderWav` wrappers; follows the ownership/alloc contract from wasm.rs and tests/wasm-parity.mjs).
+WASM loader for lab: `apps/demo/src/wasm-engine.ts` (plain instantiateStreaming + typed `generateScore` / `renderWav` / `createPlayer` wrappers; follows the ownership/alloc contract from wasm.rs and tests/wasm-parity.mjs). The live player's JSON commands are documented in `crates/engine/src/wasm.rs`.
 
 See also: README, docs/procedural-generation.md, AGENTS.md (one engine, two frontends).
