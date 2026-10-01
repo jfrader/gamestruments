@@ -95,6 +95,21 @@ describe("the live player through the shipped WASM", () => {
     assert.equal((run(player, "status") as Status).transition, null);
   });
 
+  it("moves to the section a game state selects, and can name it without moving", async () => {
+    const instance = await instantiate();
+    const score = suspenseScore(instance);
+    const player = new WasmPlayer(instance, 48000);
+    run(player, { load: { score, seed: "level-001", recipe: "suspense", rootPitchClass: 0, openingSection: null } });
+    player.fill(512);
+    const alarm = { trace: { phase: "alert", heat: 0.9, focus: 0.5, progress: 0 } };
+    const section = run(player, { sectionFor: alarm }) as string;
+    assert.ok(score.sections.some((candidate) => candidate.id === section), `selects a real section: ${section}`);
+    assert.notEqual(section, score.defaultSection);
+    assert.equal((run(player, "status") as Status).transition, null, "naming the section does not move");
+    assert.deepEqual(run(player, { update: alarm }), { accepted: true });
+    assert.equal((run(player, "status") as Status).transition?.to, section);
+  });
+
   it("knows the key a Racing seed sounds in, so a new seed can join it", async () => {
     const instance = await instantiate();
     const roots = ["level-001", "level-002", "level-003", "level-004"].map((seed) =>

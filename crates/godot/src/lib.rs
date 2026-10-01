@@ -1,8 +1,9 @@
 use gamestruments_engine::{
     apply_automatic_arrangement, generate_adventure, generate_racing_arrangement,
     generate_suspense_arrangement, racing_root_pitch_class, AdventureInput, AdventureState,
-    AdventureStyle, ArrangementRecipe, GameState, GenerateInput, InstrumentPalette, LivePlayer,
-    RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle, TraceState,
+    AdventureStyle, ArrangementRecipe, GameState, GameUpdate, GenerateInput, InstrumentPalette,
+    LivePlayer, RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle,
+    TraceState,
 };
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
@@ -353,7 +354,7 @@ impl GamestrumentsPlayer {
                 finish_result.to_string()
             },
         };
-        let accepted = self.live.request_state(&state);
+        let accepted = self.live.request(&GameUpdate::Race(state));
         if !accepted {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_race_state");
         }
@@ -411,7 +412,7 @@ impl GamestrumentsPlayer {
             focus,
             progress,
         };
-        let accepted = self.live.request_trace_state(&state);
+        let accepted = self.live.request(&GameUpdate::Trace(state));
         if !accepted {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_trace_state");
         }
@@ -438,7 +439,7 @@ impl GamestrumentsPlayer {
             threat,
             quest_complete,
         };
-        let accepted = self.live.request_adventure_state(&state);
+        let accepted = self.live.request(&GameUpdate::Adventure(state));
         if !accepted {
             godot_error!("GamestrumentsPlayer.generate must succeed before set_adventure_state");
         }

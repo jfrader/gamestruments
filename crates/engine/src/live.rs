@@ -3,14 +3,25 @@
 //! and routes cues and game state to the transport. Godot and the browser Lab
 //! both play through it, so they sound the same.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
+use crate::adventure::select_adventure_section;
 use crate::handoff::{crossfade_gains, crossfade_sample_count, Handoff};
 use crate::master::{MasterChain, MasterConfig};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
+use crate::suspense::select_trace_section;
 use crate::synth::{events_starting_at, tick_at_sample, Synth};
-use crate::transport::TransitionPlan;
+use crate::transport::{select_section, TransitionPlan};
 use crate::{AdaptiveTransport, FormAudio};
+
+/// A game-state update, in the shape of the recipe that is playing.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GameUpdate {
+    Race(GameState),
+    Trace(TraceState),
+    Adventure(AdventureState),
+}
 
 /// What the player is sounding, for a UI to show.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -344,25 +355,28 @@ impl LivePlayer {
         })
     }
 
-    pub fn request_state(&mut self, state: &GameState) -> bool {
+    /// Send a game-state update to every live score.
+    pub fn request(&mut self, update: &GameUpdate) -> bool {
         self.for_each_live_voice(|transport, tick| {
-            transport.request_state(state, tick);
+            match update {
+                GameUpdate::Race(state) => transport.request_state(state, tick),
+                GameUpdate::Trace(state) => transport.request_trace_state(state, tick),
+                GameUpdate::Adventure(state) => transport.request_adventure_state(state, tick),
+            };
             true
         })
     }
 
-    pub fn request_trace_state(&mut self, state: &TraceState) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            transport.request_trace_state(state, tick);
-            true
-        })
-    }
-
-    pub fn request_adventure_state(&mut self, state: &AdventureState) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            transport.request_adventure_state(state, tick);
-            true
-        })
+    /// The section `update` selects in the playing score, without moving to it.
+    pub fn section_for(&self, update: &GameUpdate) -> Option<String> {
+        let score = &self.active.as_ref()?.score;
+        match update {
+            GameUpdate::Race(state) => Some(select_section(score, state)),
+            GameUpdate::Trace(state) => {
+                select_trace_section(&score.rules, state).map(|(section, _)| section)
+            }
+            GameUpdate::Adventure(state) => Some(select_adventure_section(state).to_string()),
+        }
     }
 
     /// Drop a queued cue, and a transition that has not started yet.

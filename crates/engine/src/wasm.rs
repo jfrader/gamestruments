@@ -75,11 +75,11 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
-use crate::live::LivePlayer;
+use crate::live::{GameUpdate, LivePlayer};
 use crate::racing::{racing_root_pitch_class, GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
 use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_stereo_chunk};
-use crate::score::{AdventureState, GameState, PortableScore, TraceState};
+use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
 use crate::suspense_pool::Intent;
@@ -349,10 +349,11 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 RacingArrangement::Extended => Some(ArrangementRecipe::RacingExtended),
                 RacingArrangement::AllPhases | RacingArrangement::Seeded => None,
             };
-            generate_racing_arrangement(&inp.racing(style), arrangement)
-            .and_then(|score| match autoplay_recipe {
-                Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
-                None => Ok(score),
+            generate_racing_arrangement(&inp.racing(style), arrangement).and_then(|score| {
+                match autoplay_recipe {
+                    Some(recipe) => apply_automatic_arrangement(score, recipe, inp.autoplay),
+                    None => Ok(score),
+                }
             })
         }
         other => {
@@ -556,7 +557,8 @@ const MAX_FILL_FRAMES: usize = 8192;
 static mut PLAYER: Option<LivePlayer> = None;
 static mut PCM: [f32; MAX_FILL_FRAMES] = [0.0; MAX_FILL_FRAMES];
 
-/// A live player command, as JSON: `{"cue": {"section": "verse"}}`, `"cancel"`.
+/// A live player command, as JSON: `{"cue": {"section": "verse"}}`, `"cancel"`,
+/// `{"update": {"trace": {"phase": "scan", "heat": 0.4, ...}}}`.
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum PlayerCommand {
@@ -575,9 +577,8 @@ enum PlayerCommand {
         held: bool,
     },
     Advance,
-    RaceState(GameState),
-    TraceState(TraceState),
-    AdventureState(AdventureState),
+    Update(GameUpdate),
+    SectionFor(GameUpdate),
     Status,
 }
 
@@ -615,9 +616,9 @@ fn run_player_command(player: &mut LivePlayer, command: PlayerCommand) -> Result
         PlayerCommand::Cancel => accepted(player.cancel_pending()),
         PlayerCommand::Hold { held } => accepted(player.set_form_held(held)),
         PlayerCommand::Advance => accepted(player.advance_form()),
-        PlayerCommand::RaceState(state) => accepted(player.request_state(&state)),
-        PlayerCommand::TraceState(state) => accepted(player.request_trace_state(&state)),
-        PlayerCommand::AdventureState(state) => accepted(player.request_adventure_state(&state)),
+        PlayerCommand::Update(update) => accepted(player.request(&update)),
+        PlayerCommand::SectionFor(update) => serde_json::to_string(&player.section_for(&update))
+            .map_err(|error| format!("section must serialize: {error}")),
         PlayerCommand::Status => serde_json::to_string(&player.status())
             .map_err(|error| format!("status must serialize: {error}")),
     }
@@ -629,8 +630,8 @@ pub extern "C" fn gamestruments_player_new(sample_rate: f32) {
     unsafe { PLAYER = Some(LivePlayer::new(sample_rate)) }
 }
 
-/// Run one JSON player command; the response is JSON (`{"accepted":true}`, or
-/// the status for `"status"`).
+/// Run one JSON player command; the response is JSON: `{"accepted":true}`,
+/// the status for `"status"`, or the selected section for `sectionFor`.
 #[no_mangle]
 pub unsafe extern "C" fn gamestruments_player_command(
     input_ptr: *const u8,
