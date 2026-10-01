@@ -58,7 +58,13 @@ pub struct AdaptiveTransport {
     pending_section: Option<String>,
     transition: Option<TransitionPlan>,
     form_step_index: usize,
+    /// Where the form counts the current section's length from.
     section_entered_at: u32,
+    /// The tick the current section's phrase started at: where it began
+    /// fading in. A finished blend or a form repeat moves the form's count
+    /// (`section_entered_at`), never this, so the renderer never restarts a
+    /// section that is still sounding and cuts its ringing notes.
+    phrase_origin: u32,
     cue_target: Option<String>,
     form_held: bool,
     form_not_before: u32,
@@ -94,6 +100,7 @@ impl AdaptiveTransport {
             transition: None,
             form_step_index,
             section_entered_at: 0,
+            phrase_origin: 0,
             cue_target: None,
             form_held: false,
             form_not_before: 0,
@@ -280,6 +287,7 @@ impl AdaptiveTransport {
                 } else {
                     at_tick
                 };
+                self.phrase_origin = plan.start_tick;
                 self.sync_form_to(&self.current_section.clone());
                 self.clear_transition();
                 self.form_not_before = 0;
@@ -383,7 +391,7 @@ impl AdaptiveTransport {
                 return [
                     Some(SectionPlayback {
                         section: &plan.from,
-                        origin: self.section_entered_at,
+                        origin: self.phrase_origin,
                         gain: gain_from,
                         drum_gain: if plan.hold { gain_from } else { 1.0 },
                         percussion: plan.hold,
@@ -401,7 +409,7 @@ impl AdaptiveTransport {
         [
             Some(SectionPlayback {
                 section: &self.current_section,
-                origin: self.section_entered_at,
+                origin: self.phrase_origin,
                 gain: 1.0,
                 drum_gain: 1.0,
                 percussion: true,
@@ -664,6 +672,56 @@ mod tests {
         );
         transport.advance(bar * 4);
         assert_eq!(transport.current_section(), "cruise");
+    }
+
+    #[test]
+    fn a_sounding_section_keeps_its_phrase_origin() {
+        // A section's renderer restarts whenever its origin moves, cutting the
+        // notes still ringing; that was the glitch heard as a blend finished.
+        let score = crate::suspense_arrangement::generate_suspense_arrangement(
+            &SuspenseInput {
+                secret: "qa-secret".into(),
+                seed: "origins".into(),
+                style: SuspenseStyle::Terminal,
+                tension: 0.5,
+                heat: 0.5,
+                mystery: 0.5,
+                pulse: 0.5,
+            },
+            crate::suspense_arrangement::SuspenseArrangement::Seeded,
+        )
+        .unwrap();
+        let bar = score.bar_ticks();
+        let target = score
+            .sections
+            .iter()
+            .map(|section| section.id.clone())
+            .find(|section| *section != score.default_section)
+            .unwrap();
+        let mut transport = AdaptiveTransport::new(score, None).unwrap();
+        let mut sounding = std::collections::HashMap::new();
+        for tick in (0..bar * 64).step_by(24) {
+            if tick == bar * 3 + 96 {
+                transport.request_section(&target, tick);
+            }
+            transport.advance(tick);
+            transport.report_incoming_level(1.0, tick);
+            let now: std::collections::HashMap<String, u32> = transport
+                .playback_at(tick)
+                .into_iter()
+                .flatten()
+                .map(|part| (part.section.to_string(), part.origin))
+                .collect();
+            for (section, origin) in &now {
+                if let Some(previous) = sounding.get(section) {
+                    assert_eq!(
+                        previous, origin,
+                        "{section} moved its origin at tick {tick}"
+                    );
+                }
+            }
+            sounding = now;
+        }
     }
 
     #[test]
