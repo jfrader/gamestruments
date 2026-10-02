@@ -26,6 +26,7 @@ interface EngineStatus {
   tick: number;
   currentSection: SectionId;
   pendingSection: SectionId | null;
+  pendingScoreId: string | null;
   transition: PlaybackTransition | null;
   formHeld: boolean;
   nextFormSection: SectionId | null;
@@ -129,11 +130,12 @@ export class EnginePlayback {
     const status = this.#status();
     const score = this.#scores.get(status.scoreId) ?? this.#lab.score;
     for (const id of this.#scores.keys()) {
-      if (id !== status.scoreId && id !== this.#lab.score.id) this.#scores.delete(id);
+      if (id !== status.scoreId && id !== status.pendingScoreId && id !== this.#lab.score.id) this.#scores.delete(id);
     }
     const tick = this.#audibleTick(status, score);
     return {
       score,
+      pendingScore: status.pendingScoreId === null ? null : (this.#scores.get(status.pendingScoreId) ?? null),
       tick,
       snapshot: status,
       mix: status.mix,
@@ -195,11 +197,10 @@ export class EnginePlayback {
       this.#reload(opening, status.formHeld);
       return;
     }
-    // A new version waits for the next bar and blends in, like a seed change
-    // in a game.
+    // New music waits for any running blend and the next bar, then blends
+    // in, like a seed change in a game.
     this.#scores.set(next.score.id, next.score);
     this.#load(next, opening);
-    if (status.formHeld) this.setHold(true);
   }
 
   /** Hand the engine the playing score again after the Lab edited it. */

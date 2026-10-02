@@ -176,8 +176,11 @@ music.set_trace_state("complete", 0.0, 0.0, 1.0)   # coda holds through credits
   only the state methods and form controls are live.
 - **No recipe switch inside one score.** A score belongs to one recipe. `generate()`
   builds a new score. On the Godot player, a generate while audio is already
-  playing hands off on the next bar. Pass an optional opening section with the
-  seed to land directly on that section instead of following with a second cue.
+  playing hands off on the next bar, after any blend that is running, and the
+  bar count carries on. Only the latest generate waits; a cue or state change
+  made while it waits makes it open on that section. Pass an optional opening
+  section with the seed to land directly on that section instead of following
+  with a second cue.
 - **No engine crossfade between two player nodes.** The 2-bar join mixes sections
   inside one score, or the outgoing and incoming scores of one Godot player.
   Two nodes still need your bus fade.

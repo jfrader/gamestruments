@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Rapid changes no longer pile up fades or lose cues. The live player (Godot and the Audio Lab) runs one blend at a time, a section blend or a music blend; anything requested during one waits, keeping only the latest music change and the latest section. A music change and a section that are both waiting become one blend: the new music opens on that section. The bar count carries on through a music change instead of restarting at bar 1, and the form hold carries over. The Lab shows the waiting music and section.
+
 ## [1.1.1] - 2026-10-01
 
 ### Changed

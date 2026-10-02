@@ -253,6 +253,35 @@ impl AdaptiveTransport {
         self.pending_section.as_deref()
     }
 
+    /// The section a request is waiting to move to: the one queued behind the
+    /// active transition, or the target of an explicit transition that has not
+    /// started. The song form's own next step is not a request.
+    pub fn requested_section(&self, at_tick: u32) -> Option<&str> {
+        self.pending_section.as_deref().or_else(|| {
+            self.transition
+                .as_ref()
+                .filter(|plan| {
+                    at_tick < plan.start_tick
+                        && self.transition_source != TransitionSource::Automatic
+                })
+                .map(|plan| plan.to.as_str())
+        })
+    }
+
+    /// Whether a section blend is crossing at `at_tick`.
+    pub fn is_blending(&self, at_tick: u32) -> bool {
+        self.transition
+            .as_ref()
+            .is_some_and(|plan| at_tick >= plan.start_tick)
+    }
+
+    /// Start the clock at `tick` instead of zero: the opening section's phrase
+    /// and the form's count begin there.
+    pub fn start_at(&mut self, tick: u32) {
+        self.section_entered_at = tick;
+        self.phrase_origin = tick;
+    }
+
     /// The active transition, ending where it really ends: a held cue runs
     /// past its authored end while the incoming section is still quiet.
     pub fn transition(&self) -> Option<TransitionPlan> {

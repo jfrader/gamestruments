@@ -13,15 +13,17 @@ export interface PlaybackTransition {
 
 export interface PlaybackSnapshot {
   currentSection: SectionId;
-  /** The section queued behind the active transition. */
+  /** The section waiting for the running blend, or for new music. */
   pendingSection: SectionId | null;
   transition: PlaybackTransition | null;
 }
 
 /** What the Lab shows on one animation frame. */
 export interface PlaybackFrame {
-  /** The score sounding now; a new version waits for the bar. */
+  /** The score sounding now; new music waits for its turn. */
   score: PortableScore;
+  /** The music waiting to start, if any. */
+  pendingScore: PortableScore | null;
   /** The audible position, in ticks. */
   tick: number;
   snapshot: PlaybackSnapshot;
