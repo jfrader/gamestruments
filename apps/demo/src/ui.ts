@@ -22,6 +22,7 @@ import { labRecipeInfo, nextVersionNumber } from "./state.ts";
 import { LAB_RECIPES, type LabRecipe, type NormalizedMusicTraits } from "./recipes.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
+const TEMPO_FORMAT = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 
 function getPartRings(): HTMLElement[] {
   // Re-query each frame: N=6 is trivial; survives DOM clones in tests (e.g. firefox compat)
@@ -284,7 +285,7 @@ export function renderScoreIdentity(
   phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
-  elements.tempo.textContent = String(score.bpm);
+  elements.tempo.textContent = TEMPO_FORMAT.format(score.bpm);
   renderRecipeChrome(recipe, phase);
   elements.sectionControl.hidden = score.form === undefined;
   renderArrangementControl(recipe, arrangement);
@@ -327,7 +328,7 @@ export function renderGenerationControls(
   }
   elements.generatorSummary.value = [
     score.id,
-    `${phaseSections(score).length} sections @ ${score.bpm} bpm`,
+    `${phaseSections(score).length} sections @ ${TEMPO_FORMAT.format(score.bpm)} bpm`,
     "engine: wasm",
   ].join(" / ");
 }

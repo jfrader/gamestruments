@@ -224,7 +224,9 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 |---|---|---|---|
 | `camp` | Trailhead Camp | 16 | hearthlight / the road ahead |
 | `explore` | The Old Forest | 32 | open paths / old wonders |
+| `explore-strings` | The Winding Trail | 32 | fingerpicked guitar / light bombo |
 | `town` | Hearth and Hall | 32 | market dance / crowded tables |
+| `town-strings` | Courtyard Dance | 32 | strummed answers / cross-accent dance |
 | `festival` | The Green Market | 32 | dancing feet / raised cups |
 | `reunion` | Homecoming Hearth | 32 | warm embraces / old names |
 | `dungeon` | The Deep Halls | 16 | cold stone / distant steps |
@@ -237,19 +239,25 @@ Sections are 16 or 32 bars; each develops its material across phrases rather tha
 | `dawn` | First Light | 16 | soft gold / the long night breaks |
 | `victory` | Lanterns at Dawn | 32 | homecoming / earned release |
 
-The six added phases (a combat set — skirmish, assault, chase — and a happiness
-set — festival, reunion, dawn) join the pool the seeded composer draws from:
+The combat set — skirmish, assault, chase — and the happiness
+set — festival, reunion, dawn — join the pool the seeded composer draws from:
 combat phases share the Peak role with combat/boss, the happiness phases ride the
 groove and break bands with town/sanctuary, so the seeded arrangement interleaves
 them with their matching scenes. State-driven selection is unchanged and still
 returns only the eight original sections above.
+
+`explore-strings` and `town-strings` are guitar-and-bombo alternatives to Explore
+and Town, sharing their Adventure key, mode and 4/4 meter. They join All phases
+and the seeded pool in the Lab, and can be requested in Godot with
+`cue_section("explore-strings")` or `cue_section("town-strings")`. They are not
+new `area_phase` values.
 
 ## Observable Contract
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
 - Suspense scores contain the 27 pool phases above; `all-phases` and `seeded` are the only arrangements.
-- Adventure scores contain the fourteen sections above and default to `camp`; `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`, `assault`, and `dawn` are 16 bars, and `explore`, `town`, `festival`, `reunion`, `combat`, `chase`, and `victory` are 32.
+- Adventure scores contain the sixteen sections above and default to `camp`; `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`, `assault`, and `dawn` are 16 bars, and the other sections are 32. Seeded arrangements may vary these lengths.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
 - Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 

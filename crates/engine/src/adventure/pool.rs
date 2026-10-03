@@ -20,23 +20,10 @@ use super::composition::{
 /// post-climax respite Peak → Break).
 pub(super) const MAX_ENERGY_DELTA: u32 = 40;
 
-/// The Adventure phase pool in natural quest order.
-pub(super) const ADVENTURE_SECTION_IDS: [&str; 14] = [
-    "camp",
-    "explore",
-    "town",
-    "festival",
-    "reunion",
-    "dungeon",
-    "skirmish",
-    "combat",
-    "chase",
-    "boss",
-    "assault",
-    "sanctuary",
-    "dawn",
-    "victory",
-];
+/// The Adventure section ids in authored plan order.
+pub(super) fn adventure_section_ids() -> Vec<&'static str> {
+    SECTION_PLANS.iter().map(|plan| plan.id).collect()
+}
 
 /// An Adventure section as the composer sees it: its role and energy band,
 /// derived from the authored plan, plus the authored length (16 or 32 bars) and
@@ -114,7 +101,7 @@ impl PhasePool for AdventurePool {
     type Request = ();
 
     fn pool() -> Vec<AdventurePhaseSpec> {
-        ADVENTURE_SECTION_IDS
+        adventure_section_ids()
             .iter()
             .filter_map(|&id| adventure_phase_spec(id))
             .collect()
@@ -242,7 +229,9 @@ mod tests {
         for (id, role, energy, bars, one_shot) in [
             ("camp", AdventurePhaseRole::Intro, 25, 16, true),
             ("explore", AdventurePhaseRole::Groove, 48, 32, false),
+            ("explore-strings", AdventurePhaseRole::Groove, 48, 32, false),
             ("town", AdventurePhaseRole::Groove, 58, 32, false),
+            ("town-strings", AdventurePhaseRole::Groove, 58, 32, false),
             ("dungeon", AdventurePhaseRole::Build, 20, 16, true),
             ("combat", AdventurePhaseRole::Peak, 82, 32, false),
             ("boss", AdventurePhaseRole::Peak, 90, 16, true),
@@ -266,12 +255,13 @@ mod tests {
 
     #[test]
     fn pool_declares_every_adventure_section() {
+        assert_eq!(adventure_section_ids().len(), 16);
         assert_eq!(
-            ADVENTURE_SECTION_IDS
+            adventure_section_ids()
                 .iter()
                 .filter_map(|&id| adventure_phase_spec(id))
                 .count(),
-            14
+            16
         );
     }
 
@@ -340,8 +330,7 @@ mod tests {
         ));
         assert!(AdventurePool::role_legal(dawn, adventure_phase_spec("victory").unwrap()));
 
-        // The composer actually places both sets: across many seeds every new
-        // phase id appears in at least one form.
+        // Across many seeds every new phase id appears in at least one form.
         let mut seen: HashSet<String> = HashSet::new();
         for seed in 0..2000u32 {
             let form = adventure_compose(0x4a11_ce00 ^ seed);
@@ -349,7 +338,16 @@ mod tests {
                 seen.insert(step.section.clone());
             }
         }
-        for id in ["skirmish", "assault", "chase", "festival", "reunion", "dawn"] {
+        for id in [
+            "skirmish",
+            "assault",
+            "chase",
+            "festival",
+            "reunion",
+            "dawn",
+            "explore-strings",
+            "town-strings",
+        ] {
             assert!(seen.contains(id), "composer never chose {id}");
         }
     }
@@ -369,7 +367,7 @@ mod tests {
     #[test]
     fn phase_bars_are_role_aware_and_phrase_aligned() {
         for seed in 0..64u32 {
-            for id in ADVENTURE_SECTION_IDS {
+            for id in adventure_section_ids() {
                 let spec = adventure_phase_spec(id).unwrap();
                 let bars = adventure_phase_bars(&spec, seed);
                 assert_eq!(bars % 16, 0, "{id} bars {bars} not block-aligned");

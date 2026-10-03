@@ -64,8 +64,9 @@ otherwise.
 
 One player, three recipes. Racing is state-driven race loops (`racing`; styles
 neon, funk, fusion, chip). Suspense is a song-form arc for tense sessions
-(`suspense`; terminal, cipher, noir, trance). Adventure is an eight-section
-fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
+(`suspense`; terminal, cipher, noir, trance). Adventure covers eight fantasy
+quest situations with sixteen musical sections (`adventure`; folk, dark,
+orchestral). Set `recipe` before
 `generate`; each score belongs to one recipe.
 
 `arrangement` is `original` (default) or `extended` for Racing, and `all-phases`

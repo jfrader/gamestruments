@@ -4,7 +4,8 @@
 
 ### Added
 
-- Audio Lab: a Folklore listening prototype with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms. Adventure's composition and the Godot recipe API are unchanged.
+- Audio Lab: Folklore with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms.
+- Adventure adds The Winding Trail and Courtyard Dance, guitar-and-bombo alternatives to Explore and Town. The original sections and game-state controls remain available; the variants join All phases and seeded arrangements.
 
 ### Fixed
 
@@ -12,6 +13,7 @@
 - Live music (the Godot player and the Audio Lab) now plays at -14 LUFS, the level streaming services and YouTube use, with true peaks under -1 dBTP. The live master used a fixed +23.5 dB boost, so dense styles hit the limiter with peaks above 0 dBTP while quiet styles played 10 to 18 LU lower. It now measures the music's loudness over the last 30 seconds and moves its gain toward the target: down at up to 6 dB a second and up at up to 1.5 dB a second, so a piece keeps its own soft and loud passages. Measured in the Lab over the first 23 seconds from a cold start: Racing went from -12.1 to -14.1 LUFS, Suspense Terminal from -23.4 to -15.7 and Suspense Trance from -30.0 to -14.4. Very peaky material can sit up to 2 LU under the target instead of being limited harder.
 - The live limiter is a true-peak brickwall with 3 ms of look-ahead and the offline path's 1 dB margin. The old live limiter could let peaks past the ceiling between samples.
 - Rapid changes no longer pile up fades or lose cues. The live player (Godot and the Audio Lab) runs one blend at a time, a section blend or a music blend; anything requested during one waits, keeping only the latest music change and the latest section. A music change and a section that are both waiting become one blend: the new music opens on that section. The bar count carries on through a music change instead of restarting at bar 1, and the form hold carries over. The Lab shows the waiting music and section.
+- Audio Lab tempo readouts no longer expose floating-point tails such as `97.39999999999999` BPM.
 - Song forms can return to an earlier section and then continue to the ending, instead of jumping backward to that section's first appearance.
 
 ## [1.1.1] - 2026-10-01
