@@ -41,10 +41,11 @@ pub const MUSICAL_FLOOR: f32 = 0.15;
 /// probe a section *before* the Godot player's `MasterChain` — the section-cue
 /// hold in [`crate::form_audio::FormAudio`] does exactly that.
 ///
-/// The realtime master path applies a fixed [`crate::master::REALTIME_MAKEUP_DB`]
-/// makeup and only compresses material above its threshold, so below that
-/// threshold the raw level that reaches [`MUSICAL_FLOOR`] once mastered is
-/// `MUSICAL_FLOOR` divided by that makeup (about -40 dBFS). The test below pins
+/// The realtime loudness normalizer starts from, and for typical material
+/// settles near, [`crate::master::NOMINAL_LOUDNESS_GAIN_DB`], and the
+/// compressor only acts above its threshold, so below that threshold the raw
+/// level that reaches [`MUSICAL_FLOOR`] once mastered is `MUSICAL_FLOOR`
+/// divided by that nominal gain (about -40 dBFS). The test below pins
 /// the derivation, so this is the one calibrated constant expressed in the
 /// renderer's domain rather than a second hand-tuned number.
 pub const RAW_MUSICAL_FLOOR: f32 = 0.010;
@@ -383,15 +384,15 @@ mod tests {
     }
 
     #[test]
-    fn raw_musical_floor_is_the_mastered_floor_in_the_pre_makeup_domain() {
+    fn raw_musical_floor_is_the_mastered_floor_before_the_nominal_gain() {
         // The section-cue probe reads pre-master output, so its floor must be
-        // MUSICAL_FLOOR expressed before the realtime makeup gain, not a second
-        // hand-tuned number.
-        let makeup = crate::dmath::db_to_linear(crate::master::REALTIME_MAKEUP_DB);
-        let derived = MUSICAL_FLOOR / makeup;
+        // MUSICAL_FLOOR expressed before the nominal loudness gain, not a
+        // second hand-tuned number.
+        let nominal = crate::dmath::db_to_linear(crate::master::NOMINAL_LOUDNESS_GAIN_DB);
+        let derived = MUSICAL_FLOOR / nominal;
         assert!(
             (RAW_MUSICAL_FLOOR - derived).abs() < 1e-4,
-            "RAW_MUSICAL_FLOOR {RAW_MUSICAL_FLOOR} must equal MUSICAL_FLOOR / makeup ({derived})"
+            "RAW_MUSICAL_FLOOR {RAW_MUSICAL_FLOOR} must equal MUSICAL_FLOOR / nominal gain ({derived})"
         );
     }
 

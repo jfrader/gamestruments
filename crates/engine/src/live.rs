@@ -571,6 +571,64 @@ mod tests {
         assert!(player.status().unwrap().transition.is_none());
     }
 
+    /// Integrated loudness and true peak of `audio` after `settle` seconds.
+    fn loudness_after(audio: &[f32], settle: f32) -> (f32, f32) {
+        let mut meter = crate::master::Meter::new(RATE as u32);
+        meter.process(&audio[(RATE * settle) as usize..]);
+        meter.report()
+    }
+
+    #[test]
+    fn live_music_holds_the_target_loudness_across_recipes() {
+        let racing = crate::generate_racing_arrangement(
+            &crate::GenerateInput {
+                secret: String::new(),
+                seed: "live".into(),
+                style: crate::Style::Funk,
+                palette: crate::InstrumentPalette::default(),
+                energy: 0.58,
+                complexity: 0.75,
+                brightness: 0.55,
+                syncopation: 0.9,
+            },
+            crate::RacingArrangement::Seeded,
+        )
+        .unwrap();
+        let quiet_suspense = |style| {
+            generate_suspense_arrangement(
+                &SuspenseInput {
+                    secret: "live".into(),
+                    seed: "loudness".into(),
+                    style,
+                    tension: 0.2,
+                    heat: 0.2,
+                    mystery: 0.8,
+                    pulse: 0.2,
+                },
+                SuspenseArrangement::Seeded,
+            )
+            .unwrap()
+        };
+        let scores = [
+            ("racing", racing),
+            ("suspense", quiet_suspense(SuspenseStyle::Terminal)),
+            ("suspense", quiet_suspense(SuspenseStyle::Trance)),
+        ];
+        for (recipe, score) in scores {
+            let mut player = LivePlayer::new(RATE);
+            player.load(score, "loudness", recipe, 0, None).unwrap();
+            let (lufs, true_peak) = loudness_after(&play(&mut player, 60.0), 20.0);
+            assert!(
+                (-2.0..=1.0).contains(&(lufs - crate::master::DEFAULT_TARGET_LUFS)),
+                "{recipe} plays at {lufs:.1} LUFS"
+            );
+            assert!(
+                true_peak <= crate::master::DEFAULT_CEILING_DBTP + 0.1,
+                "{recipe} peaks at {true_peak:.1} dBTP"
+            );
+        }
+    }
+
     #[test]
     fn rejects_an_unknown_opening_section() {
         let mut player = LivePlayer::new(RATE);

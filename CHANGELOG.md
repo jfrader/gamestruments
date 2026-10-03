@@ -5,6 +5,8 @@
 ### Fixed
 
 - Quitting a game while the music plays no longer prints Godot's `ObjectDB instance was leaked at exit` warning. The addon now waits for the audio mix that releases its playback while the scene tree is torn down, so games need no special quit sequence ([godot#76745](https://github.com/godotengine/godot/issues/76745)).
+- Live music (the Godot player and the Audio Lab) now plays at -14 LUFS, the level streaming services and YouTube use, with true peaks under -1 dBTP. The live master used a fixed +23.5 dB boost, so dense styles hit the limiter with peaks above 0 dBTP while quiet styles played 10 to 18 LU lower. It now measures the music's loudness over the last 30 seconds and moves its gain toward the target: down at up to 6 dB a second and up at up to 1.5 dB a second, so a piece keeps its own soft and loud passages. Measured in the Lab over the first 23 seconds from a cold start: Racing went from -12.1 to -14.1 LUFS, Suspense Terminal from -23.4 to -15.7 and Suspense Trance from -30.0 to -14.4. Very peaky material can sit up to 2 LU under the target instead of being limited harder.
+- The live limiter is a true-peak brickwall with 3 ms of look-ahead and the offline path's 1 dB margin. The old live limiter could let peaks past the ceiling between samples.
 
 ## [1.1.1] - 2026-10-01
 
