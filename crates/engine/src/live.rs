@@ -721,10 +721,37 @@ mod tests {
             )
             .unwrap()
         };
+        let folklore = crate::generate_folklore(
+            &crate::FolkloreInput {
+                secret: "live".into(),
+                seed: "loudness".into(),
+                energy: 0.58,
+                complexity: 0.75,
+                brightness: 0.55,
+                syncopation: 0.9,
+            },
+            "seeded",
+        )
+        .unwrap();
+        let adventure = crate::generate_adventure_arrangement(
+            &crate::AdventureInput {
+                secret: "live".into(),
+                seed: "loudness".into(),
+                style: crate::AdventureStyle::Folk,
+                wonder: 0.5,
+                danger: 0.5,
+                mystery: 0.5,
+                motion: 0.5,
+            },
+            crate::AdventureArrangement::AllPhases,
+        )
+        .unwrap();
         let scores = [
             ("racing", racing),
             ("suspense", quiet_suspense(SuspenseStyle::Terminal)),
             ("suspense", quiet_suspense(SuspenseStyle::Trance)),
+            ("folklore", folklore),
+            ("adventure", adventure),
         ];
         for (recipe, score) in scores {
             let mut player = LivePlayer::new(RATE);
@@ -739,6 +766,7 @@ mod tests {
                 "{recipe} peaks at {true_peak:.1} dBTP"
             );
         }
+    }
     /// Render one buffer at a time until `done` holds, at most `seconds`.
     fn play_until(
         player: &mut LivePlayer,
