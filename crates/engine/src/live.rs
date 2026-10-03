@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::adventure::select_adventure_section;
 use crate::handoff::{crossfade_gains, crossfade_sample_count, Handoff};
-use crate::master::{MasterChain, MasterConfig};
+use crate::master::{Limiter, MasterChain, MasterConfig, DEFAULT_CEILING_DBTP};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
 use crate::suspense::select_trace_section;
 use crate::synth::{events_starting_at, sample_at_tick, tick_at_sample, Solo, Synth};
@@ -229,12 +229,16 @@ pub struct LivePlayer {
     outgoing: Option<Voice>,
     /// Crossfade progress between the outgoing and the active voice.
     handoff: Handoff,
+    /// Final ceiling for the actual output, including the sum during a handoff.
+    mix_limiter: Limiter,
     /// The latest music change, waiting for the running blend and the bar.
     pending_music: Option<PendingMusic>,
     /// The latest section request, held while music waits or blends. With no
     /// music in the way, section requests go straight to the transport, which
     /// keeps its own latest one behind a running section blend.
     pending_section: Option<SectionRequest>,
+    /// User's form hold while both transports are paused for a music handoff.
+    handoff_form_held: Option<bool>,
     /// Which voices every score lets through.
     solo: Solo,
 }
@@ -246,8 +250,10 @@ impl LivePlayer {
             active: None,
             outgoing: None,
             handoff: Handoff::idle(),
+            mix_limiter: Limiter::new(sample_rate as u32, DEFAULT_CEILING_DBTP),
             pending_music: None,
             pending_section: None,
+            handoff_form_held: None,
             solo: Solo::Full,
         }
     }
@@ -347,6 +353,7 @@ impl LivePlayer {
             out.copy_from_slice(&active.scratch);
             active.frames_produced = active.frames_produced.saturating_add(frames as u64);
             active.master.process(out);
+            self.mix_limiter.process(out);
             return;
         };
 
@@ -368,15 +375,17 @@ impl LivePlayer {
         active.frames_produced = active.frames_produced.saturating_add(frames as u64);
         self.handoff.advance(frames as u64);
 
-        // Each voice was ceiling'd by its own chain, but the crossfade gains
-        // need not sum to exactly 1.0: clamp the mix to the master ceiling.
-        let ceiling = active.master.ceiling_linear();
-        for sample in out.iter_mut() {
-            *sample = sample.clamp(-ceiling, ceiling);
-        }
+        // Even ceiling'd voices can sum above the true-peak limit during the
+        // handoff; process every buffer so the final limiter stays continuous.
+        self.mix_limiter.process(out);
         if self.handoff.finished() {
             self.outgoing = None;
             self.handoff.reset();
+            if let (Some(held), Some(active)) =
+                (self.handoff_form_held.take(), self.active.as_mut())
+            {
+                active.transport.set_form_held(held, active.tick);
+            }
             self.release_pending_section();
         }
     }
@@ -422,12 +431,12 @@ impl LivePlayer {
             return;
         };
         voice.set_solo(&self.solo);
-        if held {
-            voice.transport.set_form_held(true, start_tick);
-        }
+        voice.transport.set_form_held(true, start_tick);
         let mut outgoing = self.active.replace(voice).expect("a playing voice");
         // Nothing the old music had planned starts now.
         outgoing.transport.cancel_pending(outgoing.tick);
+        outgoing.transport.set_form_held(true, outgoing.tick);
+        self.handoff_form_held = Some(held);
         self.handoff.begin(crossfade_sample_count(
             &outgoing.score,
             self.sample_rate as u32,
@@ -509,7 +518,11 @@ impl LivePlayer {
         if !active.transport.has_form() {
             return false;
         }
-        active.transport.set_form_held(held, active.tick);
+        if let Some(requested) = self.handoff_form_held.as_mut() {
+            *requested = held;
+        } else {
+            active.transport.set_form_held(held, active.tick);
+        }
         true
     }
 
@@ -530,6 +543,9 @@ impl LivePlayer {
     }
 
     pub fn is_form_held(&self) -> bool {
+        if let Some(held) = self.handoff_form_held {
+            return held;
+        }
         self.active
             .as_ref()
             .is_some_and(|voice| voice.transport.is_form_held())
@@ -574,7 +590,7 @@ impl LivePlayer {
                 .as_ref()
                 .map(|music| music.score.id.clone()),
             transition: transport.transition(),
-            form_held: transport.is_form_held(),
+            form_held: self.is_form_held(),
             next_form_section: transport.next_form_section(voice.tick),
             mix: transport
                 .playback_at(voice.tick)
@@ -593,6 +609,7 @@ impl LivePlayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::score::{MusicEvent, PortableSection, SongForm, SongFormStep, SCORE_SCHEMA_VERSION};
     use crate::{generate_suspense_arrangement, SuspenseArrangement, SuspenseInput, SuspenseStyle};
 
     const RATE: f32 = 48000.0;
@@ -619,6 +636,186 @@ mod tests {
             player.fill(chunk);
         }
         out
+    }
+
+    fn short_form(seed: &str) -> PortableScore {
+        let section = |id: &str| PortableSection {
+            id: id.into(),
+            label: id.into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 960,
+            events: (0..960)
+                .step_by(240)
+                .map(|tick| MusicEvent::Note {
+                    id: format!("{id}-{tick}"),
+                    section: id.into(),
+                    lane: "melody".into(),
+                    start_tick: tick,
+                    duration_ticks: 240,
+                    velocity: 0.8,
+                    pitch: 60,
+                    voice: "chip".into(),
+                    role: Some("melody".into()),
+                })
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: seed.into(),
+            title: seed.into(),
+            bpm: 240.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![section("a"), section("b")],
+            rules: vec![],
+            form: Some(SongForm {
+                steps: vec![
+                    SongFormStep {
+                        section: "a".into(),
+                        repeats: 1,
+                    },
+                    SongFormStep {
+                        section: "b".into(),
+                        repeats: 1,
+                    },
+                ],
+                loop_from: Some(0),
+                origin: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn automatic_form_join_does_not_overlap_a_music_handoff() {
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(short_form("a"), "a", "suspense", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(short_form("b"), "b", "suspense", 0, None)
+            .unwrap();
+
+        let mut saw_handoff = false;
+        let mut resumed_form = false;
+        for _ in 0..120 {
+            let mut buffer = [0.0; 256];
+            player.fill(&mut buffer);
+            if let Some(outgoing) = &player.outgoing {
+                saw_handoff = true;
+                assert!(
+                    !outgoing.transport.is_blending(outgoing.tick),
+                    "outgoing form joined during music handoff"
+                );
+                let active = player.active.as_ref().unwrap();
+                assert!(
+                    !active.transport.is_blending(active.tick),
+                    "incoming form joined during music handoff"
+                );
+            } else if saw_handoff {
+                let active = player.active.as_ref().unwrap();
+                resumed_form |= active.transport.is_blending(active.tick);
+            }
+        }
+        assert!(saw_handoff);
+        assert!(player.is_playing_seed("b"));
+        assert!(
+            resumed_form,
+            "automatic form resumes after the music handoff"
+        );
+    }
+
+    #[test]
+    fn form_hold_requested_during_a_music_handoff_survives_it() {
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(short_form("a"), "a", "suspense", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(short_form("b"), "b", "suspense", 0, None)
+            .unwrap();
+        let mut buffer = [0.0; 256];
+        for _ in 0..40 {
+            if music_blending(&player) {
+                break;
+            }
+            player.fill(&mut buffer);
+        }
+        assert!(music_blending(&player));
+        assert!(player.set_form_held(true));
+        assert!(player.is_form_held());
+        for _ in 0..120 {
+            player.fill(&mut buffer);
+        }
+        assert!(!music_blending(&player));
+        assert!(player.status().unwrap().form_held);
+        assert_eq!(player.current_section(), Some("a"));
+        assert!(player.set_form_held(false));
+        assert!(!player.is_form_held());
+        let mut resumed = false;
+        for _ in 0..120 {
+            player.fill(&mut buffer);
+            resumed |= section_blending(&player);
+        }
+        assert!(resumed);
+    }
+
+    #[test]
+    fn mixed_music_handoff_respects_the_true_peak_ceiling() {
+        let mut outgoing = short_form("outgoing");
+        outgoing.form = None;
+        outgoing.crossfade_bars = 2.0;
+        let mut incoming = short_form("incoming");
+        incoming.form = None;
+        incoming.bpm = 189.0;
+        for score in [&mut outgoing, &mut incoming] {
+            for section in &mut score.sections {
+                let extra: Vec<_> = section
+                    .events
+                    .iter()
+                    .cloned()
+                    .enumerate()
+                    .map(|(i, mut event)| {
+                        if let MusicEvent::Note { id, pitch, .. } = &mut event {
+                            *id = format!("{id}-harmony-{i}");
+                            *pitch += 7;
+                        }
+                        event
+                    })
+                    .collect();
+                section.events.extend(extra);
+            }
+        }
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(outgoing, "outgoing", "racing", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(incoming, "incoming", "folklore", 5, Some("b"))
+            .unwrap();
+        let mut samples = Vec::new();
+        let mut saw_handoff = false;
+        for _ in 0..180 {
+            let mut chunk = [0.0; 256];
+            player.fill(&mut chunk);
+            saw_handoff |= player.outgoing.is_some();
+            samples.extend_from_slice(&chunk);
+        }
+        assert!(saw_handoff);
+        let peak = crate::master::true_peak_envelope_4x(&samples)
+            .into_iter()
+            .fold(0.0f32, f32::max);
+        let ceiling = 10.0f32.powf(crate::master::DEFAULT_CEILING_DBTP / 20.0);
+        assert!(
+            peak <= ceiling,
+            "mixed handoff reached {} dBTP",
+            20.0 * peak.log10()
+        );
     }
 
     #[test]

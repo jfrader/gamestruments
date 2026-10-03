@@ -983,13 +983,6 @@ impl MasterChain {
         }
     }
 
-    /// Linear amplitude of this chain's raw-sample output ceiling (the clamp
-    /// bound applied after limiting). Exposed for the crossfade mixer, which
-    /// sums two already-mastered voice buffers and must still bound the mix.
-    pub fn ceiling_linear(&self) -> f32 {
-        dmath::db_to_linear(self.config.ceiling_dbtp)
-    }
-
     /// REALTIME causal path (Godot, live WASM etc.). Metering is skipped because
     /// live callers do not request a report. Use [`Self::process_metered`] when a
     /// realtime report is required.
