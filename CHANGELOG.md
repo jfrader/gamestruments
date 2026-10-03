@@ -2,10 +2,16 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-03
+
 ### Added
 
 - Audio Lab: Folklore with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms.
 - Adventure adds The Winding Trail and Courtyard Dance, guitar-and-bombo alternatives to Explore and Town. The original sections and game-state controls remain available; the variants join All phases and seeded arrangements.
+
+### Changed
+
+- Adventure's generator version is now `5.1.0`. Its section pool grows from fourteen to sixteen, so seeded arrangements can change for an existing seed. The original fourteen sections' material, timing, and eight game-state situations are unchanged.
 
 ### Fixed
 
