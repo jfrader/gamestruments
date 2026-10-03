@@ -169,7 +169,7 @@ const ADVENTURE: LabRecipeProfile = {
 const FOLKLORE: LabRecipeProfile = {
   id: "folklore",
   label: "Folklore",
-  description: "Chacarera · listening prototype",
+  description: "Guitar and bombo chacarera",
   presets: [
     {
       style: "chacarera",

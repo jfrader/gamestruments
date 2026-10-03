@@ -5,11 +5,12 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   `adventure`, and score). WASM `gamestruments_score_json` accepts
   `"recipe": "racing" | "suspense" | "adventure"` (default racing).
 - Adventure accepts styles `folk`, `dark`, and `orchestral` and generates
-  fourteen sections: the eight selected from area phase plus discovery, threat,
+  sixteen sections: the eight selected from area phase plus discovery, threat,
   and quest progress (`camp`, `explore`, `town`, `dungeon`, `combat`, `boss`,
   `sanctuary`, `victory`), plus a combat set (`skirmish`, `assault`, `chase`)
-  and a happiness set (`festival`, `reunion`, `dawn`) that join the seeded
-  composer's pool. `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`,
+  and a happiness set (`festival`, `reunion`, `dawn`), plus guitar-and-bombo
+  alternatives (`explore-strings`, `town-strings`) in the seeded composer's pool.
+  These additions are cue targets, not new area phases. `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`,
   `assault`, and `dawn` are 16 bars; the rest are 32.
   `crates/engine/src/adventure.rs` owns the plans, rules, and
   `select_adventure_section`; the Rust `AdaptiveTransport` exposes

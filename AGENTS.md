@@ -20,7 +20,7 @@
   and `crates/godot` (GDExtension). Games generate at level load from a
   project secret, instrument palette, and seed. Do not pre-bake every
   procedural race to WAV. Recipes: Racing (racing loops), Suspense (song-form;
-  Arkhos), and Adventure (an eight-section fantasy quest arc).
+  Arkhos), and Adventure (eight quest situations with musical variants).
 - `@gamestruments/runtime` is the TypeScript MIT runtime (score types, validation,
   transport). The lab plays the engine's own live player (`LivePlayer`) through
   the WASM build, so it sounds like the Godot kit.

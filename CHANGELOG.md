@@ -4,10 +4,12 @@
 
 ### Added
 
-- Audio Lab: a Folklore listening prototype with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms. Adventure's composition and the Godot recipe API are unchanged.
+- Audio Lab: Folklore with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms.
+- Adventure adds The Winding Trail and Courtyard Dance, guitar-and-bombo alternatives to Explore and Town. The original sections and game-state controls remain available; the variants join All phases and seeded arrangements.
 
 ### Fixed
 
+- Audio Lab tempo readouts no longer expose floating-point tails such as `97.39999999999999` BPM.
 - Song forms can return to an earlier section and then continue to the ending, instead of jumping backward to that section's first appearance.
 
 ## [1.1.1] - 2026-10-01

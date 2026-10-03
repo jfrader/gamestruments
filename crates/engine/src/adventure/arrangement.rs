@@ -1,4 +1,4 @@
-//! The Adventure arrangement selector: the default eight-section output, the
+//! The Adventure arrangement selector: the default state-driven output, the
 //! all-phases tour, and the seeded path that adds the shared development arc,
 //! seam gestures with shared tonic pitch class, trait bias, and register
 //! ceiling.
@@ -16,7 +16,7 @@ use crate::theory::{mode_intervals, scale_pitch};
 use super::composition::{AdventurePhaseRole, mode_for, Scene, SECTION_PLANS};
 use super::pool::{
     adventure_compose, adventure_compose_seed, adventure_phase_bars, adventure_phase_spec,
-    ADVENTURE_SECTION_IDS,
+    adventure_section_ids,
 };
 use super::{adventure_tonic_pitch_class, generate_adventure, AdventureInput, AdventureStyle};
 
@@ -30,7 +30,7 @@ pub enum AdventureArrangement {
 
 impl AdventureArrangement {
     /// `""`/`"original"` is the legacy default and stays byte-identical.
-    /// `"all-phases"` is the full eight-section quest arc in canonical order;
+    /// `"all-phases"` is the full section pool in canonical order;
     /// `"seeded"` is the seeded composer (today's seeded path), with
     /// `"composed"` kept as an alias.
     pub fn parse(value: &str) -> Result<Self, String> {
@@ -62,7 +62,7 @@ pub fn generate_adventure_arrangement(
     }
 }
 
-/// Compose an Adventure song form over the eight-section pool, mirroring
+/// Compose an Adventure song form over the shared section pool, mirroring
 /// Racing's pool + composer. Role/energy metadata feeds the seeded composer;
 /// the seeded surface then applies: development arc (layers enter/leave over
 /// blocks, pedal continuous), seam gestures (deterministic per seed/pair with
@@ -114,7 +114,7 @@ fn generate_seeded(input: &AdventureInput) -> Result<PortableScore, String> {
     Ok(score)
 }
 
-/// The complete quest arc: every one of the eight sections once, in canonical
+/// The complete quest arc: every section once, in canonical
 /// order, looping back to the first groove (explore). The sections are the
 /// default Adventure output unchanged; only the attached form and the id/title
 /// suffix differ.
@@ -129,10 +129,10 @@ fn generate_all_phases(input: &AdventureInput) -> Result<PortableScore, String> 
 
 /// The canonical all-phases tour over the Adventure pool.
 fn adventure_all_phases_form() -> SongForm {
-    let steps = ADVENTURE_SECTION_IDS
-        .iter()
+    let steps = adventure_section_ids()
+        .into_iter()
         .map(|id| SongFormStep {
-            section: (*id).to_string(),
+            section: id.to_string(),
             repeats: 1,
         })
         .collect();
@@ -775,7 +775,7 @@ mod tests {
         let input = sample("composed-shape", AdventureStyle::Folk);
         let score =
             generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("seeded");
-        assert_eq!(score.sections.len(), 14);
+        assert_eq!(score.sections.len(), 16);
         let form = score.form.as_ref().expect("seeded must carry a form");
         assert!(!form.steps.is_empty());
         for step in &form.steps {
@@ -815,22 +815,7 @@ mod tests {
         let score =
             generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("seeded");
         let bar = score.bar_ticks();
-        for id in [
-            "camp",
-            "explore",
-            "town",
-            "dungeon",
-            "combat",
-            "boss",
-            "sanctuary",
-            "victory",
-            "skirmish",
-            "assault",
-            "chase",
-            "festival",
-            "reunion",
-            "dawn",
-        ] {
+        for id in adventure_section_ids() {
             let sec = score.section(id).expect(id);
             let bars = sec.length_ticks / bar;
             assert_eq!(bars % 16, 0, "{id} length not block-aligned");
@@ -839,7 +824,14 @@ mod tests {
                     assert_eq!(bars, 16, "{id} should stay at 16");
                 }
                 "victory" => assert_eq!(bars, 32, "{id} should stay at its authored 32"),
-                "explore" | "town" | "combat" | "chase" | "festival" | "reunion" => {
+                "explore"
+                | "explore-strings"
+                | "town"
+                | "town-strings"
+                | "combat"
+                | "chase"
+                | "festival"
+                | "reunion" => {
                     assert!((32..=48).contains(&bars), "{id} bars {bars}");
                 }
                 "dungeon" | "boss" | "skirmish" | "assault" => {
@@ -1124,15 +1116,16 @@ mod tests {
             let input = sample("all-phases-shape", style);
             let score =
                 generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all-phases");
-            assert_eq!(score.sections.len(), 14);
+            assert_eq!(score.sections.len(), 16);
+            let ids: Vec<&str> = adventure_section_ids();
             assert_eq!(
                 score.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
-                ADVENTURE_SECTION_IDS.to_vec()
+                ids
             );
             let form = score.form.as_ref().expect("all-phases must carry a form");
             assert_eq!(
                 form.steps.iter().map(|step| step.section.as_str()).collect::<Vec<_>>(),
-                ADVENTURE_SECTION_IDS.to_vec()
+                ids
             );
             assert_eq!(form.loop_from, Some(1));
             assert_eq!(form.steps[1].section, "explore");
@@ -1152,7 +1145,7 @@ mod tests {
             let input = sample("all-phases-iso", style);
             let all = generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all");
             let original = generate_adventure(&input).expect("orig");
-            for id in ADVENTURE_SECTION_IDS {
+            for id in adventure_section_ids() {
                 let as_ = all.section(id).expect(id);
                 let os = original.section(id).expect(id);
                 assert_eq!(
