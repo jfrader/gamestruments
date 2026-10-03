@@ -56,12 +56,11 @@ if (isEditor) {
 
 const isDocs = args.includes("res://docs_smoke.gd");
 if (isDocs) {
-  // Prove the harness staged all four extracted snippets, not just one.
+  // Prove the harness staged all three extracted snippets, not just one.
   const snippets = [
     "snippets/readme_racing.gd",
     "snippets/quickstart_racing.gd",
     "snippets/quickstart_suspense.gd",
-    "snippets/limitations_quit.gd",
   ];
   for (const snippet of snippets) {
     const full = path.join(cwd, snippet);
@@ -162,7 +161,7 @@ async function createFixture(
   );
 
   // Shipped buyer docs: kit/README.md (one fence), kit/docs/quickstart.md (two)
-  // and kit/docs/limitations.md (one).
+  // and kit/docs/limitations.md (none).
   await mkdir(path.join(projectRoot, "kit"), { recursive: true });
   await mkdir(path.join(projectRoot, "kit", "docs"), { recursive: true });
   await writeFile(
@@ -175,7 +174,7 @@ async function createFixture(
   );
   await writeFile(
     path.join(projectRoot, "kit", "docs", "limitations.md"),
-    markdownWithFences(options.limitationsFences ?? 1),
+    markdownWithFences(options.limitationsFences ?? 0),
   );
 
   const stub = path.join(root, "fake-godot.mjs");
@@ -363,7 +362,7 @@ describe.skipIf(process.platform === "win32")("godot package smoke harness", () 
   });
 
   it("rejects malformed limitations with the wrong fence count", async () => {
-    const malformed = await createFixture({ limitationsFences: 0 });
+    const malformed = await createFixture({ limitationsFences: 1 });
     try {
       const { root, projectRoot, stub, library, screenshots } = malformed;
       const logPath = path.join(root, "logs", `malformed-${randomUUID()}.log`);
@@ -375,7 +374,7 @@ describe.skipIf(process.platform === "win32")("godot package smoke harness", () 
       );
       const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
       expect(result.status).not.toBe(0);
-      expect(output).toContain("kit/docs/limitations.md must contain exactly one gdscript fence");
+      expect(output).toContain("kit/docs/limitations.md must not contain gdscript fences");
     } finally {
       await rm(malformed.root, { recursive: true, force: true });
     }

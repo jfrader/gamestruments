@@ -82,7 +82,7 @@ Generation validates every score before playback. Failure returns `false` and em
 - State changes commit on bar boundaries and new sections begin at phrase bar zero.
 - No generated event may be outside its section or use an invalid note, chord, drum, voice, gain, velocity, or pitch.
 - Audio is synthesized in-process and requires no runtime asset loading.
-- The addon stops its Godot playback when removed from the scene tree. Godot frees that playback on its next audio mix, so a player still playing at quit needs the wait in `kit/docs/limitations.md` to exit without a leak warning.
+- The addon releases its Godot playback while the scene tree is torn down, so exiting normally with music playing does not print an `ObjectDB instance was leaked at exit` warning. Godot 4.7 releases a stopped playback only on its next audio mix (godot#76745); the addon waits for that mix during teardown.
 
 Exact bytes are not promised across generator versions. Internal Rust modules, child node names, serialized score shape, and browser Audio Lab sound are not public API.
 

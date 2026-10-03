@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Quitting a game while the music plays no longer prints Godot's `ObjectDB instance was leaked at exit` warning. The addon now waits for the audio mix that releases its playback while the scene tree is torn down, so games need no special quit sequence ([godot#76745](https://github.com/godotengine/godot/issues/76745)).
+
 ## [1.1.1] - 2026-10-01
 
 ### Changed

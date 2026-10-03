@@ -11,7 +11,7 @@ extends SceneTree
 ##
 ## The fresh project has no "Music" audio bus, so this also proves the player
 ## falls back to Master. Each snippet is freed after its probes, and the run
-## quits through the limitations.md quit recipe with music still playing.
+## quits plainly with music still playing, so a leak warning at exit fails the smoke.
 
 var failures: Array[String] = []
 
@@ -54,23 +54,22 @@ func _run() -> void:
 		quit(1)
 		return
 	print("DOCS_SMOKE_PASS")
-	await _quit_through_snippet("res://snippets/limitations_quit.gd")
+	await _quit_with_music_playing()
 
 
-## limitations.md ships the quit recipe for music still playing at quit. The
-## run exits through it, so a leak warning at exit fails the smoke.
-func _quit_through_snippet(path: String) -> void:
+## The addon must release its playback while the scene tree is torn down, so the
+## run quits plainly with music still playing; a leak warning at exit fails the smoke.
+func _quit_with_music_playing() -> void:
 	var holder := Node.new()
 	var player: Node = ClassDB.instantiate("GamestrumentsPlayer")
 	player.name = "GamestrumentsPlayer"
 	player.set("project_secret", "docs-smoke")
 	holder.add_child(player)
-	holder.set_script(load(path))
 	root.add_child(holder)
 	player.call("generate", "quit")
 	for _f in range(SETTLE_FRAMES):
 		await process_frame
-	holder.call("quit_game")
+	quit(0)
 
 
 func _run_snippet(path: String, initial: String, probes: Array) -> void:
