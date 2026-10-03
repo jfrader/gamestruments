@@ -7,8 +7,8 @@ declare class AudioWorkletProcessor {
 }
 declare function registerProcessor(name: string, processor: new () => AudioWorkletProcessor): void;
 
-/** Plays the mono blocks the main thread posts, in order, on every output
- *  channel; silence while the queue is empty. */
+/** Plays the mono blocks the main thread posts, in order, across the output
+ *  channels at equal power; silence while the queue is empty. */
 class PcmQueueProcessor extends AudioWorkletProcessor {
   readonly #queue: Float32Array[] = [];
   #offset = 0;
@@ -25,13 +25,18 @@ class PcmQueueProcessor extends AudioWorkletProcessor {
   process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
     const output = outputs[0] ?? [];
     const frames = output[0]?.length ?? 0;
+    const channelGain = output.length > 0 ? 1 / Math.sqrt(output.length) : 0;
     let written = 0;
     while (written < frames) {
       const block = this.#queue[0];
       if (block === undefined) break;
       const count = Math.min(frames - written, block.length - this.#offset);
       const samples = block.subarray(this.#offset, this.#offset + count);
-      for (const channel of output) channel.set(samples, written);
+      for (const channel of output) {
+        for (let frame = 0; frame < count; frame++) {
+          channel[written + frame] = samples[frame]! * channelGain;
+        }
+      }
       written += count;
       this.#offset += count;
       if (this.#offset === block.length) {
