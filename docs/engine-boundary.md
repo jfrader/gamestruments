@@ -2,8 +2,10 @@
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
 - Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
-  `adventure`, and score). WASM `gamestruments_score_json` accepts
-  `"recipe": "racing" | "suspense" | "adventure"` (default racing).
+  `adventure`, `folklore`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "racing" | "suspense" | "adventure" | "folklore"` (default racing).
+  Folklore is a standalone guitar-and-bombo chacarera with six sections and a
+  repeating song form. It is available in the Lab/WASM, not the Godot recipe selector.
 - Adventure accepts styles `folk`, `dark`, and `orchestral` and generates
   sixteen sections: the eight selected from area phase plus discovery, threat,
   and quest progress (`camp`, `explore`, `town`, `dungeon`, `combat`, `boss`,
@@ -121,8 +123,12 @@ such section.
 
 Audio synthesis / sound stage:
 - The Rust `Synth` (mono, no room) renders the game and the Lab.
-  It mirrors the acoustic voices (harp/recorder/vielle/bell plus
-  frame-drum/tambourine) as acoustic-inspired synthesis, not sample recordings.
+- `LivePlayer` limits the final mixed output as well as each voice, including
+  music handoffs. The Godot adapter and Lab worklet split its mono output across
+  stereo channels at equal power, preserving its loudness rather than doubling
+  the channel energy.
+  Acoustic voices (harp/recorder/vielle/bell/nylon-guitar plus
+  frame-drum/tambourine/bombo/bombo-rim) are synthesized, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo
   controls and crossfades also control the effect.

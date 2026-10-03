@@ -69,11 +69,12 @@ quest situations with sixteen musical sections (`adventure`; folk, dark,
 orchestral). Set `recipe` before
 `generate`; each score belongs to one recipe.
 
-`arrangement` is `original` (default) or `extended` for Racing, and `all-phases`
-or `seeded` (default) for Suspense; Adventure ignores it. `autoplay` is
-Racing/Adventure only, defaults to `false` (state-driven), and when `true`
-tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
-`extended`; the native examples use the state-driven defaults.
+Racing offers `original` (native default), `extended`, `all-phases`, and
+`seeded` arrangements. Suspense offers `all-phases` and `seeded` (default);
+Adventure ignores `arrangement` in Godot. `autoplay` defaults to `false` and
+adds a section tour to Original/Extended Racing or Adventure when enabled.
+Suspense and composed Racing already have a form. The Audio Lab defaults to
+Seeded; the native Racing game-signals example uses state-driven Original.
 
 ## Examples
 

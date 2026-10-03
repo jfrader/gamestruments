@@ -1614,6 +1614,32 @@ mod tests {
         timings[1]
     }
 
+    fn benchmark_live_player(score: &PortableScore, seconds: usize, handoff: bool) -> Duration {
+        const SAMPLE_RATE: usize = 48_000;
+        const BUFFER_FRAMES: usize = 256;
+        let mut player = crate::LivePlayer::new(SAMPLE_RATE as f32);
+        player
+            .load(score.clone(), "benchmark", "racing", 0, Some("grid"))
+            .expect("benchmark score must load");
+        let total_frames = seconds * SAMPLE_RATE;
+        let handoff_frame = total_frames / 2 / BUFFER_FRAMES * BUFFER_FRAMES;
+        let mut buffer = [0.0; BUFFER_FRAMES];
+        let mut checksum = 0.0;
+        let started = Instant::now();
+        for frame in (0..total_frames).step_by(BUFFER_FRAMES) {
+            if handoff && frame == handoff_frame {
+                player
+                    .load(score.clone(), "benchmark-next", "racing", 0, Some("cruise"))
+                    .expect("benchmark replacement must load");
+            }
+            let frames = (total_frames - frame).min(BUFFER_FRAMES);
+            player.fill(&mut buffer[..frames]);
+            checksum += buffer[frames - 1];
+        }
+        std::hint::black_box(checksum);
+        started.elapsed()
+    }
+
     #[test]
     #[ignore = "release-only timing benchmark; run explicitly with --ignored --nocapture"]
     #[allow(clippy::assertions_on_constants)]
@@ -1623,6 +1649,7 @@ mod tests {
             "run this timing benchmark with cargo test --release"
         );
         const AUDIO_SECONDS: usize = 12;
+        const MAX_CPU_MS_PER_AUDIO_SECOND: f64 = 40.0;
         let score: PortableScore = serde_json::from_str(include_str!(
             "../../../catalog/racing/tiny-torque-level-004/score.json"
         ))
@@ -1656,10 +1683,23 @@ mod tests {
                 // Re-measure with: cargo test -p gamestruments-engine --release realtime_render_benchmark -- --ignored --nocapture --test-threads=1
                 // Update this ceiling (and comment) only after confirming a legitimate sustained change.
                 assert!(
-                    milliseconds_per_audio_second < 40.0,
-                    "production master render cost {milliseconds_per_audio_second:.3} ms/s exceeded ceiling 40.0; re-measure and adjust if needed"
+                    milliseconds_per_audio_second < MAX_CPU_MS_PER_AUDIO_SECOND,
+                    "production master render cost {milliseconds_per_audio_second:.3} ms/s exceeded ceiling {MAX_CPU_MS_PER_AUDIO_SECOND}; re-measure and adjust if needed"
                 );
             }
+        }
+        for (label, handoff) in [("live player", false), ("live player with music handoff", true)] {
+            let mut timings = (0..3)
+                .map(|_| benchmark_live_player(&score, AUDIO_SECONDS, handoff))
+                .collect::<Vec<_>>();
+            timings.sort_unstable();
+            let milliseconds_per_audio_second =
+                timings[1].as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
+            println!("{label}: {milliseconds_per_audio_second:.3} ms CPU / s audio");
+            assert!(
+                milliseconds_per_audio_second < MAX_CPU_MS_PER_AUDIO_SECOND,
+                "{label} render cost {milliseconds_per_audio_second:.3} ms/s exceeded ceiling {MAX_CPU_MS_PER_AUDIO_SECOND}"
+            );
         }
     }
 

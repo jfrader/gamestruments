@@ -18,13 +18,13 @@ Set these before calling `generate`. Later changes apply to the next generation 
 
 - `project_secret: String` — required non-empty per-title namespace. It separates otherwise identical seeds between games, but it is embedded in the game and is not a security credential.
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`.
-- `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (its native default) and `extended` (ten-section race). Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
-- `autoplay: bool` — Racing and Adventure only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, generation is state-driven. The Audio Lab uses `true` for Racing/Adventure. Ignored by Suspense.
+- `arrangement: String` — Racing and Suspense accept `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed). Racing additionally accepts `original` (its native default) and `extended` (ten-section race). Suspense defaults to `seeded`; its retired names (`original`/`extended`/`theme`) also resolve to `seeded`. Adventure ignores this property in Godot; the Lab's Adventure arrangement selector does not change the native API.
+- `autoplay: bool` — Original/Extended Racing and Adventure only (default `false`). When `true`, attaches a song form that tours the recipe's sections automatically; when `false`, those arrangements are state-driven. Suspense and composed Racing (`all-phases`/`seeded`) already have a form and ignore this flag.
 - `style: String` — per recipe:
   - Racing: `fusion`, `neon`, `funk`, or `chip`; unset (or default init) is `funk`. Explicit empty string for Racing fails generation.
-  - Suspense: `terminal`, `cipher`, or `noir`; empty defaults to `terminal`.
+  - Suspense: `terminal`, `cipher`, `noir`, or `trance`; empty defaults to `terminal`.
   - Adventure: `folk`, `dark`, or `orchestral`; empty defaults to `folk`.
-- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices (16): `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`. Racing voice overrides use them; Adventure uses its own acoustic timbres internally (synthesized, not samples); Suspense ignores the voice properties and uses per-style timbres.
+- `melody_voice: String`, `harmony_voice: String`, `drive_voice: String`, `bass_voice: String` — Racing only. Empty uses the selected style's default. Supported note voices: `warm`, `glass`, `pulse`, `bass`, `pluck`, `chip`, `epiano`, `organ`, `supersaw`, `triangle`, `felt`, `dusk`, `harp`, `recorder`, `vielle`, `bell`, `saw-bass`, `trance-pad`, `trance-lead`, `nylon-guitar`. Adventure and Suspense ignore these properties and use their own per-style timbres (synthesized, not samples).
 - `energy: float` — defaults to `0.62`.
 - `complexity: float` — defaults to `0.60`.
 - `brightness: float` — defaults to `0.52`.
@@ -137,8 +137,8 @@ Native selection priority:
 ## Form Controls
 
 `set_form_hold`, `advance_form`, and `is_form_held` apply to any score with a
-song form — Suspense (always), and Racing/Adventure generated with
-`autoplay = true`. `cue_section` works on any generated score, with or without a
+song form — Suspense and composed Racing (always), or Original/Extended Racing
+and Adventure generated with `autoplay = true`. `cue_section` works on any generated score, with or without a
 form. These are separate operations to call from separate game events, not a
 sequence to run together. The quickstart contains complete, guarded callbacks.
 
@@ -256,9 +256,9 @@ new `area_phase` values.
 
 - Generation is deterministic for a specific generator version and input tuple.
 - Racing scores contain `garage`, `grid`, `cruise`, `attack`, `final-lap`, and `victory`; `extended` adds `ignition`, `slipstream`, `redline`, and `cooldown`.
-- Suspense scores contain the 27 pool phases above; `all-phases` and `seeded` are the only arrangements.
+- Suspense scores contain the 38 pool phases above; `all-phases` and `seeded` are the only arrangements.
 - Adventure scores contain the sixteen sections above and default to `camp`; `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`, `assault`, and `dawn` are 16 bars, and the other sections are 32. Seeded arrangements may vary these lengths.
 - State changes are quantized to bar boundaries (bar-aligned crossfades) and new sections start at phrase bar zero. (A bar may occur inside a phrase; this is not a mid-phrase hard cut.)
-- Audio is synthesized at 48000 Hz mono and pushed as identical left/right frames to an internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
+- Audio is synthesized as mono (48000 Hz by default) and split equally between left and right at constant power before reaching the internal `AudioStreamPlayer`. It uses the `Music` bus when present and otherwise falls back to `Master`.
 
 Internal Rust types, child-node names, score serialization, and exact bytes across different generator versions are not supported public API.

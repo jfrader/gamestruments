@@ -35,7 +35,9 @@ The kit generates deterministic scores from three shipped recipes, each from a p
 
 - **Racing:** six sections — `garage`, `grid`, `cruise`, `attack`, `final-lap`, `victory` (original); `extended` adds four more (ignition/slipstream/redline/cooldown) — driven by `set_race_state`. Native default arrangement original.
 - **Suspense (song-form):** a 38-phase pool from `intro` (Handshake) to `coda` (Closed Session), driven by `set_trace_state`. `all-phases` plays the pool in canonical order; `seeded` (default) composes the count, roles, order and loop point from the seed. Gameplay can hold, advance, or cue the form. Autoplay ignored.
-- **Adventure:** eight sections (camp, explore, town, dungeon, combat, boss, sanctuary, victory) driven by `set_adventure_state`. 3 styles. 8 real phases.
+- **Adventure:** sixteen musical sections across three styles. `set_adventure_state` selects the eight original quest situations (camp, explore, town, dungeon, combat, boss, sanctuary, victory); the additional combat, happiness, and guitar-and-bombo alternatives are available through `cue_section`.
+
+The separate Folklore recipe is available in the Audio Lab and Rust/WASM engine, not the Godot `recipe` property.
 
 The `kit/examples/` project is three independent reference scenes, not a
 playable game. `01-playback` generates and plays a Suspense title bed from the
@@ -54,7 +56,7 @@ Exported properties:
 
 - `project_secret: String`
 - `recipe: String` — `racing` (default), `suspense`, or `adventure`
-- `arrangement: String` — every recipe accepts `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed); `seeded` is the Audio Lab default. Racing additionally accepts `original` (default) and `extended`. Retired Suspense names (`original`/`extended`/`theme`) resolve to `seeded`.
+- `arrangement: String` — Racing and Suspense accept `all-phases` (each section once in canonical order) or `seeded` (the composer picks count, roles, order and loop point from the seed). Racing additionally accepts `original` (its native default) and `extended`; Suspense defaults to `seeded`, including retired names `original`/`extended`/`theme`. The Godot Adventure recipe ignores this property; its Lab arrangement selector is separate.
 - `autoplay: bool` — Racing and Adventure (default `false`); when true attaches form tour (arrangement tour, not audio autostart). Ignored by Suspense. Native default false.
 - `style: String` — per recipe: Racing `fusion`, `neon`, `funk`, `chip`; Suspense `terminal`, `cipher`, `noir`, `trance`; Adventure `folk`, `dark`, `orchestral`
 - `melody_voice`, `harmony_voice`, `drive_voice`, `bass_voice: String` — Racing only
@@ -72,7 +74,7 @@ Methods:
 - `is_form_held() -> bool`
 - `get_current_section() -> String`
 
-Form controls (`cue_section` etc.) are valid for any score with a form (Suspense always; Racing/Adventure only when `autoplay` enabled at generate).
+`cue_section` works on any generated score. Hold and Next require a form: Suspense and composed Racing arrangements always have one; Original/Extended Racing and native Adventure attach one when `autoplay` is enabled at generation.
 
 Generation validates every score before playback. Failure returns `false` and emits a descriptive Godot error. State requests before successful generation also return `false`. See `kit/docs/api.md` for exact values and selection rules.
 
