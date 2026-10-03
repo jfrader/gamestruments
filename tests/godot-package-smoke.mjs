@@ -64,8 +64,8 @@ async function stageDocsSnippets() {
   }
   const limitations = await readFile(path.join(projectRoot, "kit", "docs", "limitations.md"), "utf8");
   const limitationsFences = extractGdscriptFences(limitations);
-  if (limitationsFences.length !== 1) {
-    throw new Error(`kit/docs/limitations.md must contain exactly one gdscript fence (found ${limitationsFences.length})`);
+  if (limitationsFences.length !== 0) {
+    throw new Error(`kit/docs/limitations.md must not contain gdscript fences (found ${limitationsFences.length})`);
   }
 
   // A fresh, minimal project with only the addon and the extracted snippets.
@@ -90,7 +90,6 @@ async function stageDocsSnippets() {
   await writeFile(path.join(docsRoot, "snippets", "readme_racing.gd"), readmeFences[0]);
   await writeFile(path.join(docsRoot, "snippets", "quickstart_racing.gd"), quickstartFences[0]);
   await writeFile(path.join(docsRoot, "snippets", "quickstart_suspense.gd"), quickstartFences[1]);
-  await writeFile(path.join(docsRoot, "snippets", "limitations_quit.gd"), limitationsFences[0]);
   await cp(
     path.join(import.meta.dirname, "godot-docs-smoke.gd"),
     path.join(docsRoot, "docs_smoke.gd"),

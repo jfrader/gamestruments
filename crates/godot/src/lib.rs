@@ -157,7 +157,27 @@ impl GamestrumentsPlayer {
             }
             p.stop();
             p.set_stream(Gd::<AudioStream>::null_arg());
-            // Godot owns this child; stop its audio here and let parent teardown free it.
+            // Godot retires a stopped playback only on a later audio callback and
+            // frees it on the main thread after that. At shutdown the main loop is
+            // gone, so without waiting here the server keeps its reference and
+            // Godot prints an ObjectDB leak warning (godot#76745). Wait for the
+            // mixer to process the stop; bounded so a stalled audio thread cannot
+            // hang teardown. This keeps consumers free of any quit recipe.
+            let audio = AudioServer::singleton();
+            let started = std::time::Instant::now();
+            let mut last = audio.get_time_since_last_mix();
+            let mut mixes = 0;
+            while started.elapsed() < std::time::Duration::from_millis(500) {
+                std::thread::sleep(std::time::Duration::from_millis(2));
+                let now = audio.get_time_since_last_mix();
+                if now < last {
+                    mixes += 1;
+                    if mixes >= 2 {
+                        break;
+                    }
+                }
+                last = now;
+            }
         }
     }
 }
