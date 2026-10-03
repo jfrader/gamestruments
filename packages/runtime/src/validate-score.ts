@@ -21,6 +21,9 @@ const NOTE_VOICES = new Set([
   "trance-pad",
   "trance-lead",
   "nylon-guitar",
+  "charango",
+  "quena",
+  "marimba",
 ]);
 const PERCUSSION_VOICES = new Set([
   "kick",

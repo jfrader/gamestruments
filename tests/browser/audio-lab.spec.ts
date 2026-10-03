@@ -306,31 +306,29 @@ test("every recipe exposes exactly the All phases and Seeded arrangements", asyn
   }
 });
 
-test("All phases and Seeded share the pool, so a cued phase survives the switch", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+for (const phase of ["Ignition", "Switchback", "Open Road"]) {
+  test(`All phases and Seeded keep the cued ${phase} phase`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(`console: ${message.text()}`);
+    });
+    await page.goto("/#lab");
+    await expect(page.locator("#phase-buttons button")).toHaveCount(4);
+    await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+    await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: `Cue ${phase}`, exact: true }).click();
+    await page.locator("#center-play").click();
+    await expect(page.locator("#mood-name")).toHaveText(phase);
+    await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
+    await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
+    await expect(page.locator("#mood-name")).toHaveText(phase);
+    await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+    await page.locator("#start-audio").click();
+    expect(errors).toEqual([]);
   });
-  await page.goto("/#lab");
-
-  // Both arrangements carry every pool phase; cue and play Ignition.
-  await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Cue Ignition", exact: true }).click();
-  await page.locator("#center-play").click();
-  await expect(page.locator("#mood-name")).toHaveText("Ignition");
-
-  // Roll back to Seeded while Ignition is the active section: the unified pool
-  // keeps it cueable instead of falling back to Garage.
-  await page.locator('#arrangement-buttons button[data-arrangement="seeded"]').click();
-  await expect(page.locator('#arrangement-buttons button[data-arrangement="seeded"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#audition-status")).toHaveText("Seeded arrangement ready");
-  await expect(page.locator("#mood-name")).toHaveText("Ignition");
-  await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
-  await page.locator("#start-audio").click();
-  expect(errors).toEqual([]);
-});
+}
 
 test("Racing rejects an invalid Theme selection without erroring", async ({ page }) => {
   const errors: string[] = [];

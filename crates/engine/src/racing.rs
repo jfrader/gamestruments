@@ -1,8 +1,8 @@
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection};
-use crate::theory::{json_num, midi_to_note, mode_intervals, scale_pitch, NOTE_NAMES};
+use crate::theory::{midi_to_note, mode_intervals, scale_pitch, NOTE_NAMES};
 
-pub const GENERATOR_VERSION: &str = "1.11.0";
+pub const GENERATOR_VERSION: &str = "1.12.0";
 pub const DNA_SEED_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -193,19 +193,23 @@ pub enum RacingPhaseRole {
 /// The role of a Racing section, read back from its authored plan. Pure,
 /// additive metadata used only by the composed arrangement.
 pub fn racing_phase_role(id: &str) -> Option<RacingPhaseRole> {
-    PLANS.iter().find(|plan| plan.id == id).map(|plan| match plan.development {
-        0 => RacingPhaseRole::Intro,
-        1 => RacingPhaseRole::Build,
-        2 => RacingPhaseRole::Groove,
-        3 | 4 => RacingPhaseRole::Peak,
-        _ => RacingPhaseRole::Outro,
-    })
+    PLANS
+        .iter()
+        .find(|plan| plan.id == id)
+        .map(|plan| match plan.development {
+            0 => RacingPhaseRole::Intro,
+            1 => RacingPhaseRole::Build,
+            2 => RacingPhaseRole::Groove,
+            3 | 4 => RacingPhaseRole::Peak,
+            _ => RacingPhaseRole::Outro,
+        })
 }
 
 /// The energy band of a Racing section on a 0-100 scale, derived from its
 /// authored `intensity`. `final-lap` (intensity 1.08) saturates at 100.
 pub fn racing_phase_energy(id: &str) -> Option<u32> {
-    PLANS.iter()
+    PLANS
+        .iter()
         .find(|plan| plan.id == id)
         .map(|plan| ((plan.intensity * 100.0).round() as u32).min(100))
 }
@@ -525,34 +529,22 @@ fn create_ornament_dna(seed: u32, traits: &NormalizedTraits) -> OrnamentDna {
     }
 }
 
-fn compute_score_id(
-    secret: &str,
-    seed: &str,
-    style_str: &str,
-    palette_key: &str,
-    palette_empty: bool,
-    traits: &NormalizedTraits,
-    gen_ver: &str,
-) -> String {
-    let empty_pal = secret.is_empty() && palette_empty;
-    let ver = if empty_pal { "1.9.0" } else { gen_ver };
-    let vstr = ver.replace('.', "-");
-    let identity = if empty_pal {
-        let canon = format!("string:{}", seed);
-        let tjson = format!(
-            r#"{{"energy":{},"complexity":{},"brightness":{},"syncopation":{}}}"#,
-            json_num(traits.energy),
-            json_num(traits.complexity),
-            json_num(traits.brightness),
-            json_num(traits.syncopation)
-        );
-        hash_text(&format!("{}:{}:{}", canon, style_str, tjson))
-    } else {
-        hash_text(&format!(
-            "{}\0{}\0{}\0{}\0{}",
-            secret, seed, style_str, palette_key, gen_ver
-        ))
-    };
+fn compute_score_id(input: &GenerateInput, palette_key: &str, traits: &NormalizedTraits) -> String {
+    let vstr = GENERATOR_VERSION.replace('.', "-");
+    let identity = hash_text(
+        &serde_json::json!([
+            GENERATOR_VERSION,
+            input.secret,
+            input.seed,
+            input.style.as_str(),
+            palette_key,
+            traits.energy,
+            traits.complexity,
+            traits.brightness,
+            traits.syncopation,
+        ])
+        .to_string(),
+    );
     format!("racing-generated-v{}-{:08x}", vstr, identity)
 }
 
@@ -576,7 +568,6 @@ pub fn generate_racing(input: &GenerateInput) -> Result<PortableScore, String> {
         input.syncopation,
     );
     let style = input.style;
-    let style_str = style.as_str();
     let palette_key = input.palette.fingerprint();
     let palette_empty = input.palette.melody.is_empty()
         && input.palette.harmony.is_empty()
@@ -642,15 +633,7 @@ pub fn generate_racing(input: &GenerateInput) -> Result<PortableScore, String> {
         })
         .collect();
 
-    let id = compute_score_id(
-        &input.secret,
-        &input.seed,
-        style_str,
-        &palette_key,
-        palette_empty,
-        &traits,
-        GENERATOR_VERSION,
-    );
+    let id = compute_score_id(input, &palette_key, &traits);
     let key_upper = harmony.key.to_uppercase();
     let title = format!("{} {} Run", style_display(style), key_upper);
 
@@ -1113,7 +1096,13 @@ fn bass_mask(section_id: &str, bar: usize) -> Mask {
         ("grid", 1) => Mask::Steps(vec![0, 3, 6]),
         ("grid", 2) => Mask::Steps(vec![0, 2, 4, 6]),
         ("grid", 3) => Mask::Steps(vec![0, 1, 3, 5, 7]),
-        ("cruise", _) | ("attack", _) | ("final-lap", _) => Mask::Steps(vec![0, 4]),
+        ("cruise", 0) => Mask::Steps(vec![0, 3]),
+        ("cruise", 1) => Mask::Steps(vec![0, 5]),
+        ("cruise", 2) => Mask::Steps(vec![0, 4, 7]),
+        ("cruise", 3) => Mask::Steps(vec![0, 2]),
+        ("attack", 0) | ("attack", 2) => Mask::Steps(vec![0, 3, 5]),
+        ("attack", 1) | ("attack", 3) => Mask::Steps(vec![0, 4, 6, 7]),
+        ("final-lap", _) => Mask::Steps(vec![0, 4]),
         _ => Mask::Whole,
     }
 }
@@ -1238,9 +1227,19 @@ fn phase_melody_onsets(
             &[0, 4, 6, 2, 5, 7, 1, 3],
         )
     } else if plan.id == "cruise" {
-        vec![2, 5]
+        match bar {
+            0 => vec![2, 5],
+            1 => vec![3, 6],
+            2 => vec![1, 4, 7],
+            _ => vec![5, 6],
+        }
     } else if plan.id == "attack" {
-        vec![2, 6]
+        match bar {
+            0 => vec![2, 3, 5],
+            1 => vec![1, 4, 6],
+            2 => vec![0, 5, 7],
+            _ => vec![2, 5, 6],
+        }
     } else if plan.id == "final-lap" {
         if bar == 3 {
             vec![2, 5, 7]
@@ -1377,7 +1376,7 @@ fn percussion_onsets(
     } else if plan.id == "cruise" {
         (vec![0, 4], vec![2, 6], vec![1, 3, 5, 7])
     } else if plan.id == "attack" {
-        (vec![0, 4, 5], vec![2, 6], vec![1, 3, 7])
+        (vec![0, 4, 5], vec![2, 6, 3], vec![1, 3, 7])
     } else if plan.id == "final-lap" {
         (vec![0, 4, 5], vec![2, 6, 7], vec![1, 3])
     } else {
@@ -1557,7 +1556,10 @@ mod tests {
 
         let mut score = generate_racing(&base).expect("score must validate");
         let before = pitches(&score);
-        assert!(!before.is_empty(), "the racing score must carry pitched events");
+        assert!(
+            !before.is_empty(),
+            "the racing score must carry pitched events"
+        );
         score.transpose(5);
         let after = pitches(&score);
         for (a, b) in before.iter().zip(after.iter()) {
@@ -1620,7 +1622,7 @@ mod tests {
 
     #[test]
     fn many_seed_generation_is_valid_unique_and_deterministic() {
-        assert_eq!(GENERATOR_VERSION, "1.11.0");
+        assert_eq!(GENERATOR_VERSION, "1.12.0");
         let styles = [Style::Fusion, Style::Neon, Style::Funk, Style::Chip];
         let mut ids = HashSet::new();
         for index in 0..256 {
@@ -1654,7 +1656,7 @@ mod tests {
     }
 
     #[test]
-    fn reserved_take_reproduces_catalog() {
+    fn reserved_take_preserves_untouched_catalog_sections() {
         let input = GenerateInput {
             secret: "".into(),
             seed: "level-004".into(),
@@ -1671,12 +1673,22 @@ mod tests {
             serde_json::from_str(catalog_str).expect("catalog parses");
         assert_eq!(generated.bpm, catalog.bpm);
         assert_eq!(generated.title, catalog.title);
-        assert_eq!(generated.id, "racing-generated-v1-9-0-7864ec71");
+        assert_ne!(generated.id, catalog.id);
+        assert!(generated.id.starts_with("racing-generated-v1-12-0-"));
         assert_eq!(generated.sections.len(), catalog.sections.len());
+        let preserved = ["garage", "grid", "final-lap", "victory"];
         let mut mismatches = 0usize;
         let mut first_diff = None;
         for (gsec, csec) in generated.sections.iter().zip(catalog.sections.iter()) {
             assert_eq!(gsec.id, csec.id);
+            if !preserved.contains(&gsec.id.as_str()) {
+                assert!(
+                    !gsec.events.is_empty(),
+                    "reworked {} must carry events",
+                    gsec.id
+                );
+                continue;
+            }
             assert_eq!(
                 gsec.events.len(),
                 csec.events.len(),

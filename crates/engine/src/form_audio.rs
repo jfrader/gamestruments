@@ -9,6 +9,14 @@ use crate::transport::AdaptiveTransport;
 /// previous transition's tail from releasing a later hold.
 type IncomingId = (usize, u32);
 
+fn events_at_tick(positions: &[(u32, usize)], tick: u32) -> impl Iterator<Item = usize> + '_ {
+    let first = positions.partition_point(|&(start, _)| start < tick);
+    positions[first..]
+        .iter()
+        .take_while(move |&&(start, _)| start == tick)
+        .map(|&(_, position)| position)
+}
+
 pub struct FormAudio {
     sample_rate: f32,
     frames: u64,
@@ -17,6 +25,8 @@ pub struct FormAudio {
     origins: Vec<Option<u32>>,
     active: [Option<(usize, f32, f32)>; 2],
     drums: Vec<Synth>,
+    /// Event positions ordered by tick; stable ordering preserves simultaneous notes.
+    events_by_tick: Vec<Vec<(u32, usize)>>,
     /// The incoming section's index and plan start tick while a section
     /// crossfade is active, plus the buffer of its rendered samples (tonal and
     /// percussion) used to gate the hold. The buffer is a pre-master render, so
@@ -43,6 +53,20 @@ impl FormAudio {
                 .sections
                 .iter()
                 .map(|_| Synth::new(sample_rate))
+                .collect(),
+            events_by_tick: score
+                .sections
+                .iter()
+                .map(|section| {
+                    let mut positions: Vec<_> = section
+                        .events
+                        .iter()
+                        .enumerate()
+                        .map(|(index, event)| (event.start_tick(), index))
+                        .collect();
+                    positions.sort_by_key(|&(tick, _)| tick);
+                    positions
+                })
                 .collect(),
             incoming: None,
             incoming_probe: Vec::new(),
@@ -106,11 +130,8 @@ impl FormAudio {
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
-                    for event in section
-                        .events
-                        .iter()
-                        .filter(|event| event.start_tick() == local)
-                    {
+                    for position in events_at_tick(&self.events_by_tick[index], local) {
+                        let event = &section.events[position];
                         match event {
                             MusicEvent::Note { .. } => {
                                 self.tonal[index].trigger(event, ticks_per_second)
@@ -201,11 +222,8 @@ impl FormAudio {
                         self.origins[index] = Some(playback.origin);
                     }
                     let local = tick.saturating_sub(playback.origin) % section.length_ticks;
-                    for event in section
-                        .events
-                        .iter()
-                        .filter(|event| event.start_tick() == local)
-                    {
+                    for position in events_at_tick(&self.events_by_tick[index], local) {
+                        let event = &section.events[position];
                         match event {
                             MusicEvent::Note { .. } => {
                                 self.tonal[index].trigger(event, ticks_per_second)
@@ -369,9 +387,8 @@ mod tests {
         let rate = 8000.0f32;
         let mut fa = FormAudio::new(score, rate);
         let mut buf = vec![0.0f32; 512];
-        let frames =
-            (score.bar_ticks() as f64 * bars / score.ticks_per_second() * f64::from(rate)).ceil()
-                as usize;
+        let frames = (score.bar_ticks() as f64 * bars / score.ticks_per_second() * f64::from(rate))
+            .ceil() as usize;
         let mut min_rms = f32::INFINITY;
         let mut frame = 0;
         while frame < frames {
@@ -566,6 +583,46 @@ mod tests {
         );
     }
 
+    #[test]
+    fn form_audio_existing_mono_stereo_cue_fingerprints() {
+        let mut score = cue_score(240);
+        score.bpm = 117.33;
+        score.sections[0].events.reverse();
+        for stereo in [false, true] {
+            let mut audio = FormAudio::new(&score, 8_000.0);
+            let mut transport = AdaptiveTransport::new(score.clone(), None).unwrap();
+            let mut fingerprint = [0xcbf2_9ce4_8422_2325_u64; 2];
+            for segment in 0..160 {
+                if segment == 20 {
+                    transport
+                        .request_section("b", audio.tick(score.ticks_per_second()))
+                        .unwrap();
+                }
+                let mut left = [0.0; 257];
+                let mut right = [0.0; 257];
+                if stereo {
+                    audio.fill_stereo(&score, &mut transport, &mut left, &mut right);
+                } else {
+                    audio.fill(&score, &mut transport, &mut left);
+                }
+                for (channel, samples) in [left, right].into_iter().enumerate() {
+                    for value in samples {
+                        fingerprint[channel] = (fingerprint[channel] ^ u64::from(value.to_bits()))
+                            .wrapping_mul(0x100_0000_01b3);
+                    }
+                }
+            }
+            assert_eq!(
+                fingerprint,
+                if stereo {
+                    [0x2ef3_2647_7d02_6e37, 0x7de1_1558_40da_da52]
+                } else {
+                    [0xed52_3dcd_ba92_f175, 0xd499_5782_7e07_3fa5]
+                }
+            );
+        }
+    }
+
     fn percussion_led_cue_score() -> PortableScore {
         let a = PortableSection {
             id: "a".into(),
@@ -672,7 +729,8 @@ mod tests {
         let rate = 8000.0f32;
         let mut fa = FormAudio::new(&score, rate);
         let mut buf = vec![0.0f32; 512];
-        let frames = (score.bar_ticks() as f64 * 1.0 / score.ticks_per_second() * f64::from(rate)).ceil() as usize;
+        let frames = (score.bar_ticks() as f64 * 1.0 / score.ticks_per_second() * f64::from(rate))
+            .ceil() as usize;
         let mut max_rms = 0.0f32;
         let mut frame = 0;
         while frame < frames {

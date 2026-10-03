@@ -84,6 +84,9 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         VoiceType::Vielle => -0.25,
         VoiceType::NylonGuitar => 0.1875,
         VoiceType::Harp => 0.1875,
+        VoiceType::Charango => -0.3125,
+        VoiceType::Quena => 0.3125,
+        VoiceType::Marimba => 0.0625,
         VoiceType::TrancePad => 0.0,
         VoiceType::TranceLead => -0.125,
         VoiceType::TechnoKick => 0.0,
@@ -119,6 +122,9 @@ enum VoiceType {
     Recorder,
     Vielle,
     NylonGuitar,
+    Charango,
+    Quena,
+    Marimba,
     Bell,
     TrancePad,
     TranceLead,
@@ -282,11 +288,13 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::Clap
         | VoiceType::FrameDrum
         | VoiceType::Tambourine
+        | VoiceType::Marimba
+        | VoiceType::Charango
         | VoiceType::Chip => 0.82,
         VoiceType::NylonGuitar | VoiceType::Bombo | VoiceType::BomboRim => {
             return dmath::powf(velocity, 0.82);
         }
-        VoiceType::Recorder | VoiceType::Vielle => 0.84,
+        VoiceType::Recorder | VoiceType::Vielle | VoiceType::Quena => 0.84,
         VoiceType::SawBass => 0.78,
         VoiceType::Kick
         | VoiceType::Snare
@@ -317,6 +325,9 @@ fn note_voice_type(name: &str) -> Option<VoiceType> {
         "recorder" => VoiceType::Recorder,
         "vielle" => VoiceType::Vielle,
         "nylon-guitar" => VoiceType::NylonGuitar,
+        "charango" => VoiceType::Charango,
+        "quena" => VoiceType::Quena,
+        "marimba" => VoiceType::Marimba,
         "bell" => VoiceType::Bell,
         "saw-bass" => VoiceType::SawBass,
         "trance-pad" => VoiceType::TrancePad,
@@ -500,11 +511,20 @@ impl Synth {
                 VoiceType::Recorder => duration as f32 + 0.3,
                 VoiceType::Vielle => duration as f32 + 0.55,
                 VoiceType::NylonGuitar => duration as f32 + NOTE_TAIL_SECONDS,
+                VoiceType::Charango => duration as f32 + 0.12,
+                VoiceType::Quena => duration as f32 + 0.3,
+                VoiceType::Marimba => duration as f32 + 0.55,
                 _ => duration as f32 + NOTE_TAIL_SECONDS + 0.05,
             };
             let noise_state = if matches!(
                 vtype,
-                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle | VoiceType::NylonGuitar
+                VoiceType::Harp
+                    | VoiceType::Recorder
+                    | VoiceType::Vielle
+                    | VoiceType::NylonGuitar
+                    | VoiceType::Charango
+                    | VoiceType::Quena
+                    | VoiceType::Marimba
             ) {
                 match event {
                     MusicEvent::Note { id, .. } => deterministic_noise_state(id),
@@ -768,113 +788,100 @@ impl Synth {
             | VoiceType::Pluck
             | VoiceType::Felt
             | VoiceType::Dusk => {
-                let (
-                    primary,
-                    secondary,
-                    sec_r,
-                    sec_g,
-                    g,
-                    att,
-                    dec,
-                    sus,
-                    rel,
-                    cs,
-                    ce,
-                    res,
-                    pd,
-                ) = match v.voice_type {
-                    VoiceType::Warm => (
-                        Wave::Saw,
-                        Wave::Triangle,
-                        1.002,
-                        0.62,
-                        0.068,
-                        0.048,
-                        0.22,
-                        0.74,
-                        0.2,
-                        1600.0,
-                        620.0,
-                        0.35,
-                        0.0,
-                    ),
-                    VoiceType::Glass => (
-                        Wave::Sine,
-                        Wave::Sine,
-                        2.003,
-                        0.22,
-                        0.07,
-                        0.01,
-                        0.18,
-                        0.5,
-                        0.16,
-                        3800.0,
-                        1400.0,
-                        0.45,
-                        0.0,
-                    ),
-                    VoiceType::Pulse => (
-                        Wave::Saw,
-                        Wave::Triangle,
-                        0.5,
-                        0.38,
-                        0.05,
-                        0.014,
-                        0.14,
-                        0.66,
-                        0.14,
-                        1900.0,
-                        780.0,
-                        0.4,
-                        0.0,
-                    ),
-                    VoiceType::Pluck => (
-                        Wave::Saw,
-                        Wave::Triangle,
-                        2.0,
-                        0.16,
-                        0.05,
-                        0.004,
-                        0.09,
-                        0.22,
-                        0.08,
-                        3400.0,
-                        720.0,
-                        0.9,
-                        0.004,
-                    ),
-                    VoiceType::Felt => (
-                        Wave::Sine,
-                        Wave::Triangle,
-                        2.0,
-                        0.06,
-                        0.06,
-                        0.025,
-                        0.35,
-                        0.12,
-                        0.6,
-                        1400.0,
-                        420.0,
-                        0.25,
-                        0.0,
-                    ),
-                    VoiceType::Dusk => (
-                        Wave::Triangle,
-                        Wave::Sine,
-                        1.001,
-                        0.35,
-                        0.055,
-                        0.4,
-                        0.9,
-                        0.55,
-                        1.2,
-                        900.0,
-                        500.0,
-                        0.25,
-                        0.0,
-                    ),
-                    _ => unreachable!(),
-                };
+                let (primary, secondary, sec_r, sec_g, g, att, dec, sus, rel, cs, ce, res, pd) =
+                    match v.voice_type {
+                        VoiceType::Warm => (
+                            Wave::Saw,
+                            Wave::Triangle,
+                            1.002,
+                            0.62,
+                            0.068,
+                            0.048,
+                            0.22,
+                            0.74,
+                            0.2,
+                            1600.0,
+                            620.0,
+                            0.35,
+                            0.0,
+                        ),
+                        VoiceType::Glass => (
+                            Wave::Sine,
+                            Wave::Sine,
+                            2.003,
+                            0.22,
+                            0.07,
+                            0.01,
+                            0.18,
+                            0.5,
+                            0.16,
+                            3800.0,
+                            1400.0,
+                            0.45,
+                            0.0,
+                        ),
+                        VoiceType::Pulse => (
+                            Wave::Saw,
+                            Wave::Triangle,
+                            0.5,
+                            0.38,
+                            0.05,
+                            0.014,
+                            0.14,
+                            0.66,
+                            0.14,
+                            1900.0,
+                            780.0,
+                            0.4,
+                            0.0,
+                        ),
+                        VoiceType::Pluck => (
+                            Wave::Saw,
+                            Wave::Triangle,
+                            2.0,
+                            0.16,
+                            0.05,
+                            0.004,
+                            0.09,
+                            0.22,
+                            0.08,
+                            3400.0,
+                            720.0,
+                            0.9,
+                            0.004,
+                        ),
+                        VoiceType::Felt => (
+                            Wave::Sine,
+                            Wave::Triangle,
+                            2.0,
+                            0.06,
+                            0.06,
+                            0.025,
+                            0.35,
+                            0.12,
+                            0.6,
+                            1400.0,
+                            420.0,
+                            0.25,
+                            0.0,
+                        ),
+                        VoiceType::Dusk => (
+                            Wave::Triangle,
+                            Wave::Sine,
+                            1.001,
+                            0.35,
+                            0.055,
+                            0.4,
+                            0.9,
+                            0.55,
+                            1.2,
+                            900.0,
+                            500.0,
+                            0.25,
+                            0.0,
+                        ),
+                        _ => unreachable!(),
+                    };
                 let f1 = compute_freq(base, age, pd) * v.frequency_multipliers[0];
                 let f2 = compute_freq(base * sec_r, age, pd * 0.5) * v.frequency_multipliers[1];
                 let s1 = generate_osc(v.phase1, primary);
@@ -977,6 +984,109 @@ impl Synth {
                     * 0.12
                     * v.velocity_gain
                     * if is_mel { 1.06 } else { 1.0 }
+            }
+            VoiceType::Charango => {
+                let course_a = generate_osc(v.phase1, Wave::Triangle);
+                let course_b = generate_osc(v.phase2, Wave::Triangle);
+                let octave = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * compute_freq(base, age, 0.004) * dt;
+                v.phase2 += TAU * compute_freq(base * 1.006, age, 0.004) * dt;
+                v.phase3 += TAU * base * 2.0 * dt;
+
+                let lower_note = (280.0 / base).clamp(0.35, 1.0);
+                let body = natural_decay(age, 0.22 + lower_note * 0.16);
+                let course_decay = natural_decay(age, 0.2 + lower_note * 0.14);
+                let octave_decay = natural_decay(age, 0.09 + lower_note * 0.07);
+                let attack = (age / 0.0025).clamp(0.0, 1.0);
+                let release = (1.0 - (age - v.duration).max(0.0) / (v.life - v.duration)).max(0.0);
+                let strings =
+                    course_a * body + course_b * 0.7 * course_decay + octave * 0.18 * octave_decay;
+                let snap = if age < 0.02 {
+                    let transient = 1.0 - age / 0.02;
+                    let sample = noise(&mut v.noise_state);
+                    v.filt.process(
+                        sample,
+                        (base * 5.2).clamp(1600.0, 4200.0),
+                        0.75,
+                        sr,
+                        FilterMode::Bandpass,
+                    ) * transient
+                        * 0.05
+                } else {
+                    0.0
+                };
+                (strings + snap)
+                    * attack
+                    * release
+                    * 0.13
+                    * v.velocity_gain
+                    * if is_mel { 1.06 } else { 1.0 }
+            }
+            VoiceType::Quena => {
+                let vibrato_ramp = ((age - 0.25) / 0.4).clamp(0.0, 1.0);
+                let vibrato_cents = dmath::sin(v.vib_phase) * 7.0 * vibrato_ramp;
+                v.vib_phase += TAU * (5.4 + (v.pitch % 5) as f32 * 0.06) * dt;
+                let frequency = base * dmath::powf(2.0, vibrato_cents / 1200.0);
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let second = generate_osc(v.phase2, Wave::Sine);
+                let third = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * frequency * dt;
+                v.phase2 += TAU * frequency * 2.0 * dt;
+                v.phase3 += TAU * frequency * 3.0 * dt;
+
+                let tone = fundamental * 0.68 + second * 0.24 + third * 0.09;
+                let breath_sample = noise(&mut v.noise_state);
+                let breath = v.filt.process(
+                    breath_sample,
+                    (base * 6.0).clamp(1200.0, 3000.0),
+                    0.5,
+                    sr,
+                    FilterMode::Bandpass,
+                );
+                let breath_attack = (age / 0.1).clamp(0.0, 1.0);
+                let sig = tone + breath * (0.04 + 0.04 * (1.0 - breath_attack));
+                let peak = 0.09 * v.velocity_gain * if is_mel { 1.08 } else { 1.0 };
+                let env =
+                    compute_envelope_with_cap(age, v.duration, peak, 0.72, 0.06, 0.14, 0.22, 0.22);
+                sig * env
+            }
+            VoiceType::Marimba => {
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let octave = generate_osc(v.phase2, Wave::Sine);
+                let fourth = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * compute_freq(base, age, 0.0012) * dt;
+                v.phase2 += TAU * base * 2.0 * dt;
+                v.phase3 += TAU * base * 4.01 * dt;
+
+                let lower_note = (220.0 / base).clamp(0.3, 1.0);
+                let body = natural_decay(age, 0.55 + lower_note * 0.6);
+                let octave_decay = natural_decay(age, 0.3 + lower_note * 0.28);
+                let fourth_decay = natural_decay(age, 0.12 + lower_note * 0.12);
+                let attack = (age / 0.002).clamp(0.0, 1.0);
+                let release = (1.0 - (age - v.duration).max(0.0) / (v.life - v.duration)).max(0.0);
+                let wood = fundamental * body
+                    + octave * 0.24 * octave_decay
+                    + fourth * 0.09 * fourth_decay;
+                let mallet = if age < 0.005 {
+                    let transient = 1.0 - age / 0.005;
+                    let sample = noise(&mut v.noise_state);
+                    v.filt.process(
+                        sample,
+                        (base * 6.0).clamp(1400.0, 3600.0),
+                        0.6,
+                        sr,
+                        FilterMode::Bandpass,
+                    ) * transient
+                        * 0.06
+                } else {
+                    0.0
+                };
+                (wood + mallet)
+                    * attack
+                    * release
+                    * 0.11
+                    * v.velocity_gain
+                    * if is_mel { 1.05 } else { 1.0 }
             }
             VoiceType::Recorder => {
                 let vibrato_ramp = ((age - 0.2) / 0.38).clamp(0.0, 1.0);
@@ -2197,6 +2307,95 @@ mod tests {
     }
 
     #[test]
+    fn folk_and_mallet_voices_are_finite_distinct_and_deterministic() {
+        for voice in ["charango", "quena", "marimba"] {
+            let buffer = render_note(voice, 960, 48000);
+            let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
+            let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
+            assert!(energy > 1.0, "{voice} should be audible, got {energy}");
+            assert!(
+                buffer
+                    .iter()
+                    .all(|sample| sample.is_finite() && sample.abs() < 0.95),
+                "{voice} must stay finite and in range"
+            );
+            assert!(
+                peak < 0.4,
+                "{voice} should retain moderate headroom, got {peak}"
+            );
+            assert_eq!(
+                buffer,
+                render_note(voice, 960, 48000),
+                "{voice} must render deterministically"
+            );
+        }
+        assert_ne!(
+            render_note("charango", 960, 48000),
+            render_note("nylon-guitar", 960, 48000)
+        );
+        assert_ne!(
+            render_note("quena", 960, 48000),
+            render_note("recorder", 960, 48000)
+        );
+        assert_ne!(
+            render_note("marimba", 960, 48000),
+            render_note("harp", 960, 48000)
+        );
+        assert_ne!(
+            render_note("charango", 960, 48000),
+            render_note("quena", 960, 48000)
+        );
+        assert_ne!(
+            render_note("quena", 960, 48000),
+            render_note("marimba", 960, 48000)
+        );
+    }
+
+    #[test]
+    fn folk_and_mallet_voices_end_cleanly() {
+        let mut synth = Synth::new(48000.0);
+        for voice in ["charango", "quena", "marimba"] {
+            synth.trigger(
+                &MusicEvent::Note {
+                    id: format!("{voice}-cleanup"),
+                    section: "journey".into(),
+                    lane: "melody".into(),
+                    start_tick: 0,
+                    duration_ticks: 240,
+                    velocity: 0.5,
+                    pitch: 64,
+                    voice: voice.into(),
+                    role: Some("melody".into()),
+                },
+                960.0,
+            );
+        }
+        let mut buffer = vec![0.0f32; 96000];
+        synth.fill(&mut buffer);
+        assert!(buffer.iter().all(|sample| sample.is_finite()));
+        assert!(synth.voices.is_empty(), "folk voices must clean up");
+    }
+
+    #[test]
+    fn plucked_folk_and_mallet_voices_fade_before_cleanup() {
+        for voice in ["charango", "marimba"] {
+            for duration in [120, 960] {
+                let buffer = render_note(voice, duration, 96000);
+                let last = buffer
+                    .iter()
+                    .rposition(|sample| sample.abs() > f32::EPSILON)
+                    .expect("note must be audible");
+                assert!(last + 1 < buffer.len(), "{voice} must finish");
+                assert!(
+                    buffer[last].abs() < 0.001,
+                    "{voice} {duration}: abrupt cutoff at {}",
+                    buffer[last]
+                );
+            }
+        }
+    }
+
+    #[test]
     fn harp_and_bell_decay_naturally_while_recorder_sustains() {
         let harp = render_note("harp", 3840, 144000);
         let recorder = render_note("recorder", 3840, 144000);
@@ -2338,7 +2537,11 @@ mod tests {
         for buffer in 0..(60 * 60 * 9) {
             let frames = 800 + (buffer % 400);
             produced += frames as u64;
-            let tick = f64::from(super::tick_at_sample(produced, sample_rate, ticks_per_second));
+            let tick = f64::from(super::tick_at_sample(
+                produced,
+                sample_rate,
+                ticks_per_second,
+            ));
             let truth = produced as f64 / sample_rate * ticks_per_second;
             assert!(
                 (tick - truth).abs() < 1.0,

@@ -14,8 +14,8 @@ seeded piece and palette.
 
 The composition pool in natural race order (`crates/engine/src/racing_pool.rs`,
 `RACING_SECTION_IDS`). Roles and energy come from the authored `PLANS` table in
-`crates/engine/src/racing.rs`; the four `extended` phases and `breather` are
-authored in the pool itself.
+`crates/engine/src/racing.rs`; the remaining phases have metadata in the pool
+and material in `crates/engine/src/racing_arrangement.rs`.
 
 | id | label | role | base length | what it carries |
 |---|---|---|---|---|
@@ -24,9 +24,11 @@ authored in the pool itself.
 | `grid` | Starting Grid | Build | 4 bars | energy 70; focus/anticipation |
 | `breather` | Breather | Breather | 4 bars | **drumless** (no kit lane), composed-only; may repeat |
 | `cruise` | Race Flow | Groove | 4 bars | energy 82; the loop-point target |
+| `switchback` | Switchback | Groove | 8 bars | energy 79; tuned-percussion question and answer |
 | `slipstream` | Slipstream | Groove | 16 bars | extended phase; authored 16 bars |
 | `attack` | Position Fight | Peak | 4 bars | energy 95 |
 | `redline` | Redline | Peak | 16 bars | extended phase; authored 16 bars |
+| `open-road` | Open Road | Groove | 16 bars | energy 68; spaced melodic phrases |
 | `final-lap` | Final Lap | Peak | 4 bars | energy 100 (saturates the scale) |
 | `victory` | Finish | Outro | 4 bars | one-shot; the win outro |
 | `cooldown` | Cooldown | PostOutro | 8 bars | deliberate post-win release; thins to a pause, then a stable landing |
@@ -47,9 +49,9 @@ arrangements.
   `cooldown`, ten-section tour. No form unless `autoplay = true`.
 - `all-phases` — every pool phase once in canonical order, looping from the
   first groove (`cruise`).
-- `seeded` — the seeded composer picks a form over the eleven-phase pool: 6–12
+- `seeded` — the seeded composer picks a form over the thirteen-phase pool: 6–12
   steps, ends on `victory` or `cooldown`, loops from a groove. This is where the
-  `breather` and the game-signal sections appear. The composer is deterministic
+  `breather`, `switchback`, `open-road` and the game-signal sections appear. The composer is deterministic
   per seed (`racing_compose` in `racing_pool.rs`).
 
 With `autoplay = true`, `original`/`extended`/`all-phases`/`seeded` attach a

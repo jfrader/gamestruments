@@ -30,7 +30,10 @@ pub use adventure::{
     AdventureStyle,
 };
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
-pub use folklore::{folklore_root_pitch_class, generate_folklore, FolkloreInput};
+pub use folklore::{
+    folklore_root_pitch_class, folklore_root_pitch_class_with_style, generate_folklore,
+    generate_folklore_with_style, FolkloreInput, FolkloreStyle,
+};
 pub use form_audio::FormAudio;
 pub use handoff::{crossfade_gains, crossfade_sample_count};
 pub use live::{GameUpdate, LivePlayer};
