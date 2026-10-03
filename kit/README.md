@@ -52,8 +52,8 @@ score.
 
 Call `set_race_state` from your countdown, telemetry and finish handlers
 (Racing), `set_trace_state` plus the form controls (Suspense), or
-`set_adventure_state` (Adventure). Changes commit on the next bar boundary with
-a crossfade. Nothing is wired by name: connect these calls to your own events
+`set_adventure_state` (Adventure). Changes blend on bar boundaries. While a blend
+runs, the latest music change and latest section request wait. Connect these calls to your own events
 and check each bool return. Complete examples are in `kit/docs/quickstart.md`;
 the selection rules are in `kit/docs/api.md`.
 

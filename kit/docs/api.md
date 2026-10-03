@@ -39,7 +39,9 @@ var generated: bool = player.generate("level-001")
 var race_generated: bool = player.generate("circuit-042", "grid")
 ```
 
-Generates and validates the deterministic score for the current property values. The optional second argument starts the score directly on that section; omitting it starts at the recipe's default — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure. When a score is already playing, the replacement waits for the next bar and hands off over the authored crossfade instead of restarting the output. Pass the intended opening section with the seed so the handoff does not need a second `cue_section` transition.
+Generates and validates the deterministic score for the current property values. The optional second argument starts the score directly on that section; omitting it starts at the recipe's default — `garage` for Racing, `intro` (Handshake) for Suspense, `camp` for Adventure. When a score is already playing, the replacement waits for any running blend to finish, then hands off on a bar boundary without restarting the output. Pass the intended opening section with the seed so the handoff does not need a second `cue_section` transition.
+
+Only one blend runs at a time. While it runs, the player keeps the latest music request and latest section request. If both are waiting, the incoming music opens on that section. The bar count and requested form hold carry across music changes.
 
 Returns `true` on success. Returns `false` and emits a descriptive Godot error for an empty project namespace, unsupported style/arrangement/voice, or invalid generated score. Non-finite traits are not universally rejected at generate time — pass finite 0..1 values. Do not request state changes after a failed generation.
 
@@ -214,7 +216,7 @@ var accepted: bool = player.set_adventure_state("explore", 0.4, 0.2, false)
 
 - `set_adventure_state(area_phase: String, discovery: float, threat: float, quest_complete: bool) -> bool` — requests the section for the current area. `discovery` and `threat` must be within `0.0..1.0`.
 - A high `discovery` (`>= 0.85`) or the `sanctuary` phase resolves to `sanctuary`; a high `threat` (`>= 0.7`) resolves to `combat`, and a `combat` phase with `threat >= 0.85` escalates to `boss`; `quest_complete` always resolves to `victory`. Unknown phases fall back to `camp`.
-- Like every state change, the new section commits on the next bar boundary.
+- Like every state change, the new section commits on a bar boundary after any running blend finishes.
 
 ## Adventure Sections
 
