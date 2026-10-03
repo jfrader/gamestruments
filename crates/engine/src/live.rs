@@ -1,16 +1,22 @@
 //! The live player every binding drives: it plays a generated score in real
-//! time, parks a replacement score until the next bar, crossfades the handoff,
-//! and routes cues and game state to the transport. Godot and the browser Lab
-//! both play through it, so they sound the same.
+//! time, routes cues and game state to the transport, and blends to new music
+//! on the bar. Godot and the browser Lab both play through it, so they sound
+//! and queue the same.
+//!
+//! One blend runs at a time, a section blend or a music blend. A request made
+//! while one runs waits, and only the latest request of each kind is kept: one
+//! music change and one section. When both are waiting they become one blend,
+//! the new music opening on that section. The clock keeps counting through a
+//! music blend.
 
 use serde::{Deserialize, Serialize};
 
 use crate::adventure::select_adventure_section;
 use crate::handoff::{crossfade_gains, crossfade_sample_count, Handoff};
-use crate::master::{MasterChain, MasterConfig};
+use crate::master::{Limiter, MasterChain, MasterConfig, DEFAULT_CEILING_DBTP};
 use crate::score::{AdventureState, GameState, PortableScore, TraceState};
 use crate::suspense::select_trace_section;
-use crate::synth::{events_starting_at, tick_at_sample, Solo, Synth};
+use crate::synth::{events_starting_at, sample_at_tick, tick_at_sample, Solo, Synth};
 use crate::transport::{select_section, TransitionPlan};
 use crate::{AdaptiveTransport, FormAudio};
 
@@ -27,12 +33,14 @@ pub enum GameUpdate {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaybackStatus {
-    /// The playing score; a replacement waiting for the bar is not shown yet.
+    /// The playing score; new music waiting for its turn is not shown yet.
     pub score_id: String,
     pub tick: u32,
     pub current_section: String,
-    /// The section queued behind the active transition.
+    /// The section waiting for the running blend, or for new music to start.
     pub pending_section: Option<String>,
+    /// The music waiting for the running blend and the next bar.
+    pub pending_score_id: Option<String>,
     pub transition: Option<TransitionPlan>,
     pub form_held: bool,
     pub next_form_section: Option<String>,
@@ -46,6 +54,60 @@ pub struct SectionGain {
     pub gain: f32,
     /// The tick the section's own phrase started at.
     pub origin: u32,
+}
+
+/// A request to move to another section.
+#[derive(Clone, Debug)]
+enum SectionRequest {
+    Cue(String),
+    Update(GameUpdate),
+}
+
+impl SectionRequest {
+    /// The section this request selects in `score`.
+    fn section_in(&self, score: &PortableScore) -> Option<String> {
+        match self {
+            SectionRequest::Cue(section) => score.section(section).map(|_| section.clone()),
+            SectionRequest::Update(update) => section_for_update(score, update),
+        }
+    }
+
+    fn apply(&self, transport: &mut AdaptiveTransport, tick: u32) {
+        match self {
+            SectionRequest::Cue(section) => {
+                transport.request_section(section, tick);
+            }
+            SectionRequest::Update(GameUpdate::Race(state)) => {
+                transport.request_state(state, tick);
+            }
+            SectionRequest::Update(GameUpdate::Trace(state)) => {
+                transport.request_trace_state(state, tick);
+            }
+            SectionRequest::Update(GameUpdate::Adventure(state)) => {
+                transport.request_adventure_state(state, tick);
+            }
+        }
+    }
+}
+
+/// The section `update` selects in `score`.
+fn section_for_update(score: &PortableScore, update: &GameUpdate) -> Option<String> {
+    match update {
+        GameUpdate::Race(state) => Some(select_section(score, state)),
+        GameUpdate::Trace(state) => {
+            select_trace_section(&score.rules, state).map(|(section, _)| section)
+        }
+        GameUpdate::Adventure(state) => Some(select_adventure_section(state).to_string()),
+    }
+}
+
+/// New music waiting for its turn.
+struct PendingMusic {
+    score: PortableScore,
+    seed: String,
+    recipe: String,
+    root_pitch_class: i32,
+    opening_section: String,
 }
 
 /// Live playback state for one generated score.
@@ -71,35 +133,34 @@ struct Voice {
 }
 
 impl Voice {
-    fn new(
-        score: PortableScore,
-        seed: String,
-        recipe: String,
-        root_pitch_class: i32,
-        opening_section: Option<&str>,
-        sample_rate: f32,
-    ) -> Result<Self, String> {
-        let initial = opening_section
-            .unwrap_or(&score.default_section)
-            .to_string();
-        if score.section(&initial).is_none() {
-            return Err(format!("Unknown opening section: {initial}"));
-        }
-        let transport = AdaptiveTransport::new(score.clone(), Some(&initial))?;
+    /// A voice for `music` whose clock starts at `start_tick`.
+    fn new(music: PendingMusic, start_tick: u32, sample_rate: f32) -> Result<Self, String> {
+        let PendingMusic {
+            score,
+            seed,
+            recipe,
+            root_pitch_class,
+            opening_section,
+        } = music;
+        let mut transport = AdaptiveTransport::new(score.clone(), Some(&opening_section))?;
+        transport.start_at(start_tick);
+        let ticks_per_second = score.ticks_per_second();
+        let start_frame = sample_at_tick(start_tick, f64::from(sample_rate), ticks_per_second);
         // Any score with a form blends through the aligned renderer.
-        let form_audio = score
-            .form
-            .is_some()
-            .then(|| FormAudio::new(&score, sample_rate));
+        let form_audio = score.form.is_some().then(|| {
+            let mut form_audio = FormAudio::new(&score, sample_rate);
+            form_audio.start_at_frame(start_frame);
+            form_audio
+        });
         Ok(Self {
-            ticks_per_second: score.ticks_per_second(),
+            ticks_per_second,
             score,
             transport,
             synth: Synth::new(sample_rate),
             form_audio,
             master: MasterChain::new(sample_rate as u32, MasterConfig::default()),
-            tick: 0,
-            frames_produced: 0,
+            tick: start_tick,
+            frames_produced: start_frame,
             seed,
             root_pitch_class,
             recipe,
@@ -164,12 +225,20 @@ pub struct LivePlayer {
     sample_rate: f32,
     /// The voice that is playing.
     active: Option<Voice>,
-    /// A replacement waiting for the active voice to reach a bar boundary.
-    pending: Option<Voice>,
-    /// The voice fading out during a handoff.
+    /// The voice fading out during a music blend.
     outgoing: Option<Voice>,
     /// Crossfade progress between the outgoing and the active voice.
     handoff: Handoff,
+    /// Final ceiling for the actual output, including the sum during a handoff.
+    mix_limiter: Limiter,
+    /// The latest music change, waiting for the running blend and the bar.
+    pending_music: Option<PendingMusic>,
+    /// The latest section request, held while music waits or blends. With no
+    /// music in the way, section requests go straight to the transport, which
+    /// keeps its own latest one behind a running section blend.
+    pending_section: Option<SectionRequest>,
+    /// User's form hold while both transports are paused for a music handoff.
+    handoff_form_held: Option<bool>,
     /// Which voices every score lets through.
     solo: Solo,
 }
@@ -179,19 +248,19 @@ impl LivePlayer {
         Self {
             sample_rate,
             active: None,
-            pending: None,
             outgoing: None,
             handoff: Handoff::idle(),
+            mix_limiter: Limiter::new(sample_rate as u32, DEFAULT_CEILING_DBTP),
+            pending_music: None,
+            pending_section: None,
+            handoff_form_held: None,
             solo: Solo::Full,
         }
     }
 
     /// Audition part of the mix: only the voices `solo` names keep sounding.
     pub fn set_solo(&mut self, solo: Solo) {
-        for voice in [&mut self.active, &mut self.pending, &mut self.outgoing]
-            .into_iter()
-            .flatten()
-        {
+        for voice in [&mut self.active, &mut self.outgoing].into_iter().flatten() {
             voice.set_solo(&solo);
         }
         self.solo = solo;
@@ -211,9 +280,10 @@ impl LivePlayer {
         self.active.as_ref().is_some_and(|voice| voice.seed == seed)
     }
 
-    /// Start playing `score`, or park it until the next bar when a score is
-    /// already playing. A replacement of the same recipe inherits the playing
-    /// score's key and tempo, so a seed change blends at the seam instead of
+    /// Start playing `score`, or, when music is already playing, make it the
+    /// next music: it waits for a running blend and the next bar, and replaces
+    /// any music still waiting. A replacement of the same recipe inherits the
+    /// playing score's key and tempo, so it blends at the seam instead of
     /// clashing two keys and two tempos. `root_pitch_class` is the key the
     /// score was generated in.
     pub fn load(
@@ -224,34 +294,47 @@ impl LivePlayer {
         root_pitch_class: i32,
         opening_section: Option<&str>,
     ) -> Result<(), String> {
+        let opening_section = opening_section
+            .unwrap_or(&score.default_section)
+            .to_string();
+        if score.section(&opening_section).is_none() {
+            return Err(format!("Unknown opening section: {opening_section}"));
+        }
         let carried = self
-            .pending
+            .active
             .as_ref()
-            .or(self.active.as_ref())
             .filter(|voice| voice.recipe == recipe)
             .map(|voice| (voice.root_pitch_class, voice.score.bpm));
         if let Some((key, bpm)) = carried {
             score.transpose((key - root_pitch_class).rem_euclid(12));
             score.bpm = bpm;
         }
-        // Record the key the score actually sounds in, so a later seed change
+        // Record the key the score actually sounds in, so a later change
         // carries from the sounding key rather than the generated one.
-        let sounding_root = carried.map_or(root_pitch_class, |(key, _)| key);
-        let mut voice = Voice::new(
+        let music = PendingMusic {
             score,
-            seed.to_string(),
-            recipe.to_string(),
-            sounding_root,
+            seed: seed.to_string(),
+            recipe: recipe.to_string(),
+            root_pitch_class: carried.map_or(root_pitch_class, |(key, _)| key),
             opening_section,
-            self.sample_rate,
-        )?;
-        voice.set_solo(&self.solo);
-        if self.active.is_some() || self.pending.is_some() {
-            self.pending = Some(voice);
-        } else {
+        };
+        let Some(active) = self.active.as_mut() else {
+            let mut voice = Voice::new(music, 0, self.sample_rate)?;
+            voice.set_solo(&self.solo);
             self.active = Some(voice);
             self.handoff.reset();
+            return Ok(());
+        };
+        // A section the playing music was about to move to now waits for the
+        // new music instead, so the two become one blend.
+        if self.pending_section.is_none() {
+            self.pending_section = active
+                .transport
+                .requested_section(active.tick)
+                .map(|section| SectionRequest::Cue(section.to_string()));
         }
+        active.transport.cancel_pending(active.tick);
+        self.pending_music = Some(music);
         Ok(())
     }
 
@@ -260,24 +343,20 @@ impl LivePlayer {
         let frames = out.len();
         let sample_rate = f64::from(self.sample_rate);
         out.fill(0.0);
-        self.promote_pending(frames, sample_rate);
+        self.start_pending_music(frames, sample_rate);
         let Some(active) = self.active.as_mut() else {
             return;
         };
 
-        let in_handoff = self.outgoing.is_some() && self.handoff.is_active();
-        if !in_handoff {
+        let Some(outgoing) = self.outgoing.as_mut() else {
             active.fill(frames, sample_rate);
             out.copy_from_slice(&active.scratch);
             active.frames_produced = active.frames_produced.saturating_add(frames as u64);
             active.master.process(out);
+            self.mix_limiter.process(out);
             return;
-        }
+        };
 
-        let outgoing = self
-            .outgoing
-            .as_mut()
-            .expect("a handoff has an outgoing voice");
         outgoing.fill(frames, sample_rate);
         active.fill(frames, sample_rate);
         // Each voice's own stateful master chain runs on its own buffer before
@@ -296,25 +375,36 @@ impl LivePlayer {
         active.frames_produced = active.frames_produced.saturating_add(frames as u64);
         self.handoff.advance(frames as u64);
 
-        // Each voice was ceiling'd by its own chain, but the crossfade gains
-        // need not sum to exactly 1.0: clamp the mix to the master ceiling.
-        let ceiling = active.master.ceiling_linear();
-        for sample in out.iter_mut() {
-            *sample = sample.clamp(-ceiling, ceiling);
-        }
+        // Even ceiling'd voices can sum above the true-peak limit during the
+        // handoff; process every buffer so the final limiter stays continuous.
+        self.mix_limiter.process(out);
         if self.handoff.finished() {
             self.outgoing = None;
             self.handoff.reset();
+            if let (Some(held), Some(active)) =
+                (self.handoff_form_held.take(), self.active.as_mut())
+            {
+                active.transport.set_form_held(held, active.tick);
+            }
+            self.release_pending_section();
         }
     }
 
-    /// Promote a parked replacement once the playing score reaches its next
-    /// bar boundary within the coming `frames`, so a seed change swaps on the
-    /// bar like a cue.
-    fn promote_pending(&mut self, frames: usize, sample_rate: f64) {
-        let (Some(_), Some(active)) = (self.pending.as_ref(), self.active.as_ref()) else {
+    /// Start the waiting music once no blend is running and the playing score
+    /// reaches its next bar within the coming `frames`. It opens on the
+    /// waiting section, if any, at the same point in the bar the playing score
+    /// has reached.
+    fn start_pending_music(&mut self, frames: usize, sample_rate: f64) {
+        let (Some(_), Some(active), None) = (
+            self.pending_music.as_ref(),
+            self.active.as_ref(),
+            self.outgoing.as_ref(),
+        ) else {
             return;
         };
+        if active.transport.is_blending(active.tick) {
+            return;
+        }
         let bar_ticks = active.score.bar_ticks();
         let next_tick = tick_at_sample(
             active.frames_produced + frames as u64,
@@ -324,115 +414,141 @@ impl LivePlayer {
         if next_tick / bar_ticks <= active.tick / bar_ticks && active.tick != 0 {
             return;
         }
-        let retarget = self.outgoing.is_some() && self.handoff.is_active();
-        if retarget {
-            // A crossfade is already running: keep the voice fading out and
-            // drop the incoming it was replacing.
-            self.active = None;
-        } else {
-            self.outgoing = self.active.take();
-        }
-        self.active = self.pending.take();
-        let total = self
-            .outgoing
-            .as_ref()
-            .map(|voice| crossfade_sample_count(&voice.score, self.sample_rate as u32))
-            .unwrap_or(0);
-        if retarget {
-            self.handoff.retarget(total);
-        } else {
-            self.handoff.begin(total);
-        }
-    }
-
-    /// Apply a transport update to every voice that can be live this bar: the
-    /// playing voice and a replacement parked for the next bar, so a cue is not
-    /// lost while the replacement waits. Returns whether any voice accepted it.
-    fn for_each_live_voice(
-        &mut self,
-        mut update: impl FnMut(&mut AdaptiveTransport, u32) -> bool,
-    ) -> bool {
-        let mut accepted = false;
-        for voice in [self.active.as_mut(), self.pending.as_mut()]
-            .into_iter()
-            .flatten()
+        let Some(mut music) = self.pending_music.take() else {
+            return;
+        };
+        if let Some(section) = self
+            .pending_section
+            .take()
+            .and_then(|request| request.section_in(&music.score))
         {
-            accepted |= update(&mut voice.transport, voice.tick);
+            music.opening_section = section;
         }
-        accepted
+        let start_tick = (u64::from(active.tick) * u64::from(music.score.bar_ticks())
+            / u64::from(bar_ticks)) as u32;
+        let held = active.transport.is_form_held();
+        let Ok(mut voice) = Voice::new(music, start_tick, self.sample_rate) else {
+            return;
+        };
+        voice.set_solo(&self.solo);
+        voice.transport.set_form_held(true, start_tick);
+        let mut outgoing = self.active.replace(voice).expect("a playing voice");
+        // Nothing the old music had planned starts now.
+        outgoing.transport.cancel_pending(outgoing.tick);
+        outgoing.transport.set_form_held(true, outgoing.tick);
+        self.handoff_form_held = Some(held);
+        self.handoff.begin(crossfade_sample_count(
+            &outgoing.score,
+            self.sample_rate as u32,
+        ));
+        self.outgoing = Some(outgoing);
     }
 
-    /// Whether a live score has `section`.
+    /// Hand the held section request to the playing music once nothing is in
+    /// its way.
+    fn release_pending_section(&mut self) {
+        if self.pending_music.is_some() {
+            return;
+        }
+        if let (Some(request), Some(active)) = (self.pending_section.take(), self.active.as_mut()) {
+            request.apply(&mut active.transport, active.tick);
+        }
+    }
+
+    /// Whether section requests wait in the player: music is waiting or
+    /// blending.
+    fn holds_sections(&self) -> bool {
+        self.pending_music.is_some() || self.outgoing.is_some()
+    }
+
+    /// Route a section request: hold it while music waits or blends, otherwise
+    /// hand it to the playing score's transport.
+    fn request_section(&mut self, request: SectionRequest) -> bool {
+        if self.active.is_none() {
+            return false;
+        }
+        if self.holds_sections() {
+            self.pending_section = Some(request);
+            return true;
+        }
+        let active = self.active.as_mut().expect("a playing voice");
+        request.apply(&mut active.transport, active.tick);
+        true
+    }
+
+    /// Whether the playing score, or the music waiting, has `section`.
     pub fn has_section(&self, section: &str) -> bool {
-        [self.active.as_ref(), self.pending.as_ref()]
+        self.active
+            .as_ref()
+            .map(|voice| &voice.score)
             .into_iter()
-            .flatten()
-            .any(|voice| voice.score.section(section).is_some())
+            .chain(self.pending_music.as_ref().map(|music| &music.score))
+            .any(|score| score.section(section).is_some())
     }
 
     pub fn cue_section(&mut self, section: &str) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            transport.request_section(section, tick);
-            true
-        })
+        self.request_section(SectionRequest::Cue(section.to_string()))
     }
 
-    /// Send a game-state update to every live score.
+    /// Send a game-state update to the music it will play on.
     pub fn request(&mut self, update: &GameUpdate) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            match update {
-                GameUpdate::Race(state) => transport.request_state(state, tick),
-                GameUpdate::Trace(state) => transport.request_trace_state(state, tick),
-                GameUpdate::Adventure(state) => transport.request_adventure_state(state, tick),
-            };
-            true
-        })
+        self.request_section(SectionRequest::Update(update.clone()))
     }
 
     /// The section `update` selects in the playing score, without moving to it.
     pub fn section_for(&self, update: &GameUpdate) -> Option<String> {
-        let score = &self.active.as_ref()?.score;
-        match update {
-            GameUpdate::Race(state) => Some(select_section(score, state)),
-            GameUpdate::Trace(state) => {
-                select_trace_section(&score.rules, state).map(|(section, _)| section)
-            }
-            GameUpdate::Adventure(state) => Some(select_adventure_section(state).to_string()),
-        }
+        section_for_update(&self.active.as_ref()?.score, update)
     }
 
-    /// Drop a queued cue, and a transition that has not started yet.
+    /// Drop the waiting section, and a section blend that has not started yet.
     pub fn cancel_pending(&mut self) -> bool {
-        self.for_each_live_voice(|transport, tick| transport.cancel_pending(tick).is_some())
+        let held = self.pending_section.take().is_some();
+        let Some(active) = self.active.as_mut() else {
+            return held;
+        };
+        let queued = active.transport.requested_section(active.tick).is_some();
+        active.transport.cancel_pending(active.tick);
+        held || queued
     }
 
     pub fn set_form_held(&mut self, held: bool) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            if transport.has_form() {
-                transport.set_form_held(held, tick);
-                true
-            } else {
-                false
-            }
-        })
+        let Some(active) = self.active.as_mut() else {
+            return false;
+        };
+        if !active.transport.has_form() {
+            return false;
+        }
+        if let Some(requested) = self.handoff_form_held.as_mut() {
+            *requested = held;
+        } else {
+            active.transport.set_form_held(held, active.tick);
+        }
+        true
     }
 
     pub fn advance_form(&mut self) -> bool {
-        self.for_each_live_voice(|transport, tick| {
-            if transport.next_form_section(tick).is_none() {
-                false
-            } else {
-                transport.advance_form(tick);
-                true
-            }
-        })
+        let Some(active) = self.active.as_ref() else {
+            return false;
+        };
+        let Some(next) = active.transport.next_form_section(active.tick) else {
+            return false;
+        };
+        if self.holds_sections() {
+            self.pending_section = Some(SectionRequest::Cue(next));
+            return true;
+        }
+        let active = self.active.as_mut().expect("a playing voice");
+        active.transport.advance_form(active.tick);
+        true
     }
 
     pub fn is_form_held(&self) -> bool {
-        [self.active.as_ref(), self.pending.as_ref()]
-            .into_iter()
-            .flatten()
-            .any(|voice| voice.transport.is_form_held())
+        if let Some(held) = self.handoff_form_held {
+            return held;
+        }
+        self.active
+            .as_ref()
+            .is_some_and(|voice| voice.transport.is_form_held())
     }
 
     /// The section the playing score is sounding now.
@@ -456,13 +572,25 @@ impl LivePlayer {
     pub fn status(&self) -> Option<PlaybackStatus> {
         let voice = self.active.as_ref()?;
         let transport = &voice.transport;
+        let pending_score = self
+            .pending_music
+            .as_ref()
+            .map_or(&voice.score, |music| &music.score);
+        let pending_section = match &self.pending_section {
+            Some(request) => request.section_in(pending_score),
+            None => transport.pending_section().map(str::to_string),
+        };
         Some(PlaybackStatus {
             score_id: voice.score.id.clone(),
             tick: voice.tick,
             current_section: transport.current_section().to_string(),
-            pending_section: transport.pending_section().map(str::to_string),
+            pending_section,
+            pending_score_id: self
+                .pending_music
+                .as_ref()
+                .map(|music| music.score.id.clone()),
             transition: transport.transition(),
-            form_held: transport.is_form_held(),
+            form_held: self.is_form_held(),
             next_form_section: transport.next_form_section(voice.tick),
             mix: transport
                 .playback_at(voice.tick)
@@ -481,6 +609,7 @@ impl LivePlayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::score::{MusicEvent, PortableSection, SongForm, SongFormStep, SCORE_SCHEMA_VERSION};
     use crate::{generate_suspense_arrangement, SuspenseArrangement, SuspenseInput, SuspenseStyle};
 
     const RATE: f32 = 48000.0;
@@ -507,6 +636,186 @@ mod tests {
             player.fill(chunk);
         }
         out
+    }
+
+    fn short_form(seed: &str) -> PortableScore {
+        let section = |id: &str| PortableSection {
+            id: id.into(),
+            label: id.into(),
+            feeling: "steady".into(),
+            color: "#ffffff".into(),
+            length_ticks: 960,
+            events: (0..960)
+                .step_by(240)
+                .map(|tick| MusicEvent::Note {
+                    id: format!("{id}-{tick}"),
+                    section: id.into(),
+                    lane: "melody".into(),
+                    start_tick: tick,
+                    duration_ticks: 240,
+                    velocity: 0.8,
+                    pitch: 60,
+                    voice: "chip".into(),
+                    role: Some("melody".into()),
+                })
+                .collect(),
+        };
+        PortableScore {
+            schema_version: SCORE_SCHEMA_VERSION,
+            id: seed.into(),
+            title: seed.into(),
+            bpm: 240.0,
+            beats_per_bar: 4,
+            ticks_per_beat: 240,
+            crossfade_bars: 1.0,
+            default_section: "a".into(),
+            sections: vec![section("a"), section("b")],
+            rules: vec![],
+            form: Some(SongForm {
+                steps: vec![
+                    SongFormStep {
+                        section: "a".into(),
+                        repeats: 1,
+                    },
+                    SongFormStep {
+                        section: "b".into(),
+                        repeats: 1,
+                    },
+                ],
+                loop_from: Some(0),
+                origin: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn automatic_form_join_does_not_overlap_a_music_handoff() {
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(short_form("a"), "a", "suspense", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(short_form("b"), "b", "suspense", 0, None)
+            .unwrap();
+
+        let mut saw_handoff = false;
+        let mut resumed_form = false;
+        for _ in 0..120 {
+            let mut buffer = [0.0; 256];
+            player.fill(&mut buffer);
+            if let Some(outgoing) = &player.outgoing {
+                saw_handoff = true;
+                assert!(
+                    !outgoing.transport.is_blending(outgoing.tick),
+                    "outgoing form joined during music handoff"
+                );
+                let active = player.active.as_ref().unwrap();
+                assert!(
+                    !active.transport.is_blending(active.tick),
+                    "incoming form joined during music handoff"
+                );
+            } else if saw_handoff {
+                let active = player.active.as_ref().unwrap();
+                resumed_form |= active.transport.is_blending(active.tick);
+            }
+        }
+        assert!(saw_handoff);
+        assert!(player.is_playing_seed("b"));
+        assert!(
+            resumed_form,
+            "automatic form resumes after the music handoff"
+        );
+    }
+
+    #[test]
+    fn form_hold_requested_during_a_music_handoff_survives_it() {
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(short_form("a"), "a", "suspense", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(short_form("b"), "b", "suspense", 0, None)
+            .unwrap();
+        let mut buffer = [0.0; 256];
+        for _ in 0..40 {
+            if music_blending(&player) {
+                break;
+            }
+            player.fill(&mut buffer);
+        }
+        assert!(music_blending(&player));
+        assert!(player.set_form_held(true));
+        assert!(player.is_form_held());
+        for _ in 0..120 {
+            player.fill(&mut buffer);
+        }
+        assert!(!music_blending(&player));
+        assert!(player.status().unwrap().form_held);
+        assert_eq!(player.current_section(), Some("a"));
+        assert!(player.set_form_held(false));
+        assert!(!player.is_form_held());
+        let mut resumed = false;
+        for _ in 0..120 {
+            player.fill(&mut buffer);
+            resumed |= section_blending(&player);
+        }
+        assert!(resumed);
+    }
+
+    #[test]
+    fn mixed_music_handoff_respects_the_true_peak_ceiling() {
+        let mut outgoing = short_form("outgoing");
+        outgoing.form = None;
+        outgoing.crossfade_bars = 2.0;
+        let mut incoming = short_form("incoming");
+        incoming.form = None;
+        incoming.bpm = 189.0;
+        for score in [&mut outgoing, &mut incoming] {
+            for section in &mut score.sections {
+                let extra: Vec<_> = section
+                    .events
+                    .iter()
+                    .cloned()
+                    .enumerate()
+                    .map(|(i, mut event)| {
+                        if let MusicEvent::Note { id, pitch, .. } = &mut event {
+                            *id = format!("{id}-harmony-{i}");
+                            *pitch += 7;
+                        }
+                        event
+                    })
+                    .collect();
+                section.events.extend(extra);
+            }
+        }
+        let mut player = LivePlayer::new(8_000.0);
+        player
+            .load(outgoing, "outgoing", "racing", 0, None)
+            .unwrap();
+        player.fill(&mut [0.0; 1600]);
+        player
+            .load(incoming, "incoming", "folklore", 5, Some("b"))
+            .unwrap();
+        let mut samples = Vec::new();
+        let mut saw_handoff = false;
+        for _ in 0..180 {
+            let mut chunk = [0.0; 256];
+            player.fill(&mut chunk);
+            saw_handoff |= player.outgoing.is_some();
+            samples.extend_from_slice(&chunk);
+        }
+        assert!(saw_handoff);
+        let peak = crate::master::true_peak_envelope_4x(&samples)
+            .into_iter()
+            .fold(0.0f32, f32::max);
+        let ceiling = 10.0f32.powf(crate::master::DEFAULT_CEILING_DBTP / 20.0);
+        assert!(
+            peak <= ceiling,
+            "mixed handoff reached {} dBTP",
+            20.0 * peak.log10()
+        );
     }
 
     #[test]
@@ -569,6 +878,274 @@ mod tests {
         assert_eq!(player.status().unwrap().transition.unwrap().to, target);
         assert!(player.cancel_pending());
         assert!(player.status().unwrap().transition.is_none());
+    }
+
+    /// Integrated loudness and true peak of `audio` after `settle` seconds.
+    fn loudness_after(audio: &[f32], settle: f32) -> (f32, f32) {
+        let mut meter = crate::master::Meter::new(RATE as u32);
+        meter.process(&audio[(RATE * settle) as usize..]);
+        meter.report()
+    }
+
+    #[test]
+    fn live_music_holds_the_target_loudness_across_recipes() {
+        let racing = crate::generate_racing_arrangement(
+            &crate::GenerateInput {
+                secret: String::new(),
+                seed: "live".into(),
+                style: crate::Style::Funk,
+                palette: crate::InstrumentPalette::default(),
+                energy: 0.58,
+                complexity: 0.75,
+                brightness: 0.55,
+                syncopation: 0.9,
+            },
+            crate::RacingArrangement::Seeded,
+        )
+        .unwrap();
+        let quiet_suspense = |style| {
+            generate_suspense_arrangement(
+                &SuspenseInput {
+                    secret: "live".into(),
+                    seed: "loudness".into(),
+                    style,
+                    tension: 0.2,
+                    heat: 0.2,
+                    mystery: 0.8,
+                    pulse: 0.2,
+                },
+                SuspenseArrangement::Seeded,
+            )
+            .unwrap()
+        };
+        let folklore = crate::generate_folklore(
+            &crate::FolkloreInput {
+                secret: "live".into(),
+                seed: "loudness".into(),
+                energy: 0.58,
+                complexity: 0.75,
+                brightness: 0.55,
+                syncopation: 0.9,
+            },
+            "seeded",
+        )
+        .unwrap();
+        let adventure = crate::generate_adventure_arrangement(
+            &crate::AdventureInput {
+                secret: "live".into(),
+                seed: "loudness".into(),
+                style: crate::AdventureStyle::Folk,
+                wonder: 0.5,
+                danger: 0.5,
+                mystery: 0.5,
+                motion: 0.5,
+            },
+            crate::AdventureArrangement::AllPhases,
+        )
+        .unwrap();
+        let scores = [
+            ("racing", racing),
+            ("suspense", quiet_suspense(SuspenseStyle::Terminal)),
+            ("suspense", quiet_suspense(SuspenseStyle::Trance)),
+            ("folklore", folklore),
+            ("adventure", adventure),
+        ];
+        for (recipe, score) in scores {
+            let mut player = LivePlayer::new(RATE);
+            player.load(score, "loudness", recipe, 0, None).unwrap();
+            let (lufs, true_peak) = loudness_after(&play(&mut player, 60.0), 20.0);
+            assert!(
+                (-2.0..=1.0).contains(&(lufs - crate::master::DEFAULT_TARGET_LUFS)),
+                "{recipe} plays at {lufs:.1} LUFS"
+            );
+            assert!(
+                true_peak <= crate::master::DEFAULT_CEILING_DBTP + 0.1,
+                "{recipe} peaks at {true_peak:.1} dBTP"
+            );
+        }
+    }
+    /// Render one buffer at a time until `done` holds, at most `seconds`.
+    fn play_until(
+        player: &mut LivePlayer,
+        seconds: f32,
+        mut done: impl FnMut(&LivePlayer) -> bool,
+    ) -> bool {
+        let mut buffer = [0.0; 512];
+        for _ in 0..(RATE * seconds / 512.0) as usize {
+            if done(player) {
+                return true;
+            }
+            player.fill(&mut buffer);
+        }
+        done(player)
+    }
+
+    /// Sections both scores have, other than `except`.
+    fn shared_sections(a: &PortableScore, b: &PortableScore, except: &str) -> Vec<String> {
+        a.sections
+            .iter()
+            .map(|section| section.id.clone())
+            .filter(|id| id != except && b.section(id).is_some())
+            .collect()
+    }
+
+    fn music_blending(player: &LivePlayer) -> bool {
+        player.outgoing.is_some()
+    }
+
+    fn section_blending(player: &LivePlayer) -> bool {
+        player
+            .active
+            .as_ref()
+            .is_some_and(|voice| voice.transport.is_blending(voice.tick))
+    }
+
+    #[test]
+    fn new_music_waits_for_a_running_section_blend() {
+        let score = suspense("a");
+        let target = shared_sections(&score, &suspense("b"), &score.default_section)[0].clone();
+        let mut player = LivePlayer::new(RATE);
+        player.load(score, "a", "suspense", 0, None).unwrap();
+        play(&mut player, 0.3);
+        player.cue_section(&target);
+        assert!(play_until(&mut player, 10.0, section_blending));
+
+        // Like the Lab, ask the new music to carry on in the sounding section.
+        player
+            .load(suspense("b"), "b", "suspense", 0, Some(&target))
+            .unwrap();
+        assert!(player.status().unwrap().pending_score_id.is_some());
+        let mut overlapped = false;
+        let started = play_until(&mut player, 30.0, |player| {
+            overlapped |= music_blending(player) && section_blending(player);
+            player.is_playing_seed("b")
+        });
+        assert!(started, "the new music starts once the section blend ends");
+        assert!(
+            !overlapped,
+            "a music blend never runs on top of a section blend"
+        );
+        assert_eq!(player.current_section(), Some(target.as_str()));
+    }
+
+    #[test]
+    fn a_waiting_music_change_and_section_become_one_blend() {
+        let (a, b) = (suspense("a"), suspense("b"));
+        let sections = shared_sections(&a, &b, &a.default_section);
+        let (first_cue, latest_cue) = (sections[0].clone(), sections[1].clone());
+        let mut player = LivePlayer::new(RATE);
+        player.load(a, "a", "suspense", 0, None).unwrap();
+        play(&mut player, 0.3);
+        // Within one bar: a cue, new music, then another cue. The latest cue wins.
+        player.cue_section(&first_cue);
+        player.load(b, "b", "suspense", 0, None).unwrap();
+        player.cue_section(&latest_cue);
+        let status = player.status().unwrap();
+        assert_eq!(status.pending_section.as_deref(), Some(latest_cue.as_str()));
+        assert!(
+            status.transition.is_none(),
+            "the old music does not blend first"
+        );
+
+        assert!(play_until(&mut player, 10.0, |player| player.is_playing_seed("b")));
+        assert!(music_blending(&player));
+        assert_eq!(player.current_section(), Some(latest_cue.as_str()));
+        let mut section_blend = false;
+        play_until(&mut player, 30.0, |player| {
+            section_blend |= section_blending(player);
+            !music_blending(player)
+        });
+        assert!(
+            !section_blend,
+            "the new music opens on the section: one blend"
+        );
+        assert_eq!(player.current_section(), Some(latest_cue.as_str()));
+    }
+
+    #[test]
+    fn the_clock_keeps_counting_through_new_music() {
+        let mut player = LivePlayer::new(RATE);
+        player
+            .load(suspense("a"), "a", "suspense", 0, None)
+            .unwrap();
+        play(&mut player, 3.0);
+        let before = player.current_tick().unwrap();
+        player
+            .load(suspense("b"), "b", "suspense", 0, None)
+            .unwrap();
+        assert!(play_until(&mut player, 10.0, |player| player.is_playing_seed("b")));
+        assert!(player.current_tick().unwrap() >= before);
+    }
+
+    #[test]
+    fn a_section_requested_during_a_music_blend_waits_for_it() {
+        let (a, b) = (suspense("a"), suspense("b"));
+        let target = shared_sections(&a, &b, &b.default_section)[0].clone();
+        let mut player = LivePlayer::new(RATE);
+        player.load(a, "a", "suspense", 0, None).unwrap();
+        play(&mut player, 0.3);
+        player.load(b, "b", "suspense", 0, None).unwrap();
+        assert!(play_until(&mut player, 10.0, music_blending));
+
+        assert!(player.cue_section(&target));
+        let status = player.status().unwrap();
+        assert_eq!(status.pending_section.as_deref(), Some(target.as_str()));
+        assert!(status.transition.is_none());
+
+        assert!(play_until(&mut player, 30.0, |player| !music_blending(
+            player
+        )));
+        assert_eq!(
+            player.status().unwrap().transition.map(|plan| plan.to),
+            Some(target)
+        );
+    }
+
+    #[test]
+    fn only_the_latest_music_change_plays() {
+        let mut player = LivePlayer::new(RATE);
+        player
+            .load(suspense("a"), "a", "suspense", 0, None)
+            .unwrap();
+        play(&mut player, 0.3);
+        player
+            .load(suspense("b"), "b", "suspense", 0, None)
+            .unwrap();
+        player
+            .load(suspense("c"), "c", "suspense", 0, None)
+            .unwrap();
+        let mut heard_b = false;
+        assert!(play_until(&mut player, 30.0, |player| {
+            heard_b |= player.is_playing_seed("b");
+            player.is_playing_seed("c") && !music_blending(player)
+        }));
+        assert!(!heard_b);
+    }
+
+    #[test]
+    fn cancel_drops_a_section_waiting_for_new_music() {
+        let (a, b) = (suspense("a"), suspense("b"));
+        let target = shared_sections(&a, &b, &b.default_section)[0].clone();
+        let mut player = LivePlayer::new(RATE);
+        player.load(a, "a", "suspense", 0, None).unwrap();
+        play(&mut player, 0.3);
+        player.load(b, "b", "suspense", 0, None).unwrap();
+        player.cue_section(&target);
+        assert!(player.cancel_pending());
+        assert!(player.status().unwrap().pending_section.is_none());
+        assert!(play_until(&mut player, 10.0, |player| player.is_playing_seed("b")));
+        assert_eq!(
+            player.current_section(),
+            Some(
+                player
+                    .active
+                    .as_ref()
+                    .unwrap()
+                    .score
+                    .default_section
+                    .as_str()
+            )
+        );
     }
 
     #[test]

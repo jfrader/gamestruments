@@ -50,6 +50,15 @@ describe("musical section cues", () => {
     assert.equal(transport.snapshot().pendingSection, null);
   });
 
+  it("names the new music a waiting section opens", () => {
+    const next: PortableScore = { ...score, id: "cue-next", title: "Next piece" };
+    const snapshot = { currentSection: "intro", pendingSection: "anomaly", transition: null };
+    const view = cueView(score, snapshot, 100, true, "anomaly", false, next);
+    assert.equal(view.status, "Queued: anomaly");
+    assert.equal(view.detail, "Next piece starts on anomaly.");
+    assert.equal(view.cancellable, true);
+  });
+
   it("keeps an edge cue quiet while its section plays and re-arms once the form leaves", () => {
     const transport = new AdaptiveTransport({ ...score, rules: [{ target: "scan", hold: false, priority: 1, when: {} }] });
     transport.requestState({ numeric: {}, categorical: {} }, 0);

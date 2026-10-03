@@ -3,6 +3,7 @@ import {
   validatePortableScore,
 } from "../../../packages/runtime/src/index.ts";
 import { WasmPlayer } from "./wasm-player.ts";
+import type { LabRecipe } from "./recipes.ts";
 
 let moduleRef: WebAssembly.Module | null = null;
 let exportsRef: WebAssembly.Exports | null = null;
@@ -75,7 +76,7 @@ export interface GenerateScoreParams {
   complexity: number;
   brightness: number;
   syncopation: number;
-  recipe?: "racing" | "suspense" | "adventure";
+  recipe?: LabRecipe;
   arrangement?: Arrangement;
   intent?: "loop" | "arc" | "long" | "surprise";
   autoplay?: boolean;

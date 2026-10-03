@@ -1,6 +1,6 @@
 //! Medieval-inspired adaptive adventure score.
 //!
-//! Eight long-form sections share one seeded modal identity while changing
+//! Long-form sections share one seeded modal identity while changing
 //! phrase, orchestration, and pulse to follow a complete fantasy quest arc.
 
 mod arrangement;
@@ -15,7 +15,7 @@ use crate::score::{
 };
 use crate::theory::NOTE_NAMES;
 
-pub const GENERATOR_VERSION: &str = "5.0.0";
+pub const GENERATOR_VERSION: &str = "5.1.0";
 pub const DNA_SEED_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -302,7 +302,7 @@ mod tests {
     }
 
     #[test]
-    fn generates_the_fourteen_requested_long_sections_without_a_default_form() {
+    fn generates_the_sixteen_sections_with_two_folklore_variants_without_a_default_form() {
         let score = generate_adventure(&sample("lengths", AdventureStyle::Folk)).unwrap();
         let bar_ticks = score.bar_ticks();
         assert_eq!(score.default_section, "camp");
@@ -310,7 +310,9 @@ mod tests {
         let expected = [
             ("camp", 16),
             ("explore", 32),
+            ("explore-strings", 32),
             ("town", 32),
+            ("town-strings", 32),
             ("dungeon", 16),
             ("combat", 32),
             ("boss", 16),
@@ -410,8 +412,8 @@ mod tests {
 
     #[test]
     fn events_use_acoustic_palette_safe_registers_and_unique_ids() {
-        let allowed_notes = HashSet::from(["harp", "recorder", "vielle", "bell"]);
-        let allowed_percussion = HashSet::from(["frame-drum", "tambourine"]);
+        let allowed_notes = HashSet::from(["harp", "recorder", "vielle", "bell", "nylon-guitar"]);
+        let allowed_percussion = HashSet::from(["frame-drum", "tambourine", "bombo", "bombo-rim"]);
         for style in [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -643,7 +645,7 @@ mod tests {
 
     #[test]
     fn many_seeds_are_valid_and_varied() {
-        assert_eq!(GENERATOR_VERSION, "5.0.0");
+        assert_eq!(GENERATOR_VERSION, "5.1.0");
         let styles = [
             AdventureStyle::Folk,
             AdventureStyle::Dark,
@@ -1124,4 +1126,84 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn folklore_variants_have_distinct_melody_rhythms_and_playable_guitar_registers() {
+        for style in [
+            AdventureStyle::Folk,
+            AdventureStyle::Dark,
+            AdventureStyle::Orchestral,
+        ] {
+            let score = generate_adventure(&sample("variants-16", style)).unwrap();
+            assert_eq!(score.sections.len(), 16, "{style:?}");
+            for (variant_id, base_id, scene) in [
+                ("explore-strings", "explore", Scene::Explore),
+                ("town-strings", "town", Scene::Town),
+            ] {
+                let variant = score.section(variant_id).unwrap();
+                let base = score.section(base_id).unwrap();
+                assert_eq!(variant.length_ticks, base.length_ticks);
+                assert_eq!(variant.length_ticks, 32 * score.bar_ticks());
+                assert_eq!(section_scene_for(variant_id), Some(scene));
+                assert_eq!(section_scene_for(base_id), Some(scene));
+
+                let melody_rhythm = |section: &PortableSection| {
+                    section
+                        .events
+                        .iter()
+                        .filter_map(|event| match event {
+                            MusicEvent::Note {
+                                role: Some(role),
+                                start_tick,
+                                duration_ticks,
+                                ..
+                            } if role == "melody" => Some((*start_tick, *duration_ticks)),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                };
+                assert_ne!(
+                    melody_rhythm(variant),
+                    melody_rhythm(base),
+                    "{variant_id} rhythm must differ from {base_id}"
+                );
+
+                for voice in ["bombo", "bombo-rim"] {
+                    assert!(
+                        variant.events.iter().any(|event| matches!(event,
+                            MusicEvent::Percussion { voice: played, .. } if played == voice
+                        )),
+                        "{variant_id} missing {voice}"
+                    );
+                }
+                for lane in ["pedal", "bass", "harmony", "harp", "melody"] {
+                    let notes: Vec<_> = variant
+                        .events
+                        .iter()
+                        .filter(|event| matches!(event,
+                            MusicEvent::Note { lane: played, .. } if played == lane
+                        ))
+                        .collect();
+                    assert!(!notes.is_empty(), "{variant_id} missing {lane}");
+                    assert!(
+                        notes.iter().all(|event| event.voice() == "nylon-guitar"),
+                        "{variant_id} {lane} is not nylon guitar"
+                    );
+                    if matches!(lane, "pedal" | "bass") {
+                        assert!(
+                            notes.iter().all(|event| event.pitch().is_some_and(|pitch| pitch >= 40)),
+                            "{variant_id} {lane} below E2"
+                        );
+                    }
+                    if lane == "melody" {
+                        assert!(
+                            notes.iter().all(|event| event.pitch().is_some_and(|pitch| (55..=84).contains(&pitch))),
+                            "{variant_id} melody out of register"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
 }

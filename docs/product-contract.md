@@ -10,9 +10,9 @@ onto its own vocabulary and exposes its own runtime state:
 - **Racing** — north-star racing loops: race phase, speed intensity, position
   pressure, final lap, and finish result.
 - **Suspense** — a song form plus trace phase, heat, focus, and progress.
-- **Adventure** — an eight-section fantasy quest arc (16-bar camp, dungeon,
-  boss, and sanctuary; 32-bar explore, town, combat, and victory), plus
-  discovery, threat, and quest progress.
+- **Adventure** — eight fantasy quest situations with sixteen musical sections,
+  including guitar-and-bombo Explore/Town alternatives, plus discovery, threat,
+  and quest progress.
 
 ## Included
 

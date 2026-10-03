@@ -22,6 +22,7 @@ import { labRecipeInfo, nextVersionNumber } from "./state.ts";
 import { LAB_RECIPES, type LabRecipe, type NormalizedMusicTraits } from "./recipes.ts";
 
 const PART_COLORS = ["#d7ff3f", "#6be3ff", "#ffb347", "#ff8ad8", "#f1eee5", "#b9a7ff"] as const;
+const TEMPO_FORMAT = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 
 function getPartRings(): HTMLElement[] {
   // Re-query each frame: N=6 is trivial; survives DOM clones in tests (e.g. firefox compat)
@@ -78,8 +79,8 @@ const ARRANGEMENTS: readonly ArrangementOption[] = [
   {
     id: "seeded",
     label: "Seeded",
-    description: "Composed from the phase pool",
-    summary: "A seeded composer picks the count, roles, order, and loop point from the seed.",
+    description: "Composed song form",
+    summary: "Play the composed song form.",
   },
 ];
 
@@ -122,7 +123,7 @@ export function renderSections(frame: PlaybackFrame, running: boolean, busy: boo
   const { score } = frame;
   const tick = Math.floor(frame.tick);
   const mix = new Map(frame.mix.map((item) => [item.section, item.gain]));
-  const view = cueView(score, frame.snapshot, tick, running, frame.requestedCue, frame.formHeld);
+  const view = cueView(score, frame.snapshot, tick, running, frame.requestedCue, frame.formHeld, frame.pendingScore);
   const next = frame.nextFormSection;
   setDisabled(elements.holdForm, busy || score.form === undefined);
   setAttribute(elements.holdForm, "aria-pressed", String(frame.formHeld));
@@ -207,15 +208,18 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const profile = labRecipeInfo(recipe);
   elements.shell.dataset.recipe = recipe;
   elements.gameSignals.dataset.recipe = recipe;
+  elements.gameSignals.hidden = profile.engineUpdate === undefined;
   renderRecipeSelect(recipe);
   elements.traitEnergyLabel.textContent = profile.traitLabels.energy;
   elements.traitComplexityLabel.textContent = profile.traitLabels.complexity;
   elements.traitBrightnessLabel.textContent = profile.traitLabels.brightness;
   elements.traitSyncopationLabel.textContent = profile.traitLabels.syncopation;
-  elements.meterIntensityLabel.textContent = profile.meters.intensity;
-  elements.meterPressureLabel.textContent = profile.meters.pressure;
-  elements.meterFinalLabel.textContent = profile.meters.flag;
-  elements.meterFinalCopy.textContent = profile.meters.flagCopy;
+  if (profile.meters !== undefined) {
+    elements.meterIntensityLabel.textContent = profile.meters.intensity;
+    elements.meterPressureLabel.textContent = profile.meters.pressure;
+    elements.meterFinalLabel.textContent = profile.meters.flag;
+    elements.meterFinalCopy.textContent = profile.meters.flagCopy;
+  }
   const phaseIds = profile.phases;
   const buttons = phaseIds.map((id) => {
     const button = document.createElement("button");
@@ -281,7 +285,7 @@ export function renderScoreIdentity(
   phase: string,
 ): void {
   elements.scoreTitle.textContent = score.title;
-  elements.tempo.textContent = String(score.bpm);
+  elements.tempo.textContent = TEMPO_FORMAT.format(score.bpm);
   renderRecipeChrome(recipe, phase);
   elements.sectionControl.hidden = score.form === undefined;
   renderArrangementControl(recipe, arrangement);
@@ -324,7 +328,7 @@ export function renderGenerationControls(
   }
   elements.generatorSummary.value = [
     score.id,
-    `${phaseSections(score).length} sections @ ${score.bpm} bpm`,
+    `${phaseSections(score).length} sections @ ${TEMPO_FORMAT.format(score.bpm)} bpm`,
     "engine: wasm",
   ].join(" / ");
 }
@@ -550,6 +554,9 @@ export function renderFrame(frame: PlaybackFrame, running: boolean, busy = false
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
   const activeTransition = snapshot.transition;
   const section = sectionById(soundingSection(snapshot, tick));
+  const pendingLabel = snapshot.pendingSection === null
+    ? null
+    : sectionLookup(frame.pendingScore ?? score)(snapshot.pendingSection).label;
 
   setText(elements.bar, String(Math.floor(tick / barTicks) + 1).padStart(2, "0"));
   setText(elements.beat, String(
@@ -559,8 +566,10 @@ export function renderFrame(frame: PlaybackFrame, running: boolean, busy = false
   setText(elements.moodFeeling, section.feeling);
   setText(elements.transitionLabel, !running
     ? "Engine offline"
-    : snapshot.pendingSection !== null
-      ? `Queued: ${sectionById(snapshot.pendingSection).label} · after this blend`
+    : frame.pendingScore !== null
+      ? `Next: ${frame.pendingScore.title}${pendingLabel === null ? "" : ` · ${pendingLabel}`}`
+    : pendingLabel !== null
+      ? `Queued: ${pendingLabel} · after this blend`
       : activeTransition === null
         ? score.form === undefined
           ? "Pattern locked"

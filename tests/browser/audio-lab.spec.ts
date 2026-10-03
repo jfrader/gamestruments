@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { captureEngineAudio, ENGINE_SAMPLE_RATE } from "./engine-audio.ts";
 import { selectRecipe } from "./recipe.ts";
 
 test("generation controls remain functional before and during playback", async ({ page }) => {
@@ -95,7 +96,7 @@ test("switching to Suspense generates song-form music instead of racing", async 
   expect(runtimeErrors).toEqual([]);
 });
 
-test("switching to Adventure generates the eight-section quest arc", async ({ page }) => {
+test("switching to Adventure generates the quest arc and its musical variants", async ({ page }) => {
   const runtimeErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -110,7 +111,7 @@ test("switching to Adventure generates the eight-section quest arc", async ({ pa
   await selectRecipe(page, "adventure");
   await expect(page.locator("#audition-status")).toContainText("Opened Adventure");
   await expect(page.locator("#score-title")).toContainText(/Folk|Dark|Orchestral/);
-  await expect(page.locator("#section-list li")).toHaveCount(14);
+  await expect(page.locator("#section-list li")).toHaveCount(16);
   await expect(page.locator("#section-list li").first()).toContainText("Trailhead Camp");
   await expect(page.locator("#runtime-signal")).toContainText("recipe: adventure");
 
@@ -241,13 +242,60 @@ test("Adventure offers exactly two arrangements: All phases and Seeded", async (
   await expect(page.locator('#arrangement-buttons button[data-arrangement="all-phases"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
   await expect(page.locator("#score-title")).toContainText("All phases");
-  await expect(page.locator("#section-list li")).toHaveCount(14);
+  await expect(page.locator("#section-list li")).toHaveCount(16);
   expect(errors).toEqual([]);
 });
 
+test("Adventure fractional tempo stays readable in both Lab readouts", async ({ page }) => {
+  await page.goto("/#lab");
+  await selectRecipe(page, "adventure");
+  await page.locator('#score-buttons button', { hasText: "Orchestral RPG" }).click();
+  const tempo = await page.evaluate(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(97.4));
+  await expect(page.locator("#tempo-value")).toHaveText(tempo);
+  await expect(page.locator("#generator-summary")).toContainText(`@ ${tempo} bpm`);
+});
+
+for (const { phase, original, variant } of [
+  { phase: "explore", original: "The Old Forest", variant: "The Winding Trail" },
+  { phase: "town", original: "Hearth and Hall", variant: "Courtyard Dance" },
+]) {
+  test(`Adventure guitar variants: cue ${variant} and keep it across arrangements`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await captureEngineAudio(page);
+    await page.goto("/#lab");
+    await selectRecipe(page, "adventure");
+    await expect(page.locator("#phase-buttons button")).toHaveCount(8);
+    await expect(page.getByRole("button", { name: `Cue ${original}`, exact: true })).toBeVisible();
+    await page.locator(`#phase-buttons button[data-phase="${phase}"]`).click();
+    await page.locator("#center-play").click();
+    await expect(page.locator("#mood-name")).toHaveText(original);
+    await page.getByRole("button", { name: `Cue ${variant}`, exact: true }).click();
+    await expect(page.locator("#mood-name")).toHaveText(variant, { timeout: 20000 });
+    const frames = await page.evaluate(() => window.engineAudio.frames);
+    await page.waitForFunction((target) => window.engineAudio.frames >= target, frames + ENGINE_SAMPLE_RATE * 2);
+    const audio = await page.evaluate(() => ({
+      peak: window.engineAudio.peak,
+      finite: window.engineAudio.samples.every(Number.isFinite),
+    }));
+    expect(audio.finite).toBe(true);
+    expect(Number.isFinite(audio.peak)).toBe(true);
+    expect(audio.peak).toBeGreaterThan(0.001);
+    await page.locator('#arrangement-buttons button[data-arrangement="all-phases"]').click();
+    await expect(page.locator("#audition-status")).toHaveText("All phases arrangement ready");
+    await expect(page.locator("#mood-name")).toHaveText(variant);
+    await expect(page.locator("#start-audio")).toHaveAttribute("data-engine-state", "playing");
+    await page.locator("#start-audio").click();
+    expect(errors).toEqual([]);
+  });
+}
+
 test("every recipe exposes exactly the All phases and Seeded arrangements", async ({ page }) => {
   await page.goto("/#lab");
-  for (const recipe of ["racing", "suspense", "adventure"] as const) {
+  for (const recipe of ["racing", "suspense", "adventure", "folklore"] as const) {
     await selectRecipe(page, recipe);
     await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
     const ids = await page.locator("#arrangement-buttons button").evaluateAll(

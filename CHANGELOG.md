@@ -2,9 +2,25 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-03
+
+### Added
+
+- Audio Lab: Folklore with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms.
+- Adventure adds The Winding Trail and Courtyard Dance, guitar-and-bombo alternatives to Explore and Town. The original sections and game-state controls remain available; the variants join All phases and seeded arrangements.
+
+### Changed
+
+- Adventure's generator version is now `5.1.0`. Its section pool grows from fourteen to sixteen, so seeded arrangements can change for an existing seed. The original fourteen sections' material, timing, and eight game-state situations are unchanged.
+
 ### Fixed
 
 - Quitting a game while the music plays no longer prints Godot's `ObjectDB instance was leaked at exit` warning. The addon now waits for the audio mix that releases its playback while the scene tree is torn down, so games need no special quit sequence ([godot#76745](https://github.com/godotengine/godot/issues/76745)).
+- Live music (the Godot player and the Audio Lab) now tracks a -14 LUFS target instead of applying a fixed +23.5 dB boost. It measures gated loudness over the last 30 seconds, turns down at up to 6 dB per second, rises at up to 1.5 dB per second, and holds its gain through silence. Peaky material can remain below the target instead of being limited harder.
+- Live output uses look-ahead true-peak limiting, including the final sum during a music handoff, to keep peaks below -1 dBTP. Mono-to-stereo playback now preserves channel energy instead of adding about 3 LU by copying the full signal to both channels.
+- Rapid changes no longer pile up fades or lose cues. The live player (Godot and the Audio Lab) runs one blend at a time, a section blend or a music blend; anything requested during one waits, keeping only the latest music change and the latest section. A music change and a section that are both waiting become one blend: the new music opens on that section. The bar count carries on through a music change instead of restarting at bar 1, and the form hold carries over. The Lab shows the waiting music and section.
+- Audio Lab tempo readouts no longer expose floating-point tails such as `97.39999999999999` BPM.
+- Song forms can return to an earlier section and then continue to the ending, instead of jumping backward to that section's first appearance.
 
 ## [1.1.1] - 2026-10-01
 

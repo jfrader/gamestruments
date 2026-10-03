@@ -3,24 +3,26 @@
 ## What this recipe is for
 
 Adventure is the long-form fantasy-quest recipe: eight state-selectable sections
-— camp, explore, town, dungeon, combat, boss, sanctuary, victory — plus six
-composer-only phases (a combat set and a happiness set) that fill out a seeded
-song form. A game drives it with `set_adventure_state(area_phase, discovery,
+— camp, explore, town, dungeon, combat, boss, sanctuary, victory — plus eight
+cueable alternatives: a combat set, a happiness set and guitar-led Explore/Town
+variants. A game drives it with `set_adventure_state(area_phase, discovery,
 threat, quest_complete)`; sections are long (16 or 32 bars) and develop their
 material phrase by phrase rather than repeating copied halves. Three styles —
 `folk`, `dark`, `orchestral` — change the ensemble and the modes.
 
 ## Phases
 
-The pool in natural quest order (`crates/engine/src/adventure/pool.rs`,
-`ADVENTURE_SECTION_IDS`; plans in `adventure/composition.rs`, `SECTION_PLANS`).
+The pool follows the authored plans in `crates/engine/src/adventure/composition.rs`,
+`SECTION_PLANS`.
 Roles and energy are derived from each section's `Scene`.
 
 | id | label | role | base length | what it carries |
 |---|---|---|---|---|
 | `camp` | Trailhead Camp | Intro | 16 bars | one-shot; energy 25; opens the form |
 | `explore` | The Old Forest | Groove | 32 bars | energy 48; the loop-point target |
+| `explore-strings` | The Winding Trail | Groove | 32 bars | energy 48; spacious guitar-led Explore alternative |
 | `town` | Hearth and Hall | Groove | 32 bars | energy 58 |
+| `town-strings` | Courtyard Dance | Groove | 32 bars | energy 58; guitar-and-bombo Town alternative |
 | `festival` | The Green Market | Groove | 32 bars | energy 62; composer-only happiness phase |
 | `reunion` | Homecoming Hearth | Groove | 32 bars | energy 54; composer-only happiness phase |
 | `dungeon` | The Deep Halls | Build | 16 bars | one-shot; energy 20; sparse, low |
@@ -33,30 +35,35 @@ Roles and energy are derived from each section's `Scene`.
 | `dawn` | First Light | Break | 16 bars | one-shot; energy 36; composer-only bright release |
 | `victory` | Lanterns at Dawn | Outro | 32 bars | one-shot; energy 70; the outro |
 
-The score always carries all fourteen sections. `set_adventure_state` selects
+The score always carries all sixteen sections. `set_adventure_state` selects
 only the eight original scenes (camp/explore/town/dungeon/combat/boss/sanctuary/
-victory); the six added phases (skirmish/assault/chase/festival/reunion/dawn)
-are pool members for the seeded composer and are reachable via `cue_section` and
-the `all-phases`/`seeded` tours.
+victory); the other sections are pool members for the seeded composer and are
+reachable via `cue_section`. The Lab's `all-phases` tour includes every section.
+
+The guitar variants borrow nylon phrasing and bombo skin/rim accents from
+Folklore, but keep Adventure's tonic, scene-specific mode, tempo and 4/4 meter.
+They do not replace the original Explore or Town music.
 
 ## Arrangements
 
-`arrangement` accepts three values (`crates/engine/src/adventure/arrangement.rs`,
+The Rust/WASM arrangement selector accepts three values (`crates/engine/src/adventure/arrangement.rs`,
 `AdventureArrangement`):
 
-- `original` — native default. The base generator output: fourteen sections, no
+- `original` — native default. The base generator output: sixteen sections, no
   form. State-driven only.
-- `all-phases` — the same fourteen sections byte-identical, plus a form that
+- `all-phases` — the same sixteen sections byte-identical, plus a form that
   tours them in canonical order, looping from the first groove (`explore`).
-- `seeded` — the seeded composer picks a form over the fourteen-phase pool:
+- `seeded` — the seeded composer picks a form over the sixteen-phase pool:
   8–12 steps, always ending on the outro (`victory`), looping from a groove.
   `"composed"` is an alias. The seeded path also re-times sections by role
   (builds/grooves/peaks may stretch one extra 16-bar movement), applies a
   development arc, seam gestures with a shared tonic pitch class, a continuous
   trait response, and a register ceiling.
 
-With `autoplay = true`, `original`/`all-phases`/`seeded` attach a tour form; the
-native default is `autoplay = false`. The Audio Lab defaults to `seeded`.
+The Audio Lab defaults to `seeded`. Godot currently uses the base generator and
+ignores Adventure's `arrangement` property. Its optional `autoplay = true` tours
+the eight state-selectable sections; the default is `false`. Use `cue_section`
+to play an alternative in Godot.
 
 ## Traits
 
@@ -93,7 +100,6 @@ clamped 48–130.
 player.project_secret = "my-game"
 player.recipe = "adventure"
 player.style = "folk"              # folk | dark | orchestral
-player.arrangement = "seeded"      # original | all-phases | seeded
 var ok: bool = player.generate("level-001")
 ```
 
@@ -128,8 +134,8 @@ always resolves to `victory`.
 - Use `quest_complete = true` for the final victory, not as a per-area flag.
 - The `dungeon` and `sanctuary`/`dawn` sections are the quiet, sparse moments;
   don't push `danger` up through them or they lose their contrast.
-- The six composer-only phases are not selectable by state: reach them with
-  `cue_section` or let the seeded/all-phases tour place them. Don't pass
+- The eight musical alternatives are not selectable by state: reach them with
+  `cue_section` or the Lab's seeded/all-phases forms. Don't pass
   `"skirmish"`/`"festival"`/etc. as `area_phase` and expect them to be selected.
 
 ## Variety and dynamism
@@ -138,12 +144,13 @@ always resolves to `victory`.
   the project secret and level seed. Every quest is a different 8–12-step form,
   all rule-legal and ending on victory.
 - The composer is deterministic and high-variety: across 250 seeds it produces
-  >20 distinct forms, and across 2000 seeds every pool phase (including the six
-  added ones) is placed at least once.
+  >20 distinct forms, and across 2000 seeds every added pool phase is placed at
+  least once.
 - Styles change the whole ensemble: folk (recorder/vielle leads), dark (bowed
   vielle, drone-driven, phrygian/aeolian in the dangerous scenes), orchestral
-  (bowed strings always lead). Switch style per region or campaign for a
-  different sound without a new seed.
+  (bowed strings lead the original sections). The two guitar variants keep a
+  nylon lead across styles, with the scene's mode and supporting orchestration.
+  Switch style per region or campaign for a different sound without a new seed.
 - To keep one game alive: new level seed per area, sweep `wonder`/`danger` for a
   different brightness/drive, and switch `style` per biome. Generate once at
   level load.
@@ -189,8 +196,8 @@ finish need explicit calls.
 
 ## Pitfalls
 
-- Passing a composer-only phase (`skirmish`, `assault`, `chase`, `festival`,
-  `reunion`, `dawn`) as `area_phase`: state selection never returns them; use
+- Passing a musical alternative (`skirmish`, `assault`, `chase`, `festival`,
+  `reunion`, `dawn`, `explore-strings`, `town-strings`) as `area_phase`: state selection never returns them; use
   `cue_section` or the seeded tour.
 - Treating `quest_complete` as a per-area flag: it always resolves to `victory`.
 - Using traits as on/off: the knobs are continuous; `danger = 1` also folds the

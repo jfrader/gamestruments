@@ -52,8 +52,8 @@ score.
 
 Call `set_race_state` from your countdown, telemetry and finish handlers
 (Racing), `set_trace_state` plus the form controls (Suspense), or
-`set_adventure_state` (Adventure). Changes commit on the next bar boundary with
-a crossfade. Nothing is wired by name: connect these calls to your own events
+`set_adventure_state` (Adventure). Changes blend on bar boundaries. While a blend
+runs, the latest music change and latest section request wait. Connect these calls to your own events
 and check each bool return. Complete examples are in `kit/docs/quickstart.md`;
 the selection rules are in `kit/docs/api.md`.
 
@@ -64,15 +64,17 @@ otherwise.
 
 One player, three recipes. Racing is state-driven race loops (`racing`; styles
 neon, funk, fusion, chip). Suspense is a song-form arc for tense sessions
-(`suspense`; terminal, cipher, noir, trance). Adventure is an eight-section
-fantasy quest (`adventure`; folk, dark, orchestral). Set `recipe` before
+(`suspense`; terminal, cipher, noir, trance). Adventure covers eight fantasy
+quest situations with sixteen musical sections (`adventure`; folk, dark,
+orchestral). Set `recipe` before
 `generate`; each score belongs to one recipe.
 
-`arrangement` is `original` (default) or `extended` for Racing, and `all-phases`
-or `seeded` (default) for Suspense; Adventure ignores it. `autoplay` is
-Racing/Adventure only, defaults to `false` (state-driven), and when `true`
-tours the recipe's sections. The Audio Lab uses `autoplay = true` with Racing
-`extended`; the native examples use the state-driven defaults.
+Racing offers `original` (native default), `extended`, `all-phases`, and
+`seeded` arrangements. Suspense offers `all-phases` and `seeded` (default);
+Adventure ignores `arrangement` in Godot. `autoplay` defaults to `false` and
+adds a section tour to Original/Extended Racing or Adventure when enabled.
+Suspense and composed Racing already have a form. The Audio Lab defaults to
+Seeded; the native Racing game-signals example uses state-driven Original.
 
 ## Examples
 

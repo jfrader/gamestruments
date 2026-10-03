@@ -2,14 +2,17 @@
 
 Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, defaultSection):
 - Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
-  `adventure`, and score). WASM `gamestruments_score_json` accepts
-  `"recipe": "racing" | "suspense" | "adventure"` (default racing).
+  `adventure`, `folklore`, and score). WASM `gamestruments_score_json` accepts
+  `"recipe": "racing" | "suspense" | "adventure" | "folklore"` (default racing).
+  Folklore is a standalone guitar-and-bombo chacarera with six sections and a
+  repeating song form. It is available in the Lab/WASM, not the Godot recipe selector.
 - Adventure accepts styles `folk`, `dark`, and `orchestral` and generates
-  fourteen sections: the eight selected from area phase plus discovery, threat,
+  sixteen sections: the eight selected from area phase plus discovery, threat,
   and quest progress (`camp`, `explore`, `town`, `dungeon`, `combat`, `boss`,
   `sanctuary`, `victory`), plus a combat set (`skirmish`, `assault`, `chase`)
-  and a happiness set (`festival`, `reunion`, `dawn`) that join the seeded
-  composer's pool. `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`,
+  and a happiness set (`festival`, `reunion`, `dawn`), plus guitar-and-bombo
+  alternatives (`explore-strings`, `town-strings`) in the seeded composer's pool.
+  These additions are cue targets, not new area phases. `camp`, `dungeon`, `boss`, `sanctuary`, `skirmish`,
   `assault`, and `dawn` are 16 bars; the rest are 32.
   `crates/engine/src/adventure.rs` owns the plans, rules, and
   `select_adventure_section`; the Rust `AdaptiveTransport` exposes
@@ -64,9 +67,12 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 Transport / section selection + transition planning:
 - The lab's music selector and Cue rows enumerate the loaded score's complete
   section list, including endings. Suspense's game signals are separate,
-  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar; the latest request made
-  during a blend queues after it. Cancel removes only a waiting request, never
-  an in-progress blend. Stopped selection sets the next starting section.
+  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar. `LivePlayer` runs one
+  blend at a time, a section blend or a music blend; a request made during one
+  waits, keeping only the latest music change and the latest section. A waiting
+  music change and section become one blend that opens the new music on that
+  section, and the clock keeps counting through it. Cancel removes only a
+  waiting section, never an in-progress blend. Stopped selection sets the next starting section.
 - The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) decide sections and transitions for Godot and for the Audio Lab, which runs them through `LivePlayer`. `@gamestruments/runtime` keeps a TypeScript transport for other consumers; the Lab no longer uses it.
 - A sounding section keeps its phrase origin (where it began fading in): a finished blend or a form repeat moves only the form's count, so the renderer never restarts a section that is still sounding.
 - Pool forms leave `form.origin` unset: the incoming fade overlaps the previous
@@ -117,8 +123,12 @@ such section.
 
 Audio synthesis / sound stage:
 - The Rust `Synth` (mono, no room) renders the game and the Lab.
-  It mirrors the acoustic voices (harp/recorder/vielle/bell plus
-  frame-drum/tambourine) as acoustic-inspired synthesis, not sample recordings.
+- `LivePlayer` limits the final mixed output as well as each voice, including
+  music handoffs. The Godot adapter and Lab worklet split its mono output across
+  stereo channels at equal power, preserving its loudness rather than doubling
+  the channel energy.
+  Acoustic voices (harp/recorder/vielle/bell/nylon-guitar plus
+  frame-drum/tambourine/bombo/bombo-rim) are synthesized, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo
   controls and crossfades also control the effect.

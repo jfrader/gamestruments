@@ -15,6 +15,11 @@ struct GamestrumentsExtension;
 /// Output rate until the game sets `sample_rate`.
 const DEFAULT_SAMPLE_RATE: f32 = 48000.0;
 
+fn mono_to_stereo_frame(sample: f32) -> Vector2 {
+    let channel = sample * std::f32::consts::FRAC_1_SQRT_2;
+    Vector2::new(channel, channel)
+}
+
 #[gdextension]
 unsafe impl ExtensionLibrary for GamestrumentsExtension {}
 
@@ -142,7 +147,7 @@ impl INode for GamestrumentsPlayer {
         self.stereo_scratch.extend(
             self.scratch
                 .iter()
-                .map(|sample| Vector2::new(*sample, *sample)),
+                .map(|&sample| mono_to_stereo_frame(sample)),
         );
         let stereo = PackedVector2Array::from(self.stereo_scratch.as_slice());
         playback.push_buffer(&stereo);
@@ -178,6 +183,20 @@ impl GamestrumentsPlayer {
                 }
                 last = now;
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mono_frame_preserves_energy_in_the_stereo_generator() {
+        for sample in [-1.0_f32, -0.5, 0.0, 0.5, 1.0] {
+            let frame = mono_to_stereo_frame(sample);
+            assert!((frame.x - frame.y).abs() < 1e-6);
+            assert!((frame.x * frame.x + frame.y * frame.y - sample * sample).abs() < 1e-6);
         }
     }
 }

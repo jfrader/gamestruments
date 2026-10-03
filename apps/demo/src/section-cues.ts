@@ -10,15 +10,19 @@ export interface CueView {
   select: SectionId;
 }
 
-export function cueView(score: PortableScore, snapshot: PlaybackSnapshot, tick: number, running: boolean, requested: SectionId | null, held = false): CueView {
+export function cueView(score: PortableScore, snapshot: PlaybackSnapshot, tick: number, running: boolean, requested: SectionId | null, held = false, pendingScore: PortableScore | null = null): CueView {
   const transition = snapshot.transition;
   const started = transition !== null && tick >= transition.startTick;
   const current = started ? transition.to : snapshot.currentSection;
   const target = snapshot.pendingSection ?? (transition !== null && !started ? transition.to : null);
-  const label = (id: SectionId) => score.sections.find((section) => section.id === id)?.label ?? id;
+  const label = (id: SectionId) =>
+    [score, pendingScore].flatMap((candidate) => candidate?.sections ?? []).find((section) => section.id === id)?.label ?? id;
   const cancellable = running && requested !== null && requested === target;
   if (!running) {
     return { current, target: null, cancellable: false, status: `Start with ${label(current)}`, detail: held ? "Play will hold this section. Next or Cue can move to another section." : "Choose any section, then press Play.", select: current };
+  }
+  if (snapshot.pendingSection !== null && pendingScore !== null) {
+    return { current, target, cancellable, status: `Queued: ${label(snapshot.pendingSection)}`, detail: `${pendingScore.title} starts on ${label(snapshot.pendingSection)}.`, select: snapshot.pendingSection };
   }
   if (snapshot.pendingSection !== null) {
     return { current, target, cancellable, status: `Queued: ${label(snapshot.pendingSection)}`, detail: "The current blend will finish first. The latest cue replaces the previous one.", select: snapshot.pendingSection };

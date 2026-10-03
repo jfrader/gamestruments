@@ -86,7 +86,7 @@ test("Adventure opens in the All phases auto tour and advances Trailhead Camp â†
   await page.goto("/#lab");
   await selectRecipe(page, "adventure");
   await expect(page.locator("#score-title")).toContainText("Folk");
-  await expect(page.locator("#section-list li")).toHaveCount(14);
+  await expect(page.locator("#section-list li")).toHaveCount(16);
   await expect(page.locator("#section-control")).toBeVisible();
   await expect(page.locator("#hold-form")).toHaveText("Hold auto tour");
   await expect(page.locator("#mood-name")).toHaveText("Trailhead Camp");
@@ -131,7 +131,7 @@ for (const { label, title } of ADVENTURE_STYLES) {
 
     await page.goto("/#lab");
     await selectRecipe(page, "adventure");
-    await expect(page.locator("#section-list li")).toHaveCount(14);
+    await expect(page.locator("#section-list li")).toHaveCount(16);
     if (title !== "Folk") {
       await page.locator("#score-buttons button", { hasText: label }).click();
     }

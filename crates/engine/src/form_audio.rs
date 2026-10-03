@@ -50,6 +50,11 @@ impl FormAudio {
         }
     }
 
+    /// Start the clock at `frame` produced samples instead of zero.
+    pub fn start_at_frame(&mut self, frame: u64) {
+        self.frames = frame;
+    }
+
     /// Let only the voices `solo` names through, in every section.
     pub fn set_solo(&mut self, solo: &Solo) {
         self.solo = solo.clone();
