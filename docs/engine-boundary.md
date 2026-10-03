@@ -4,8 +4,11 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 - Owned by the shared Rust engine in `crates/engine` (`racing`, `suspense`,
   `adventure`, `folklore`, and score). WASM `gamestruments_score_json` accepts
   `"recipe": "racing" | "suspense" | "adventure" | "folklore"` (default racing).
-  Folklore is a standalone guitar-and-bombo chacarera with six sections and a
-  repeating song form. It is available in the Lab/WASM, not the Godot recipe selector.
+  Folklore offers `chacarera` (default; nine guitar-and-bombo sections) and
+  `carnavalito` (five sections in 2/4 with synthesized charango, quena and bombo).
+  Both attach repeating song forms. They are available in the Lab/WASM, not the
+  Godot recipe selector. `generate_folklore` retains the Chacarera default;
+  `generate_folklore_with_style` accepts an explicit `FolkloreStyle`.
 - Adventure accepts styles `folk`, `dark`, and `orchestral` and generates
   sixteen sections: the eight selected from area phase plus discovery, threat,
   and quest progress (`camp`, `explore`, `town`, `dungeon`, `combat`, `boss`,
@@ -33,8 +36,8 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   Godot exposes the same `arrangement` property, defaulting to the recipe's own
   choice (Racing → original, Suspense → seeded).
 - Racing additionally accepts `"arrangement": "original" | "extended"`. `original`
-  (the default, and returned for an omitted or empty field) is the approved
-  six-section race, byte-for-byte unchanged. `extended` keeps those six sections
+   (the default, and returned for an omitted or empty field) is the
+   six-section race. `extended` keeps those six sections
   identical and adds four new cueable sections harvested from the same piece and
   palette — `ignition` (8 bars), `slipstream` (16 bars), `redline` (16 bars), and
   `cooldown` (8 bars) — for a ten-section order: garage, ignition, grid, cruise,
@@ -45,9 +48,13 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
   `generate_racing_arrangement` in `crates/engine/src/racing_arrangement.rs`
   dispatches Original to `generate_racing` and Extended to `generate_extended`;
   the autoplay adapter is applied afterward and leaves Original untouched.
-  Native and WASM default to Original for Racing; the Audio Lab defaults every
-  recipe to Seeded.
-- The pool has 38 phases: the fourteen base sections, `scan-ii` (Scan II) and
+   Native and WASM default to Original for Racing; the Audio Lab defaults every
+   recipe to Seeded.
+- Racing's shared All phases/Seeded pool also contains `breather`, `switchback`
+  and `open-road`: thirteen form phases plus three signal-only cue targets.
+  Generator `1.12.0` reworks `cruise` and `attack`; Garage, Starting Grid,
+  Final Lap and Finish retain their previous musical material.
+- The Suspense pool has 38 phases: the fourteen base sections, `scan-ii` (Scan II) and
   `breach-ii` (Breach II) developed past their base phase, `anomaly`, and ten
   pool-authored phases (`half-time`, `sparse`, `sub-groove`, `syncopated`,
   `drive`, `drum-break`, `false-stop`, `filter-break`, `harmonic-bridge`,
@@ -127,7 +134,7 @@ Audio synthesis / sound stage:
   music handoffs. The Godot adapter and Lab worklet split its mono output across
   stereo channels at equal power, preserving its loudness rather than doubling
   the channel energy.
-  Acoustic voices (harp/recorder/vielle/bell/nylon-guitar plus
+  Acoustic voices (harp/recorder/vielle/bell/nylon-guitar/charango/quena/marimba plus
   frame-drum/tambourine/bombo/bombo-rim) are synthesized, not sample recordings.
 - Felt/dusk use softer attacks, low-pass shaping and longer releases. Their
   quiet delayed repeats stay inside the section's tonal/melody mix, so solo

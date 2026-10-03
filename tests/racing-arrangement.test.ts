@@ -230,7 +230,7 @@ describe("Racing arrangements through the shipped WASM", () => {
     const { score } = generate({ recipe: "racing", style: "funk", arrangement: "seeded" });
 
     assert.match(score.id, /-seeded$/);
-    assert.equal(score.sections.length, 14);
+    assert.equal(score.sections.length, 16);
     const form = formOf(score);
     assert.ok(form.steps.length >= 6);
     for (const step of form.steps) {
@@ -246,7 +246,7 @@ describe("Racing arrangements through the shipped WASM", () => {
     );
     assert.ok(form.loopFrom !== undefined, "seeded form must have a loopFrom");
     assert.ok(
-      ["cruise", "slipstream"].includes(form.steps[form.loopFrom!]!.section),
+      ["cruise", "switchback", "slipstream", "open-road"].includes(form.steps[form.loopFrom!]!.section),
       "seeded form must loop to a groove",
     );
   });
@@ -255,8 +255,8 @@ describe("Racing arrangements through the shipped WASM", () => {
     const { score } = generate({ recipe: "racing", style: "funk", arrangement: "seeded" });
 
     const pool = [
-      "garage", "ignition", "grid", "breather", "cruise", "slipstream",
-      "attack", "redline", "final-lap", "victory", "cooldown",
+      "garage", "ignition", "grid", "breather", "cruise", "switchback", "slipstream",
+      "attack", "redline", "open-road", "final-lap", "victory", "cooldown",
     ];
     for (const id of [...pool, "defeat", "recovery", "wrong-way"]) {
       assert.ok(

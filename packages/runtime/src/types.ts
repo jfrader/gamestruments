@@ -67,7 +67,10 @@ export interface NoteEvent extends EventBase {
     | "saw-bass"
     | "trance-pad"
     | "trance-lead"
-    | "nylon-guitar";
+    | "nylon-guitar"
+    | "charango"
+    | "quena"
+    | "marimba";
   role?: "melody";
 }
 

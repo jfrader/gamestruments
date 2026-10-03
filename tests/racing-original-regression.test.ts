@@ -35,36 +35,45 @@ interface RacingCase {
   syncopation: number;
 }
 
-/**
- * Frozen SHA256 digests of the canonicalized original six-section musical
- * material. They guard the Original Racing material — especially the high
- * register — against unauthorized re-voicing or pitch changes. Never update
- * these to the current output to make a failing test pass.
- *
- * Authorized re-baseline GURI-1240: the garage intro is an intentional
- * re-voice (its held pad and bass now sound through the bar and it gains a
- * light pulse, because the Funk style used to leave the bar ends nearly
- * silent). Every other Original section is byte-identical; only the garage
- * digests move. This is a product-owner decision, not a refresh to satisfy a
- * red test.
- */
+// Only Cruise/Attack were reworked for the audition. The independent v1.2.0
+// baseline below protects every other Original section from rebaselining.
 const FROZEN: Readonly<Record<string, string>> = {
-  "funk-normal": "75fab7a463036c2d6e4b5a1017184c9f417e902a1e6357b918a2be2d313d7fa9",
-  "chip-normal": "e8758a6d6c40690e5c8007f341d652959128deec2057fa254ea947e071306c84",
-  "fusion-normal": "6cd4cab538a66e60a63b09c05275e9fc23426560ab71a51a1e268dfaef50cf15",
-  "neon-normal": "20c1c680bf6ac996fb57e11ba48978e61d9f968faaf4536dad5f4e17b4913abf",
-  "funk-high-register": "5e109d380ee6e10d5100a6f78d8e68ea1001ab3ff3300d99e3659c402a7f86cf",
-  "chip-high-bright": "42ca834351be21b95f32bf039a3044c215f847cc6087617cb1d2da6ba8b6a404",
-  "fusion-max-energy": "a8784abe58797fcadc34f3083ab85301d0fe30916c5179b808b47952a666db21",
-  "neon-low-bright": "af17bab78d7c10f34e742c56280099ca8e856e00eadcb54b29357f914bf00bbc",
-  "funk-low-bright": "7e1c1087fd91ceda74f5463796b733c5f33aed79b0141167f2f0fae3fbf4f257",
-  "chip-max-all": "5e0dfc77f425a0eb57f9d14aa734e01e56fdd19fd1fe3e81a43ff986d031ebba",
-  "fusion-seed-b": "3fcf1ffb1643135cdf0fb6482a06769a6f141ac30e9e8c6a7ca940bca5586aa2",
-  "neon-high-register": "4e56763448dec12566f202ff008ffce6be6ae48cf7b207e7c3624c5b0714cb11",
-  "funk-native-default": "ce4b4e284d04968c476612cf76b3f68d7656f221afa8ff55d8f00e24d14cad0a",
-  "chip-native-default": "eab7d084c7d08c18ea8242b6bf7717b5827590446d184232c2ae447248d3ad92",
-  "fusion-native-default": "87af8d46864c1a7257d67f33db11e3c66b2f891ab608af465ff42ce186e1e50d",
-  "neon-native-default": "6d6ef3f182fb3ff04d7b1cf83a1d4626bdfb9649a6da75ff485515b48051a56c",
+  "funk-normal": "76ca2d985a3e5cfc6781037367d395d68830de3432265c2784bdca95fa5266f8",
+  "chip-normal": "bc8a5c74b66195c500363fa63c5dd03575372ff124e054f29222880786959747",
+  "fusion-normal": "b1015f42fb4d9b186b0dc3972e47407057ce8b78c04db906c7e653161cf6603a",
+  "neon-normal": "1bfdde2271da67540922c3906638074a87e35243b29aff805141186add500e20",
+  "funk-high-register": "b6b7d902580a126cc6173d48f1db6fec203d33faa40176275e29c7ed3ce7555d",
+  "chip-high-bright": "0030a212de19ffcd24ca1524de60d790147c6b9bdf11011641a96435a195643b",
+  "fusion-max-energy": "83a17fc3e433983e121ceebc1da92e1a98ce3624790f0121cf4e445c9d32b2e5",
+  "neon-low-bright": "9b8c6335aba5703e9f7a913156d69a61400bc1834114c9958efdfa9f5a28834b",
+  "funk-low-bright": "607bc329cbab9993213a21a09d6d575ef36e041a7075ea8170f1024ebc539f7d",
+  "chip-max-all": "91ccea3660449da421368ce8fd23f13c791c61c1f5f6b62d3e7cce296f9d6400",
+  "fusion-seed-b": "ac9f9f4547413251b909c4898dfe075413854e0837d81741e333ac2b093773a1",
+  "neon-high-register": "349f15c9f5e7558f44938a37ef532d23af6674ca23c96b54d24a69a7e8c3a9d7",
+  "funk-native-default": "3a2183d6563fbaa11e54c21cf7275ba4bf47e9d110ded42a447313f7261d0452",
+  "chip-native-default": "b27168a73085058a38e8a0260264dd01dfdcba4ea1af0300cd341b409ca4daa5",
+  "fusion-native-default": "db30a88e8a8bc16e7eb0049ccd3b93b7493c88479ac6355c5d01001bdb4a52fb",
+  "neon-native-default": "64089c44e5930c88d316fbea9e4a59b2d90b3c49411792b78ce4a6733f953317",
+};
+
+const UNCHANGED_SECTIONS = ["garage", "grid", "final-lap", "victory"] as const;
+const UNCHANGED_V1_2_0: Readonly<Record<string, string>> = {
+  "funk-normal": "0fbc645ef03311a61f61d4b6099231517bbe88554d7835eab4983585f531f744",
+  "chip-normal": "81f6aa4b5ebee565ca42119ec6390017550373c66c8154919dd243e0f9f17d62",
+  "fusion-normal": "8c21bc8961e84ea4dd43d68526096bb659df626bad73ac1e598eced4b1dfc941",
+  "neon-normal": "798565aa956d85557a680533718f22d27d485cc4ca3418c107854e19e249fab7",
+  "funk-high-register": "e1cbebdf1b138aea3766c5c473af4fc8949f2176a316095645c7b6ffadeed040",
+  "chip-high-bright": "fea8b7bd6271a2ce39ed244e5d45edcc089889be866358ca43c0e9ab3dc6463f",
+  "fusion-max-energy": "0eb3e889080fe78aa7c6a64c0dd27dde1442f74f9fd383493d133cf78842b41c",
+  "neon-low-bright": "a0469cb0d8305f8ce10185b38a9391c00de0a50ae9589cef21f34d8977f9baae",
+  "funk-low-bright": "d114b871fba1f79339d0cbb49e755d4a40e333d71b22af8f1a5e60417641d816",
+  "chip-max-all": "9b72b956f546278c6f0e9331f98ea23007cd163d142b8d0207d9de92bb2b77ae",
+  "fusion-seed-b": "252bc4c183966c19d2a8ee1a4adce3ff74e3e374082b91f9f217cc8d1dbe7310",
+  "neon-high-register": "29a9a013116059dc99ad334deea41cd55ff4bb7f788a89211bc50c80051a862d",
+  "funk-native-default": "ff080ca9f74a2130436fc39455c7c423b3884533830b3b382a9ef49768da4f61",
+  "chip-native-default": "1c409a0947da4a8851bcb24350287c1565c5513488c36ff5922f069355af1bb7",
+  "fusion-native-default": "06b2dbd61e2006af8463c5234e71ece80f455abb0f8d4247e07769ba15d021ba",
+  "neon-native-default": "b7e3a5db8a6efae1a0e3ac98d4e087b0653a36d9d68744dbe7f04b3e4638ddbe",
 };
 
 const CASES: readonly RacingCase[] = [
@@ -168,6 +177,38 @@ function digest(value: unknown): string {
 }
 
 describe("Racing Original material is frozen", () => {
+  it("identifies the new generator in Lab and native scores", () => {
+    for (const recipe of CASES) {
+      assert.match(generate(recipe, "original").id, /^racing-generated-v1-12-0-/);
+    }
+  });
+
+  it("includes every normalized trait in Lab and native score identity", () => {
+    for (const secret of ["", "my-game"]) {
+      const recipe = { ...CASES[0]!, secret };
+      const original = generate(recipe, "original");
+      for (const trait of ["energy", "complexity", "brightness", "syncopation"] as const) {
+        assert.notEqual(generate({ ...recipe, [trait]: 0.1 }, "original").id, original.id, trait);
+      }
+      assert.equal(
+        generate({ ...recipe, energy: 2 }, "original").id,
+        generate({ ...recipe, energy: 1 }, "original").id,
+      );
+    }
+  });
+
+  it("preserves the four untouched sections from v1.2.0", () => {
+    for (const recipe of CASES) {
+      for (const arrangement of ["original", "extended"] as const) {
+        assert.equal(
+          digest(canonicalMusic(generate(recipe, arrangement), UNCHANGED_SECTIONS)),
+          UNCHANGED_V1_2_0[recipe.name],
+          `${recipe.name}/${arrangement} changed an untouched section`,
+        );
+      }
+    }
+  });
+
   it("reproduces the frozen six-section material for every representative case", () => {
     for (const recipe of CASES) {
       const score = generate(recipe, "original");

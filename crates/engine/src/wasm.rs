@@ -37,6 +37,9 @@
 //!   "syncopation": 0.7
 //! }
 //!
+//! For `"recipe": "folklore"` the `style` key accepts `""` | `"chacarera"`
+//! (the default) | `"carnavalito"`; the root query mirrors the same parse.
+//!
 //! Returns: pointer to UTF-8 JSON bytes of PortableScore (schema camelCase as usual).
 //!
 //! For render_wav: pass *bytes* of a previously-produced score JSON as score_ptr/len,
@@ -75,7 +78,10 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
-use crate::folklore::{folklore_root_pitch_class, generate_folklore, FolkloreInput};
+use crate::folklore::{
+    folklore_root_pitch_class_with_style, generate_folklore_with_style, FolkloreInput,
+    FolkloreStyle,
+};
 use crate::live::{GameUpdate, LivePlayer};
 use crate::racing::{racing_root_pitch_class, GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
@@ -379,11 +385,14 @@ pub unsafe extern "C" fn gamestruments_score_json(
             })
         }
         "folklore" => {
-            if !matches!(inp.style.as_str(), "" | "chacarera") {
-                write_error(format!("Unknown folklore style: {}", inp.style));
-                return unsafe { OUT_PTR };
-            }
-            generate_folklore(&inp.folklore(), &inp.arrangement)
+            let style = match FolkloreStyle::parse(&inp.style) {
+                Ok(value) => value,
+                Err(error) => {
+                    write_error(error);
+                    return unsafe { OUT_PTR };
+                }
+            };
+            generate_folklore_with_style(&inp.folklore(), style, &inp.arrangement)
         }
         other => {
             write_error(format!("Unknown recipe: {other}"));
@@ -414,9 +423,10 @@ pub unsafe extern "C" fn gamestruments_root_pitch_class(
     };
     match (inp.recipe.as_str(), Style::parse(&inp.style)) {
         ("" | "racing", Ok(style)) => racing_root_pitch_class(&inp.racing(style)),
-        ("folklore", _) if matches!(inp.style.as_str(), "" | "chacarera") => {
-            folklore_root_pitch_class(&inp.folklore())
-        }
+        ("folklore", _) => match FolkloreStyle::parse(&inp.style) {
+            Ok(style) => folklore_root_pitch_class_with_style(&inp.folklore(), style),
+            Err(_) => 0,
+        },
         _ => 0,
     }
 }

@@ -169,12 +169,17 @@ const ADVENTURE: LabRecipeProfile = {
 const FOLKLORE: LabRecipeProfile = {
   id: "folklore",
   label: "Folklore",
-  description: "Guitar and bombo chacarera",
+  description: "Chacarera and carnavalito",
   presets: [
     {
       style: "chacarera",
       label: "Chacarera",
       traits: { energy: 0.6, complexity: 0.45, brightness: 0.55, syncopation: 0.65 },
+    },
+    {
+      style: "carnavalito",
+      label: "Carnavalito",
+      traits: { energy: 0.68, complexity: 0.5, brightness: 0.62, syncopation: 0.45 },
     },
   ],
   autoplay: true,

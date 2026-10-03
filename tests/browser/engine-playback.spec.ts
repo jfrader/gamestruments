@@ -77,17 +77,52 @@ test("Folklore plays and cues its chacarera without Adventure game signals", asy
   await selectRecipe(page, "folklore");
   await expect(page.locator("#score-title")).toContainText("Folklore");
   await expect(page.locator("#game-signals")).toBeHidden();
-  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await expect(page.locator("#section-list li")).toHaveCount(9);
+  for (const section of ["punteo", "respiro", "pena"]) {
+    await expect(page.locator(`#section-list button[data-cue-section="${section}"]`)).toBeVisible();
+  }
   await page.locator("#center-play").click();
   await waitForEngineSeconds(page, 2);
   const audio = await page.evaluate(() => window.engineAudio);
   expect(audio.peak).toBeGreaterThan(0.001);
   expect(audio.samples.every(Number.isFinite)).toBe(true);
-  await page.locator('#section-list button[data-cue-section="estribillo"]').click();
-  await expect(page.locator("#mood-name")).toHaveText("Estribillo", { timeout: 15000 });
+  await page.locator("#hold-form").click();
+  await page.locator('#section-list button[data-cue-section="pena"]').click();
+  await expect(page.locator("#mood-name")).toHaveText("Peña", { timeout: 20000 });
+  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#start-audio").click();
   await selectRecipe(page, "adventure");
   await expect(page.locator("#game-signals")).toBeVisible();
   await expect(page.locator("#score-buttons")).toContainText("Medieval Folk");
+  expect(errors).toEqual([]);
+});
+
+test("Folklore plays Carnavalito through the same style and cue controls", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await captureEngineAudio(page);
+  await page.goto("/#lab");
+  await selectRecipe(page, "folklore");
+  const carnavalito = page.locator("#score-buttons button").filter({ hasText: "Carnavalito" });
+  await carnavalito.click();
+  await expect(carnavalito).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#score-title")).toContainText("Carnavalito");
+  await expect(page.locator("#game-signals")).toBeHidden();
+  await page.locator("#center-play").click();
+  await waitForEngineSeconds(page, 2);
+  const audio = await page.evaluate(() => window.engineAudio);
+  expect(audio.peak).toBeGreaterThan(0.001);
+  expect(audio.samples.every(Number.isFinite)).toBe(true);
+  await page.locator("#hold-form").click();
+  await page.locator('#section-list button[data-cue-section="estribillo"]').click();
+  await expect(page.locator("#mood-name")).toHaveText("Estribillo", { timeout: 20000 });
+  await expect(page.locator("#hold-form")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#start-audio").click();
+  await page.locator("#score-buttons button").filter({ hasText: "Chacarera" }).click();
+  await expect(page.locator("#section-list li")).toHaveCount(9);
+  await expect(page.locator("#game-signals")).toBeHidden();
   expect(errors).toEqual([]);
 });

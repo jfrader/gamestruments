@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- Folklore adds Punteo, Respiro and Peña to its chacarera, plus a separate Carnavalito style with synthesized charango and quena colors.
+- Racing's All phases and Seeded arrangements add Switchback and Open Road. Original and Extended keep their existing section lists.
+
+### Changed
+
+- Racing's Race Flow and Position Fight develop answering phrases and syncopated bass. Generator version `1.12.0` changes these sections and the composed arrangements for existing seeds; the other four Original sections retain their musical material.
+- Chacarera generator `0.3.0-prototype` adds the new passages to its song form while preserving the six original sections' musical material and seed identity.
+
+### Fixed
+
+- Racing score IDs now reflect the generator version and normalized musical traits in both Lab and native use.
+
 ## [1.2.0] - 2026-10-03
 
 ### Added

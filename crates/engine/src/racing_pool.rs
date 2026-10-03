@@ -14,19 +14,19 @@ use crate::score::SongForm;
 /// Maximum allowed energy step between adjacent composed phases (0-100 scale).
 pub const MAX_ENERGY_DELTA: u32 = 35;
 
-/// The Racing composition pool in natural race order. The six base sections
-/// plus the four authored phases (`ignition`/`slipstream`/`redline`/`cooldown`)
-/// and the composed-only drumless `breather`. This is the one pool both the
-/// `seeded` composer and the `all-phases` tour draw from.
-pub const RACING_SECTION_IDS: [&str; 11] = [
+/// The shared pool for the seeded composer and all-phases tour: six base
+/// sections, six authored phases, and the drumless breather.
+pub const RACING_SECTION_IDS: [&str; 13] = [
     "garage",
     "ignition",
     "grid",
     "breather",
     "cruise",
+    "switchback",
     "slipstream",
     "attack",
     "redline",
+    "open-road",
     "final-lap",
     "victory",
     "cooldown",
@@ -115,6 +115,20 @@ pub fn racing_phase_spec(id: &str) -> Option<RacingPhaseSpec> {
             role: RacingPhaseRole::PostOutro,
             energy: 55,
             bars: 8,
+            one_shot: false,
+        }),
+        "switchback" => Some(RacingPhaseSpec {
+            id: "switchback",
+            role: RacingPhaseRole::Groove,
+            energy: 79,
+            bars: 8,
+            one_shot: false,
+        }),
+        "open-road" => Some(RacingPhaseSpec {
+            id: "open-road",
+            role: RacingPhaseRole::Groove,
+            energy: 68,
+            bars: 16,
             one_shot: false,
         }),
         _ => Some(RacingPhaseSpec {
@@ -332,7 +346,7 @@ mod tests {
                 .iter()
                 .filter_map(|&id| racing_phase_spec(id))
                 .count(),
-            11
+            13
         );
         assert!(racing_phase_spec("garage").unwrap().one_shot);
         assert!(racing_phase_spec("victory").unwrap().one_shot);
@@ -341,15 +355,20 @@ mod tests {
             "grid",
             "breather",
             "cruise",
+            "switchback",
             "slipstream",
             "attack",
             "redline",
+            "open-road",
             "final-lap",
             "cooldown",
         ] {
             assert!(!racing_phase_spec(id).unwrap().one_shot, "{id} repeats");
         }
-        assert!(racing_phase_spec("attack").unwrap().energy > racing_phase_spec("cruise").unwrap().energy);
+        assert!(
+            racing_phase_spec("attack").unwrap().energy
+                > racing_phase_spec("cruise").unwrap().energy
+        );
     }
 
     #[test]
@@ -360,6 +379,8 @@ mod tests {
             ("redline", RacingPhaseRole::Peak, 98, 16),
             ("cooldown", RacingPhaseRole::PostOutro, 55, 8),
             ("breather", RacingPhaseRole::Breather, 60, 4),
+            ("switchback", RacingPhaseRole::Groove, 79, 8),
+            ("open-road", RacingPhaseRole::Groove, 68, 16),
         ] {
             let spec = racing_phase_spec(id).unwrap();
             assert_eq!(spec.role, role, "{id} role");
@@ -413,7 +434,11 @@ mod tests {
         let mut saw_breather_before_flow = false;
         for seed in 0..512u32 {
             let form = racing_compose(seed);
-            let ids: Vec<&str> = form.steps.iter().map(|step| step.section.as_str()).collect();
+            let ids: Vec<&str> = form
+                .steps
+                .iter()
+                .map(|step| step.section.as_str())
+                .collect();
             if ids.windows(2).any(|w| w == ["breather", "cruise"]) {
                 saw_breather_before_flow = true;
                 break;
@@ -449,7 +474,11 @@ mod tests {
             assert!(form.loop_from.is_some(), "seed {seed}: missing loop point");
             distinct.insert(ids);
         }
-        assert!(distinct.len() > 20, "only {} distinct forms", distinct.len());
+        assert!(
+            distinct.len() > 20,
+            "only {} distinct forms",
+            distinct.len()
+        );
     }
 
     #[test]
@@ -525,5 +554,25 @@ mod tests {
                 .role,
             RacingPhaseRole::Groove
         );
+    }
+
+    #[test]
+    fn contrasting_phases_have_legal_groove_transitions() {
+        for id in ["switchback", "open-road"] {
+            let spec = racing_phase_spec(id).expect("new phase must be in pool");
+            assert_eq!(spec.role, RacingPhaseRole::Groove, "{id} role");
+            assert!(!spec.one_shot, "{id} may repeat in forms");
+        }
+        let cruise = racing_phase_spec("cruise").unwrap();
+        let switchback = racing_phase_spec("switchback").unwrap();
+        let open_road = racing_phase_spec("open-road").unwrap();
+        let attack = racing_phase_spec("attack").unwrap();
+        assert!(RacingPool::role_legal(cruise, switchback));
+        assert!(RacingPool::role_legal(switchback, cruise));
+        assert!(RacingPool::role_legal(switchback, open_road));
+        assert!(RacingPool::role_legal(open_road, attack));
+        assert!(RacingPool::energy_legal(cruise, switchback));
+        assert!(RacingPool::energy_legal(switchback, open_road));
+        assert!(RacingPool::energy_legal(open_road, attack));
     }
 }

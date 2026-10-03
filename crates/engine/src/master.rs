@@ -1614,13 +1614,22 @@ mod tests {
         timings[1]
     }
 
-    fn benchmark_live_player(score: &PortableScore, seconds: usize, handoff: bool) -> Duration {
+    const MAX_CPU_MS_PER_AUDIO_SECOND: f64 = 40.0;
+
+    fn benchmark_live_player(
+        score: &PortableScore,
+        seconds: usize,
+        handoff: bool,
+        recipe: &str,
+        sections: (&str, &str),
+    ) -> Duration {
         const SAMPLE_RATE: usize = 48_000;
         const BUFFER_FRAMES: usize = 256;
         let mut player = crate::LivePlayer::new(SAMPLE_RATE as f32);
         player
-            .load(score.clone(), "benchmark", "racing", 0, Some("grid"))
+            .load(score.clone(), "benchmark", recipe, 0, Some(sections.0))
             .expect("benchmark score must load");
+        player.set_form_held(true);
         let total_frames = seconds * SAMPLE_RATE;
         let handoff_frame = total_frames / 2 / BUFFER_FRAMES * BUFFER_FRAMES;
         let mut buffer = [0.0; BUFFER_FRAMES];
@@ -1629,7 +1638,7 @@ mod tests {
         for frame in (0..total_frames).step_by(BUFFER_FRAMES) {
             if handoff && frame == handoff_frame {
                 player
-                    .load(score.clone(), "benchmark-next", "racing", 0, Some("cruise"))
+                    .load(score.clone(), "benchmark-next", recipe, 0, Some(sections.1))
                     .expect("benchmark replacement must load");
             }
             let frames = (total_frames - frame).min(BUFFER_FRAMES);
@@ -1649,7 +1658,6 @@ mod tests {
             "run this timing benchmark with cargo test --release"
         );
         const AUDIO_SECONDS: usize = 12;
-        const MAX_CPU_MS_PER_AUDIO_SECOND: f64 = 40.0;
         let score: PortableScore = serde_json::from_str(include_str!(
             "../../../catalog/racing/tiny-torque-level-004/score.json"
         ))
@@ -1688,9 +1696,20 @@ mod tests {
                 );
             }
         }
-        for (label, handoff) in [("live player", false), ("live player with music handoff", true)] {
+        for (label, handoff) in [
+            ("live player", false),
+            ("live player with music handoff", true),
+        ] {
             let mut timings = (0..3)
-                .map(|_| benchmark_live_player(&score, AUDIO_SECONDS, handoff))
+                .map(|_| {
+                    benchmark_live_player(
+                        &score,
+                        AUDIO_SECONDS,
+                        handoff,
+                        "racing",
+                        ("grid", "cruise"),
+                    )
+                })
                 .collect::<Vec<_>>();
             timings.sort_unstable();
             let milliseconds_per_audio_second =
@@ -1701,6 +1720,85 @@ mod tests {
                 "{label} render cost {milliseconds_per_audio_second:.3} ms/s exceeded ceiling {MAX_CPU_MS_PER_AUDIO_SECOND}"
             );
         }
+    }
+
+    #[test]
+    #[ignore = "release-only timing benchmark; run explicitly with --ignored --nocapture"]
+    #[allow(clippy::assertions_on_constants)]
+    fn new_music_realtime_render_benchmark() {
+        assert!(
+            !cfg!(debug_assertions),
+            "run this timing benchmark with cargo test --release"
+        );
+        const AUDIO_SECONDS: usize = 12;
+        let folk_input = crate::FolkloreInput {
+            secret: "benchmark".into(),
+            seed: "level-001".into(),
+            energy: 1.0,
+            complexity: 1.0,
+            brightness: 1.0,
+            syncopation: 1.0,
+        };
+        let racing = crate::racing_arrangement::generate_racing_arrangement(
+            &crate::GenerateInput {
+                secret: folk_input.secret.clone(),
+                seed: folk_input.seed.clone(),
+                style: crate::Style::Fusion,
+                palette: crate::InstrumentPalette::default(),
+                energy: 1.0,
+                complexity: 1.0,
+                brightness: 1.0,
+                syncopation: 1.0,
+            },
+            crate::racing_arrangement::RacingArrangement::AllPhases,
+        )
+        .expect("racing benchmark score");
+        let chacarera =
+            crate::generate_folklore(&folk_input, "all-phases").expect("chacarera benchmark score");
+        let carnavalito = crate::generate_folklore_with_style(
+            &folk_input,
+            crate::FolkloreStyle::Carnavalito,
+            "all-phases",
+        )
+        .expect("carnavalito benchmark score");
+        let mut failures = Vec::new();
+        for (label, score, recipe, sections) in [
+            (
+                "playful racing",
+                racing,
+                "racing",
+                ("switchback", "open-road"),
+            ),
+            ("chacarera", chacarera, "folklore", ("pena", "punteo")),
+            (
+                "carnavalito",
+                carnavalito,
+                "folklore",
+                ("estribillo", "respuesta"),
+            ),
+        ] {
+            for handoff in [false, true] {
+                let mut timings = (0..3)
+                    .map(|_| {
+                        benchmark_live_player(&score, AUDIO_SECONDS, handoff, recipe, sections)
+                    })
+                    .collect::<Vec<_>>();
+                timings.sort_unstable();
+                let milliseconds_per_audio_second =
+                    timings[1].as_secs_f64() * 1_000.0 / AUDIO_SECONDS as f64;
+                println!("{label} (handoff={handoff}): {milliseconds_per_audio_second:.3} ms CPU / s audio");
+                if milliseconds_per_audio_second >= MAX_CPU_MS_PER_AUDIO_SECOND {
+                    failures.push(format!(
+                        "{label} (handoff={handoff}): {milliseconds_per_audio_second:.3} ms/s"
+                    ));
+                }
+            }
+        }
+        assert!(
+            failures.is_empty(),
+            "render cost exceeded {MAX_CPU_MS_PER_AUDIO_SECOND} ms/s: {}",
+            failures.join(", ")
+        );
     }
 
     #[test]

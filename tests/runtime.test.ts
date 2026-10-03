@@ -142,6 +142,20 @@ describe("adaptive conditions", () => {
 });
 
 describe("adaptive transport", () => {
+  it("accepts the synthesized folk and mallet voices", () => {
+    for (const voice of ["charango", "quena", "marimba"] as const) {
+      const voiced: PortableScore = {
+        ...score,
+        sections: score.sections.map((section) => ({
+          ...section,
+          events: section.events.map((event) => event.kind === "note" ? { ...event, voice } : event),
+        })),
+      };
+      assert.doesNotThrow(() => validatePortableScore(voiced));
+      assert.doesNotThrow(() => new AdaptiveTransport(voiced));
+    }
+  });
+
   it("rejects malformed portable score data at the runtime boundary", () => {
     assert.throws(
       () => validatePortableScore({ ...score, bpm: 0 }),

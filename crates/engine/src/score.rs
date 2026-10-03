@@ -391,7 +391,7 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 20] = [
+            const NOTE_VOICES: [&str; 23] = [
                 "warm",
                 "glass",
                 "pulse",
@@ -412,6 +412,9 @@ fn validate_event<'a>(
                 "trance-pad",
                 "trance-lead",
                 "nylon-guitar",
+                "charango",
+                "quena",
+                "marimba",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));

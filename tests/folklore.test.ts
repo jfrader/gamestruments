@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "vitest";
 import { LAB_RECIPE_PROFILES } from "../apps/demo/src/recipes.ts";
 import { WasmPlayer } from "../apps/demo/src/wasm-player.ts";
-import { validatePortableScore, type PortableScore } from "../packages/runtime/src/index.ts";
+import {
+  validatePortableScore,
+  type NoteEvent,
+  type PortableScore,
+} from "../packages/runtime/src/index.ts";
 
 const wasm = new Uint8Array(await readFile(
   new URL("../apps/demo/public/engine/gamestruments_engine.wasm", import.meta.url),
@@ -40,13 +45,46 @@ async function generate(overrides: Record<string, unknown> = {}) {
   if (exports.gamestruments_status() !== 0) throw new Error(text);
   const score = JSON.parse(text) as PortableScore;
   validatePortableScore(score);
-  const tonicBass = score.sections[0]?.events.find((event) => event.kind === "note" && event.lane === "bass");
-  assert.ok(tonicBass?.kind === "note");
-  assert.equal(rootPitchClass, tonicBass.pitch % 12);
+  const style = String(overrides.style ?? preset.style);
+  if (style === "carnavalito") {
+    // The tonic sits at 48 + root; the lowest pitched note is the resolution.
+    const pitches = score.sections.flatMap((section) => section.events)
+      .filter((event): event is NoteEvent => event.kind === "note")
+      .map((event) => event.pitch);
+    assert.equal(rootPitchClass, Math.min(...pitches) % 12);
+  } else {
+    // Chacarera: the first walking-bass note (tick 0) is the tonic.
+    const tonicBass = score.sections[0]?.events.find((event) => event.kind === "note" && event.lane === "bass");
+    assert.ok(tonicBass?.kind === "note");
+    assert.equal(rootPitchClass, tonicBass.pitch % 12);
+  }
   return { instance, bytes, score, rootPitchClass };
 }
 
 describe("Folklore listening prototype through the committed WASM", () => {
+  it("retains the original six Chacarera sections from the v1.2.0 WASM", async () => {
+    // SHA256 of JSON.stringify({ bpm, beatsPerBar, ticksPerBeat, sections }),
+    // using the v1.2.0 release WASM; each section has id, lengthTicks, and
+    // events with only their id and section metadata removed.
+    const cases = [
+      { secret: "", seed: "level-001", energy: 0.58, complexity: 0.47, brightness: 0.61, syncopation: 0.64, digest: "3579dbcf69cd13a48651a9f14f6697488cb5427b9b06be06e03fdb8996b79e7a" },
+      { secret: "my-game", seed: "level-001", energy: 0.62, complexity: 0.6, brightness: 0.52, syncopation: 0.7, digest: "7461b26a9695d028c49fcb7ba60a8365f025e99ff5c5886c8b04b89e97afd346" },
+      { secret: "guitar", seed: "stable", energy: 1, complexity: 0, brightness: 1, syncopation: 1, digest: "aafb2c80801a6694e5e9b7b2257eb5b93fbbf395f87ba24eedbc20f185dd1f0c" },
+    ];
+    for (const { digest, ...input } of cases) {
+      const { score } = await generate(input);
+      if (input.secret === "" && input.seed === "level-001") assert.notEqual(score.id, "folklore-a2931eab");
+      const canonical = {
+        bpm: score.bpm, beatsPerBar: score.beatsPerBar, ticksPerBeat: score.ticksPerBeat,
+        sections: score.sections.slice(0, 6).map((section) => ({
+          id: section.id, lengthTicks: section.lengthTicks,
+          events: section.events.map(({ id: _id, section: _section, ...music }) => music),
+        })),
+      };
+      assert.equal(createHash("sha256").update(JSON.stringify(canonical)).digest("hex"), digest, input.seed);
+    }
+  });
+
   it("is deterministic, uses its own instruments, and leaves game state out of the score", async () => {
     const { bytes, score } = await generate();
     assert.deepEqual(bytes, (await generate()).bytes);
@@ -56,6 +94,7 @@ describe("Folklore listening prototype through the committed WASM", () => {
     assert.equal(score.beatsPerBar, 3);
     assert.deepEqual(score.sections.map((section) => section.id), [
       "introduccion", "primera", "interludio", "segunda", "estribillo", "cierre",
+      "punteo", "respiro", "pena",
     ]);
     const voices = new Set(score.sections.flatMap((section) => section.events
       .filter((event) => event.kind !== "stem")
@@ -63,13 +102,15 @@ describe("Folklore listening prototype through the committed WASM", () => {
     for (const voice of ["nylon-guitar", "bombo", "bombo-rim"] as const) assert.ok(voices.has(voice), voice);
     assert.deepEqual(score.rules, []);
     assert.ok(score.form);
-    assert.ok(score.form.steps.length > score.sections.length);
+    const form = score.form.steps.map((step) => step.section);
+    for (const section of ["punteo", "respiro", "pena"] as const) assert.ok(form.includes(section), section);
   });
 
   it("tours each section once in All phases and rejects unsupported choices", async () => {
     const { score } = await generate({ arrangement: "all-phases" });
     assert.deepEqual(score.form?.steps.map((step) => step.section), score.sections.map((section) => section.id));
     await assert.rejects(generate({ style: "folk" }), /style/i);
+    await assert.rejects(generate({ style: "zamba" }), /style/i);
     await assert.rejects(generate({ arrangement: "extended" }), /arrangement/i);
   });
 
@@ -93,5 +134,28 @@ describe("Folklore listening prototype through the committed WASM", () => {
     assert.ok(peak > 0.001 && peak <= 1, `audio peak ${peak}`);
     assert.deepEqual(command({ cue: { section: "estribillo" } }), { accepted: true });
     assert.equal(command("status").transition?.to, "estribillo");
+  });
+
+  it("composes a binary, pentatonic Carnavalito with charango and quena voices", async () => {
+    const { bytes, score } = await generate({ style: "carnavalito" });
+    assert.deepEqual(bytes, (await generate({ style: "carnavalito" })).bytes);
+    assert.notDeepEqual(bytes, (await generate({ style: "carnavalito", seed: "level-002" })).bytes);
+    assert.equal(score.beatsPerBar, 2);
+    assert.deepEqual(score.sections.map((section) => section.id), [
+      "preludio", "copla", "respuesta", "estribillo", "cierre",
+    ]);
+    const voices = new Set(score.sections.flatMap((section) => section.events)
+      .filter((event) => event.kind !== "stem")
+      .map((event) => event.voice));
+    for (const voice of ["charango", "quena", "bombo"] as const) assert.ok(voices.has(voice), voice);
+    assert.ok(!voices.has("nylon-guitar"));
+    assert.deepEqual(score.rules, []);
+    assert.ok(score.form);
+  });
+
+  it("tours each Carnavalito section once in All phases", async () => {
+    const { score } = await generate({ style: "carnavalito", arrangement: "all-phases" });
+    assert.deepEqual(score.form?.steps.map((step) => step.section), score.sections.map((section) => section.id));
+    await assert.rejects(generate({ style: "carnavalito", arrangement: "extended" }), /arrangement/i);
   });
 });
