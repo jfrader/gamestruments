@@ -122,7 +122,7 @@ export function renderSections(frame: PlaybackFrame, running: boolean, busy: boo
   const { score } = frame;
   const tick = Math.floor(frame.tick);
   const mix = new Map(frame.mix.map((item) => [item.section, item.gain]));
-  const view = cueView(score, frame.snapshot, tick, running, frame.requestedCue, frame.formHeld);
+  const view = cueView(score, frame.snapshot, tick, running, frame.requestedCue, frame.formHeld, frame.pendingScore);
   const next = frame.nextFormSection;
   setDisabled(elements.holdForm, busy || score.form === undefined);
   setAttribute(elements.holdForm, "aria-pressed", String(frame.formHeld));
@@ -550,6 +550,9 @@ export function renderFrame(frame: PlaybackFrame, running: boolean, busy = false
   const barTicks = score.beatsPerBar * score.ticksPerBeat;
   const activeTransition = snapshot.transition;
   const section = sectionById(soundingSection(snapshot, tick));
+  const pendingLabel = snapshot.pendingSection === null
+    ? null
+    : sectionLookup(frame.pendingScore ?? score)(snapshot.pendingSection).label;
 
   setText(elements.bar, String(Math.floor(tick / barTicks) + 1).padStart(2, "0"));
   setText(elements.beat, String(
@@ -559,8 +562,10 @@ export function renderFrame(frame: PlaybackFrame, running: boolean, busy = false
   setText(elements.moodFeeling, section.feeling);
   setText(elements.transitionLabel, !running
     ? "Engine offline"
-    : snapshot.pendingSection !== null
-      ? `Queued: ${sectionById(snapshot.pendingSection).label} · after this blend`
+    : frame.pendingScore !== null
+      ? `Next: ${frame.pendingScore.title}${pendingLabel === null ? "" : ` · ${pendingLabel}`}`
+    : pendingLabel !== null
+      ? `Queued: ${pendingLabel} · after this blend`
       : activeTransition === null
         ? score.form === undefined
           ? "Pattern locked"

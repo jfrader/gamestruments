@@ -68,11 +68,8 @@ pub fn buffer_above_floor(buffer: &[f32]) -> bool {
 
 /// Progress state for a crossfade between an outgoing and an incoming voice.
 ///
-/// The player owns one of these for the lifetime of a handoff. Re-targeting a
-/// score mid-fade (a second `generate()` before the fade ends) must not restart
-/// the fade: the outgoing gain would snap back to `1.0` and click. `begin` and
-/// `retarget` therefore differ — `begin` starts a fade at zero, while `retarget`
-/// keeps the running counter and only re-fixes the total.
+/// The player owns one of these for the lifetime of a handoff, and runs one
+/// handoff at a time: new music that arrives mid-fade waits for it to finish.
 ///
 /// A handoff that begins while the incoming voice is still below the musical
 /// floor (for example a score that opens on a quiet bed) does not fade the
@@ -126,15 +123,6 @@ impl Handoff {
         self.samples_total = samples_total;
         self.waiting = true;
         self.wait_elapsed = 0;
-    }
-
-    /// Replace the incoming voice while a crossfade is already running. The
-    /// fade continues from where it is: the running counter and any hold clock
-    /// are preserved so the outgoing gain does not snap back to `1.0` and a
-    /// still-silent incoming does not restart the hold bound. The total is
-    /// re-affirmed from the (unchanged) outgoing score's fade length.
-    pub fn retarget(&mut self, samples_total: u64) {
-        self.samples_total = samples_total;
     }
 
     /// Observe the incoming voice's rendered buffer for this frame. While
@@ -244,32 +232,6 @@ mod tests {
     /// ignition bed): it must keep the hold, unlike the old peak gate.
     fn below_floor() -> [f32; 4] {
         [MUSICAL_FLOOR * 0.5; 4]
-    }
-
-    #[test]
-    fn retargeting_a_mid_fade_handoff_does_not_restart_the_fade() {
-        let mut handoff = Handoff::idle();
-        handoff.begin(4800);
-        handoff.poll(&at_floor()); // the incoming reaches the floor, so the fade starts
-        handoff.advance(2400);
-
-        // Halfway through the fade.
-        let (g_out_mid, _) = crossfade_gains(handoff.progress(0));
-        assert!((g_out_mid - 0.5).abs() < 1e-6);
-
-        // A second generate() arrives mid-fade: the incoming voice is replaced,
-        // but the outgoing fade must continue from where it is.
-        handoff.retarget(4800);
-
-        let (g_out_after, _) = crossfade_gains(handoff.progress(0));
-        assert!(
-            (g_out_after - g_out_mid).abs() < 1e-6,
-            "outgoing gain jumped from {g_out_mid} to {g_out_after} on retarget"
-        );
-        assert!(
-            g_out_after < 1.0,
-            "outgoing gain snapped back to 1.0: the fade restarted"
-        );
     }
 
     #[test]

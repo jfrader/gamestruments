@@ -1572,6 +1572,14 @@ pub fn tick_at_sample(frames_produced: u64, sample_rate: f64, ticks_per_second: 
     score_tick_at_sample(frames_produced, sample_rate, ticks_per_second) as u32
 }
 
+/// The first produced-sample position at which [`tick_at_sample`] reaches `tick`.
+pub fn sample_at_tick(tick: u32, sample_rate: f64, ticks_per_second: f64) -> u64 {
+    if ticks_per_second <= 0.0 {
+        return 0;
+    }
+    (f64::from(tick) / ticks_per_second * sample_rate).ceil() as u64
+}
+
 fn midi_to_freq(pitch: u8) -> f32 {
     440.0 * dmath::powf(2.0, (pitch as f32 - 69.0) / 12.0)
 }

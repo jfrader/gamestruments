@@ -64,9 +64,12 @@ Generation of `PortableScore` (sections, events, id, bpm, rules, crossfades, def
 Transport / section selection + transition planning:
 - The lab's music selector and Cue rows enumerate the loaded score's complete
   section list, including endings. Suspense's game signals are separate,
-  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar; the latest request made
-  during a blend queues after it. Cancel removes only a waiting request, never
-  an in-progress blend. Stopped selection sets the next starting section.
+  collapsed controls; Adventure's area-phase buttons each cue one section. Live cues wait for the next bar. `LivePlayer` runs one
+  blend at a time, a section blend or a music blend; a request made during one
+  waits, keeping only the latest music change and the latest section. A waiting
+  music change and section become one blend that opens the new music on that
+  section, and the clock keeps counting through it. Cancel removes only a
+  waiting section, never an in-progress blend. Stopped selection sets the next starting section.
 - The Rust `AdaptiveTransport` + `select_section` (in `crates/engine/src/transport.rs`) decide sections and transitions for Godot and for the Audio Lab, which runs them through `LivePlayer`. `@gamestruments/runtime` keeps a TypeScript transport for other consumers; the Lab no longer uses it.
 - A sounding section keeps its phrase origin (where it began fading in): a finished blend or a form repeat moves only the form's count, so the renderer never restarts a section that is still sounding.
 - Pool forms leave `form.origin` unset: the incoming fade overlaps the previous
