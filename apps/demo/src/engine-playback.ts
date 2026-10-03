@@ -161,7 +161,8 @@ export class EnginePlayback {
   }
 
   request(phase: string, readings: SignalReadings): void {
-    const update = this.#lab.profile.engineUpdate(phase, readings);
+    const update = this.#lab.profile.engineUpdate?.(phase, readings);
+    if (update === undefined) return;
     if (!this.running) {
       const section = this.#command({ sectionFor: update }) as SectionId | null;
       if (section !== null) this.cue(section);

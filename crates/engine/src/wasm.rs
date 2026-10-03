@@ -75,6 +75,7 @@ use crate::adventure::{
     generate_adventure_arrangement, AdventureArrangement, AdventureInput, AdventureStyle,
 };
 use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+use crate::folklore::{folklore_root_pitch_class, generate_folklore, FolkloreInput};
 use crate::live::{GameUpdate, LivePlayer};
 use crate::racing::{racing_root_pitch_class, GenerateInput, InstrumentPalette, Style};
 use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
@@ -82,7 +83,7 @@ use crate::render::{render_wav, render_wav_chunk, render_wav_stereo, render_wav_
 use crate::score::PortableScore;
 use crate::suspense::{SuspenseInput, SuspenseStyle};
 use crate::suspense_arrangement::{generate_suspense_arrangement_take, SuspenseArrangement};
-use crate::suspense_pool::Intent;
+use crate::suspense_pool::{take_seed, Intent};
 use crate::synth::Solo;
 
 const BUF_SIZE: usize = 2 * 1024 * 1024; // 2 MiB headroom for JSON + WAV (3phrases@22k ~300k)
@@ -201,6 +202,26 @@ struct GenerationInput {
 }
 
 impl GenerationInput {
+    fn folklore(&self) -> FolkloreInput {
+        let seed = if self.reel_index == 0 {
+            self.seed.clone()
+        } else {
+            format!(
+                "{}-{:08x}",
+                self.seed,
+                take_seed(&self.secret, &self.seed, "folklore-take", self.reel_index)
+            )
+        };
+        FolkloreInput {
+            secret: self.secret.clone(),
+            seed,
+            energy: self.energy,
+            complexity: self.complexity,
+            brightness: self.brightness,
+            syncopation: self.syncopation,
+        }
+    }
+
     fn racing(&self, style: Style) -> GenerateInput {
         GenerateInput {
             secret: self.secret.clone(),
@@ -357,6 +378,13 @@ pub unsafe extern "C" fn gamestruments_score_json(
                 }
             })
         }
+        "folklore" => {
+            if !matches!(inp.style.as_str(), "" | "chacarera") {
+                write_error(format!("Unknown folklore style: {}", inp.style));
+                return unsafe { OUT_PTR };
+            }
+            generate_folklore(&inp.folklore(), &inp.arrangement)
+        }
         other => {
             write_error(format!("Unknown recipe: {other}"));
             return unsafe { OUT_PTR };
@@ -373,8 +401,8 @@ pub unsafe extern "C" fn gamestruments_score_json(
 }
 
 /// The root pitch class the score for a generation input sounds in, for the
-/// player's `load` command: a new Racing seed is moved into the playing key.
-/// Other recipes, and input that does not parse, answer 0.
+/// player's `load` command when a new seed joins the playing key.
+/// Recipes without a root query, and input that does not parse, answer 0.
 #[no_mangle]
 pub unsafe extern "C" fn gamestruments_root_pitch_class(
     input_ptr: *const u8,
@@ -386,6 +414,9 @@ pub unsafe extern "C" fn gamestruments_root_pitch_class(
     };
     match (inp.recipe.as_str(), Style::parse(&inp.style)) {
         ("" | "racing", Ok(style)) => racing_root_pitch_class(&inp.racing(style)),
+        ("folklore", _) if matches!(inp.style.as_str(), "" | "chacarera") => {
+            folklore_root_pitch_class(&inp.folklore())
+        }
         _ => 0,
     }
 }

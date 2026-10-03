@@ -385,14 +385,20 @@ impl AdaptiveTransport {
             .as_ref()
             .filter(|plan| at_tick >= plan.start_tick)
             .map_or(self.current_section.as_str(), |plan| plan.to.as_str());
-        let index = form_index_for(&self.score, current)?;
-        let next = if index + 1 < form.steps.len() {
-            index + 1
-        } else {
-            form.loop_from? as usize
-        };
-        let target = &form.steps.get(next)?.section;
-        (target != current).then(|| target.clone())
+        let index = form_index_from(&self.score, current, self.form_step_index)?;
+        let mut next = index;
+        for _ in 0..form.steps.len() {
+            next = if next + 1 < form.steps.len() {
+                next + 1
+            } else {
+                form.loop_from? as usize
+            };
+            let target = &form.steps.get(next)?.section;
+            if target != current {
+                return Some(target.clone());
+            }
+        }
+        None
     }
 
     pub fn advance_form(&mut self, at_tick: u32) -> Option<TransitionPlan> {
@@ -538,7 +544,7 @@ impl AdaptiveTransport {
     }
 
     fn sync_form_to(&mut self, section: &str) {
-        if let Some(index) = form_index_for(&self.score, section) {
+        if let Some(index) = form_index_from(&self.score, section, self.form_step_index) {
             self.form_step_index = index;
         }
     }
@@ -580,8 +586,8 @@ impl AdaptiveTransport {
             }
         };
         let next_section = form.steps[next_index].section.clone();
-        self.form_step_index = next_index;
         if next_section == self.current_section {
+            self.form_step_index = next_index;
             self.section_entered_at = boundary_tick;
             return;
         }
@@ -604,6 +610,22 @@ fn form_index_for(score: &PortableScore, section: &str) -> Option<usize> {
         .steps
         .iter()
         .position(|step| step.section == section)
+}
+
+fn form_index_from(score: &PortableScore, section: &str, current: usize) -> Option<usize> {
+    let form = score.form.as_ref()?;
+    let steps = &form.steps;
+    if steps
+        .get(current)
+        .is_some_and(|step| step.section == section)
+    {
+        return Some(current);
+    }
+    let loop_from = (form.loop_from.unwrap_or(0) as usize).min(current);
+    (current + 1..steps.len())
+        .chain(loop_from..current.min(steps.len()))
+        .chain(0..loop_from)
+        .find(|&index| steps[index].section == section)
 }
 
 pub fn select_section(score: &PortableScore, state: &GameState) -> String {
@@ -649,8 +671,218 @@ mod tests {
     use crate::arrangement::{apply_automatic_arrangement, ArrangementRecipe};
     use crate::racing::{generate_racing, GenerateInput, InstrumentPalette, Style};
     use crate::racing_arrangement::{generate_racing_arrangement, RacingArrangement};
-    use crate::score::{AdventureState, GameState, TraceState};
+    use crate::score::{AdventureState, GameState, SongForm, SongFormStep, TraceState};
     use crate::suspense::{generate_suspense, SuspenseInput, SuspenseStyle};
+
+    #[test]
+    fn repeated_form_occurrences_reach_the_final_step() {
+        let mut generated = composed_score();
+        let ids: Vec<String> = generated
+            .sections
+            .iter()
+            .take(3)
+            .map(|s| s.id.clone())
+            .collect();
+        generated.form = Some(SongForm {
+            steps: [0, 1, 0, 2]
+                .map(|i| SongFormStep {
+                    section: ids[i].clone(),
+                    repeats: 1,
+                })
+                .to_vec(),
+            loop_from: None,
+            origin: Some(crate::score::FormOrigin::TransitionStart),
+        });
+        let mut transport = AdaptiveTransport::new(generated.clone(), None).unwrap();
+        let mut tick = 0;
+        for index in [1, 0, 2] {
+            tick += generated
+                .section(transport.current_section())
+                .unwrap()
+                .length_ticks;
+            transport.advance(tick);
+            let plan = transport.transition().unwrap();
+            assert_eq!(plan.to, ids[index]);
+            tick = plan.end_tick;
+            transport.advance(tick);
+            assert_eq!(transport.current_section(), ids[index]);
+            if index == 0 {
+                assert_eq!(
+                    transport.next_form_section(tick).as_deref(),
+                    Some(ids[2].as_str())
+                );
+            }
+        }
+        assert_eq!(transport.next_form_section(tick), None);
+    }
+
+    #[test]
+    fn repeated_form_loop_returns_to_its_loop_occurrence() {
+        let mut generated = composed_score();
+        let ids: Vec<String> = generated
+            .sections
+            .iter()
+            .take(3)
+            .map(|s| s.id.clone())
+            .collect();
+        generated.form = Some(SongForm {
+            steps: [0, 1, 0, 2]
+                .map(|i| SongFormStep {
+                    section: ids[i].clone(),
+                    repeats: 1,
+                })
+                .to_vec(),
+            loop_from: Some(2),
+            origin: Some(crate::score::FormOrigin::TransitionStart),
+        });
+        for manual in [false, true] {
+            let mut transport = AdaptiveTransport::new(generated.clone(), None).unwrap();
+            transport.set_form_held(manual, 0);
+            let mut tick = 0;
+            for index in [1, 0, 2, 0, 2] {
+                tick += generated
+                    .section(transport.current_section())
+                    .unwrap()
+                    .length_ticks;
+                if manual {
+                    transport.advance_form(tick);
+                } else {
+                    transport.advance(tick);
+                }
+                let plan = transport.transition().unwrap();
+                assert_eq!(plan.to, ids[index]);
+                tick = plan.end_tick;
+                transport.advance(tick);
+                if index == 0 {
+                    assert_eq!(
+                        transport.next_form_section(tick).as_deref(),
+                        Some(ids[2].as_str())
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cancelling_repeated_form_transition_preserves_outgoing_occurrence() {
+        let mut generated = composed_score();
+        let ids: Vec<String> = generated
+            .sections
+            .iter()
+            .take(3)
+            .map(|s| s.id.clone())
+            .collect();
+        generated.form = Some(SongForm {
+            steps: [0, 1, 0, 2]
+                .map(|i| SongFormStep {
+                    section: ids[i].clone(),
+                    repeats: 1,
+                })
+                .to_vec(),
+            loop_from: None,
+            origin: Some(crate::score::FormOrigin::TransitionStart),
+        });
+        let mut transport = AdaptiveTransport::new(generated.clone(), Some(&ids[1])).unwrap();
+        transport.set_form_held(true, 0);
+        let cue = transport.advance_form(1).unwrap();
+        assert_eq!(cue.to, ids[0]);
+        transport.cancel_pending(2);
+        assert_eq!(transport.current_section(), ids[1]);
+        assert_eq!(
+            transport.next_form_section(2).as_deref(),
+            Some(ids[0].as_str())
+        );
+        let cue = transport.advance_form(3).unwrap();
+        assert_eq!(cue.to, ids[0]);
+        transport.advance(cue.end_tick);
+        assert_eq!(
+            transport.next_form_section(cue.end_tick).as_deref(),
+            Some(ids[2].as_str())
+        );
+    }
+
+    #[test]
+    fn manual_next_skips_identical_steps_but_autoplay_counts_them() {
+        let mut generated = composed_score();
+        let ids: Vec<String> = generated
+            .sections
+            .iter()
+            .take(2)
+            .map(|s| s.id.clone())
+            .collect();
+        generated.form = Some(SongForm {
+            steps: [0, 0, 1]
+                .map(|i| SongFormStep {
+                    section: ids[i].clone(),
+                    repeats: 1,
+                })
+                .to_vec(),
+            loop_from: None,
+            origin: Some(crate::score::FormOrigin::TransitionStart),
+        });
+        let mut manual = AdaptiveTransport::new(generated.clone(), None).unwrap();
+        assert_eq!(
+            manual.next_form_section(0).as_deref(),
+            Some(ids[1].as_str())
+        );
+        let plan = manual.advance_form(1).unwrap();
+        manual.advance(plan.end_tick);
+        assert_eq!(manual.current_section(), ids[1]);
+
+        let length = generated.section(&ids[0]).unwrap().length_ticks;
+        let mut automatic = AdaptiveTransport::new(generated, None).unwrap();
+        automatic.advance(length);
+        assert_eq!(automatic.current_section(), ids[0]);
+        assert!(automatic.transition().is_none());
+        automatic.advance(2 * length);
+        assert_eq!(automatic.transition().unwrap().to, ids[1]);
+    }
+
+    #[test]
+    fn folklore_form_reaches_its_cierre() {
+        let score = crate::folklore::generate_folklore(
+            &crate::folklore::FolkloreInput {
+                secret: "form-test".into(),
+                seed: "form-test".into(),
+                energy: 0.5,
+                complexity: 0.5,
+                brightness: 0.5,
+                syncopation: 0.5,
+            },
+            "seeded",
+        )
+        .unwrap();
+        let order: Vec<String> = score
+            .form
+            .as_ref()
+            .unwrap()
+            .steps
+            .iter()
+            .map(|step| step.section.clone())
+            .collect();
+        let mut transport = AdaptiveTransport::new(score.clone(), None).unwrap();
+        let mut tick = 0;
+        for target in order.iter().skip(1) {
+            tick += score
+                .section(transport.current_section())
+                .unwrap()
+                .length_ticks;
+            transport.advance(tick);
+            let transition = transport.transition().unwrap();
+            assert_eq!(&transition.to, target);
+            tick = transition.end_tick;
+            transport.advance(tick);
+            assert_eq!(transport.current_section(), target);
+        }
+        assert_eq!(transport.current_section(), "cierre");
+        let loop_target = score
+            .form
+            .as_ref()
+            .unwrap()
+            .loop_from
+            .map(|index| order[index as usize].as_str());
+        assert_eq!(transport.next_form_section(tick).as_deref(), loop_target);
+    }
 
     fn score() -> crate::score::PortableScore {
         generate_racing(&GenerateInput {
@@ -1019,13 +1251,7 @@ mod tests {
         }
     }
 
-    type TraceContractCase = (
-        &'static str,
-        f64,
-        f64,
-        f64,
-        Option<(&'static str, bool)>,
-    );
+    type TraceContractCase = (&'static str, f64, f64, f64, Option<(&'static str, bool)>);
 
     /// Hardcoded contract for `select_trace_section`: (phase, heat, focus,
     /// progress) -> expected (section, hold). The retired Extended preset used to
@@ -1304,7 +1530,10 @@ mod tests {
             .expect("the form must auto-advance past camp")
             .clone();
         assert_eq!(automatic.to, "explore");
-        assert!(!automatic.hold, "automatic form transitions crossfade on schedule");
+        assert!(
+            !automatic.hold,
+            "automatic form transitions crossfade on schedule"
+        );
 
         // quest_complete mid-flight must supersede the automatic progression.
         let victory = transport

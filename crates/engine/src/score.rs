@@ -391,7 +391,7 @@ fn validate_event<'a>(
 
     match event {
         MusicEvent::Note { pitch, .. } => {
-            const NOTE_VOICES: [&str; 19] = [
+            const NOTE_VOICES: [&str; 20] = [
                 "warm",
                 "glass",
                 "pulse",
@@ -411,6 +411,7 @@ fn validate_event<'a>(
                 "saw-bass",
                 "trance-pad",
                 "trance-lead",
+                "nylon-guitar",
             ];
             if !NOTE_VOICES.contains(&voice.as_str()) {
                 return Err(format!("note {id} has unsupported voice {voice}"));
@@ -423,7 +424,7 @@ fn validate_event<'a>(
             }
         }
         MusicEvent::Percussion { .. } => {
-            const PERCUSSION_VOICES: [&str; 10] = [
+            const PERCUSSION_VOICES: [&str; 12] = [
                 "techno-kick",
                 "clap",
                 "kick",
@@ -434,6 +435,8 @@ fn validate_event<'a>(
                 "air-impact",
                 "frame-drum",
                 "tambourine",
+                "bombo",
+                "bombo-rim",
             ];
             if !PERCUSSION_VOICES.contains(&voice.as_str()) {
                 return Err(format!("percussion {id} has unsupported voice {voice}"));
@@ -553,6 +556,13 @@ mod tests {
     #[test]
     fn accepts_the_club_percussion_voices() {
         for voice in ["techno-kick", "clap"] {
+            assert_eq!(percussion_score(voice).validate(), Ok(()), "{voice}");
+        }
+    }
+
+    #[test]
+    fn accepts_folklore_percussion_voices() {
+        for voice in ["bombo", "bombo-rim"] {
             assert_eq!(percussion_score(voice).validate(), Ok(()), "{voice}");
         }
     }

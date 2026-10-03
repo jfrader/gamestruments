@@ -10,8 +10,88 @@ const score: PortableScore = {
   sections: ["scan", "scan-ii", "breach", "breach-ii", "ending"].map((id) => ({ id, label: id, feeling: "", color: "#fff", lengthTicks: length, events: [] })),
   form: { origin: "transitionStart", steps: ["scan", "scan-ii", "breach", "breach-ii"].map((section) => ({ section })), loopFrom: 0 },
 };
+const repeated: PortableScore = {
+  ...score,
+  form: { origin: "transitionStart", steps: ["scan", "scan-ii", "scan", "breach"].map((section) => ({ section })) },
+};
 
 describe("game-controlled song form", () => {
+  it("plays repeated sections in order and keeps Next at the current occurrence", () => {
+    const transport = new AdaptiveTransport(repeated);
+    for (const [index, target] of ["scan-ii", "scan", "breach"].entries()) {
+      const plan = transport.advance((index + 1) * length + index * bar);
+      assert.equal(plan?.to, target);
+      assert.ok(plan);
+      transport.advance(plan.endTick);
+      assert.equal(transport.snapshot().currentSection, target);
+      if (target === "scan") assert.equal(transport.nextFormSection(plan.endTick), "breach");
+    }
+    assert.equal(transport.nextFormSection(3 * length + 2 * bar), null);
+  });
+
+  it("cancels lookahead without skipping a repeated section, and resumes after a held cue", () => {
+    const transport = new AdaptiveTransport(repeated);
+    transport.jumpSection("scan-ii", 0);
+    const scheduled = transport.advance(length - 100, 200);
+    assert.equal(scheduled?.to, "scan");
+    assert.deepEqual(transport.setFormHeld(true, length - 50), scheduled);
+    assert.equal(transport.nextFormSection(length - 50), "scan");
+    const cue = transport.advanceForm(length + 10);
+    assert.equal(cue.status, "scheduled");
+    if (cue.status !== "scheduled") return;
+    transport.advance(cue.plan.endTick);
+    assert.equal(transport.snapshot().currentSection, "scan");
+    assert.equal(transport.nextFormSection(cue.plan.endTick), "breach");
+    transport.setFormHeld(false, cue.plan.endTick);
+    const plan = transport.advance(cue.plan.endTick + length);
+    assert.equal(plan?.to, "breach");
+  });
+
+  it("syncs an explicit cue to the next matching occurrence", () => {
+    const transport = new AdaptiveTransport(repeated);
+    const first = transport.requestSection("scan-ii", 0);
+    assert.equal(first.status, "scheduled");
+    if (first.status !== "scheduled") return;
+    transport.advance(first.plan.endTick);
+    const second = transport.requestSection("scan", first.plan.endTick);
+    assert.equal(second.status, "scheduled");
+    if (second.status !== "scheduled") return;
+    transport.advance(second.plan.endTick);
+    assert.equal(transport.nextFormSection(second.plan.endTick), "breach");
+  });
+
+  it("returns to the loop occurrence rather than an earlier matching section", () => {
+    const looping: PortableScore = { ...repeated, form: { ...repeated.form!, loopFrom: 2 } };
+    for (const manual of [false, true]) {
+      const transport = new AdaptiveTransport(looping);
+      transport.setFormHeld(manual, 0);
+      let tick = 0;
+      for (const target of ["scan-ii", "scan", "breach", "scan", "breach"]) {
+        tick += length;
+        if (manual) transport.advanceForm(tick);
+        else transport.advance(tick);
+        const plan = transport.snapshot().transition;
+        assert.ok(plan);
+        assert.equal(plan.to, target);
+        tick = plan.endTick;
+        transport.advance(tick);
+        if (target === "scan") assert.equal(transport.nextFormSection(tick), "breach");
+      }
+    }
+  });
+
+  it("skips adjacent identical steps on manual Next while autoplay keeps their duration", () => {
+    const adjacent: PortableScore = {
+      ...score,
+      form: { origin: "transitionStart", steps: ["scan", "scan", "breach"].map((section) => ({ section })) },
+    };
+    const manual = new AdaptiveTransport(adjacent);
+    assert.equal(manual.nextFormSection(0), "breach");
+    const automatic = new AdaptiveTransport(adjacent);
+    assert.equal(automatic.advance(length), null);
+    assert.equal(automatic.snapshot().currentSection, "scan");
+    assert.equal(automatic.advance(2 * length)?.to, "breach");
+  });
   it("holds indefinitely, advances once on a bar and keeps the next section held", () => {
     const transport = new AdaptiveTransport(score);
     transport.setFormHeld(true, 0);

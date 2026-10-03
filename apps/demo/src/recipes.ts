@@ -3,7 +3,7 @@ import { ADVENTURE_SCENE_SECTIONS, SUSPENSE_PHASE_SECTIONS } from "./playback-se
 import { phaseName } from "./phase-names.ts";
 import type { GameUpdate } from "./wasm-player.ts";
 
-export type LabRecipe = "racing" | "suspense" | "adventure";
+export type LabRecipe = "racing" | "suspense" | "adventure" | "folklore";
 
 /** The four generic generation sliders every recipe maps onto its own traits. */
 export interface NormalizedMusicTraits {
@@ -40,10 +40,10 @@ export interface LabRecipeProfile {
   /** Phase buttons that cue a section directly; absent when phases are game states. */
   phaseSections?: Readonly<Record<string, SectionId>>;
   traitLabels: Readonly<Record<keyof NormalizedMusicTraits, string>>;
-  meters: { intensity: string; pressure: string; flag: string; flagCopy: string };
+  meters?: { intensity: string; pressure: string; flag: string; flagCopy: string };
   signal(phase: string): string;
   /** The signal panel's readings as the engine's game-state update. */
-  engineUpdate(phase: string, readings: SignalReadings): GameUpdate;
+  engineUpdate?(phase: string, readings: SignalReadings): GameUpdate;
 }
 
 const RACING: LabRecipeProfile = {
@@ -166,14 +166,38 @@ const ADVENTURE: LabRecipeProfile = {
   }),
 };
 
+const FOLKLORE: LabRecipeProfile = {
+  id: "folklore",
+  label: "Folklore",
+  description: "Chacarera · listening prototype",
+  presets: [
+    {
+      style: "chacarera",
+      label: "Chacarera",
+      traits: { energy: 0.6, complexity: 0.45, brightness: 0.55, syncopation: 0.65 },
+    },
+  ],
+  autoplay: true,
+  openingPhase: "introduccion",
+  phases: [],
+  traitLabels: {
+    energy: "Energy",
+    complexity: "Ornament",
+    brightness: "Brightness",
+    syncopation: "Syncopation",
+  },
+  signal: () => "recipe: folklore",
+};
+
 export const LAB_RECIPE_PROFILES: Readonly<Record<LabRecipe, LabRecipeProfile>> = {
   racing: RACING,
   suspense: SUSPENSE,
   adventure: ADVENTURE,
+  folklore: FOLKLORE,
 };
 
 /** The game-type selector's order. */
-export const LAB_RECIPES: readonly LabRecipeProfile[] = [RACING, SUSPENSE, ADVENTURE];
+export const LAB_RECIPES: readonly LabRecipeProfile[] = [RACING, SUSPENSE, ADVENTURE, FOLKLORE];
 
 export function isLabRecipe(value: string | undefined): value is LabRecipe {
   return value !== undefined && Object.hasOwn(LAB_RECIPE_PROFILES, value);

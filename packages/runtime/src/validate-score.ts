@@ -20,6 +20,7 @@ const NOTE_VOICES = new Set([
   "saw-bass",
   "trance-pad",
   "trance-lead",
+  "nylon-guitar",
 ]);
 const PERCUSSION_VOICES = new Set([
   "kick",
@@ -32,6 +33,8 @@ const PERCUSSION_VOICES = new Set([
   "air-impact",
   "frame-drum",
   "tambourine",
+  "bombo",
+  "bombo-rim",
 ]);
 
 function requireValid(condition: boolean, message: string): asserts condition {

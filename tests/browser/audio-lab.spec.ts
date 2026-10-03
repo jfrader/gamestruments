@@ -247,7 +247,7 @@ test("Adventure offers exactly two arrangements: All phases and Seeded", async (
 
 test("every recipe exposes exactly the All phases and Seeded arrangements", async ({ page }) => {
   await page.goto("/#lab");
-  for (const recipe of ["racing", "suspense", "adventure"] as const) {
+  for (const recipe of ["racing", "suspense", "adventure", "folklore"] as const) {
     await selectRecipe(page, recipe);
     await expect(page.locator("#arrangement-buttons button")).toHaveCount(2);
     const ids = await page.locator("#arrangement-buttons button").evaluateAll(

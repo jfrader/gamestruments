@@ -233,11 +233,18 @@ export class AdaptiveTransport {
     this.#assertTick(atTick);
     const form = this.#score.form;
     const current = this.#transition !== null && atTick >= this.#transition.startTick ? this.#transition.to : this.#currentSection;
-    const index = formIndexFor(this.#score, current);
+    const index = formIndexFrom(this.#score, current, this.#formStepIndex);
     if (form === undefined || index === undefined) return null;
-    const next = index + 1 < form.steps.length ? index + 1 : form.loopFrom;
-    const target = next === undefined ? undefined : form.steps[next]?.section;
-    return target === undefined || target === current ? null : target;
+    let next = index;
+    for (let step = 0; step < form.steps.length; step++) {
+      const candidate = next + 1 < form.steps.length ? next + 1 : form.loopFrom;
+      if (candidate === undefined) return null;
+      next = candidate;
+      const target = form.steps[next]?.section;
+      if (target === undefined) return null;
+      if (target !== current) return target;
+    }
+    return null;
   }
 
   advanceForm(atTick: number): TransitionRequest {
@@ -267,7 +274,7 @@ export class AdaptiveTransport {
   }
 
   #syncFormTo(section: SectionId): void {
-    const index = formIndexFor(this.#score, section);
+    const index = formIndexFrom(this.#score, section, this.#formStepIndex);
     if (index !== undefined) {
       this.#formStepIndex = index;
     }
@@ -313,7 +320,6 @@ export class AdaptiveTransport {
       }
       return null;
     }
-    this.#formStepIndex = nextIndex;
     const plan: TransitionPlan = {
       from: this.#currentSection,
       to: nextSection,
@@ -330,4 +336,18 @@ export class AdaptiveTransport {
 function formIndexFor(score: PortableScore, section: SectionId): number | undefined {
   const index = score.form?.steps.findIndex((step) => step.section === section);
   return index === undefined || index < 0 ? undefined : index;
+}
+
+function formIndexFrom(score: PortableScore, section: SectionId, current: number): number | undefined {
+  const form = score.form;
+  if (form === undefined) return undefined;
+  const steps = form.steps;
+  if (steps[current]?.section === section) return current;
+  const loopFrom = Math.min(form.loopFrom ?? 0, current);
+  for (const [start, end] of [[current + 1, steps.length], [loopFrom, current], [0, loopFrom]] as const) {
+    for (let index = start; index < end; index++) {
+      if (steps[index]?.section === section) return index;
+    }
+  }
+  return undefined;
 }
