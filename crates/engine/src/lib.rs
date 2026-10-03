@@ -3,6 +3,7 @@ pub mod arrangement;
 pub(crate) mod composer;
 pub(crate) mod development;
 pub(crate) mod dmath;
+pub mod folklore;
 pub mod form_audio;
 pub mod handoff;
 pub mod live;
@@ -29,6 +30,7 @@ pub use adventure::{
     AdventureStyle,
 };
 pub use arrangement::{apply_automatic_arrangement, ArrangementRecipe};
+pub use folklore::{folklore_root_pitch_class, generate_folklore, FolkloreInput};
 pub use form_audio::FormAudio;
 pub use handoff::{crossfade_gains, crossfade_sample_count};
 pub use live::{GameUpdate, LivePlayer};

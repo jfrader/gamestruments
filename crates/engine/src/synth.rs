@@ -75,11 +75,14 @@ fn voice_type_pan(vt: VoiceType) -> f32 {
         // ±0.15
         VoiceType::Snare => 0.125,
         VoiceType::FrameDrum => -0.125,
+        VoiceType::Bombo => 0.0,
+        VoiceType::BomboRim => 0.0625,
         // ±0.25
         VoiceType::Epiano => 0.25,
         VoiceType::Tom => -0.25,
         VoiceType::Recorder => 0.25,
         VoiceType::Vielle => -0.25,
+        VoiceType::NylonGuitar => 0.1875,
         VoiceType::Harp => 0.1875,
         VoiceType::TrancePad => 0.0,
         VoiceType::TranceLead => -0.125,
@@ -115,6 +118,7 @@ enum VoiceType {
     Harp,
     Recorder,
     Vielle,
+    NylonGuitar,
     Bell,
     TrancePad,
     TranceLead,
@@ -123,6 +127,8 @@ enum VoiceType {
     SawBass,
     FrameDrum,
     Tambourine,
+    Bombo,
+    BomboRim,
     Bass,
     Epiano,
     Organ,
@@ -277,6 +283,9 @@ fn voice_velocity_gain(voice_type: VoiceType, velocity: f32) -> f32 {
         | VoiceType::FrameDrum
         | VoiceType::Tambourine
         | VoiceType::Chip => 0.82,
+        VoiceType::NylonGuitar | VoiceType::Bombo | VoiceType::BomboRim => {
+            return dmath::powf(velocity, 0.82);
+        }
         VoiceType::Recorder | VoiceType::Vielle => 0.84,
         VoiceType::SawBass => 0.78,
         VoiceType::Kick
@@ -307,6 +316,7 @@ fn note_voice_type(name: &str) -> Option<VoiceType> {
         "harp" => VoiceType::Harp,
         "recorder" => VoiceType::Recorder,
         "vielle" => VoiceType::Vielle,
+        "nylon-guitar" => VoiceType::NylonGuitar,
         "bell" => VoiceType::Bell,
         "saw-bass" => VoiceType::SawBass,
         "trance-pad" => VoiceType::TrancePad,
@@ -325,6 +335,8 @@ fn percussion_voice_type(name: &str) -> Option<VoiceType> {
         "air-impact" => VoiceType::AirImpact,
         "frame-drum" => VoiceType::FrameDrum,
         "tambourine" => VoiceType::Tambourine,
+        "bombo" => VoiceType::Bombo,
+        "bombo-rim" => VoiceType::BomboRim,
         "techno-kick" => VoiceType::TechnoKick,
         "clap" => VoiceType::Clap,
         _ => return None,
@@ -487,11 +499,12 @@ impl Synth {
                 VoiceType::Dusk => duration as f32 + 1.25,
                 VoiceType::Recorder => duration as f32 + 0.3,
                 VoiceType::Vielle => duration as f32 + 0.55,
+                VoiceType::NylonGuitar => duration as f32 + NOTE_TAIL_SECONDS,
                 _ => duration as f32 + NOTE_TAIL_SECONDS + 0.05,
             };
             let noise_state = if matches!(
                 vtype,
-                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle
+                VoiceType::Harp | VoiceType::Recorder | VoiceType::Vielle | VoiceType::NylonGuitar
             ) {
                 match event {
                     MusicEvent::Note { id, .. } => deterministic_noise_state(id),
@@ -552,6 +565,8 @@ impl Synth {
             VoiceType::Tom => 0.20,
             VoiceType::FrameDrum => 0.62,
             VoiceType::Tambourine => 0.48,
+            VoiceType::Bombo => 0.66,
+            VoiceType::BomboRim => 0.18,
             VoiceType::TechnoKick => 0.6,
             VoiceType::Clap => 0.35,
             VoiceType::ReverseCymbal | VoiceType::AirImpact => duration.max(0.04) as f32 + 0.13,
@@ -563,6 +578,8 @@ impl Synth {
             VoiceType::Tom
                 | VoiceType::FrameDrum
                 | VoiceType::Tambourine
+                | VoiceType::Bombo
+                | VoiceType::BomboRim
                 | VoiceType::TechnoKick
                 | VoiceType::Clap
         ) {
@@ -572,6 +589,8 @@ impl Synth {
                     VoiceType::Tom => 155.0 + u * 58.0,
                     VoiceType::FrameDrum => 82.0 + u * 24.0,
                     VoiceType::Tambourine => u,
+                    VoiceType::Bombo => 65.0 + u * 16.0,
+                    VoiceType::BomboRim => u * 200.0 + 900.0,
                     VoiceType::TechnoKick | VoiceType::Clap => u,
                     _ => unreachable!(),
                 };
@@ -599,6 +618,8 @@ impl Synth {
                 VoiceType::Tom => 0.026,
                 VoiceType::FrameDrum => 0.034,
                 VoiceType::Tambourine => 0.43,
+                VoiceType::Bombo => 0.048,
+                VoiceType::BomboRim => 0.015,
                 _ => 0.1,
             };
             let buf_dur_s = 0.75f32;
@@ -918,6 +939,44 @@ impl Synth {
                     * 0.105
                     * v.velocity_gain
                     * if is_mel { 1.08 } else { 1.0 }
+            }
+            VoiceType::NylonGuitar => {
+                let fundamental = generate_osc(v.phase1, Wave::Sine);
+                let octave = generate_osc(v.phase2, Wave::Triangle);
+                let upper = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * compute_freq(base, age, 0.003) * dt;
+                v.phase2 += TAU * base * 2.01 * dt;
+                v.phase3 += TAU * base * 3.015 * dt;
+
+                let lower_note = (220.0 / base).clamp(0.25, 1.0);
+                let body_decay = natural_decay(age, 0.82 + lower_note * 0.55);
+                let harm_decay = natural_decay(age, 0.42 + lower_note * 0.28);
+                let upper_decay = natural_decay(age, 0.17 + lower_note * 0.11);
+                let attack = (age / 0.004).clamp(0.0, 1.0);
+                let string = fundamental * body_decay
+                    + octave * 0.32 * harm_decay
+                    + upper * 0.085 * upper_decay;
+                let excitation = if age < 0.028 {
+                    let transient = 1.0 - age / 0.028;
+                    let sample = noise(&mut v.noise_state);
+                    v.filt.process(
+                        sample,
+                        (base * 4.8).clamp(780.0, 2600.0),
+                        0.62,
+                        sr,
+                        FilterMode::Bandpass,
+                    ) * transient
+                        * 0.085
+                } else {
+                    0.0
+                };
+                let release = (1.0 - (age - v.duration).max(0.0) / NOTE_TAIL_SECONDS).max(0.0);
+                (string + excitation)
+                    * attack
+                    * release
+                    * 0.12
+                    * v.velocity_gain
+                    * if is_mel { 1.06 } else { 1.0 }
             }
             VoiceType::Recorder => {
                 let vibrato_ramp = ((age - 0.2) / 0.38).clamp(0.0, 1.0);
@@ -1341,6 +1400,45 @@ impl Synth {
                     0.0
                 };
                 (modes + strike) * 0.2 * v.velocity_gain
+            }
+            VoiceType::Bombo => {
+                let body = generate_osc(v.phase1, Wave::Sine);
+                let mode1 = generate_osc(v.phase2, Wave::Sine);
+                let mode2 = generate_osc(v.phase3, Wave::Sine);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 1.49 * dt;
+                v.phase3 += TAU * base * 2.09 * dt;
+
+                let modes = body * natural_decay(age, 0.26)
+                    + mode1 * 0.41 * natural_decay(age, 0.16)
+                    + mode2 * 0.21 * natural_decay(age, 0.085);
+                let strike = if age < 0.042 {
+                    let transient = natural_decay(age, 0.011);
+                    let sample = noise(&mut v.noise_state);
+                    v.filt
+                        .process(sample, 920.0 + base * 2.8, 0.78, sr, FilterMode::Bandpass)
+                        * transient
+                        * 0.16
+                } else {
+                    0.0
+                };
+                let tail = ((v.life - age) / 0.04).clamp(0.0, 1.0);
+                (modes + strike) * 0.26 * v.velocity_gain * tail
+            }
+            VoiceType::BomboRim => {
+                let click = if age < 0.009 {
+                    let t = age / 0.009;
+                    (1.0 - t) * noise(&mut v.noise_state) * 0.65
+                } else {
+                    0.0
+                };
+                let wood = generate_osc(v.phase1, Wave::Sine);
+                let upper = generate_osc(v.phase2, Wave::Sine);
+                v.phase1 += TAU * base * dt;
+                v.phase2 += TAU * base * 1.47 * dt;
+                let woody =
+                    wood * natural_decay(age, 0.022) + upper * 0.35 * natural_decay(age, 0.012);
+                (click + woody * 0.55) * 0.34 * v.velocity_gain
             }
             VoiceType::Tambourine => {
                 let variation = base;
@@ -1869,8 +1967,23 @@ mod tests {
             "run this timing benchmark with cargo test --release"
         );
         let notes = [
-            "warm", "glass", "pulse", "pluck", "felt", "dusk", "harp", "recorder", "vielle",
-            "bell", "bass", "epiano", "organ", "supersaw", "triangle", "chip",
+            "warm",
+            "glass",
+            "pulse",
+            "pluck",
+            "felt",
+            "dusk",
+            "harp",
+            "recorder",
+            "vielle",
+            "nylon-guitar",
+            "bell",
+            "bass",
+            "epiano",
+            "organ",
+            "supersaw",
+            "triangle",
+            "chip",
         ];
         let percussion = [
             "kick",
@@ -1881,6 +1994,8 @@ mod tests {
             "air-impact",
             "frame-drum",
             "tambourine",
+            "bombo",
+            "bombo-rim",
         ];
         println!("median nanoseconds per generated voice sample (8 voices, 3 runs)");
         for (voice, is_percussion) in notes
@@ -1988,8 +2103,8 @@ mod tests {
     }
 
     #[test]
-    fn adventure_voices_render_audible_samples_with_finite_output() {
-        for voice in ["harp", "recorder", "vielle", "bell"] {
+    fn acoustic_voices_render_audible_samples_with_finite_output() {
+        for voice in ["harp", "recorder", "vielle", "nylon-guitar", "bell"] {
             let buffer = render_note(voice, 960, 48000);
             let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
             let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
@@ -2005,7 +2120,7 @@ mod tests {
                 "{voice} should retain moderate headroom, got {peak}"
             );
         }
-        for voice in ["frame-drum", "tambourine"] {
+        for voice in ["frame-drum", "tambourine", "bombo", "bombo-rim"] {
             let buffer = render_percussion(voice, "adventure-percussion");
             let energy: f32 = buffer.iter().map(|sample| sample.abs()).sum();
             let peak = buffer.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
@@ -2021,6 +2136,56 @@ mod tests {
                 "{voice} should retain moderate headroom, got {peak}"
             );
         }
+    }
+
+    #[test]
+    fn folklore_voices_preserve_soft_hits_and_silence() {
+        for voice in ["nylon-guitar", "bombo", "bombo-rim"] {
+            let render = |velocity: f64| {
+                let event = if voice == "nylon-guitar" {
+                    MusicEvent::Note {
+                        id: "dynamic-note".into(),
+                        section: "test".into(),
+                        lane: "guitar".into(),
+                        start_tick: 0,
+                        duration_ticks: 240,
+                        velocity,
+                        pitch: 64,
+                        voice: voice.into(),
+                        role: Some("melody".into()),
+                    }
+                } else {
+                    MusicEvent::Percussion {
+                        id: "dynamic-hit".into(),
+                        section: "test".into(),
+                        lane: "bombo".into(),
+                        start_tick: 0,
+                        duration_ticks: 240,
+                        velocity,
+                        voice: voice.into(),
+                    }
+                };
+                let mut synth = Synth::new(48000.0);
+                synth.trigger(&event, 960.0);
+                let mut samples = vec![0.0; 48000];
+                synth.fill(&mut samples);
+                assert!(synth.voices.is_empty(), "{voice} must finish its release");
+                samples
+            };
+            let soft = render(0.2);
+            let loud = render(0.8);
+            assert!(
+                rms(&loud) > rms(&soft) * 2.0,
+                "{voice} must respond to velocity"
+            );
+            assert!(
+                render(0.0).iter().all(|sample| *sample == 0.0),
+                "{voice} must respect zero velocity"
+            );
+            assert_eq!(soft, render(0.2), "{voice} must render deterministically");
+        }
+        let short_note = render_note("nylon-guitar", 120, 48000);
+        assert!(short_note[16800..].iter().all(|sample| *sample == 0.0));
     }
 
     #[test]

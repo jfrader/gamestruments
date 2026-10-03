@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
-import { captureEngineAudio } from "./engine-audio.ts";
+import { captureEngineAudio, waitForEngineSeconds } from "./engine-audio.ts";
 
 async function playEngineSuspense(page: Page, errors: string[]): Promise<void> {
   page.on("console", (message) => {
@@ -63,5 +63,31 @@ test("the Lab auditions the melody, the rhythm and the full mix through the engi
   const before = await page.evaluate(() => window.engineAudio.blocks);
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => window.engineAudio.blocks)).toBeGreaterThan(before);
+  expect(errors).toEqual([]);
+});
+
+test("Folklore plays and cues its chacarera without Adventure game signals", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await captureEngineAudio(page);
+  await page.goto("/#lab");
+  await selectRecipe(page, "folklore");
+  await expect(page.locator("#score-title")).toContainText("Folklore");
+  await expect(page.locator("#game-signals")).toBeHidden();
+  await expect(page.locator("#section-list li")).toHaveCount(6);
+  await page.locator("#center-play").click();
+  await waitForEngineSeconds(page, 2);
+  const audio = await page.evaluate(() => window.engineAudio);
+  expect(audio.peak).toBeGreaterThan(0.001);
+  expect(audio.samples.every(Number.isFinite)).toBe(true);
+  await page.locator('#section-list button[data-cue-section="estribillo"]').click();
+  await expect(page.locator("#mood-name")).toHaveText("Estribillo", { timeout: 15000 });
+  await page.locator("#start-audio").click();
+  await selectRecipe(page, "adventure");
+  await expect(page.locator("#game-signals")).toBeVisible();
+  await expect(page.locator("#score-buttons")).toContainText("Medieval Folk");
   expect(errors).toEqual([]);
 });

@@ -78,8 +78,8 @@ const ARRANGEMENTS: readonly ArrangementOption[] = [
   {
     id: "seeded",
     label: "Seeded",
-    description: "Composed from the phase pool",
-    summary: "A seeded composer picks the count, roles, order, and loop point from the seed.",
+    description: "Composed song form",
+    summary: "Play the composed song form.",
   },
 ];
 
@@ -207,15 +207,18 @@ export function renderRecipeChrome(recipe: LabRecipe, phase: string): void {
   const profile = labRecipeInfo(recipe);
   elements.shell.dataset.recipe = recipe;
   elements.gameSignals.dataset.recipe = recipe;
+  elements.gameSignals.hidden = profile.engineUpdate === undefined;
   renderRecipeSelect(recipe);
   elements.traitEnergyLabel.textContent = profile.traitLabels.energy;
   elements.traitComplexityLabel.textContent = profile.traitLabels.complexity;
   elements.traitBrightnessLabel.textContent = profile.traitLabels.brightness;
   elements.traitSyncopationLabel.textContent = profile.traitLabels.syncopation;
-  elements.meterIntensityLabel.textContent = profile.meters.intensity;
-  elements.meterPressureLabel.textContent = profile.meters.pressure;
-  elements.meterFinalLabel.textContent = profile.meters.flag;
-  elements.meterFinalCopy.textContent = profile.meters.flagCopy;
+  if (profile.meters !== undefined) {
+    elements.meterIntensityLabel.textContent = profile.meters.intensity;
+    elements.meterPressureLabel.textContent = profile.meters.pressure;
+    elements.meterFinalLabel.textContent = profile.meters.flag;
+    elements.meterFinalCopy.textContent = profile.meters.flagCopy;
+  }
   const phaseIds = profile.phases;
   const buttons = phaseIds.map((id) => {
     const button = document.createElement("button");

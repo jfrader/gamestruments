@@ -66,7 +66,8 @@ export interface NoteEvent extends EventBase {
     | "bell"
     | "saw-bass"
     | "trance-pad"
-    | "trance-lead";
+    | "trance-lead"
+    | "nylon-guitar";
   role?: "melody";
 }
 
@@ -82,7 +83,9 @@ export interface PercussionEvent extends EventBase {
     | "reverse-cymbal"
     | "air-impact"
     | "frame-drum"
-    | "tambourine";
+    | "tambourine"
+    | "bombo"
+    | "bombo-rim";
 }
 
 export interface StemEvent extends EventBase {

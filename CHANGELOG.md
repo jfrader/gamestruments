@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Audio Lab: a Folklore listening prototype with guitar-led chacarera, bombo legüero, and interlocking 6/8–3/4 rhythms. Adventure's composition and the Godot recipe API are unchanged.
+
+### Fixed
+
+- Song forms can return to an earlier section and then continue to the ending, instead of jumping backward to that section's first appearance.
+
 ## [1.1.1] - 2026-10-01
 
 ### Changed

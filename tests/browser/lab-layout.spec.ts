@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { selectRecipe } from "./recipe.ts";
+import { LAB_RECIPES } from "../../apps/demo/src/recipes.ts";
 
 async function withIsolatedPage<T>(browser: any, fn: (page: import('@playwright/test').Page) => Promise<T>): Promise<T> {
   const context = await browser.newContext();
@@ -146,8 +147,8 @@ for (const size of MOBILE_SIZES) {
       // Opening the list keeps every option on screen.
       await trigger.click();
       const options = page.locator("#recipe-select-menu button[data-recipe]");
-      await expect(options).toHaveCount(3);
-      for (let index = 0; index < 3; index += 1) {
+      await expect(options).toHaveCount(LAB_RECIPES.length);
+      for (let index = 0; index < LAB_RECIPES.length; index += 1) {
         await expect(options.nth(index)).toBeVisible();
       }
       await trigger.click();
