@@ -1,7 +1,8 @@
 name: release
 
+# Linux and packaging run on the c2 self-hosted runner. Windows and macOS
+# cannot build there, so they run only for release tags and manual dispatches.
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -21,7 +22,7 @@ env:
 
 jobs:
   linux:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, gamestruments-ci]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
@@ -236,7 +237,7 @@ jobs:
 
   package:
     needs: [linux, windows, macos, macos-intel-smoke]
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, gamestruments-ci]
     outputs:
       version: ${{ steps.version.outputs.value }}
     steps:
@@ -273,13 +274,10 @@ jobs:
       - name: Resolve version
         id: version
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             version="${GITHUB_REF_NAME#v}"
-          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            version="0.1.0-pr${PR_NUMBER}"
           else
             version="$INPUT_VERSION"
           fi
@@ -299,7 +297,7 @@ jobs:
   draft-release:
     if: github.event_name == 'push'
     needs: package
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, gamestruments-ci]
     permissions:
       contents: write
     steps:
