@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -43,13 +47,14 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
-          cache: npm
-      - run: npm ci
-      - name: Install Playwright browsers
+      - name: Run browser e2e in the matching Playwright container
         run: |
-          sudo rm -f /etc/apt/sources.list.d/google*
-          npx playwright install --with-deps chromium firefox
-      - run: npm run test:e2e
+          version=$(node -e 'const v=require("./package-lock.json").packages["node_modules/@playwright/test"].version; if(!/^\d+\.\d+\.\d+$/.test(v)) process.exit(1); process.stdout.write(v)')
+          docker run --rm --init --shm-size=1g \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/work" \
+            -w /work "mcr.microsoft.com/playwright:v$version-noble" \
+            bash -c 'npm ci --no-audit --no-fund && npm run test:e2e'
   godot:
     runs-on: ubuntu-24.04
     env:
