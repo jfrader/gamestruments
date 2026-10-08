@@ -216,7 +216,7 @@ var accepted: bool = player.set_adventure_state("explore", 0.4, 0.2, false)
 
 - `set_adventure_state(area_phase: String, discovery: float, threat: float, quest_complete: bool) -> bool` — requests the section for the current area. `discovery` and `threat` must be within `0.0..1.0`.
 - A high `discovery` (`>= 0.85`) or the `sanctuary` phase resolves to `sanctuary`; a high `threat` (`>= 0.7`) resolves to `combat`, and a `combat` phase with `threat >= 0.85` escalates to `boss`; `quest_complete` always resolves to `victory`. Unknown phases fall back to `camp`.
-- Like every state change, the new section commits on a bar boundary after any running blend finishes.
+- The new section commits on a bar boundary. An Adventure state change that arrives during another Adventure blend does not wait for it: a blend whose incoming is still silent is retargeted at the next bar, and a crossfade already sounding finishes within about a bar before the new section starts. `cue_section` still waits for the running blend.
 
 ## Adventure Sections
 

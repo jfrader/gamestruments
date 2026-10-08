@@ -80,6 +80,24 @@ pub struct AdaptiveTransport {
     /// renders), a held cue does not extend: it still completes at the plan's
     /// authored end.
     incoming_reported: bool,
+    /// Whether the active transition answers an Adventure state update, which
+    /// a later Adventure state update may interrupt (see [`Rush`]).
+    interruptible: bool,
+    /// Whether the queued `pending_section` came from such an interruption.
+    pending_interruptible: bool,
+    /// Set when an interruptible crossfade is being finished early.
+    rush: Option<Rush>,
+}
+
+/// An interruptible crossfade finishing early: from `from_progress` at
+/// `from_tick` it ramps to the incoming at full gain by `end_tick`, a bar
+/// boundary, where the queued section starts. Nothing is cut: both sections
+/// keep sounding until the ramp completes.
+#[derive(Clone, Copy, Debug)]
+struct Rush {
+    from_tick: u32,
+    from_progress: f32,
+    end_tick: u32,
 }
 
 impl AdaptiveTransport {
@@ -107,6 +125,9 @@ impl AdaptiveTransport {
             transition_source: TransitionSource::Explicit,
             release_tick: None,
             incoming_reported: false,
+            interruptible: false,
+            pending_interruptible: false,
+            rush: None,
         })
     }
 
@@ -137,7 +158,7 @@ impl AdaptiveTransport {
 
     pub fn request_state(&mut self, state: &GameState, at_tick: u32) -> Option<TransitionPlan> {
         let target = select_section(&self.score, state);
-        self.request_section_as(&target, at_tick, TransitionSource::Explicit, true)
+        self.request_section_as(&target, at_tick, TransitionSource::Explicit, true, false)
     }
 
     pub fn request_trace_state(
@@ -153,7 +174,13 @@ impl AdaptiveTransport {
         };
         if hold {
             self.cue_target = None;
-            return self.request_section_as(&section, at_tick, TransitionSource::Explicit, true);
+            return self.request_section_as(
+                &section,
+                at_tick,
+                TransitionSource::Explicit,
+                true,
+                false,
+            );
         }
         let already_cued = self.cue_target.as_deref() == Some(section.as_str())
             && self.current_section == section
@@ -162,7 +189,7 @@ impl AdaptiveTransport {
             return None;
         }
         self.cue_target = Some(section.clone());
-        self.request_section_as(&section, at_tick, TransitionSource::Explicit, true)
+        self.request_section_as(&section, at_tick, TransitionSource::Explicit, true, false)
     }
 
     pub fn request_adventure_state(
@@ -171,13 +198,13 @@ impl AdaptiveTransport {
         at_tick: u32,
     ) -> Option<TransitionPlan> {
         let target = crate::adventure::select_adventure_section(state);
-        self.request_section_as(target, at_tick, TransitionSource::Explicit, true)
+        self.request_section_as(target, at_tick, TransitionSource::Explicit, true, true)
     }
 
     /// A direct section cue (`cue_section`): defers to whatever transition is
     /// already in flight, so a held cue is never dropped mid-hold.
     pub fn request_section(&mut self, target: &str, at_tick: u32) -> Option<TransitionPlan> {
-        self.request_section_as(target, at_tick, TransitionSource::Explicit, false)
+        self.request_section_as(target, at_tick, TransitionSource::Explicit, false, false)
     }
 
     /// Route a section request. An authoritative game-state update
@@ -192,6 +219,7 @@ impl AdaptiveTransport {
         at_tick: u32,
         source: TransitionSource,
         supersede_form: bool,
+        interrupt: bool,
     ) -> Option<TransitionPlan> {
         self.score.section(target)?;
         self.advance(at_tick);
@@ -221,14 +249,63 @@ impl AdaptiveTransport {
                 self.pending_section = None;
                 let next = self.create_plan(&self.current_section, target, at_tick);
                 self.begin_transition(next.clone(), source);
+                self.interruptible = interrupt;
                 return Some(next);
             }
+            if interrupt && self.interruptible {
+                return self.interrupt(target, at_tick, source);
+            }
             self.pending_section = Some(target.to_string());
+            self.pending_interruptible = false;
             return None;
         }
         let plan = self.create_plan(&self.current_section, target, at_tick);
         self.begin_transition(plan.clone(), source);
+        self.interruptible = interrupt;
         Some(plan)
+    }
+
+    /// An Adventure state update during an Adventure blend that has started.
+    /// While the blend still holds (the incoming is silent) it is retargeted
+    /// at the next bar. Once it crossfades, the crossfade finishes within
+    /// about a bar and the new section starts on that bar, instead of waiting
+    /// for the full crossfade.
+    fn interrupt(
+        &mut self,
+        target: &str,
+        at_tick: u32,
+        source: TransitionSource,
+    ) -> Option<TransitionPlan> {
+        let plan = self.transition.clone()?;
+        if plan.hold && self.release_tick.is_none() && self.rush.is_none() {
+            self.pending_section = None;
+            if target == self.current_section {
+                self.clear_transition();
+                self.sync_form_to(&self.current_section.clone());
+                return None;
+            }
+            let next = self.create_plan(&self.current_section, target, at_tick);
+            self.begin_transition(next.clone(), source);
+            self.interruptible = true;
+            return Some(next);
+        }
+        self.pending_section = Some(target.to_string());
+        self.pending_interruptible = true;
+        if self.rush.is_none() {
+            // At least half a bar of ramp, so the finish is never abrupt.
+            let end_tick = at_tick
+                .saturating_add(self.bar_ticks / 2)
+                .div_ceil(self.bar_ticks)
+                .saturating_mul(self.bar_ticks);
+            if end_tick < self.effective_end(&plan) {
+                self.rush = Some(Rush {
+                    from_tick: at_tick,
+                    from_progress: self.fade_progress(&plan, at_tick).clamp(0.0, 1.0),
+                    end_tick,
+                });
+            }
+        }
+        None
     }
 
     /// Drop a queued cue, and the active transition if it has not started yet.
@@ -305,6 +382,9 @@ impl AdaptiveTransport {
                 self.release_tick = Some(plan.end_tick);
             }
             if at_tick >= self.effective_end(plan) {
+                // A finished early crossfade hands over on its bar.
+                let resume_at = self.rush.map_or(at_tick, |rush| rush.end_tick);
+                let pending_interruptible = self.pending_interruptible;
                 self.current_section = plan.to.clone();
                 self.cue_target = None;
                 self.section_entered_at = if self.score.form.as_ref().and_then(|form| form.origin)
@@ -320,10 +400,12 @@ impl AdaptiveTransport {
                 self.sync_form_to(&self.current_section.clone());
                 self.clear_transition();
                 self.form_not_before = 0;
+                self.pending_interruptible = false;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
-                        let next = self.create_plan(&self.current_section, &pending, at_tick);
+                        let next = self.create_plan(&self.current_section, &pending, resume_at);
                         self.begin_transition(next, TransitionSource::Explicit);
+                        self.interruptible = pending_interruptible;
                     }
                 }
             }
@@ -403,7 +485,7 @@ impl AdaptiveTransport {
 
     pub fn advance_form(&mut self, at_tick: u32) -> Option<TransitionPlan> {
         let target = self.next_form_section(at_tick)?;
-        self.request_section_as(&target, at_tick, TransitionSource::Form, false)
+        self.request_section_as(&target, at_tick, TransitionSource::Form, false, false)
     }
 
     pub fn playback_at(&self, at_tick: u32) -> [Option<SectionPlayback<'_>>; 2] {
@@ -475,6 +557,8 @@ impl AdaptiveTransport {
     /// Start a new transition, dropping any in-flight hold.
     fn begin_transition(&mut self, plan: TransitionPlan, source: TransitionSource) {
         self.release_tick = None;
+        self.interruptible = false;
+        self.rush = None;
         self.incoming_reported = false;
         self.transition_source = source;
         self.transition = Some(plan);
@@ -483,6 +567,8 @@ impl AdaptiveTransport {
     /// End the active transition and return it, dropping any in-flight hold.
     fn clear_transition(&mut self) -> Option<TransitionPlan> {
         self.release_tick = None;
+        self.interruptible = false;
+        self.rush = None;
         self.incoming_reported = false;
         self.transition_source = TransitionSource::Explicit;
         self.transition.take()
@@ -497,6 +583,9 @@ impl AdaptiveTransport {
     /// past the plan end). A transition the renderer has not observed (or an
     /// automatic form transition) ends at the authored tick.
     fn effective_end(&self, plan: &TransitionPlan) -> u32 {
+        if let Some(rush) = self.rush {
+            return rush.end_tick;
+        }
         if !plan.hold || !self.incoming_reported {
             return plan.end_tick;
         }
@@ -505,6 +594,13 @@ impl AdaptiveTransport {
     }
 
     fn fade_progress(&self, plan: &TransitionPlan, at_tick: u32) -> f32 {
+        if let Some(rush) = self.rush {
+            if at_tick >= rush.from_tick {
+                let span = rush.end_tick.saturating_sub(rush.from_tick).max(1) as f32;
+                let t = (at_tick - rush.from_tick) as f32 / span;
+                return (rush.from_progress + (1.0 - rush.from_progress) * t).min(1.0);
+            }
+        }
         if !plan.hold {
             return (at_tick.saturating_sub(plan.start_tick)) as f32
                 / self.transition_length().max(1) as f32;
@@ -1594,5 +1690,157 @@ mod tests {
             transport.transition.is_none(),
             "the superseding game state drops the stale queued cue"
         );
+    }
+
+    fn adventure_score() -> crate::score::PortableScore {
+        generate_adventure(&AdventureInput {
+            secret: "transport-regression".into(),
+            seed: "adventure-interrupt".into(),
+            style: AdventureStyle::Folk,
+            wonder: 0.6,
+            danger: 0.5,
+            mystery: 0.6,
+            motion: 0.58,
+        })
+        .expect("adventure fixture must validate")
+    }
+
+    fn adventure(discovery: f64, threat: f64) -> AdventureState {
+        AdventureState {
+            area_phase: "explore".into(),
+            discovery,
+            threat,
+            quest_complete: false,
+        }
+    }
+
+    /// Steps the transport like the renderer does (reporting the incoming as
+    /// audible once a held blend starts) and returns the first tick `section`
+    /// sounds, plus the largest gain jump any section made between steps.
+    fn step_until_heard(
+        transport: &mut AdaptiveTransport,
+        section: &str,
+        from: u32,
+        limit: u32,
+        step: u32,
+    ) -> (Option<u32>, f32) {
+        let gains = |t: &AdaptiveTransport, tick: u32| -> Vec<(String, f32)> {
+            t.playback_at(tick)
+                .into_iter()
+                .flatten()
+                .map(|part| (part.section.to_string(), part.gain))
+                .collect()
+        };
+        let mut before = gains(transport, from);
+        let mut max_jump = 0.0f32;
+        let mut tick = from;
+        while tick < limit {
+            tick += step;
+            transport.advance(tick);
+            if transport
+                .transition
+                .as_ref()
+                .is_some_and(|plan| tick >= plan.start_tick)
+            {
+                transport.report_incoming_level(1.0, tick);
+            }
+            let now = gains(transport, tick);
+            for (name, gain) in &before {
+                let after = now.iter().find(|(n, _)| n == name).map_or(0.0, |(_, g)| *g);
+                max_jump = max_jump.max((gain - after).abs());
+            }
+            before = now;
+            if before
+                .iter()
+                .any(|(name, gain)| name == section && *gain > 0.0)
+            {
+                return (Some(tick), max_jump);
+            }
+        }
+        (None, max_jump)
+    }
+
+    #[test]
+    fn an_adventure_update_mid_crossfade_is_heard_within_three_seconds() {
+        let score = adventure_score();
+        let bar = score.bar_ticks();
+        let tps = score.ticks_per_second();
+        let mut transport = AdaptiveTransport::new(score, Some("explore")).unwrap();
+        let sanctuary = transport
+            .request_adventure_state(&adventure(0.9, 0.1), bar / 4)
+            .expect("discovery cues sanctuary");
+        assert_eq!(sanctuary.to, "sanctuary");
+        transport.advance(sanctuary.start_tick);
+        transport.report_incoming_level(1.0, sanctuary.start_tick);
+
+        // Combat asked 0.5 s into the sanctuary crossfade.
+        let asked = sanctuary.start_tick + (0.5 * tps) as u32;
+        transport.advance(asked);
+        assert!(transport.is_blending(asked));
+        assert!(transport
+            .request_adventure_state(&adventure(0.2, 0.9), asked)
+            .is_none());
+        let (heard, max_jump) = step_until_heard(
+            &mut transport,
+            "combat",
+            asked,
+            asked + (8.0 * tps) as u32,
+            bar / 32,
+        );
+        let heard = heard.expect("combat must sound");
+        let seconds = f64::from(heard - asked) / tps;
+        assert!(seconds <= 3.0, "combat took {seconds:.2} s");
+        // The sanctuary crossfade finishes on a ramp, never a cut.
+        assert!(max_jump <= 0.25, "a section jumped by {max_jump}");
+        assert_eq!(transport.transition.as_ref().unwrap().start_tick % bar, 0);
+    }
+
+    #[test]
+    fn an_adventure_update_retargets_a_blend_that_still_holds() {
+        let score = adventure_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, Some("explore")).unwrap();
+        let sanctuary = transport
+            .request_adventure_state(&adventure(0.9, 0.1), bar / 4)
+            .unwrap();
+        // Started, but the incoming has not sounded yet: it is silent.
+        transport.advance(sanctuary.start_tick + 1);
+        let combat = transport
+            .request_adventure_state(&adventure(0.2, 0.9), sanctuary.start_tick + 1)
+            .expect("a silent incoming is retargeted");
+        assert_eq!(combat.from, "explore");
+        assert_eq!(combat.to, "combat");
+        assert_eq!(combat.start_tick, sanctuary.start_tick + bar);
+        // Asking for the section already playing just cancels the blend.
+        let mut transport = AdaptiveTransport::new(adventure_score(), Some("explore")).unwrap();
+        let sanctuary = transport
+            .request_adventure_state(&adventure(0.9, 0.1), 0)
+            .unwrap();
+        transport.advance(sanctuary.start_tick + 1);
+        assert!(transport
+            .request_adventure_state(&adventure(0.2, 0.1), sanctuary.start_tick + 1)
+            .is_none());
+        assert!(transport.transition.is_none());
+        assert_eq!(transport.current_section(), "explore");
+    }
+
+    #[test]
+    fn a_direct_cue_mid_crossfade_still_waits_for_the_blend() {
+        let score = adventure_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, Some("explore")).unwrap();
+        let sanctuary = transport
+            .request_adventure_state(&adventure(0.9, 0.1), bar / 4)
+            .unwrap();
+        transport.advance(sanctuary.start_tick);
+        transport.report_incoming_level(1.0, sanctuary.start_tick);
+        assert!(transport
+            .request_section("combat", sanctuary.start_tick + 1)
+            .is_none());
+        assert!(
+            transport.rush.is_none(),
+            "cue_section keeps the full crossfade"
+        );
+        assert_eq!(transport.pending_section(), Some("combat"));
     }
 }

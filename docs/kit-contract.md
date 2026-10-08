@@ -82,6 +82,7 @@ Generation validates every score before playback. Failure returns `false` and em
 
 - Identical inputs under the same generator version produce identical score identity and event data.
 - State changes commit on bar boundaries and new sections begin at phrase bar zero.
+- An Adventure state change made during an Adventure blend starts its section within about two bars (under 3 s at Adventure tempos) instead of waiting for the blend to finish.
 - No generated event may be outside its section or use an invalid note, chord, drum, voice, gain, velocity, or pitch.
 - Audio is synthesized in-process and requires no runtime asset loading.
 - The addon releases its Godot playback while the scene tree is torn down, so exiting normally with music playing does not print an `ObjectDB instance was leaked at exit` warning. Godot 4.7 releases a stopped playback only on its next audio mix (godot#76745); the addon waits for that mix during teardown.
