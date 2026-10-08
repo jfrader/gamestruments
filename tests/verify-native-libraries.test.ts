@@ -193,7 +193,7 @@ describe("native release library inspection", () => {
     const leaked = Buffer.from(
       [
         "/workspace/target/release/build/godot-ffi-1/out/central.rs",
-        "/home/fran/Workspace/gamestruments/src/lib.rs",
+        "/home/user/Workspace/gamestruments/src/lib.rs",
         "/Users/runner/work/gamestruments/gamestruments/src/lib.rs",
         "/__w/gamestruments/gamestruments/src/lib.rs",
         "C:\\Users\\runneradmin\\.cargo\\registry\\src\\godot-core\\src\\lib.rs",
