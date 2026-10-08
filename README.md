@@ -21,10 +21,11 @@ In a Godot 4 project:
 2. Add a `GamestrumentsPlayer` node (or autoload).
 3. In the inspector (or code) set:
    - `project_secret` (a stable per-title namespace, not a security credential)
-   - `style` (e.g. "funk")
+   - `recipe` (`racing`, `suspense` or `adventure`) and `style` (e.g. "funk")
    - optional voice overrides (melody/harmony/drive/bass) and traits (energy, complexity, brightness, syncopation)
 4. At level load call `generate(seed)` and check its boolean result.
-5. During play call `set_race_state(phase, intensity, pressure, final_lap, finish_result)` as game state changes.
+5. During play call `set_race_state` (Racing), `set_trace_state` plus the form
+   controls (Suspense) or `set_adventure_state` (Adventure) as game state changes.
 
 The engine produces the score once, keeps it, and crosses over between
 sections on bar boundaries. `docs/kit-contract.md` has the exact public API and
@@ -47,11 +48,10 @@ npm run dev
 
 Open the URL Vite prints, choose a level seed, sound world and generation
 traits, start audio, then change race phase, speed intensity, position pressure
-and final-lap state. Run `npm run wasm:build` once so the lab can load the
-shared engine. Generation runs through the shared WASM engine
-(`crates/engine`); the Web Audio stage and runtime transport stay in the lab to
-preserve the signed-off sound. Runtime changes commit on bar boundaries and
-overlap through a crossover.
+and final-lap state. The lab plays the engine's own live player through the
+committed WASM build (`apps/demo/public/engine`), so it sounds like the Godot
+kit; rebuild it with `npm run wasm:build` after engine changes. Runtime changes
+commit on bar boundaries and overlap through a crossover.
 
 The Audition controls isolate melody or backing, jump to any section, and
 compare two level seeds while keeping the section under review.
@@ -80,11 +80,10 @@ Runtime (the kit), in Rust:
   namespace, seed, palette and traits. Racing, Suspense and Adventure recipes.
 - `crates/godot`: GDExtension wrapper exposing `GamestrumentsPlayer`.
 
-Authoring and research (Audio Lab only): `packages/runtime` is the TypeScript
-transport used inside the Lab and `apps/demo` is the browser playground and
-validation harness. The Rust engine is the single generation authority; the
-Lab calls it through the committed WASM build (`apps/demo/public/engine`), and
-in games generation happens inside the extension at `generate(seed)`. See
+Audio Lab only: `packages/runtime` (`@gamestruments/runtime`) holds the
+TypeScript score types, validation and transport; `apps/demo` is the browser
+playground. The Rust engine is the single generation authority (WASM in the
+Lab, the extension's `generate(seed)` in games). See
 `docs/kit-contract.md`, `crates/README.md`,
 [`docs/engine-boundary.md`](docs/engine-boundary.md) and
 [`docs/procedural-generation.md`](docs/procedural-generation.md).
