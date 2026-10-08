@@ -5,6 +5,7 @@
 ### Changed
 
 - Gamestruments is now free and open source. The whole repository is MIT licensed, the kit is a free download on GitHub releases and itch.io, and donations are optional. Bug reports and questions go to GitHub issues.
+- Audio Lab footer now links to the GitHub repository.
 
 ## [1.2.0] - 2026-10-03
 
