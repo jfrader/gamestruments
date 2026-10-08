@@ -39,6 +39,7 @@ required=(
   "addons/gamestruments/bin/libgamestruments_godot.so"
   "addons/gamestruments/bin/gamestruments_godot.dll"
   "addons/gamestruments/bin/libgamestruments_godot.dylib"
+  "addons/gamestruments/bin/gamestruments_godot.wasm"
   "kit/examples/project.godot"
   "kit/examples/README.md"
   "kit/examples/01-playback/README.md"
@@ -56,6 +57,7 @@ required=(
   "kit/examples/addons/gamestruments/bin/libgamestruments_godot.so"
   "kit/examples/addons/gamestruments/bin/gamestruments_godot.dll"
   "kit/examples/addons/gamestruments/bin/libgamestruments_godot.dylib"
+  "kit/examples/addons/gamestruments/bin/gamestruments_godot.wasm"
   "kit/docs/README.md"
 )
 if [[ -e "$EXTRACTED/kit/demo" ]]; then

@@ -66,9 +66,10 @@ const expectedLibraries = new Map([
   ["addons/gamestruments/bin/libgamestruments_godot.so", "x86_64-unknown-linux-gnu"],
   ["addons/gamestruments/bin/gamestruments_godot.dll", "x86_64-pc-windows-msvc"],
   ["addons/gamestruments/bin/libgamestruments_godot.dylib", "aarch64-apple-darwin+x86_64-apple-darwin"],
+  ["addons/gamestruments/bin/gamestruments_godot.wasm", "wasm32-unknown-emscripten"],
 ]);
 if (!Array.isArray(manifest.nativeLibraries) || manifest.nativeLibraries.length !== expectedLibraries.size) {
-  throw new Error("Release manifest must list exactly three native libraries");
+  throw new Error(`Release manifest must list exactly ${expectedLibraries.size} native libraries`);
 }
 for (const library of manifest.nativeLibraries) {
   if (expectedLibraries.get(library.path) !== library.target) {

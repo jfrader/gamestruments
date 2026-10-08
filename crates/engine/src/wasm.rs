@@ -1,4 +1,5 @@
-//! WASM32 facade (only compiled for --target wasm32-unknown-unknown).
+//! WASM32 facade (only compiled for --target wasm32-unknown-unknown; the
+//! Emscripten build is the GDExtension's web side module and needs no C ABI).
 //! Provides a minimal, allocator-friendly C ABI for calling the engine from
 //! JS (Node WebAssembly, browsers, etc) without wasm-bindgen or JS glue.
 //!
@@ -66,7 +67,7 @@
 //! This is the standard "caller allocates + global output ring" pattern used by many
 //! pure-Rust WASM crates that avoid heavier glue.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 #![allow(static_mut_refs)] // intentional global output buffer + bump for no-alloc FFI; single code path, no std-only APIs
 
 use core::slice;

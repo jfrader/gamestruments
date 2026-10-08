@@ -22,7 +22,7 @@ pub mod synth;
 pub mod theory;
 pub mod transport;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 mod wasm;
 
 pub use adventure::{

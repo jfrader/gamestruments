@@ -5,6 +5,7 @@ use gamestruments_engine::{
     LivePlayer, RacingArrangement, Style, SuspenseArrangement, SuspenseInput, SuspenseStyle,
     TraceState,
 };
+use godot::classes::audio_server::PlaybackType;
 use godot::classes::{
     AudioServer, AudioStream, AudioStreamGenerator, AudioStreamGeneratorPlayback, AudioStreamPlayer,
 };
@@ -109,6 +110,9 @@ impl INode for GamestrumentsPlayer {
             "Master"
         };
         player.set_bus(bus);
+        // Web exports default to sample playback, which a generator cannot use;
+        // desktop already streams, so this only changes the web path.
+        player.set_playback_type(PlaybackType::STREAM);
         self.base_mut().add_child(&player);
         player.play();
         self.live_player = Some(player);
@@ -162,6 +166,11 @@ impl GamestrumentsPlayer {
             }
             p.stop();
             p.set_stream(Gd::<AudioStream>::null_arg());
+            // On the web the page owns teardown and the mixer runs on this same
+            // thread, so waiting here would only stall the frame.
+            if cfg!(target_os = "emscripten") {
+                return;
+            }
             // Godot retires a stopped playback only on a later audio callback and
             // frees it on the main thread after that. At shutdown the main loop is
             // gone, so without waiting here the server keeps its reference and
