@@ -87,6 +87,10 @@ pub struct AdaptiveTransport {
     pending_interruptible: bool,
     /// Set when an interruptible crossfade is being finished early.
     rush: Option<Rush>,
+    /// Where the incoming section's bars count from when it enters between
+    /// bar lines (an interrupting Adventure change): the bar line before its
+    /// start, so it stays on the shared bar grid.
+    incoming_origin: Option<u32>,
 }
 
 /// An interruptible crossfade finishing early: from `from_progress` at
@@ -128,6 +132,7 @@ impl AdaptiveTransport {
             interruptible: false,
             pending_interruptible: false,
             rush: None,
+            incoming_origin: None,
         })
     }
 
@@ -284,19 +289,15 @@ impl AdaptiveTransport {
                 self.sync_form_to(&self.current_section.clone());
                 return None;
             }
-            let next = self.create_plan(&self.current_section, target, at_tick);
-            self.begin_transition(next.clone(), source);
-            self.interruptible = true;
+            let start = self.attack_grid_ceil(at_tick);
+            let next = self.begin_attack(target, start, source);
             return Some(next);
         }
         self.pending_section = Some(target.to_string());
         self.pending_interruptible = true;
         if self.rush.is_none() {
-            // At least half a bar of ramp, so the finish is never abrupt.
-            let end_tick = at_tick
-                .saturating_add(self.bar_ticks / 2)
-                .div_ceil(self.bar_ticks)
-                .saturating_mul(self.bar_ticks);
+            // At least a beat of ramp, so the finish is never abrupt.
+            let end_tick = self.attack_grid_ceil(at_tick.saturating_add(self.beat_ticks()));
             if end_tick < self.effective_end(&plan) {
                 self.rush = Some(Rush {
                     from_tick: at_tick,
@@ -306,6 +307,70 @@ impl AdaptiveTransport {
             }
         }
         None
+    }
+
+    fn beat_ticks(&self) -> u32 {
+        self.score.ticks_per_beat.max(1)
+    }
+
+    /// The grid an interrupting Adventure change may enter on: half bars when
+    /// the bar has an even beat count, otherwise single beats.
+    fn attack_grid(&self) -> u32 {
+        if self.score.beats_per_bar.is_multiple_of(2) {
+            (self.bar_ticks / 2).max(1)
+        } else {
+            self.beat_ticks()
+        }
+    }
+
+    fn attack_grid_ceil(&self, at_tick: u32) -> u32 {
+        let grid = self.attack_grid();
+        at_tick.div_ceil(grid).saturating_mul(grid)
+    }
+
+    /// Start a held blend from the current section to `target` at `start`, a
+    /// grid point that may fall between bar lines. The incoming keeps the bar
+    /// grid: it enters part-way through its first bar.
+    fn begin_attack(
+        &mut self,
+        target: &str,
+        start: u32,
+        source: TransitionSource,
+    ) -> TransitionPlan {
+        let plan = TransitionPlan {
+            from: self.current_section.clone(),
+            to: target.to_string(),
+            start_tick: start,
+            end_tick: start.saturating_add(self.transition_length()),
+            hold: true,
+        };
+        self.begin_transition(plan.clone(), source);
+        self.interruptible = true;
+        if !start.is_multiple_of(self.bar_ticks) {
+            self.incoming_origin = Some(start - start % self.bar_ticks);
+        }
+        plan
+    }
+
+    /// An Adventure state update that interrupts something else the player is
+    /// doing (a music handoff): with no blend in flight it enters on the next
+    /// grid point instead of the next bar; otherwise it behaves like
+    /// [`Self::request_adventure_state`].
+    pub fn interrupt_adventure_state(
+        &mut self,
+        state: &AdventureState,
+        at_tick: u32,
+    ) -> Option<TransitionPlan> {
+        self.advance(at_tick);
+        if self.transition.is_some() || self.pending_section.is_some() {
+            return self.request_adventure_state(state, at_tick);
+        }
+        let target = crate::adventure::select_adventure_section(state);
+        if self.score.section(target).is_none() || target == self.current_section {
+            return None;
+        }
+        let start = self.attack_grid_ceil(at_tick);
+        Some(self.begin_attack(target, start, TransitionSource::Explicit))
     }
 
     /// Drop a queued cue, and the active transition if it has not started yet.
@@ -396,16 +461,20 @@ impl AdaptiveTransport {
                 } else {
                     at_tick
                 };
-                self.phrase_origin = plan.start_tick;
+                self.phrase_origin = self.incoming_origin.unwrap_or(plan.start_tick);
                 self.sync_form_to(&self.current_section.clone());
                 self.clear_transition();
                 self.form_not_before = 0;
                 self.pending_interruptible = false;
                 if let Some(pending) = self.pending_section.take() {
                     if pending != self.current_section {
-                        let next = self.create_plan(&self.current_section, &pending, resume_at);
-                        self.begin_transition(next, TransitionSource::Explicit);
-                        self.interruptible = pending_interruptible;
+                        if pending_interruptible {
+                            let start = self.attack_grid_ceil(resume_at);
+                            self.begin_attack(&pending, start, TransitionSource::Explicit);
+                        } else {
+                            let next = self.create_plan(&self.current_section, &pending, resume_at);
+                            self.begin_transition(next, TransitionSource::Explicit);
+                        }
                     }
                 }
             }
@@ -494,7 +563,7 @@ impl AdaptiveTransport {
                 return [
                     Some(SectionPlayback {
                         section: &plan.to,
-                        origin: plan.start_tick,
+                        origin: self.incoming_origin.unwrap_or(plan.start_tick),
                         gain: 1.0,
                         drum_gain: 1.0,
                         percussion: true,
@@ -515,7 +584,7 @@ impl AdaptiveTransport {
                     }),
                     Some(SectionPlayback {
                         section: &plan.to,
-                        origin: plan.start_tick,
+                        origin: self.incoming_origin.unwrap_or(plan.start_tick),
                         gain: gain_to,
                         drum_gain: if plan.hold { gain_to } else { 1.0 },
                         percussion: true,
@@ -559,6 +628,7 @@ impl AdaptiveTransport {
         self.release_tick = None;
         self.interruptible = false;
         self.rush = None;
+        self.incoming_origin = None;
         self.incoming_reported = false;
         self.transition_source = source;
         self.transition = Some(plan);
@@ -569,6 +639,7 @@ impl AdaptiveTransport {
         self.release_tick = None;
         self.interruptible = false;
         self.rush = None;
+        self.incoming_origin = None;
         self.incoming_reported = false;
         self.transition_source = TransitionSource::Explicit;
         self.transition.take()
@@ -1792,7 +1863,10 @@ mod tests {
         assert!(seconds <= 3.0, "combat took {seconds:.2} s");
         // The sanctuary crossfade finishes on a ramp, never a cut.
         assert!(max_jump <= 0.25, "a section jumped by {max_jump}");
-        assert_eq!(transport.transition.as_ref().unwrap().start_tick % bar, 0);
+        assert_eq!(
+            transport.transition.as_ref().unwrap().start_tick % (bar / 2),
+            0
+        );
     }
 
     #[test]
@@ -1810,7 +1884,7 @@ mod tests {
             .expect("a silent incoming is retargeted");
         assert_eq!(combat.from, "explore");
         assert_eq!(combat.to, "combat");
-        assert_eq!(combat.start_tick, sanctuary.start_tick + bar);
+        assert_eq!(combat.start_tick, sanctuary.start_tick + bar / 2);
         // Asking for the section already playing just cancels the blend.
         let mut transport = AdaptiveTransport::new(adventure_score(), Some("explore")).unwrap();
         let sanctuary = transport
@@ -1822,6 +1896,73 @@ mod tests {
             .is_none());
         assert!(transport.transition.is_none());
         assert_eq!(transport.current_section(), "explore");
+    }
+
+    #[test]
+    fn worst_case_mid_crossfade_at_the_slowest_adventure_tempo_is_heard_within_three_seconds() {
+        let mut score = adventure_score();
+        score.bpm = 70.0; // the slowest generated Adventure tempo
+        let bar = score.bar_ticks();
+        let tps = score.ticks_per_second();
+        let mut worst = 0.0f64;
+        // Ask at every 1/32 bar across a bar, inside the sounding crossfade.
+        for offset in (0..bar).step_by((bar / 32) as usize) {
+            let mut transport = AdaptiveTransport::new(score.clone(), Some("explore")).unwrap();
+            let sanctuary = transport
+                .request_adventure_state(&adventure(0.9, 0.1), 1)
+                .unwrap();
+            transport.advance(sanctuary.start_tick);
+            transport.report_incoming_level(1.0, sanctuary.start_tick);
+            let asked = sanctuary.start_tick + bar / 8 + offset;
+            transport.advance(asked);
+            assert!(transport.is_blending(asked));
+            transport.request_adventure_state(&adventure(0.2, 0.9), asked);
+            let (heard, max_jump) = step_until_heard(
+                &mut transport,
+                "combat",
+                asked,
+                asked + (8.0 * tps) as u32,
+                bar / 64,
+            );
+            let heard = heard.expect("combat must sound");
+            worst = worst.max(f64::from(heard - asked) / tps);
+            assert!(
+                max_jump <= 0.1,
+                "a section jumped by {max_jump} (offset {offset})"
+            );
+            // Combat enters on a half bar but keeps the bar grid.
+            let combat = transport
+                .playback_at(heard)
+                .into_iter()
+                .flatten()
+                .find(|part| part.section == "combat")
+                .unwrap()
+                .origin;
+            assert_eq!(combat % bar, 0);
+            assert_eq!(
+                transport.transition.as_ref().unwrap().start_tick % (bar / 2),
+                0
+            );
+        }
+        assert!(worst <= 3.0, "worst case {worst:.2} s at 70 BPM");
+    }
+
+    #[test]
+    fn an_interrupting_update_with_no_blend_enters_on_the_next_half_bar() {
+        let score = adventure_score();
+        let bar = score.bar_ticks();
+        let mut transport = AdaptiveTransport::new(score, Some("explore")).unwrap();
+        let combat = transport
+            .interrupt_adventure_state(&adventure(0.2, 0.9), bar + 1)
+            .unwrap();
+        assert_eq!(combat.to, "combat");
+        assert_eq!(combat.start_tick, bar + bar / 2);
+        transport.advance(combat.start_tick);
+        let origin = transport.playback_at(combat.start_tick)[1]
+            .as_ref()
+            .unwrap()
+            .origin;
+        assert_eq!(origin, bar);
     }
 
     #[test]

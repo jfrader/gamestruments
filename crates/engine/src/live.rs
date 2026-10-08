@@ -467,6 +467,24 @@ impl LivePlayer {
         if self.active.is_none() {
             return false;
         }
+        // Adventure updates are heard right away even while new music waits
+        // or blends in: a handoff's incoming music changes section while it
+        // keeps fading in, and a section blend that new music waits behind is
+        // interrupted. The request still opens any music that is waiting.
+        if let SectionRequest::Update(GameUpdate::Adventure(state)) = &request {
+            let waiting = self.pending_music.is_some();
+            let handing_off = self.outgoing.is_some();
+            let active = self.active.as_mut().expect("a playing voice");
+            if handing_off || (waiting && active.transport.is_blending(active.tick)) {
+                active
+                    .transport
+                    .interrupt_adventure_state(state, active.tick);
+            }
+            if handing_off || waiting {
+                self.pending_section = waiting.then_some(request);
+                return true;
+            }
+        }
         if self.holds_sections() {
             self.pending_section = Some(request);
             return true;
@@ -1099,6 +1117,177 @@ mod tests {
             player.status().unwrap().transition.map(|plan| plan.to),
             Some(target)
         );
+    }
+
+    fn adventure(seed: &str) -> PortableScore {
+        // As a game plays it: the automatic Adventure arrangement.
+        crate::arrangement::apply_automatic_arrangement(
+            crate::adventure::generate_adventure(&crate::adventure::AdventureInput {
+                secret: "live".into(),
+                seed: seed.into(),
+                style: crate::adventure::AdventureStyle::Folk,
+                wonder: 0.6,
+                danger: 0.5,
+                mystery: 0.6,
+                motion: 0.58,
+            })
+            .unwrap(),
+            crate::arrangement::ArrangementRecipe::Adventure,
+            true,
+        )
+        .unwrap()
+    }
+
+    fn threat() -> GameUpdate {
+        GameUpdate::Adventure(crate::score::AdventureState {
+            area_phase: "explore".into(),
+            discovery: 0.2,
+            threat: 0.9,
+            quest_complete: false,
+        })
+    }
+
+    /// Render until `section` is in the playing score's mix, checking that no
+    /// section of the same score jumps in gain (a cut or a click).
+    fn seconds_until_heard(player: &mut LivePlayer, section: &str) -> f32 {
+        let mut previous: Option<(String, Vec<SectionGain>)> = None;
+        let mut buffer = [0.0; 512];
+        for index in 0..(RATE * 8.0 / 512.0) as usize {
+            player.fill(&mut buffer);
+            let status = player.status().unwrap();
+            if let Some((score, before)) = &previous {
+                if *score == status.score_id {
+                    for part in before {
+                        let after = status
+                            .mix
+                            .iter()
+                            .find(|now| now.section == part.section)
+                            .map_or(0.0, |now| now.gain);
+                        assert!(
+                            (part.gain - after).abs() <= 0.1,
+                            "{} jumped from {} to {after}",
+                            part.section,
+                            part.gain
+                        );
+                    }
+                }
+            }
+            if status
+                .mix
+                .iter()
+                .any(|part| part.section == section && part.gain > 0.0)
+            {
+                return (index + 1) as f32 * 512.0 / RATE;
+            }
+            previous = Some((status.score_id, status.mix));
+        }
+        panic!("{section} never sounded");
+    }
+
+    #[test]
+    fn an_adventure_update_while_new_music_waits_on_a_blend_is_heard_within_three_seconds() {
+        let discovery = GameUpdate::Adventure(crate::score::AdventureState {
+            area_phase: "explore".into(),
+            discovery: 0.9,
+            threat: 0.1,
+            quest_complete: false,
+        });
+        for delay in [0.0f32, 0.5, 1.0, 1.5, 2.0, 3.0] {
+            let mut first = adventure("floor-1");
+            first.bpm = 70.0;
+            let mut player = LivePlayer::new(RATE);
+            player
+                .load(first, "floor-1", "adventure", 0, Some("explore"))
+                .unwrap();
+            play(&mut player, 1.0);
+            assert!(player.request(&discovery));
+            assert!(play_until(&mut player, 10.0, |player| {
+                player
+                    .status()
+                    .unwrap()
+                    .mix
+                    .iter()
+                    .any(|part| part.section == "sanctuary" && part.gain > 0.0)
+            }));
+            // The floor changes mid-blend: the new music waits behind it.
+            player
+                .load(adventure("floor-2"), "floor-2", "adventure", 0, None)
+                .unwrap();
+            play(&mut player, delay);
+            assert!(player.pending_music.is_some() && section_blending(&player));
+            assert!(player.request(&threat()));
+            let heard = seconds_until_heard(&mut player, "combat");
+            assert!(
+                heard <= 3.0,
+                "combat took {heard:.2} s ({delay} s after the floor change)"
+            );
+            // The new music still opens on combat.
+            assert!(play_until(&mut player, 30.0, music_blending));
+            assert_eq!(player.current_section(), Some("combat"));
+        }
+    }
+
+    #[test]
+    fn new_music_waiting_for_its_bar_opens_on_an_adventure_update_within_three_seconds_at_90_bpm() {
+        // With no blend running the new music starts on the next bar, already
+        // on the requested section: at most one bar, under 3 s from 90 BPM.
+        for delay in [0.0f32, 0.6, 1.2, 1.8, 2.4] {
+            let mut first = adventure("floor-1");
+            first.bpm = 90.0;
+            let mut player = LivePlayer::new(RATE);
+            player
+                .load(first, "floor-1", "adventure", 0, Some("explore"))
+                .unwrap();
+            play(&mut player, 1.0 + delay);
+            player
+                .load(adventure("floor-2"), "floor-2", "adventure", 0, None)
+                .unwrap();
+            assert!(player.pending_music.is_some());
+            assert!(player.request(&threat()));
+            let heard = seconds_until_heard(&mut player, "combat");
+            assert!(heard <= 3.0, "combat took {heard:.2} s");
+        }
+    }
+
+    #[test]
+    fn an_adventure_update_during_a_music_handoff_is_heard_within_three_seconds() {
+        let threat = threat();
+        // Ask at points across the whole handoff, from its first buffer on.
+        for delay in [0.0f32, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0] {
+            let mut first = adventure("floor-1");
+            first.bpm = 70.0; // the slowest generated Adventure tempo; the next floor inherits it
+            let mut player = LivePlayer::new(RATE);
+            player
+                .load(first, "floor-1", "adventure", 0, Some("explore"))
+                .unwrap();
+            play(&mut player, 2.0);
+            player
+                .load(
+                    adventure("floor-2"),
+                    "floor-2",
+                    "adventure",
+                    0,
+                    Some("explore"),
+                )
+                .unwrap();
+            assert!(play_until(&mut player, 10.0, music_blending));
+            play(&mut player, delay);
+            assert!(
+                music_blending(&player),
+                "the floor change must still be blending"
+            );
+            assert!(player.request(&threat));
+            assert!(
+                player.pending_section.is_none(),
+                "the update must not wait for the handoff"
+            );
+
+            let heard = seconds_until_heard(&mut player, "combat");
+            assert!(
+                heard <= 3.0,
+                "combat took {heard:.2} s, {delay} s into the floor change"
+            );
+        }
     }
 
     #[test]

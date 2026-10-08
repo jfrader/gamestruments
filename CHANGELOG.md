@@ -8,7 +8,7 @@
 
 ### Changed
 
-- Adventure state changes no longer wait for a running Adventure blend. A blend whose incoming is still silent is retargeted at the next bar; a crossfade already sounding finishes within about a bar, then the new section starts. Asking for combat half a second into a sanctuary blend now starts combat in under 3 s instead of about 7 s. `cue_section` and the other recipes keep one blend at a time.
+- Adventure state changes no longer wait for a running Adventure blend or a handoff to new music. The new section enters on the next half bar, keeping its phrase on the bar grid; a crossfade already sounding first ramps out over at least a beat, new music keeps fading in while it changes section, and new music still waiting opens on the requested section. The worst case is under 3 s at 90 BPM and faster (it was about 7 s). `cue_section` and the other recipes keep one blend at a time.
 - Release binaries no longer contain absolute build paths.
 - Gamestruments is now free and open source. The whole repository is MIT licensed, the kit is a free download on GitHub releases and itch.io, and donations are optional. Bug reports and questions go to GitHub issues.
 
