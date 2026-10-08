@@ -1,7 +1,6 @@
 name: release
 
-# All jobs use GitHub-hosted runners. Never use self-hosted runners here: the
-# repository is public-ready and fork pull requests can edit runs-on.
+# All jobs run on GitHub-hosted runners.
 # Runs only for release tags and manual dispatches.
 on:
   workflow_dispatch:
