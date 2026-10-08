@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-08
+
 ### Added
 
 - Web exports: the addon now ships `bin/gamestruments_godot.wasm`, so `GamestrumentsPlayer` runs live in HTML5 games. Export with Extensions Support on and Thread Support off; Godot's official templates work and no SharedArrayBuffer or cross-origin isolation is needed.
