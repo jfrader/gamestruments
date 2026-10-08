@@ -1,8 +1,14 @@
 name: check
 
+# All jobs use GitHub-hosted runners. Never use self-hosted runners here: the
+# repository is public-ready and fork pull requests can edit runs-on.
+
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
