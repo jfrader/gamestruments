@@ -15,7 +15,7 @@ audio files, no authoring tool, no network.
 ## Use it in Godot
 
 1. Copy `addons/gamestruments/` from a release archive into your project
-   (Godot 4.7.x; Linux x86_64, Windows x86_64, macOS arm64/x86_64) and restart
+   (Godot 4.7.x; Linux x86_64, Windows x86_64, macOS arm64/x86_64, Web) and restart
    Godot.
 2. Add a `GamestrumentsPlayer` node, set `project_secret` (a stable per-title
    namespace, not a credential), `recipe` and `style`.

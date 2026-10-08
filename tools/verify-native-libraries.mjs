@@ -7,6 +7,7 @@ const filenames = {
   linux: "libgamestruments_godot.so",
   windows: "gamestruments_godot.dll",
   macos: "libgamestruments_godot.dylib",
+  web: "gamestruments_godot.wasm",
 };
 
 function assert(condition, message) {
@@ -89,6 +90,107 @@ export function verifyFatMachO(buffer) {
   assert(architectures.has(0x0100000c), "macOS library is missing arm64");
 }
 
+function readLeb(buffer, offset) {
+  let result = 0;
+  let shift = 0;
+  let position = offset;
+  for (;;) {
+    assert(position < buffer.length, "web library has a truncated LEB128 value");
+    const byte = buffer[position];
+    position += 1;
+    result += (byte & 0x7f) * 2 ** shift;
+    shift += 7;
+    if ((byte & 0x80) === 0) {
+      return { value: result, next: position };
+    }
+    assert(shift < 35, "web library has an oversized LEB128 value");
+  }
+}
+
+function readName(buffer, offset) {
+  const { value: length, next } = readLeb(buffer, offset);
+  assert(next + length <= buffer.length, "web library has a truncated name");
+  return { value: buffer.toString("utf8", next, next + length), next: next + length };
+}
+
+/** Reads the parts of a WebAssembly module a Godot dlink template cares about. */
+export function inspectWasmModule(buffer) {
+  assert(buffer.length >= 8, "web library is too small to be WebAssembly");
+  assert(buffer.subarray(0, 4).equals(Buffer.from([0x00, 0x61, 0x73, 0x6d])), "web library is not WebAssembly");
+  assert(buffer.readUInt32LE(4) === 1, "web library is not WebAssembly version 1");
+  const customSections = [];
+  const imports = [];
+  const exports = [];
+  let offset = 8;
+  while (offset < buffer.length) {
+    const id = buffer[offset];
+    const size = readLeb(buffer, offset + 1);
+    const start = size.next;
+    const end = start + size.value;
+    assert(end <= buffer.length, "web library has a truncated section");
+    if (id === 0) {
+      customSections.push(readName(buffer, start).value);
+    } else if (id === 2) {
+      const count = readLeb(buffer, start);
+      let position = count.next;
+      for (let index = 0; index < count.value; index += 1) {
+        const module = readName(buffer, position);
+        const field = readName(buffer, module.next);
+        const kind = buffer[field.next];
+        position = field.next + 1;
+        const entry = { module: module.value, field: field.value, kind, shared: false };
+        if (kind === 0) {
+          position = readLeb(buffer, position).next;
+        } else if (kind === 1) {
+          const flags = buffer[position + 1];
+          position = readLeb(buffer, position + 2).next;
+          if (flags & 1) position = readLeb(buffer, position).next;
+        } else if (kind === 2) {
+          const flags = buffer[position];
+          entry.shared = (flags & 2) !== 0;
+          position = readLeb(buffer, position + 1).next;
+          if (flags & 1) position = readLeb(buffer, position).next;
+        } else if (kind === 3) {
+          position += 2;
+        } else if (kind === 4) {
+          position = readLeb(buffer, position + 1).next;
+        } else {
+          throw new Error(`web library has an unknown import kind ${kind}`);
+        }
+        imports.push(entry);
+      }
+    } else if (id === 7) {
+      let cursor = readLeb(buffer, start);
+      let position = cursor.next;
+      for (let index = 0; index < cursor.value; index += 1) {
+        const name = readName(buffer, position);
+        exports.push({ name: name.value, kind: buffer[name.next] });
+        position = readLeb(buffer, name.next + 1).next;
+      }
+    }
+    offset = end;
+  }
+  return { customSections, imports, exports };
+}
+
+/** A web side module for Godot's single-threaded dlink templates: dylink.0
+ *  first, the gdext entry point exported, no exception tags (the official
+ *  templates are built without exception support), and unshared memory. */
+export function verifyWasmSideModule(buffer) {
+  const label = "web library";
+  const module = inspectWasmModule(buffer);
+  assert(module.customSections[0] === "dylink.0", `${label} is not an Emscripten side module (no leading dylink.0 section)`);
+  assert(
+    module.exports.some((entry) => entry.name === "gdext_rust_init" && entry.kind === 0),
+    `${label} does not export the gdext_rust_init entry point`,
+  );
+  const tags = module.imports.filter((entry) => entry.kind === 4);
+  assert(tags.length === 0, `${label} imports exception tags (${tags.map((tag) => tag.field).join(", ")}); build with panic=abort`);
+  const memory = module.imports.find((entry) => entry.kind === 2);
+  assert(memory, `${label} does not import the main module's memory`);
+  assert(!memory.shared, "web library uses shared memory; build the single-threaded (nothreads) side module");
+}
+
 export function assertEntryPointMarker(buffer, label = "library") {
   assert(
     buffer.toString("latin1").includes("gdext_rust_init"),
@@ -99,7 +201,7 @@ export function assertEntryPointMarker(buffer, label = "library") {
 export function findPrivateBuildPaths(buffer) {
   const printableStrings = buffer.toString("latin1").match(/[\x20-\x7e]{6,}/g) ?? [];
   const patterns = [
-    /\/(?:home|Users)\/[^/\s\0]+\/(?:Workspace|workspace|work|projects?|src|\.cargo|\.rustup)(?:\/|\\)[^\s\0]*/gi,
+    /\/(?:home|Users|root|workspace)\/[^\s\0]*/g,
     /\/__w\/[^\s\0]*/g,
     /[A-Za-z]:\\(?:Users\\[^\\\s\0]+\\(?:source|projects?|\.cargo|\.rustup)|a\\[^\\\s\0]+\\)[^\s\0]*/gi,
   ];
@@ -117,10 +219,12 @@ async function readAndVerify(assetsDir) {
     linux: await readFile(path.join(assetsDir, filenames.linux)),
     windows: await readFile(path.join(assetsDir, filenames.windows)),
     macos: await readFile(path.join(assetsDir, filenames.macos)),
+    web: await readFile(path.join(assetsDir, filenames.web)),
   };
   verifyElfX8664(buffers.linux);
   verifyPeX8664(buffers.windows);
   verifyFatMachO(buffers.macos);
+  verifyWasmSideModule(buffers.web);
   for (const [platform, buffer] of Object.entries(buffers)) {
     assertEntryPointMarker(buffer, `${platform} library`);
     const paths = findPrivateBuildPaths(buffer);

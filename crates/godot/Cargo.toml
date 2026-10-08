@@ -7,6 +7,21 @@ license.workspace = true
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+# Web side module for Godot's single-threaded (`threads=no`) templates: the
+# export that needs no SharedArrayBuffer or cross-origin isolation.
+nothreads = ["godot/experimental-wasm-nothreads"]
+
 [dependencies]
 gamestruments-engine = { path = "../engine" }
-godot = { version = "0.5.5", features = ["experimental-threads", "api-4-7"] }
+godot = { version = "0.5.5", features = ["api-4-7"] }
+
+# Desktop builds keep gdext's thread support. The web side module opts into
+# gdext's Wasm support instead: `experimental-threads` cannot combine with the
+# nothreads build or with lazy function tables, and the player only runs on
+# the main thread. Lazy tables keep the side module's link time in minutes.
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+godot = { version = "0.5.5", features = ["experimental-threads"] }
+
+[target.'cfg(target_os = "emscripten")'.dependencies]
+godot = { version = "0.5.5", features = ["experimental-wasm", "lazy-function-tables"] }

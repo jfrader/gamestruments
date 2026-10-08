@@ -16,6 +16,10 @@ const nativeLibraries = [
     filename: "libgamestruments_godot.dylib",
     target: "aarch64-apple-darwin+x86_64-apple-darwin",
   },
+  {
+    filename: "gamestruments_godot.wasm",
+    target: "wasm32-unknown-emscripten",
+  },
 ];
 
 function requiredValue(values, name) {
@@ -91,6 +95,20 @@ const rustVersion = extractQuotedValue(
   /channel\s*=\s*"([^"]+)"/,
   "Rust toolchain version",
 );
+const webToolchainSource = await readFile(
+  path.join(repoRoot, "tools", "web-toolchain.env"),
+  "utf8",
+);
+const rustWebVersion = extractQuotedValue(
+  webToolchainSource,
+  /^RUST_WEB_TOOLCHAIN=(\S+)$/m,
+  "web Rust toolchain",
+);
+const emscriptenVersion = extractQuotedValue(
+  webToolchainSource,
+  /^EMSCRIPTEN_VERSION=(\S+)$/m,
+  "Emscripten version",
+);
 
 const libraries = await Promise.all(
   nativeLibraries.map(async ({ filename, target }) => ({
@@ -114,6 +132,8 @@ const manifest = {
   provenance,
   toolchain: {
     rust: rustVersion,
+    rustWeb: rustWebVersion,
+    emscripten: emscriptenVersion,
     godot: requiredValue(values, "godot-version"),
   },
   workflowUrl,

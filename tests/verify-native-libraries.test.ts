@@ -5,6 +5,7 @@ import {
   verifyElfX8664,
   verifyFatMachO,
   verifyPeX8664,
+  verifyWasmSideModule,
 } from "../tools/verify-native-libraries.mjs";
 
 const ENTRY = "gdext_rust_init";
@@ -65,6 +66,61 @@ function fatMachO(): Buffer {
   buffer.write(MACHO_ENTRY, 112, "latin1");
   return buffer;
 }
+
+function wasmSection(id: number, payload: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([id, payload.length]), payload]);
+}
+
+function wasmName(name: string): Buffer {
+  return Buffer.concat([Buffer.from([name.length]), Buffer.from(name, "latin1")]);
+}
+
+interface SideModuleOptions {
+  shared?: boolean;
+  dylink?: boolean;
+  entry?: string;
+  tag?: boolean;
+}
+
+function sideModule({ shared = false, dylink = true, entry = ENTRY, tag = false }: SideModuleOptions = {}): Buffer {
+  const imports = [
+    wasmName("env"), wasmName("memory"), Buffer.from([0x02, ...(shared ? [0x03, 0x01, 0x01] : [0x00, 0x01])]),
+    wasmName("env"), wasmName("init"), Buffer.from([0x00, 0x00]),
+  ];
+  if (tag) {
+    imports.push(wasmName("env"), wasmName("__cpp_exception"), Buffer.from([0x04, 0x00, 0x00]));
+  }
+  return Buffer.concat([
+    Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]),
+    ...(dylink ? [wasmSection(0, wasmName("dylink.0"))] : []),
+    wasmSection(1, Buffer.from([0x01, 0x60, 0x00, 0x00])),
+    wasmSection(2, Buffer.concat([Buffer.from([tag ? 0x03 : 0x02]), ...imports])),
+    wasmSection(7, Buffer.concat([Buffer.from([0x01]), wasmName(entry), Buffer.from([0x00, 0x00])])),
+  ]);
+}
+
+describe("web side module inspection", () => {
+  it("accepts a single-threaded side module for Godot's dlink templates", () => {
+    expect(() => verifyWasmSideModule(sideModule())).not.toThrow();
+  });
+
+  it("rejects a module that is not an Emscripten side module", () => {
+    expect(() => verifyWasmSideModule(elfX8664())).toThrow(/not WebAssembly/);
+    expect(() => verifyWasmSideModule(sideModule({ dylink: false }))).toThrow(/dylink\.0/);
+  });
+
+  it("rejects a side module without the gdext entry point", () => {
+    expect(() => verifyWasmSideModule(sideModule({ entry: "other_init" }))).toThrow(/gdext_rust_init/);
+  });
+
+  it("rejects exception tags the official templates cannot provide", () => {
+    expect(() => verifyWasmSideModule(sideModule({ tag: true }))).toThrow(/exception tags/);
+  });
+
+  it("rejects a threads (shared memory) build", () => {
+    expect(() => verifyWasmSideModule(sideModule({ shared: true }))).toThrow(/shared memory/);
+  });
+});
 
 describe("native release library inspection", () => {
   it("accepts the expected native formats, architectures, and entry point", () => {
@@ -133,19 +189,20 @@ describe("native release library inspection", () => {
     expect(() => assertEntryPointMarker(missing, "linux library")).toThrow(/gdext_rust_init/);
   });
 
-  it("finds developer and CI paths but permits remapped toolchain paths", () => {
+  it("finds absolute build paths but permits relative remapped paths", () => {
     const leaked = Buffer.from(
       [
-        "/home/fran/Workspace/gamestruments/src/lib.rs",
+        "/workspace/target/release/build/godot-ffi-1/out/central.rs",
+        "/home/user/Workspace/gamestruments/src/lib.rs",
         "/Users/runner/work/gamestruments/gamestruments/src/lib.rs",
         "/__w/gamestruments/gamestruments/src/lib.rs",
         "C:\\Users\\runneradmin\\.cargo\\registry\\src\\godot-core\\src\\lib.rs",
         "D:\\a\\gamestruments\\gamestruments\\src\\lib.rs",
       ].join("\0"),
     );
-    expect(findPrivateBuildPaths(leaked)).toHaveLength(5);
+    expect(findPrivateBuildPaths(leaked)).toHaveLength(6);
     expect(
-      findPrivateBuildPaths(Buffer.from("/workspace/crates/godot/src/lib.rs\0/cargo/registry/src/godot-core/src/lib.rs\0/rustc/hash/library/std/src/lib.rs")),
+      findPrivateBuildPaths(Buffer.from("./crates/godot/src/lib.rs\0cargo/registry/src/godot-core/src/lib.rs\0rustup/toolchains/x/lib/rustlib/src/rust/library/std/src/lib.rs\0/rustc/hash/library/std/src/lib.rs")),
     ).toEqual([]);
   });
 });

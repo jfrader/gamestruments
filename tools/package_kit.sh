@@ -7,7 +7,8 @@
 #
 # - VERSION defaults to 0.1.0-rc2 (or first arg)
 # - Produces gamestruments-$VERSION-godot4.zip in OUT_DIR (default dist)
-# - Requires prebuilt Linux, Windows, and universal macOS libraries in ASSETS_DIR
+# - Requires prebuilt Linux, Windows, universal macOS, and web (nothreads side
+#   module) libraries in ASSETS_DIR
 # - Uses an explicit allowlist for the release artifact.
 # - Zip metadata is deterministic: sorted file list + zip -X (no extra fields) +
 #   normalized mtimes and permissions in staging. Residual non-determinism: native binaries
@@ -61,6 +62,7 @@ NATIVE_LIBS=(
   "libgamestruments_godot.so"
   "gamestruments_godot.dll"
   "libgamestruments_godot.dylib"
+  "gamestruments_godot.wasm"
 )
 for library in "${NATIVE_LIBS[@]}"; do
   if [[ ! -f "$ASSETS_DIR/$library" ]]; then

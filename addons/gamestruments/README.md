@@ -26,7 +26,10 @@ res://addons/gamestruments/gamestruments.gdextension
 ```
 
 `GamestrumentsPlayer` then appears in the Create New Node dialog. Requires
-Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
+Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64/x86_64, or Web.
+
+For Web, set **Extensions Support** on and **Thread Support** off in the export
+preset. No special server headers are needed.
 
 ## Use it
 
@@ -75,7 +78,10 @@ Racing/Adventure only and defaults to `false`.
 
 ## Requirements
 
-- Godot 4.7.x on Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
+- Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64/x86_64, or Web.
+
+For Web, set **Extensions Support** on and **Thread Support** off in the export
+preset. No special server headers are needed.
 - Offline runtime: no samples, network, middleware, or telemetry.
 
 ## License

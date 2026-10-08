@@ -18,8 +18,8 @@ file should exist:
 res://addons/gamestruments/gamestruments.gdextension
 ```
 
-`addons/gamestruments/bin/` holds the three native libraries (Linux x86_64,
-Windows x86_64, macOS x86_64+arm64) and Godot loads the one for its platform.
+`addons/gamestruments/bin/` holds the libraries for Linux x86_64, Windows
+x86_64, macOS x86_64+arm64 and Web, and Godot loads the one for its platform.
 Copy the folder whole. `GamestrumentsPlayer` then appears in the Create New
 Node dialog.
 
@@ -84,7 +84,8 @@ Seeded; the native Racing game-signals example uses state-driven Original.
 
 ## Requirements
 
-- Godot 4.7.x on Linux x86_64, Windows x86_64 or macOS arm64/x86_64.
+- Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64/x86_64 or Web
+  (export with Extensions Support on, Thread Support off).
 - Godot 4 only. Other engines and custom adapters are not supported.
 - Runs offline. No external audio assets, services, middleware or telemetry.
 

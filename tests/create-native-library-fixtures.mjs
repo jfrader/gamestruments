@@ -72,8 +72,33 @@ machO.writeUInt32LE(0, 104); // flags
 machO.writeUInt32LE(0, 108); // reserved
 machO.write(MACHO_ENTRY, 112, "latin1");
 
+// Web side module: a leading dylink.0 section, an imported (unshared)
+// env.memory, and an exported gdext_rust_init that re-exports an imported
+// function. Valid WebAssembly, but nothing to run.
+function wasmSection(id, payload) {
+  return Buffer.concat([Buffer.from([id, payload.length]), payload]);
+}
+function wasmName(name) {
+  return Buffer.concat([Buffer.from([name.length]), Buffer.from(name, "latin1")]);
+}
+function sideModule() {
+  const memoryLimits = [0x00, 0x01];
+  return Buffer.concat([
+    Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]),
+    wasmSection(0, Buffer.concat([wasmName("dylink.0")])),
+    wasmSection(1, Buffer.from([0x01, 0x60, 0x00, 0x00])),
+    wasmSection(2, Buffer.concat([
+      Buffer.from([0x02]),
+      wasmName("env"), wasmName("memory"), Buffer.from([0x02, ...memoryLimits]),
+      wasmName("env"), wasmName("init"), Buffer.from([0x00, 0x00]),
+    ])),
+    wasmSection(7, Buffer.concat([Buffer.from([0x01]), wasmName("gdext_rust_init"), Buffer.from([0x00, 0x00])])),
+  ]);
+}
+
 await Promise.all([
   writeFile(path.join(output, "libgamestruments_godot.so"), elf),
   writeFile(path.join(output, "gamestruments_godot.dll"), pe),
   writeFile(path.join(output, "libgamestruments_godot.dylib"), machO),
+  writeFile(path.join(output, "gamestruments_godot.wasm"), sideModule()),
 ]);

@@ -7,6 +7,7 @@ import process from "node:process";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const cargoHome = process.env.CARGO_HOME ?? path.join(os.homedir(), ".cargo");
+const rustupHome = process.env.RUSTUP_HOME ?? path.join(os.homedir(), ".rustup");
 const destinationDir = path.join(projectRoot, "apps", "demo", "public", "engine");
 const destination = path.join(destinationDir, "gamestruments_engine.wasm");
 const sourceStamp = path.join(destinationDir, "gamestruments_engine.source.sha256");
@@ -56,6 +57,7 @@ const rustflags = [
   process.env.RUSTFLAGS,
   `--remap-path-prefix=${projectRoot}=/workspace`,
   `--remap-path-prefix=${cargoHome}=/cargo`,
+  `--remap-path-prefix=${rustupHome}=/rustup`,
 ]
   .filter(Boolean)
   .join(" ");

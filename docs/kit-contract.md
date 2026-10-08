@@ -8,8 +8,8 @@ checks and human listening.
 ## Supported Environment
 
 - Godot 4.7.x via GDExtension. Future Godot minor releases are not implied. Tested exactly against CI version 4.7.2.
-- Linux x86_64 (built on Ubuntu 24.04; older distributions are not claimed), Windows x86_64, and macOS arm64/x86_64.
-- Rust 1.94.0 and gdext 0.5.5 for source rebuilds.
+- Linux x86_64 (built on Ubuntu 24.04; older distributions are not claimed), Windows x86_64, macOS arm64/x86_64, and Web (single-threaded side module for Godot's official dlink templates).
+- Rust 1.94.0 and gdext 0.5.5 for source rebuilds; the web side module uses the nightly Rust and Emscripten pinned in `tools/web-toolchain.env` (`tools/build_web_extension.sh`).
 - Godot `AudioStreamGenerator` playback with a 48000 Hz mono internal synth routed to `Music` when that bus exists and otherwise to `Master`.
 - Fully offline runtime generation; no network requests, accounts, telemetry, samples, or external services.
 
@@ -82,6 +82,7 @@ Generation validates every score before playback. Failure returns `false` and em
 
 - Identical inputs under the same generator version produce identical score identity and event data.
 - State changes commit on bar boundaries and new sections begin at phrase bar zero.
+- An Adventure state change made during an Adventure blend or a handoff to new music is heard within 3 s at 90 BPM and faster instead of waiting for the blend to finish.
 - No generated event may be outside its section or use an invalid note, chord, drum, voice, gain, velocity, or pitch.
 - Audio is synthesized in-process and requires no runtime asset loading.
 - The addon releases its Godot playback while the scene tree is torn down, so exiting normally with music playing does not print an `ObjectDB instance was leaked at exit` warning. Godot 4.7 releases a stopped playback only on its next audio mix (godot#76745); the addon waits for that mix during teardown.
