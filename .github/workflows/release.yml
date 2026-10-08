@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: "24"
       - name: Remap Rust build paths
-        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=/workspace --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rust" >> "$GITHUB_ENV"
+        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=. --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=cargo --remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=rustup" >> "$GITHUB_ENV"
       - run: cargo build -p gamestruments-godot --release --locked --target x86_64-unknown-linux-gnu
       - name: Verify Linux GDExtension export
         run: nm -D --defined-only target/x86_64-unknown-linux-gnu/release/libgamestruments_godot.so | awk '$NF == "gdext_rust_init" { found = 1 } END { exit !found }'
@@ -80,7 +80,9 @@ jobs:
       - name: Remap Rust build paths
         shell: pwsh
         run: |
-          $flags = "--remap-path-prefix=$env:GITHUB_WORKSPACE=/workspace --remap-path-prefix=$env:USERPROFILE\.cargo=/cargo --remap-path-prefix=$env:USERPROFILE\.rustup=/rust"
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { "$env:USERPROFILE\.cargo" }
+          $rustupHome = if ($env:RUSTUP_HOME) { $env:RUSTUP_HOME } else { "$env:USERPROFILE\.rustup" }
+          $flags = "--remap-path-prefix=$env:GITHUB_WORKSPACE=. --remap-path-prefix=$cargoHome=cargo --remap-path-prefix=$rustupHome=rustup"
           "RUSTFLAGS=$flags" | Out-File -FilePath $env:GITHUB_ENV -Append
       - run: cargo build -p gamestruments-godot --release --locked --target x86_64-pc-windows-msvc
       - name: Verify Windows GDExtension export
@@ -142,7 +144,7 @@ jobs:
         with:
           node-version: "24"
       - name: Remap Rust build paths
-        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=/workspace --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rust" >> "$GITHUB_ENV"
+        run: echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=. --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=cargo --remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=rustup" >> "$GITHUB_ENV"
       - run: |
           cargo build -p gamestruments-godot --release --locked --target aarch64-apple-darwin
           cargo build -p gamestruments-godot --release --locked --target x86_64-apple-darwin

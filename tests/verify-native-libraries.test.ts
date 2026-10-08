@@ -189,9 +189,10 @@ describe("native release library inspection", () => {
     expect(() => assertEntryPointMarker(missing, "linux library")).toThrow(/gdext_rust_init/);
   });
 
-  it("finds developer and CI paths but permits remapped toolchain paths", () => {
+  it("finds absolute build paths but permits relative remapped paths", () => {
     const leaked = Buffer.from(
       [
+        "/workspace/target/release/build/godot-ffi-1/out/central.rs",
         "/home/fran/Workspace/gamestruments/src/lib.rs",
         "/Users/runner/work/gamestruments/gamestruments/src/lib.rs",
         "/__w/gamestruments/gamestruments/src/lib.rs",
@@ -199,9 +200,9 @@ describe("native release library inspection", () => {
         "D:\\a\\gamestruments\\gamestruments\\src\\lib.rs",
       ].join("\0"),
     );
-    expect(findPrivateBuildPaths(leaked)).toHaveLength(5);
+    expect(findPrivateBuildPaths(leaked)).toHaveLength(6);
     expect(
-      findPrivateBuildPaths(Buffer.from("/workspace/crates/godot/src/lib.rs\0/cargo/registry/src/godot-core/src/lib.rs\0/rustc/hash/library/std/src/lib.rs")),
+      findPrivateBuildPaths(Buffer.from("./crates/godot/src/lib.rs\0cargo/registry/src/godot-core/src/lib.rs\0rustup/toolchains/x/lib/rustlib/src/rust/library/std/src/lib.rs\0/rustc/hash/library/std/src/lib.rs")),
     ).toEqual([]);
   });
 });

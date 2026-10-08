@@ -43,9 +43,9 @@ flags=(
   "-C llvm-args=-enable-emscripten-cxx-exceptions=0"
   "-Z default-visibility=hidden"
   "-Z link-native-libraries=no"
-  "--remap-path-prefix=$root=/workspace"
-  "--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
-  "--remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=/rust"
+  "--remap-path-prefix=$root=."
+  "--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=cargo"
+  "--remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=rustup"
 )
 
 target_dir="target/web-nothreads"

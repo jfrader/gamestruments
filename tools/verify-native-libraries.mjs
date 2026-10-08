@@ -201,7 +201,7 @@ export function assertEntryPointMarker(buffer, label = "library") {
 export function findPrivateBuildPaths(buffer) {
   const printableStrings = buffer.toString("latin1").match(/[\x20-\x7e]{6,}/g) ?? [];
   const patterns = [
-    /\/(?:home|Users)\/[^/\s\0]+\/(?:Workspace|workspace|work|projects?|src|\.cargo|\.rustup)(?:\/|\\)[^\s\0]*/gi,
+    /\/(?:home|Users|root|workspace)\/[^\s\0]*/g,
     /\/__w\/[^\s\0]*/g,
     /[A-Za-z]:\\(?:Users\\[^\\\s\0]+\\(?:source|projects?|\.cargo|\.rustup)|a\\[^\\\s\0]+\\)[^\s\0]*/gi,
   ];
