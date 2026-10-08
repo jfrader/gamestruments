@@ -7,11 +7,11 @@
 #   tools/package-asset-store.sh --version <ver> --kit-zip <kit.zip> [--out-dir <dir>]
 #
 # - Produces gamestruments-$VERSION-godot4-asset-store.zip in OUT_DIR
-#   (default /tmp/opencode)
+#   (default dist)
 # - Stages addons/gamestruments/{README.md, LICENSE.md, gamestruments.gdextension, bin/}
 # - Native libraries come from --assets-dir or are extracted from --kit-zip
 # - Zip metadata is deterministic: sorted file list + zip -X + normalized mtimes
-# - Does not replace tools/package_kit.sh (itch buyer archive).
+# - Does not replace tools/package_kit.sh (full release archive).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,7 +20,7 @@ cd "$REPO_ROOT"
 DEFAULT_VERSION="0.1.2"
 VERSION="$DEFAULT_VERSION"
 VERSION_SET=false
-OUT_DIR="/tmp/opencode"
+OUT_DIR="dist"
 ASSETS_DIR=""
 KIT_ZIP=""
 GODOT_VERSION="${GODOT_VERSION:-4.7.2-stable}"

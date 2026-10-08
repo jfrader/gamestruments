@@ -184,10 +184,10 @@ test("recipe switch keeps .stage-setup and .player-surface top positions identic
     });
     await selectRecipe(page, "racing");
     const t1 = await getTops();
-    await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
+    await page.screenshot({ path: "test-results/game-type-selector-desktop.png" });
     await selectRecipe(page, "suspense");
     await getTops();
-    await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-desktop.png" });
+    await page.screenshot({ path: "test-results/game-type-selector-desktop.png" });
     await selectRecipe(page, "racing");
     const t3 = await getTops();
     expect(Math.abs(t3.s - t1.s)).toBeLessThanOrEqual(1);
@@ -195,7 +195,7 @@ test("recipe switch keeps .stage-setup and .player-surface top positions identic
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#lab");
     await selectRecipe(page, "suspense");
-    await page.screenshot({ path: "/tmp/opencode/screenshots/game-type-selector-mobile.png" });
+    await page.screenshot({ path: "test-results/game-type-selector-mobile.png" });
   });
 });
 

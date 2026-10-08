@@ -48,7 +48,7 @@ function runGodot(commandArgs, label, cwd = demoRoot) {
 }
 
 async function stageDocsSnippets() {
-  // The shipped buyer docs are the contract: kit/README.md has exactly one
+  // The shipped kit docs are the contract: kit/README.md has exactly one
   // standalone Racing _ready, kit/docs/quickstart.md has exactly two standalone
   // scripts (Racing, then Suspense). Prefer the stable kit/ paths so the check
   // also works against an extracted archive.

@@ -160,7 +160,7 @@ async function createFixture(
     '[configuration]\nentry_symbol = "gdext_rust_init"\n',
   );
 
-  // Shipped buyer docs: kit/README.md (one fence), kit/docs/quickstart.md (two)
+  // Shipped kit docs: kit/README.md (one fence), kit/docs/quickstart.md (two)
   // and kit/docs/limitations.md (none).
   await mkdir(path.join(projectRoot, "kit"), { recursive: true });
   await mkdir(path.join(projectRoot, "kit", "docs"), { recursive: true });
