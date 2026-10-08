@@ -58,4 +58,6 @@ The full alternatives are included at `licenses/MIT.txt` and `licenses/Unlicense
 
 `unicode-ident` 1.0.24 is offered under MIT or Apache-2.0 and also incorporates Unicode-3.0-covered data. The applicable texts are included at `licenses/MIT.txt`, `licenses/Apache-2.0.txt`, and `licenses/Unicode-3.0.txt`.
 
-No TypeScript, Strudel, or browser authoring dependency is linked into or included with the buyer runtime kit.
+No TypeScript, Strudel, or browser authoring dependency is linked into or included with the Godot kit archive.
+
+The Audio Lab (`apps/demo`) and `@gamestruments/runtime` have no runtime npm dependencies; their dev-only tooling (Vite, Vitest, TypeScript, Playwright) is not redistributed.

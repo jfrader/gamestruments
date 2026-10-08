@@ -11,7 +11,8 @@ binary from `bin/`.
 **Hear it in the browser:** <https://gamestruments.gurisitos.games>
 (Godot and HTML5, one engine.)
 
-**Full kit** (MIT source, docs, native examples): 
+**Source, docs and native examples** (free, MIT):
+<https://github.com/jfrader/gamestruments>. Optional donations:
 <https://gurisitosgames.itch.io/gamestruments-godot>
 
 ## Install
@@ -83,6 +84,5 @@ MIT — use in closed-source commercial games. See `LICENSE.md` in this folder.
 
 ## Support
 
-Questions or bugs: comments on
-<https://gurisitosgames.itch.io/gamestruments-godot>
+Questions or bugs: <https://github.com/jfrader/gamestruments/issues>
 with your version, Godot version, OS, and full Output text.

@@ -1,105 +1,109 @@
 # Gamestruments
 
-Gamestruments is a seed-driven, sample-free adaptive music engine for Godot 4.
-A game generates a deterministic score at level load from a per-title
-namespace, instrument palette and seed, then drives bar-quantized state changes
-at runtime. Only the GDExtension and its synthesized voices cross the game
-boundary: no samples, no Strudel, no authoring UI.
+Gamestruments is a free, open source (MIT), seed-driven adaptive music engine
+for Godot 4. A game generates a deterministic score at level load from a
+per-title namespace, a seed, a recipe and a few traits, then drives
+bar-quantized changes from gameplay. Every voice is synthesized: no samples, no
+audio files, no authoring tool, no network.
 
-A level seed plus the title namespace gives a stable musical identity. Runtime
-parameters select and crossfade pre-generated arrangements inside that identity.
+- **Hear it:** <https://gamestruments.gurisitos.games> (the Audio Lab, same engine via WASM)
+- **Download the Godot kit:** [GitHub releases](https://github.com/jfrader/gamestruments/releases)
+  or <https://gurisitosgames.itch.io/gamestruments-godot> (free; donations welcome)
+- **Recipes:** Racing, Suspense (song form) and Adventure in Godot; Folklore in
+  the Audio Lab and Rust/WASM engine.
 
-The Audio Lab in `apps/demo` is a browser playground for exploration and
-validation. It drives the same engine and is not part of the kit shipped to
-games.
+## Use it in Godot
 
-## How games use it
+1. Copy `addons/gamestruments/` from a release archive into your project
+   (Godot 4.7.x; Linux x86_64, Windows x86_64, macOS arm64/x86_64) and restart
+   Godot.
+2. Add a `GamestrumentsPlayer` node, set `project_secret` (a stable per-title
+   namespace, not a credential), `recipe` and `style`.
+3. Call `generate(seed)` at level load and check its boolean result.
+4. Drive it from gameplay with `set_race_state(...)`, `set_trace_state(...)` or
+   `set_adventure_state(...)`. Changes commit on bar boundaries.
 
-In a Godot 4 project:
+Copy-paste GDScript is in [`kit/README.md`](kit/README.md) and
+[`kit/docs/quickstart.md`](kit/docs/quickstart.md); the full API is in
+[`kit/docs/api.md`](kit/docs/api.md). Three runnable example scenes live in
+[`kit/examples/`](kit/examples/README.md).
 
-1. Add the GDExtension (binary + `.gdextension`) under `addons/gamestruments/`.
-2. Add a `GamestrumentsPlayer` node (or autoload).
-3. In the inspector (or code) set:
-   - `project_secret` (a stable per-title namespace, not a security credential)
-   - `style` (e.g. "funk")
-   - optional voice overrides (melody/harmony/drive/bass) and traits (energy, complexity, brightness, syncopation)
-4. At level load call `generate(seed)` and check its boolean result.
-5. During play call `set_race_state(phase, intensity, pressure, final_lap, finish_result)` as game state changes.
+## Build and test
 
-The engine produces the score once, keeps it, and crosses over between
-sections on bar boundaries. `docs/kit-contract.md` has the exact public API and
-`docs/kit-opportunity.md` the scope.
+Requirements: Rust (the pinned 1.94.0 toolchain is selected automatically by
+`rust-toolchain.toml` through rustup) and Node.js 24.
+
+```bash
+# Rust engine and Godot extension
+cargo test -p gamestruments-engine
+cargo clippy -p gamestruments-engine --all-targets -- -D warnings
+cargo build -p gamestruments-godot --release   # target/release/libgamestruments_godot.{so,dll,dylib}
+
+# Audio Lab (browser) and TypeScript runtime
+npm ci
+npm run dev        # open the URL Vite prints
+npm run check      # unit tests, typecheck, build, smoke
+npm run test:e2e   # Playwright browser tests
+```
+
+The Audio Lab loads the engine from the committed WASM build in
+`apps/demo/public/engine`. After changing `crates/engine`, rebuild and verify it:
+
+```bash
+npm run wasm:build
+npm run wasm:verify
+```
+
+To try a locally built extension in your own project, create
+`res://addons/gamestruments/`, copy `crates/godot/gamestruments.gdextension`
+into it and the built library into its `bin/` folder. To check the example
+project and doc snippets against a real Godot binary:
+
+```bash
+node tests/godot-package-smoke.mjs --godot <godot-binary> --library target/release/libgamestruments_godot.so
+```
 
 Render a listening pack from the native engine:
 
 ```bash
-cargo run -p gamestruments-engine --example render_listen -- /tmp/gamestruments-listen
+cargo run -p gamestruments-engine --example render_listen -- target/listen
 ```
 
-## Development
+## Repository layout
 
-The Audio Lab needs Node.js 24.
+- `crates/engine`: the single generation authority: generator, transport,
+  synth and recipes (Rust; also compiled to WASM for the Lab).
+- `crates/godot`: GDExtension exposing `GamestrumentsPlayer`.
+- `addons/gamestruments`: the Godot addon folder (descriptor, icon, docs).
+- `kit/`: user docs and the example Godot project shipped in release archives.
+- `apps/demo`: the browser Audio Lab.
+- `packages/runtime`: TypeScript score types, validation and transport used by the Lab.
+- `docs/`: design notes, recipe docs and the kit contract.
+- `tools/`: WASM build, release packaging and verification scripts.
+- `storefront/`: itch.io and Godot Asset Store listing copy.
 
-```bash
-npm ci
-npm run dev
-```
+See [`docs/engine-boundary.md`](docs/engine-boundary.md),
+[`docs/procedural-generation.md`](docs/procedural-generation.md) and
+[`docs/kit-contract.md`](docs/kit-contract.md) for the design.
 
-Open the URL Vite prints, choose a level seed, sound world and generation
-traits, start audio, then change race phase, speed intensity, position pressure
-and final-lap state. Run `npm run wasm:build` once so the lab can load the
-shared engine. Generation runs through the shared WASM engine
-(`crates/engine`); the Web Audio stage and runtime transport stay in the lab to
-preserve the signed-off sound. Runtime changes commit on bar boundaries and
-overlap through a crossover.
+## Releases
 
-The Audition controls isolate melody or backing, jump to any section, and
-compare two level seeds while keeping the section under review.
+Pushing a `v*` tag runs `.github/workflows/release.yml`: it builds and smoke
+tests the extension under Godot on Linux, Windows and macOS (universal), packages
+`gamestruments-<version>-godot4.zip` with `tools/package_kit.sh`, verifies it
+with `tools/verify_kit_archive.sh` and creates a draft GitHub release.
 
-Views:
+## Contributing
 
-- `#lab` runs the active adaptive score;
-- `#games` organizes experiments by game interaction model;
-- `#genres` compares musical interpretations and opens them in the lab.
+Bug reports, ideas and pull requests are welcome. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-```bash
-npm run check
-npm run test:e2e
-```
+## License and donations
 
-The GDExtension is built against a specific gdext and Godot API surface, so
-rebuild it from the exact source tree and toolchain of the release tag. The
-release workflow builds and runs the extension under Godot on Linux x86_64,
-Windows x86_64 and macOS with a universal arm64/x86_64 binary.
+Everything in this repository is MIT licensed, including use in closed-source
+and commercial games; see [`LICENSE.md`](LICENSE.md). Third-party terms
+(godot-rust is MPL-2.0) are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+and `licenses/`.
 
-## Architecture
-
-Runtime (the kit), in Rust:
-
-- `crates/engine`: generator, transport and synth. Deterministic from
-  namespace, seed, palette and traits. Racing, Suspense and Adventure recipes.
-- `crates/godot`: GDExtension wrapper exposing `GamestrumentsPlayer`.
-
-Authoring and research (Audio Lab only): `packages/runtime` is the TypeScript
-transport used inside the Lab and `apps/demo` is the browser playground and
-validation harness. The Rust engine is the single generation authority; the
-Lab calls it through the committed WASM build (`apps/demo/public/engine`), and
-in games generation happens inside the extension at `generate(seed)`. See
-`docs/kit-contract.md`, `crates/README.md`,
-[`docs/engine-boundary.md`](docs/engine-boundary.md) and
-[`docs/procedural-generation.md`](docs/procedural-generation.md).
-
-The first collection follows the racing music brief in
-[`docs/racing-music-brief.md`](docs/racing-music-brief.md).
-
-All voices are synthesized; no samples are used or redistributed.
-
-## Scope and licence
-
-- The runtime kit is Godot 4 + GDExtension + synthesized voices only.
-- Release binaries target Linux x86_64, Windows x86_64 and macOS arm64/x86_64.
-- No samples, authoring UI, Strudel or pre-baked WAVs ship to buyers.
-- `docs/kit-contract.md` is the commercial contract (inventory, API,
-  non-goals). The product price is $12.99.
-- Everything in this repository, runtime and Audio Lab, is MIT, with no bundled
-  authoring dependency; see `LICENSE.md`.
+Gamestruments is free. If it helps your game, you can support development with
+an optional donation on [itch.io](https://gurisitosgames.itch.io/gamestruments-godot).

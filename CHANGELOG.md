@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Gamestruments is now free and open source. The whole repository is MIT licensed, the kit is a free download on GitHub releases and itch.io, and donations are optional. Bug reports and questions go to GitHub issues.
+
 ## [1.2.0] - 2026-10-03
 
 ### Added
@@ -142,9 +146,8 @@
 - Audio Lab: complete score-driven music-section selection replaces hard Jump actions. Cue/queued/blending states and cancellation are visible; Suspense's game signals are separated into an advanced panel. Waiting cues cannot cut an active blend, and canceled cues no longer leave stale release timers or future voices behind.
 - Removed the confirmed sustained glass-cell beep from Decrypt, Other Hall and Full Breach. Anomaly, the newer melody passages, effects and drums are unchanged.
 - Suspense v2 is no longer a pop song: Santaolalla-style drone + 2–3 note cell, Mr. Robot pulse/clock, static minor harmony, no snare backbeat. Form now also passes through a drop (Break) and a second inverted bridge (Other Hall) without rewriting the v2 beds.
-- Removed an internal project name from buyer-visible artifacts: the racing recipe is now **Racing** (`recipe = "racing"`), and the engine module, score ids, catalog path, buyer docs, listing, and Audio Lab use that public name.
+- Removed an internal project name from user-visible artifacts: the racing recipe is now **Racing** (`recipe = "racing"`), and the engine module, score ids, catalog path, kit docs, listing, and Audio Lab use that public name.
 - Kit repositioned as **Gamestruments — Adaptive Music for Godot 4**: Gamestruments is the product; the racing recipe is simply Racing, and the demo remains Night Circuit. Storefront slug moves to `gamestruments-godot`.
-- Standard price lowered to $12.99 (set 2026-09-10; revisitable after launch).
 - `GamestrumentsPlayer.generate` and `set_race_state` now return success booleans with descriptive Godot errors, and generator version `1.10.1` validates every score before exposing it to native or WASM callers.
 - Audio Lab: moved score and phase status above the orbit so it never competes with playback, and placed the transport first on narrow screens.
 - Audio Lab: restored idle orbit motion and fixed score, seed, comparison, and generation controls that could fail on out-of-range generated melody events.
