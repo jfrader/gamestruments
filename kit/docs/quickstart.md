@@ -13,7 +13,8 @@ connect your existing events (or call the functions) to the appropriate
 ## Prerequisites
 
 - Godot 4.7.x.
-- Linux x86_64, Windows x86_64, or macOS arm64/x86_64.
+- Linux x86_64, Windows x86_64, macOS arm64/x86_64, or Web (Extensions Support
+  on, Thread Support off).
 - An extracted `gamestruments-<version>-godot4.zip`.
 
 ## Install

@@ -8,8 +8,8 @@ checks and human listening.
 ## Supported Environment
 
 - Godot 4.7.x via GDExtension. Future Godot minor releases are not implied. Tested exactly against CI version 4.7.2.
-- Linux x86_64 (built on Ubuntu 24.04; older distributions are not claimed), Windows x86_64, and macOS arm64/x86_64.
-- Rust 1.94.0 and gdext 0.5.5 for source rebuilds.
+- Linux x86_64 (built on Ubuntu 24.04; older distributions are not claimed), Windows x86_64, macOS arm64/x86_64, and Web (single-threaded side module for Godot's official dlink templates).
+- Rust 1.94.0 and gdext 0.5.5 for source rebuilds; the web side module uses the nightly Rust and Emscripten pinned in `tools/web-toolchain.env` (`tools/build_web_extension.sh`).
 - Godot `AudioStreamGenerator` playback with a 48000 Hz mono internal synth routed to `Music` when that bus exists and otherwise to `Master`.
 - Fully offline runtime generation; no network requests, accounts, telemetry, samples, or external services.
 

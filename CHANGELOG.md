@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Web exports: the addon now ships `bin/gamestruments_godot.wasm`, so `GamestrumentsPlayer` runs live in HTML5 games. Export with Extensions Support on and Thread Support off; Godot's official templates work and no SharedArrayBuffer or cross-origin isolation is needed.
+
 ### Changed
 
 - Gamestruments is now free and open source. The whole repository is MIT licensed, the kit is a free download on GitHub releases and itch.io, and donations are optional. Bug reports and questions go to GitHub issues.
