@@ -18,11 +18,8 @@ godot-bin/
 Godot_v*.zip
 SHA512-SUMS.txt
 
-
 # parity harness artifacts (generated on `cargo run --example parity_ref` + `npm run parity:wasm`)
 parity-*.json
 parity-*.wav
-
-# Dated backups are transient.
 
 graphify-out/

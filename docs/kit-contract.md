@@ -1,9 +1,9 @@
-# Gamestruments — Adaptive Music for Godot 4: Product Contract
+# Gamestruments — Adaptive Music for Godot 4: Kit Contract
 
-**Status:** approved scope; release remains gated on automated platform checks, independent buyer testing, human listening, and explicit publication approval.
-**Standard price:** $12.99 (set 2026-09-10; revisitable after launch).
-
-This is the authoritative buyer contract for the first Gamestruments runtime kit.
+Gamestruments is free and open source (MIT). This document defines what the
+Godot kit archive contains, the supported public API, and what the project
+promises and does not promise. Releases remain gated on the automated platform
+checks and human listening.
 
 ## Supported Environment
 
@@ -15,7 +15,7 @@ This is the authoritative buyer contract for the first Gamestruments runtime kit
 
 Compatibility claims apply only after each native library passes the release workflow on its target operating system. The final candidate cannot ship if any platform job is missing or failing.
 
-## Buyer Archive
+## Kit Archive
 
 `gamestruments-<version>-godot4.zip` contains:
 
@@ -23,7 +23,7 @@ Compatibility claims apply only after each native library passes the release wor
 - Linux `.so`, Windows `.dll`, and universal macOS `.dylib` under `addons/gamestruments/bin/`.
 - The same complete addon under `kit/examples/addons/gamestruments/` for a self-contained examples project.
 - `crates/engine` and `crates/godot`, the catalog fixture required by shipped tests and examples, root `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml`.
-- `kit/examples/` and buyer documentation under `kit/docs/`.
+- `kit/examples/` and user documentation under `kit/docs/`.
 - Root `README.md`, `RELEASE-MANIFEST.json`, and `CHANGELOG.md`.
 - `LICENSE.md`, per-crate MIT license copies, `THIRD_PARTY_NOTICES.md`, exact dependency inventory, required attribution, and dependency license texts under `licenses/`.
 
@@ -78,7 +78,7 @@ Methods:
 
 Generation validates every score before playback. Failure returns `false` and emits a descriptive Godot error. State requests before successful generation also return `false`. See `kit/docs/api.md` for exact values and selection rules.
 
-## Buyer-Reliable Behavior
+## Reliable Behavior
 
 - Identical inputs under the same generator version produce identical score identity and event data.
 - State changes commit on bar boundaries and new sections begin at phrase bar zero.
@@ -103,14 +103,14 @@ Exact bytes are not promised across generator versions. Internal Rust modules, c
 - Pull requests run the three-platform release workflow with a synthetic candidate version so native regressions cannot merge unnoticed.
 - A `v*` tag runs the same matrix and creates a draft GitHub release only after every native smoke test and archive verification passes.
 - The exact archive SHA-256, source commit, workflow run, tested Godot version, and human acceptance evidence form the release packet.
-- itch.io publication is manual and requires explicit approval of that immutable packet. CI never publishes the storefront.
+- GitHub release and itch.io publication are manual. CI only creates a draft release and never publishes the storefront.
 
 ## License and Support
 
 - Gamestruments Rust crates are MIT licensed and may be used in closed-source games subject to the MIT terms.
 - gdext 0.5.5 and related binding crates are MPL-2.0; attribution and source-retrieval information ship in `THIRD_PARTY_NOTICES.md`.
-- No AGPL or Strudel code enters the buyer archive.
-- Support is best-effort through the public comments section on the itch.io product page for reproducible defects within the advertised environment and API. Purchase-specific or private matters use itch.io's purchase-support flow.
-- Refunds follow the terms presented by itch.io at purchase time.
+- The whole repository is MIT licensed. No AGPL or Strudel code enters the kit archive.
+- The kit is free. Optional donations go through the itch.io page and buy no extra features or support.
+- Support is best-effort through GitHub issues for reproducible defects within the advertised environment and API.
 
-If a claim cannot be demonstrated from the immutable archive, target-platform workflow, included examples, and buyer docs, it must not appear on the storefront.
+If a claim cannot be demonstrated from the immutable archive, target-platform workflow, included examples, and docs, it must not appear in a listing.

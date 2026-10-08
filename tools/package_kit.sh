@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # tools/package_kit.sh
-# Package the Gamestruments buyer release archive (Godot 4 kit).
+# Package the Gamestruments release archive (Godot 4 kit).
 #
 # Usage:
 #   tools/package_kit.sh --version <ver> --assets-dir <dir> [--out-dir <dir>]
 #
 # - VERSION defaults to 0.1.0-rc2 (or first arg)
-# - Produces gamestruments-$VERSION-godot4.zip in OUT_DIR (default /tmp/opencode)
+# - Produces gamestruments-$VERSION-godot4.zip in OUT_DIR (default dist)
 # - Requires prebuilt Linux, Windows, and universal macOS libraries in ASSETS_DIR
-# - Uses an explicit allowlist for the buyer artifact.
+# - Uses an explicit allowlist for the release artifact.
 # - Zip metadata is deterministic: sorted file list + zip -X (no extra fields) +
 #   normalized mtimes and permissions in staging. Residual non-determinism: native binaries
 #   may contain linker timestamps / build IDs / UUIDs from cargo/rustc even in
@@ -22,7 +22,7 @@ cd "$REPO_ROOT"
 DEFAULT_VERSION="0.1.0-rc2"
 VERSION="$DEFAULT_VERSION"
 VERSION_SET=false
-OUT_DIR="/tmp/opencode"
+OUT_DIR="dist"
 ASSETS_DIR=""
 GODOT_VERSION="${GODOT_VERSION:-4.7.2-stable}"
 
@@ -52,7 +52,7 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; 
   exit 1
 fi
 if [[ -z "$ASSETS_DIR" ]]; then
-  echo "ERROR: --assets-dir is required for a cross-platform buyer archive" >&2
+  echo "ERROR: --assets-dir is required for a cross-platform release archive" >&2
   exit 1
 fi
 ASSETS_DIR="$(cd "$ASSETS_DIR" && pwd)"
@@ -143,7 +143,7 @@ mkdir -p "$STAGING/catalog/racing/tiny-torque-level-004"
 cp catalog/racing/tiny-torque-level-004/score.json \
   "$STAGING/catalog/racing/tiny-torque-level-004/score.json"
 
-# addon layout (buyer drop-in; .gdextension paths are already res://addons/gamestruments/...)
+# addon layout (drop-in; .gdextension paths are already res://addons/gamestruments/...)
 mkdir -p "$STAGING/addons/gamestruments/bin"
 cp crates/godot/gamestruments.gdextension "$STAGING/addons/gamestruments/gamestruments.gdextension"
 for library in "${NATIVE_LIBS[@]}"; do

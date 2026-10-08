@@ -41,7 +41,7 @@ test("score debugger renders the engine's step grid, counts and solo state", asy
   }
   expect(rowsWithHits).toBeGreaterThan(0);
 
-  await page.screenshot({ path: "/tmp/opencode/guri-908-debugger.png" });
+  await page.screenshot({ path: "test-results/score-debugger.png" });
 
   // Per-voice solo and mute are wired to the live solo state.
   const firstHitRow = grids.first().locator("tbody tr").filter({

@@ -115,11 +115,15 @@ cached or vendored.
 
 ## Licence
 
-The runtime, addon descriptor, docs and example integration are MIT licensed,
-including use in closed-source commercial games. See `LICENSE.md`; third-party
-terms are in `THIRD_PARTY_NOTICES.md` and `licenses/`.
+Gamestruments is free and open source under the MIT licence, including use in
+closed-source commercial games. See `LICENSE.md`; third-party terms are in
+`THIRD_PARTY_NOTICES.md` and `licenses/`. Source:
+<https://github.com/jfrader/gamestruments>.
+
+If it helps your game, an optional donation on
+<https://gurisitosgames.itch.io/gamestruments-godot> supports development.
 
 ## Support
 
-Post bugs and questions in the comments on the itch.io product page with your
-kit version, Godot version, OS and the full Output text.
+Report bugs and questions at <https://github.com/jfrader/gamestruments/issues>
+with your kit version, Godot version, OS and the full Output text.

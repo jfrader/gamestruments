@@ -25,5 +25,5 @@ back to `Master` in a fresh project.
 ### Toolchain
 
 The workspace root pins Rust 1.94.0 with rustfmt and clippy. Cargo commands
-inside this checkout select it through rustup. The buyer archive includes the
+inside this checkout select it through rustup. The release archive includes the
 workspace manifests, lockfile, toolchain pin, and both crates needed to rebuild.

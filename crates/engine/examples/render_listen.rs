@@ -10,7 +10,7 @@ fn main() {
     let dest = args
         .first()
         .cloned()
-        .unwrap_or_else(|| "/tmp/opencode/listen".into());
+        .unwrap_or_else(|| "target/listen".into());
     let dest = Path::new(&dest);
     fs::create_dir_all(dest).expect("create dest dir");
 

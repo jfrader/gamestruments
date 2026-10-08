@@ -33,4 +33,4 @@
 - Only `GamestrumentsPlayer` and the documented exported properties and methods are supported. Internal Rust modules and generated child nodes may change.
 - This kit ships the Godot 4 binding only. The Rust engine is a separate crate, but no other engine binding or custom-adapter framework is supported yet.
 - Source is included under MIT, but custom builds, modified APIs, and unadvertised targets are outside standard support.
-- Support is best-effort through reproducible reports in the itch.io product page's public comments; no response-time or long-term update SLA is promised. Purchase-specific or private matters use itch.io's purchase-support flow.
+- Support is best-effort through reproducible reports in GitHub issues (<https://github.com/jfrader/gamestruments/issues>); no response-time or long-term update SLA is promised.

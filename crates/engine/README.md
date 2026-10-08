@@ -138,4 +138,4 @@ cargo clippy -p gamestruments-engine --all-targets -- -D warnings
 cargo build -p gamestruments-godot
 ```
 
-Listening pack is generated via the extended `render_listen` example (see below and /tmp/opencode/listen/README.md).
+Listening pack is generated via the extended `render_listen` example (see below; defaults to `target/listen/`).
