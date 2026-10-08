@@ -259,3 +259,15 @@ test("mobile suspense: every setup fieldset and button is a full-width row", asy
     expect(metrics.noOverflow).toBe(true);
   });
 });
+
+test("footer links to the GitHub repository", async ({ browser }) => {
+  await withIsolatedPage(browser, async (page) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto("/#lab");
+    const link = page.locator("footer a");
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "https://github.com/jfrader/gamestruments");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toContainText("github.com/jfrader/gamestruments");
+  });
+});
