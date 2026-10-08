@@ -79,19 +79,19 @@ node "$REPO_ROOT/tests/verify-release-manifest.mjs" \
   "$(basename "$ARCHIVE")"
 
 if find "$EXTRACTED" -type f \( -iname '*.wav' -o -iname '*.ogg' -o -iname '*.mp3' \) -print -quit | grep -q .; then
-  echo "ERROR: buyer archive contains an audio asset" >&2
+  echo "ERROR: release archive contains an audio asset" >&2
   exit 1
 fi
 if find "$EXTRACTED" -type f \( -iname '*.ts' -o -iname '*.tsx' -o -iname '*.js' -o -iname '*.mjs' \) -print -quit | grep -q .; then
-  echo "ERROR: buyer archive contains authoring code" >&2
+  echo "ERROR: release archive contains authoring code" >&2
   exit 1
 fi
 if find "$EXTRACTED" -type l -print -quit | grep -q .; then
-  echo "ERROR: buyer archive contains a symbolic link" >&2
+  echo "ERROR: release archive contains a symbolic link" >&2
   exit 1
 fi
 if grep -R -I -E '/home/|/Users/' "$EXTRACTED" >/dev/null; then
-  echo "ERROR: buyer archive contains a private build path" >&2
+  echo "ERROR: release archive contains a private build path" >&2
   exit 1
 fi
 

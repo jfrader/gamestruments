@@ -5,8 +5,7 @@ Update this file before changing anything on https://store.godotengine.org.
 Official docs:
 https://docs.godotengine.org/en/stable/community/asset_store/submitting_to_asset_store.html
 
-The store cannot take paid assets yet. This listing is a **free** discovery
-funnel to the paid itch kit. Do not invent a store price.
+Gamestruments is free and open source (MIT). The store listing is free too.
 
 ## Publisher (fill at account creation)
 
@@ -24,12 +23,9 @@ at registration, do not invent a second publisher:
 - **License:** MIT (must match the plugin-folder `LICENSE.md`)
 - **Minimum Godot version:** 4.7
 - **Maximum Godot version:** leave open / 4.x
-- **Pricing:** Free. Optional donation / “get the full kit” link:
+- **Pricing:** Free. Optional donation link:
   https://gurisitosgames.itch.io/gamestruments-godot
-- **Source code link:** leave empty, or use the itch product page. Fran
-  confirmed 2026-09-14 that `jfrader/gamestruments` stays **private**. Do
-  not paste the GitHub URL. Upload the icon via the Media tab (a
-  `raw.githubusercontent.com` link will not work on a private repo).
+- **Source code link:** https://github.com/jfrader/gamestruments
 - **AI usage disclosure:** no AI-generated content in the addon binaries,
   descriptor, or plugin-folder docs.
 
@@ -55,8 +51,8 @@ authoring tool, or cloud service is required.
 **Try it in the browser:** https://gamestruments.gurisitos.games
 (Godot and HTML5, one engine.)
 
-**Full kit** (MIT source, docs, native examples):
-https://gurisitosgames.itch.io/gamestruments-godot
+**Source, docs and native examples** (free, MIT):
+https://github.com/jfrader/gamestruments
 
 ### Recipes
 
@@ -80,8 +76,8 @@ The Linux x86_64, Windows x86_64, and universal macOS arm64/x86_64 libraries
 plus the GDExtension descriptor, with a README and MIT license inside the
 plugin folder. It is the drop-in addon.
 
-The itch kit additionally includes full MIT Rust source, lockfile, pinned
-toolchain, quickstart/API/limitations docs, and three native example scenes.
+The full kit archive on GitHub releases and itch.io adds the MIT Rust source,
+lockfile, pinned toolchain, docs, and three native example scenes.
 
 ### Requirements
 
@@ -93,9 +89,8 @@ toolchain, quickstart/API/limitations docs, and three native example scenes.
 ## Media plan
 
 Captured 2026-09-14 from the extracted v0.1.2 kit (`kit/examples/`, Godot
-4.7.2, native addon). Never browser Audio Lab captures. Repo stays private,
-so upload these files through the Store Media tab (do not use a GitHub raw
-URL).
+4.7.2, native addon). Never browser Audio Lab captures. Upload these files
+through the Store Media tab.
 
 - **Icon / thumbnail:** `addons/gamestruments/icon.png` (256×256, square pad
   of the 01 Playback example).
@@ -116,7 +111,7 @@ Build the store ZIP from this repo (does not restructure `tools/package_kit.sh`)
 
 ```sh
 tools/package-asset-store.sh --version 0.1.2 \
-  --kit-zip /tmp/opencode/gamestruments-0.1.2-release/gamestruments-0.1.2-godot4.zip
+  --kit-zip dist/gamestruments-0.1.2-godot4.zip
 ```
 
 Or pass unpacked native libraries:
@@ -125,7 +120,7 @@ Or pass unpacked native libraries:
 tools/package-asset-store.sh --version 0.1.2 --assets-dir /path/to/libs
 ```
 
-Output (default `/tmp/opencode`):
+Output (default `dist/`):
 
 - `gamestruments-0.1.2-godot4-asset-store.zip`
 - `gamestruments-0.1.2-godot4-asset-store.zip.sha256.txt`
@@ -148,9 +143,9 @@ listing of the v0.1.2 addon.”, min Godot 4.7, file under 1 GB.
 ## Submission checklist
 
 - [ ] Fran created the publisher account (name + slug above).
-- [x] GitHub repo stays private (Fran, 2026-09-14). No source-link to GitHub.
+- [ ] Source link set to the public GitHub repository.
 - [ ] Asset type Addon, license MIT, Godot 4.7 minimum.
-- [ ] Pricing left Free; itch kit linked as the paid full archive.
+- [ ] Pricing left Free; itch page linked for optional donations.
 - [x] Icon and screenshots captured from packaged `kit/examples/` (files in repo).
 - [ ] Icon and screenshots uploaded via the Store Media tab.
 - [ ] Store ZIP built with `tools/package-asset-store.sh` and checksum recorded.

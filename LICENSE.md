@@ -1,22 +1,6 @@
-# Licensing
+MIT License
 
-The Gamestruments runtime components are licensed under the MIT License:
-
-- `crates/engine`
-- `crates/godot`
-- `packages/runtime`
-- `crates/godot/gamestruments.gdextension`
-- `catalog/racing/tiny-torque-level-004/score.json`
-- `kit/README.md` and its `README.md` copy at the buyer archive root
-- `kit/examples`
-- `kit/docs`
-
-The browser playground under `apps/demo` shares the same MIT license; it has no
-bundled third-party authoring dependency.
-
-## MIT License
-
-Copyright (c) 2026 J Francisco Rader
+Copyright (c) 2026 J Francisco Rader and Gamestruments contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

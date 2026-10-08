@@ -13,6 +13,8 @@
 ## Product
 
 - This repo is a **game music library**, not a Pocket Circuit checkout.
+- The repository is public and MIT. Gamestruments is free with optional
+  donations; do not add pricing, paid-kit, or buyer-only framing.
 - One generator authority: the Rust engine (`crates/engine`). The Audio Lab
   (`apps/demo`, MIT) drives it through the committed WASM build; there is no
   TypeScript generator or CLI pipeline.
@@ -30,11 +32,11 @@
   panels. Use the lab's actual generated phases, names, and controls.
   Its itch.io HTML preview must be packaged from the same approved lab source,
   not recreated in the kit; code examples and integration docs belong in the
-  buyer kit, not in web-lab code panels or documentation tabs.
+  kit docs, not in web-lab code panels or documentation tabs.
   If the latest lab source on another unmerged branch includes unapproved release
   content, keep the release blocked and reconcile the source explicitly — never
   recreate a hybrid preview.
-  The buyer project in `kit/examples/` contains
+  The example project in `kit/examples/` contains
   three independently runnable scenes: playback, game signals, and song form.
   Keep their public API calls visible and usable without the lab or a game.
   Generate scene files with `kit/examples/tools/generate_example_scenes.gd`;

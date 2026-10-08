@@ -76,4 +76,4 @@ cargo build -p gamestruments-godot --release --locked
 
 Use the target matching your operating system and copy the resulting native library to the filename declared in `gamestruments.gdextension`. Standard support covers the provided binaries; custom targets and modified source are best-effort.
 
-When reporting an issue through the itch.io product page's public comments, include kit version, OS and architecture, exact Godot version, reproduction steps, and complete Output text. Do not publish private project data; `project_secret` is only a namespace, so replace it consistently in a reproduction. Use itch.io's purchase-support flow for purchase-specific or private matters.
+When reporting an issue on GitHub (<https://github.com/jfrader/gamestruments/issues>), include kit version, OS and architecture, exact Godot version, reproduction steps, and complete Output text. Do not publish private project data; `project_secret` is only a namespace, so replace it consistently in a reproduction.

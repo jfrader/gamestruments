@@ -80,11 +80,11 @@ test("orbit part rings represent instruments and animate independently (racing s
   await page.locator("#center-play").click();
   await expect(orbit).toHaveClass(/is-running/);
 
-  mkdirSync("/tmp/opencode", { recursive: true });
+  mkdirSync("test-results", { recursive: true });
   // capture 4 frames at different moments during playback for visual review
   for (let k = 0; k < 4; k++) {
     await page.waitForTimeout(80 + k * 60);
-    await page.screenshot({ path: `/tmp/opencode/orbit-${Date.now()}.png`, animations: "allow" });
+    await page.screenshot({ path: `test-results/orbit-${Date.now()}.png`, animations: "allow" });
   }
 
   // wait for at least one part to be shown (non-hidden)

@@ -51,10 +51,8 @@ onto its own vocabulary and exposes its own runtime state:
 
 - a DAW, notation compatibility, or a plugin host;
 - AI generation or sample-library redistribution;
-- multiplayer clock synchronization or sample-accurate native DSP;
-- a production-ready commercial toolkit or final support policy.
+- multiplayer clock synchronization or sample-accurate native DSP.
 
-Future publishing, packaging, pricing, and open-core/commercial terms remain
-undecided. Racing, Suspense, and Adventure demonstrate that game types
+Gamestruments is free and open source under the MIT license. Racing, Suspense, and Adventure demonstrate that game types
 enter through recipe and score boundaries rather than one hard-coded product
 shape.

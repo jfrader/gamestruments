@@ -13,7 +13,7 @@ recipes mid-game, live variety, the copyable patterns and the exact limits).
 | Adventure | [adventure.md](adventure.md) | quests, overworld/hub, dungeons, combat, boss |
 
 Engine mechanics and the ABI live in [../engine-boundary.md](../engine-boundary.md);
-the buyer-facing API reference is [../../kit/docs/api.md](../../kit/docs/api.md).
+the user-facing API reference is [../../kit/docs/api.md](../../kit/docs/api.md).
 
 ## The shape of every recipe
 
