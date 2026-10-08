@@ -1,7 +1,7 @@
 name: release
 
-# Linux and packaging run on a dedicated Linux runner. Windows and macOS
-# cannot build there, so they run only for release tags and manual dispatches.
+# All jobs run on GitHub-hosted runners.
+# Runs only for release tags and manual dispatches.
 on:
   workflow_dispatch:
     inputs:

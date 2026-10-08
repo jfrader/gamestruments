@@ -1,8 +1,13 @@
 name: check
 
+# All jobs run on GitHub-hosted runners.
+
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
