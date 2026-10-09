@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Audio Lab shared link previews now use "Gamestruments Audio Lab" (with description) instead of the internal score title "Countertop Velocity".
+
 ## [1.3.0] - 2026-10-08
 
 ### Added
