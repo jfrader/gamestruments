@@ -86,8 +86,9 @@ Adventure ignores it.
 - Adventure: camp, exploration, town, dungeon, combat, a boss, a sanctuary and
   the final victory, plus eight variants. Styles: `folk`, `dark`, `orchestral`.
 
-`autoplay` is for Racing and Adventure. It defaults to `false`; set it to `true`
-to tour the parts automatically. Suspense already has an order and ignores it.
+`autoplay` is for `original`/`extended` Racing and Adventure. It defaults to
+`false`; set it to `true` to tour the parts automatically. Suspense and
+`all-phases`/`seeded` Racing already have an order and ignore it.
 
 ## Licence
 
