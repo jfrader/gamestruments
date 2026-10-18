@@ -93,7 +93,8 @@ Adventure ignores it.
 ## Licence
 
 MIT, including use in closed-source commercial games. See `LICENSE.md` in this
-folder. Third-party terms are in `THIRD_PARTY_NOTICES.md` in the release root.
+folder. Third-party terms (godot-rust is MPL-2.0) are in the repository's
+`THIRD_PARTY_NOTICES.md`.
 
 ## Support
 
