@@ -349,7 +349,10 @@ mod tests {
         ] {
             assert!(!racing_phase_spec(id).unwrap().one_shot, "{id} repeats");
         }
-        assert!(racing_phase_spec("attack").unwrap().energy > racing_phase_spec("cruise").unwrap().energy);
+        assert!(
+            racing_phase_spec("attack").unwrap().energy
+                > racing_phase_spec("cruise").unwrap().energy
+        );
     }
 
     #[test]
@@ -413,7 +416,11 @@ mod tests {
         let mut saw_breather_before_flow = false;
         for seed in 0..512u32 {
             let form = racing_compose(seed);
-            let ids: Vec<&str> = form.steps.iter().map(|step| step.section.as_str()).collect();
+            let ids: Vec<&str> = form
+                .steps
+                .iter()
+                .map(|step| step.section.as_str())
+                .collect();
             if ids.windows(2).any(|w| w == ["breather", "cruise"]) {
                 saw_breather_before_flow = true;
                 break;
@@ -449,7 +456,11 @@ mod tests {
             assert!(form.loop_from.is_some(), "seed {seed}: missing loop point");
             distinct.insert(ids);
         }
-        assert!(distinct.len() > 20, "only {} distinct forms", distinct.len());
+        assert!(
+            distinct.len() > 20,
+            "only {} distinct forms",
+            distinct.len()
+        );
     }
 
     #[test]

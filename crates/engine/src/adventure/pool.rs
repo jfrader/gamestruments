@@ -268,7 +268,11 @@ mod tests {
     #[test]
     fn composer_is_deterministic() {
         for seed in [0xdead_beef, 0, 42, 0x51ed_0000] {
-            assert_eq!(adventure_compose(seed), adventure_compose(seed), "seed {seed}");
+            assert_eq!(
+                adventure_compose(seed),
+                adventure_compose(seed),
+                "seed {seed}"
+            );
         }
     }
 
@@ -289,7 +293,11 @@ mod tests {
             assert!(form.loop_from.is_some(), "seed {seed}: missing loop point");
             distinct.insert(ids);
         }
-        assert!(distinct.len() > 20, "only {} distinct forms", distinct.len());
+        assert!(
+            distinct.len() > 20,
+            "only {} distinct forms",
+            distinct.len()
+        );
     }
 
     /// The combat set (skirmish/assault/chase) and happiness set
@@ -320,7 +328,10 @@ mod tests {
             assert_eq!(spec.role, AdventurePhaseRole::Groove, "{happy}");
             let town = adventure_phase_spec("town").unwrap();
             assert!(AdventurePool::role_legal(spec, town), "{happy} -> town");
-            assert!(AdventurePool::energy_legal(spec, town), "{happy} -> town energy");
+            assert!(
+                AdventurePool::energy_legal(spec, town),
+                "{happy} -> town energy"
+            );
         }
         let dawn = adventure_phase_spec("dawn").unwrap();
         assert_eq!(dawn.role, AdventurePhaseRole::Break, "dawn");
@@ -328,7 +339,10 @@ mod tests {
             adventure_phase_spec("sanctuary").unwrap(),
             adventure_phase_spec("victory").unwrap()
         ));
-        assert!(AdventurePool::role_legal(dawn, adventure_phase_spec("victory").unwrap()));
+        assert!(AdventurePool::role_legal(
+            dawn,
+            adventure_phase_spec("victory").unwrap()
+        ));
 
         // Across many seeds every new phase id appears in at least one form.
         let mut seen: HashSet<String> = HashSet::new();

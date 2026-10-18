@@ -369,9 +369,8 @@ mod tests {
         let rate = 8000.0f32;
         let mut fa = FormAudio::new(score, rate);
         let mut buf = vec![0.0f32; 512];
-        let frames =
-            (score.bar_ticks() as f64 * bars / score.ticks_per_second() * f64::from(rate)).ceil()
-                as usize;
+        let frames = (score.bar_ticks() as f64 * bars / score.ticks_per_second() * f64::from(rate))
+            .ceil() as usize;
         let mut min_rms = f32::INFINITY;
         let mut frame = 0;
         while frame < frames {
@@ -672,7 +671,8 @@ mod tests {
         let rate = 8000.0f32;
         let mut fa = FormAudio::new(&score, rate);
         let mut buf = vec![0.0f32; 512];
-        let frames = (score.bar_ticks() as f64 * 1.0 / score.ticks_per_second() * f64::from(rate)).ceil() as usize;
+        let frames = (score.bar_ticks() as f64 * 1.0 / score.ticks_per_second() * f64::from(rate))
+            .ceil() as usize;
         let mut max_rms = 0.0f32;
         let mut frame = 0;
         while frame < frames {
