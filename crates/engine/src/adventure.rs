@@ -9,6 +9,7 @@ mod pool;
 
 pub use arrangement::{generate_adventure_arrangement, AdventureArrangement};
 
+use crate::dmath::clamp_unit;
 use crate::rng::hash_text;
 use crate::score::{
     AdaptiveCondition, AdaptiveRule, AdventureState, PortableScore, SCORE_SCHEMA_VERSION,
@@ -69,14 +70,6 @@ struct NormalizedTraits {
     danger: f64,
     mystery: f64,
     motion: f64,
-}
-
-fn clamp_unit(value: f64) -> f64 {
-    if value.is_finite() {
-        value.clamp(0.0, 1.0)
-    } else {
-        0.5
-    }
 }
 
 fn normalize(input: &AdventureInput) -> NormalizedTraits {
@@ -252,12 +245,6 @@ mod tests {
         }
     }
 
-    fn event_id(event: &MusicEvent) -> &str {
-        match event {
-            MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
-        }
-    }
-
     fn musical_signature(section: &PortableSection, offset: u32, span: u32) -> Vec<String> {
         section
             .events
@@ -423,7 +410,7 @@ mod tests {
             let mut ids = HashSet::new();
             for section in &score.sections {
                 for event in &section.events {
-                    assert!(ids.insert(event_id(event)), "duplicate event id");
+                    assert!(ids.insert(event.id()), "duplicate event id");
                     assert!(event.velocity().is_finite());
                     assert!((0.0..=1.0).contains(&event.velocity()));
                     assert!(
@@ -1003,12 +990,7 @@ mod tests {
             let score = generate_adventure(&input).unwrap();
             let mut ids = HashSet::new();
             for id in [
-                "skirmish",
-                "assault",
-                "chase",
-                "festival",
-                "reunion",
-                "dawn",
+                "skirmish", "assault", "chase", "festival", "reunion", "dawn",
             ] {
                 let section = score.section(id).unwrap_or_else(|| panic!("missing {id}"));
                 assert!(!section.events.is_empty(), "{id} must carry music");
@@ -1019,7 +1001,7 @@ mod tests {
                         .collect();
                 for event in &section.events {
                     // Unique ids and safe registers across the new material.
-                    assert!(ids.insert(event_id(event)), "duplicate id in {id}");
+                    assert!(ids.insert(event.id()), "duplicate id in {id}");
                     if let Some(pitch) = event.pitch() {
                         assert!(
                             (36..=84).contains(&i32::from(pitch)),
@@ -1036,7 +1018,10 @@ mod tests {
     }
 
     fn section_scene_for(id: &str) -> Option<Scene> {
-        SECTION_PLANS.iter().find(|plan| plan.id == id).map(|plan| plan.scene)
+        SECTION_PLANS
+            .iter()
+            .find(|plan| plan.id == id)
+            .map(|plan| plan.scene)
     }
 
     #[test]
@@ -1063,12 +1048,7 @@ mod tests {
         }
         // And the six new phases are pairwise distinct from each other.
         let new_ids = [
-            "skirmish",
-            "assault",
-            "chase",
-            "festival",
-            "reunion",
-            "dawn",
+            "skirmish", "assault", "chase", "festival", "reunion", "dawn",
         ];
         for left in 0..new_ids.len() {
             for right in left + 1..new_ids.len() {
@@ -1180,9 +1160,11 @@ mod tests {
                     let notes: Vec<_> = variant
                         .events
                         .iter()
-                        .filter(|event| matches!(event,
-                            MusicEvent::Note { lane: played, .. } if played == lane
-                        ))
+                        .filter(|event| {
+                            matches!(event,
+                                MusicEvent::Note { lane: played, .. } if played == lane
+                            )
+                        })
                         .collect();
                     assert!(!notes.is_empty(), "{variant_id} missing {lane}");
                     assert!(
@@ -1191,13 +1173,17 @@ mod tests {
                     );
                     if matches!(lane, "pedal" | "bass") {
                         assert!(
-                            notes.iter().all(|event| event.pitch().is_some_and(|pitch| pitch >= 40)),
+                            notes
+                                .iter()
+                                .all(|event| event.pitch().is_some_and(|pitch| pitch >= 40)),
                             "{variant_id} {lane} below E2"
                         );
                     }
                     if lane == "melody" {
                         assert!(
-                            notes.iter().all(|event| event.pitch().is_some_and(|pitch| (55..=84).contains(&pitch))),
+                            notes.iter().all(|event| event
+                                .pitch()
+                                .is_some_and(|pitch| (55..=84).contains(&pitch))),
                             "{variant_id} melody out of register"
                         );
                     }
@@ -1205,5 +1191,4 @@ mod tests {
             }
         }
     }
-
 }

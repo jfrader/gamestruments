@@ -3,17 +3,16 @@
 //! seam gestures with shared tonic pitch class, trait bias, and register
 //! ceiling.
 
-use crate::development::{
-    clear_seams, develop_section, fold_register_ceiling, plan_joins, push_seam_note,
-    push_seam_perc,
-};
 #[cfg(test)]
 use crate::development::mask_to_schedule;
+use crate::development::{
+    clear_seams, develop_section, fold_register_ceiling, plan_joins, DevelopmentSpec, SeamWriter,
+};
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{MusicEvent, PortableScore, PortableSection, SongForm, SongFormStep};
 use crate::theory::{mode_intervals, scale_pitch};
 
-use super::composition::{AdventurePhaseRole, mode_for, Scene, SECTION_PLANS};
+use super::composition::{mode_for, AdventurePhaseRole, Scene, SECTION_PLANS};
 use super::pool::{
     adventure_compose, adventure_compose_seed, adventure_phase_bars, adventure_phase_spec,
     adventure_section_ids,
@@ -280,7 +279,18 @@ fn apply_adventure_development_arc(section: &mut PortableSection, bar: u32, seed
         return;
     };
     let arc = adventure_arc_for_role(spec.role);
-    develop_section(section, bar, arc, adventure_layer_rank, seed, true, 0, 1);
+    develop_section(
+        section,
+        DevelopmentSpec {
+            bar,
+            arc,
+            rank: adventure_layer_rank,
+            seed,
+            jitter: true,
+            bias: 0,
+            floor: 1,
+        },
+    );
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -298,13 +308,21 @@ fn adventure_seam_pitch(tonic: i32, degree: i32, base: i32, intervals: &[i32]) -
 }
 
 fn section_scene(id: &str) -> Option<Scene> {
-    SECTION_PLANS.iter().find(|plan| plan.id == id).map(|plan| plan.scene)
+    SECTION_PLANS
+        .iter()
+        .find(|plan| plan.id == id)
+        .map(|plan| plan.scene)
 }
 
 /// Plan deterministic gestures for each join (and loop back). Uses Adventure's
 /// tonic for anchor pc and the target section's mode for any melodic carriers.
 /// Gestures are perc or harp/vielle based to stay in Adventure idiom.
-fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureStyle, tonic: i32, seed: u32) {
+fn apply_adventure_transition_pass(
+    score: &mut PortableScore,
+    style: AdventureStyle,
+    tonic: i32,
+    seed: u32,
+) {
     let bar = score.bar_ticks();
     if bar == 0 {
         return;
@@ -318,8 +336,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
     for (out_id, in_id) in pairs {
         let out_role = adventure_phase_spec(&out_id).map(|spec| spec.role);
         let in_role = adventure_phase_spec(&in_id).map(|spec| spec.role);
-        let mut rng =
-            DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
+        let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
         let choices: &[AdventureSeamGesture] = if in_role == Some(AdventurePhaseRole::Peak) {
             &[
                 AdventureSeamGesture::Fill,
@@ -356,6 +373,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
         let out_start = out_len.saturating_sub(out_span);
         let mut out_events: Vec<MusicEvent> = Vec::new();
         let mut in_events: Vec<MusicEvent> = Vec::new();
+        let mut outgoing = SeamWriter::new(&mut out_events, &mut serial, &out_id);
         let intervals = section_scene(&in_id)
             .map(|sc| mode_intervals(mode_for(style, sc)))
             .unwrap_or_else(|| mode_intervals("ionian"));
@@ -363,10 +381,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
             AdventureSeamGesture::Fill => {
                 for (index, step) in [8u32, 10, 12, 14, 15].iter().enumerate() {
                     let offset = (step * bar / 16).min(out_span.saturating_sub(bar / 16));
-                    push_seam_perc(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    outgoing.perc(
                         out_start + offset,
                         bar / 16,
                         0.12 + 0.015 * index as f64,
@@ -375,25 +390,14 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 }
             }
             AdventureSeamGesture::Riser => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "tambourine",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "tambourine");
             }
             AdventureSeamGesture::Lift => {
                 for index in 0..3usize {
                     let degree = [0, 2, 4][index % 3];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -403,23 +407,12 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 }
             }
             AdventureSeamGesture::Both => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "tambourine",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "tambourine");
                 for index in 0..3usize {
                     let degree = [0, 2, 4][index % 3];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -430,10 +423,7 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
             }
             AdventureSeamGesture::Tail => {
                 let degree = 0;
-                push_seam_note(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
+                outgoing.note(
                     out_start,
                     out_span,
                     0.1,
@@ -442,29 +432,22 @@ fn apply_adventure_transition_pass(score: &mut PortableScore, style: AdventureSt
                 );
             }
         }
+        let mut incoming = SeamWriter::new(&mut in_events, &mut serial, &in_id);
         match landing {
-            1 => push_seam_perc(
-                &mut in_events,
-                &mut serial,
-                &in_id,
-                0,
-                bar / 8,
-                0.12,
-                "tambourine",
-            ),
-            2 => push_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "frame-drum"),
+            1 => incoming.perc(0, bar / 8, 0.12, "tambourine"),
+            2 => incoming.perc(0, bar / 8, 0.22, "frame-drum"),
             _ => {}
         }
         if !out_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == out_id) {
+            if let Some(section) = score.section_mut(&out_id) {
                 section.events.extend(out_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
         if !in_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == in_id) {
+            if let Some(section) = score.section_mut(&in_id) {
                 section.events.extend(in_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
     }
@@ -518,7 +501,7 @@ fn anchor_adventure_edges(section: &mut PortableSection, tonic: i32, bar: u32) {
             role: None,
         });
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 /// Fold piercing highs by octaves (pc preserved). Ceiling chosen per style so
@@ -557,7 +540,10 @@ fn apply_adventure_trait_response(
 
     for event in &mut section.events {
         let MusicEvent::Note {
-            lane, velocity, pitch, ..
+            lane,
+            velocity,
+            pitch,
+            ..
         } = event
         else {
             continue;
@@ -590,7 +576,11 @@ fn apply_adventure_trait_response(
             if section.events.iter().any(|e| e.start_tick() == start) {
                 continue;
             }
-            let voice = if placed.is_multiple_of(2) { "frame-drum" } else { "tambourine" };
+            let voice = if placed.is_multiple_of(2) {
+                "frame-drum"
+            } else {
+                "tambourine"
+            };
             section.events.push(MusicEvent::Percussion {
                 id: format!("{id}:trait:perc:{serial}"),
                 section: id.clone(),
@@ -695,7 +685,7 @@ fn apply_adventure_trait_response(
         section.events = kept;
     }
 
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 #[cfg(test)]
@@ -759,8 +749,8 @@ mod tests {
             AdventureStyle::Orchestral,
         ] {
             let input = sample("orig-delegates", style);
-            let via =
-                generate_adventure_arrangement(&input, AdventureArrangement::Original).expect("via");
+            let via = generate_adventure_arrangement(&input, AdventureArrangement::Original)
+                .expect("via");
             let direct = generate_adventure(&input).expect("direct");
             assert_eq!(
                 serde_json::to_vec(&via).expect("ser"),
@@ -824,14 +814,8 @@ mod tests {
                     assert_eq!(bars, 16, "{id} should stay at 16");
                 }
                 "victory" => assert_eq!(bars, 32, "{id} should stay at its authored 32"),
-                "explore"
-                | "explore-strings"
-                | "town"
-                | "town-strings"
-                | "combat"
-                | "chase"
-                | "festival"
-                | "reunion" => {
+                "explore" | "explore-strings" | "town" | "town-strings" | "combat" | "chase"
+                | "festival" | "reunion" => {
                     assert!((32..=48).contains(&bars), "{id} bars {bars}");
                 }
                 "dungeon" | "boss" | "skirmish" | "assault" => {
@@ -912,8 +896,8 @@ mod tests {
         ] {
             let input = sample("comp-iso", style);
             let original = generate_adventure(&input).expect("orig");
-            let seeded =
-                generate_adventure_arrangement(&input, AdventureArrangement::Seeded).expect("seeded");
+            let seeded = generate_adventure_arrangement(&input, AdventureArrangement::Seeded)
+                .expect("seeded");
             assert_eq!(
                 serde_json::to_vec(&generate_adventure(&input).expect("orig-again")).expect("o"),
                 serde_json::to_vec(&original).expect("o2")
@@ -984,8 +968,10 @@ mod tests {
             let out_sec = score.section(&out_id).expect("out");
             let in_sec = score.section(&in_id).expect("in");
             let out_last = out_sec.length_ticks.saturating_sub(bar);
-            let has_out = adventure_bar_has_pc(out_sec, out_last, out_sec.length_ticks, (tonic % 12) as u8);
-            let has_in = adventure_bar_has_pc(in_sec, 0, bar.min(in_sec.length_ticks), (tonic % 12) as u8);
+            let has_out =
+                adventure_bar_has_pc(out_sec, out_last, out_sec.length_ticks, (tonic % 12) as u8);
+            let has_in =
+                adventure_bar_has_pc(in_sec, 0, bar.min(in_sec.length_ticks), (tonic % 12) as u8);
             assert!(
                 has_out && has_in,
                 "seam {out_id}>{in_id} must share tonic pc {tonic}"
@@ -1003,8 +989,10 @@ mod tests {
         let mut other = def.clone();
         other.danger = 0.90;
 
-        let s_def = generate_adventure_arrangement(&def, AdventureArrangement::Seeded).expect("def");
-        let s_other = generate_adventure_arrangement(&other, AdventureArrangement::Seeded).expect("other");
+        let s_def =
+            generate_adventure_arrangement(&def, AdventureArrangement::Seeded).expect("def");
+        let s_other =
+            generate_adventure_arrangement(&other, AdventureArrangement::Seeded).expect("other");
         assert_ne!(
             serde_json::to_vec(&s_def).expect("d"),
             serde_json::to_vec(&s_other).expect("o"),
@@ -1114,17 +1102,24 @@ mod tests {
             AdventureStyle::Orchestral,
         ] {
             let input = sample("all-phases-shape", style);
-            let score =
-                generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all-phases");
+            let score = generate_adventure_arrangement(&input, AdventureArrangement::AllPhases)
+                .expect("all-phases");
             assert_eq!(score.sections.len(), 16);
             let ids: Vec<&str> = adventure_section_ids();
             assert_eq!(
-                score.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+                score
+                    .sections
+                    .iter()
+                    .map(|s| s.id.as_str())
+                    .collect::<Vec<_>>(),
                 ids
             );
             let form = score.form.as_ref().expect("all-phases must carry a form");
             assert_eq!(
-                form.steps.iter().map(|step| step.section.as_str()).collect::<Vec<_>>(),
+                form.steps
+                    .iter()
+                    .map(|step| step.section.as_str())
+                    .collect::<Vec<_>>(),
                 ids
             );
             assert_eq!(form.loop_from, Some(1));
@@ -1143,7 +1138,8 @@ mod tests {
             AdventureStyle::Orchestral,
         ] {
             let input = sample("all-phases-iso", style);
-            let all = generate_adventure_arrangement(&input, AdventureArrangement::AllPhases).expect("all");
+            let all = generate_adventure_arrangement(&input, AdventureArrangement::AllPhases)
+                .expect("all");
             let original = generate_adventure(&input).expect("orig");
             for id in adventure_section_ids() {
                 let as_ = all.section(id).expect(id);
@@ -1164,7 +1160,8 @@ mod tests {
         let mut i2 = i1.clone();
         i2.seed = "trail-02".to_string();
         let s1 = generate_adventure_arrangement(&i1, AdventureArrangement::AllPhases).expect("s1");
-        let s1b = generate_adventure_arrangement(&i1, AdventureArrangement::AllPhases).expect("s1b");
+        let s1b =
+            generate_adventure_arrangement(&i1, AdventureArrangement::AllPhases).expect("s1b");
         let s2 = generate_adventure_arrangement(&i2, AdventureArrangement::AllPhases).expect("s2");
         assert_eq!(
             serde_json::to_vec(&s1).expect("s1s"),
@@ -1172,8 +1169,14 @@ mod tests {
         );
         assert_ne!(s1.id, s2.id);
         assert_eq!(
-            s1.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
-            s2.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+            s1.sections
+                .iter()
+                .map(|s| s.id.as_str())
+                .collect::<Vec<_>>(),
+            s2.sections
+                .iter()
+                .map(|s| s.id.as_str())
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -1231,7 +1234,13 @@ mod tests {
                 },
             ],
         };
-        mask_to_schedule(&mut section, bar, block_ticks, &schedule, adventure_layer_rank);
+        mask_to_schedule(
+            &mut section,
+            bar,
+            block_ticks,
+            &schedule,
+            adventure_layer_rank,
+        );
         let lanes: Vec<&str> = section
             .events
             .iter()
@@ -1241,7 +1250,13 @@ mod tests {
                 }
             })
             .collect();
-        assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
-        assert!(!lanes.contains(&"probe-melody"), "the melody layer must be masked");
+        assert!(
+            lanes.contains(&"probe-seam"),
+            "the seam lane must survive the mask"
+        );
+        assert!(
+            !lanes.contains(&"probe-melody"),
+            "the melody layer must be masked"
+        );
     }
 }

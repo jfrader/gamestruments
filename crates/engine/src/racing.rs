@@ -193,19 +193,23 @@ pub enum RacingPhaseRole {
 /// The role of a Racing section, read back from its authored plan. Pure,
 /// additive metadata used only by the composed arrangement.
 pub fn racing_phase_role(id: &str) -> Option<RacingPhaseRole> {
-    PLANS.iter().find(|plan| plan.id == id).map(|plan| match plan.development {
-        0 => RacingPhaseRole::Intro,
-        1 => RacingPhaseRole::Build,
-        2 => RacingPhaseRole::Groove,
-        3 | 4 => RacingPhaseRole::Peak,
-        _ => RacingPhaseRole::Outro,
-    })
+    PLANS
+        .iter()
+        .find(|plan| plan.id == id)
+        .map(|plan| match plan.development {
+            0 => RacingPhaseRole::Intro,
+            1 => RacingPhaseRole::Build,
+            2 => RacingPhaseRole::Groove,
+            3 | 4 => RacingPhaseRole::Peak,
+            _ => RacingPhaseRole::Outro,
+        })
 }
 
 /// The energy band of a Racing section on a 0-100 scale, derived from its
 /// authored `intensity`. `final-lap` (intensity 1.08) saturates at 100.
 pub fn racing_phase_energy(id: &str) -> Option<u32> {
-    PLANS.iter()
+    PLANS
+        .iter()
         .find(|plan| plan.id == id)
         .map(|plan| ((plan.intensity * 100.0).round() as u32).min(100))
 }
@@ -995,12 +999,9 @@ fn build_section_faithful(
 
     // final sort across lanes: by start, then by id
     events.sort_by(|a, b| {
-        let sa = a.start_tick();
-        let sb = b.start_tick();
-        if sa != sb {
-            return sa.cmp(&sb);
-        }
-        a_id(a).cmp(&b_id(b))
+        a.start_tick()
+            .cmp(&b.start_tick())
+            .then_with(|| a.id().cmp(b.id()))
     });
 
     PortableSection {
@@ -1011,16 +1012,6 @@ fn build_section_faithful(
         length_ticks: bar_ticks * 4,
         events,
     }
-}
-
-fn a_id(ev: &MusicEvent) -> String {
-    match ev {
-        MusicEvent::Note { id, .. } => id.clone(),
-        MusicEvent::Percussion { id, .. } => id.clone(),
-    }
-}
-fn b_id(ev: &MusicEvent) -> String {
-    a_id(ev)
 }
 
 #[derive(Clone)]
@@ -1557,7 +1548,10 @@ mod tests {
 
         let mut score = generate_racing(&base).expect("score must validate");
         let before = pitches(&score);
-        assert!(!before.is_empty(), "the racing score must carry pitched events");
+        assert!(
+            !before.is_empty(),
+            "the racing score must carry pitched events"
+        );
         score.transpose(5);
         let after = pitches(&score);
         for (a, b) in before.iter().zip(after.iter()) {

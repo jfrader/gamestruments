@@ -93,6 +93,13 @@ pub struct PortableSection {
     pub events: Vec<MusicEvent>,
 }
 
+impl PortableSection {
+    /// Stable-sort the section's events by start tick.
+    pub(crate) fn sort_events(&mut self) {
+        self.events.sort_by_key(MusicEvent::start_tick);
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum MusicEvent {
@@ -122,6 +129,13 @@ pub enum MusicEvent {
 }
 
 impl MusicEvent {
+    /// The event's id.
+    pub fn id(&self) -> &str {
+        match self {
+            Self::Note { id, .. } | Self::Percussion { id, .. } => id,
+        }
+    }
+
     pub fn start_tick(&self) -> u32 {
         match self {
             Self::Note { start_tick, .. } | Self::Percussion { start_tick, .. } => *start_tick,
@@ -224,6 +238,11 @@ impl PortableScore {
 
     pub fn section(&self, id: &str) -> Option<&PortableSection> {
         self.sections.iter().find(|section| section.id == id)
+    }
+
+    /// Mutable access to the section with `id`.
+    pub fn section_mut(&mut self, id: &str) -> Option<&mut PortableSection> {
+        self.sections.iter_mut().find(|section| section.id == id)
     }
 
     pub fn validate(&self) -> Result<(), String> {

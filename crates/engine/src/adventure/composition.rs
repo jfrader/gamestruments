@@ -1339,9 +1339,9 @@ fn add_melody(
     variant: usize,
     previous_pitch: &mut Option<i32>,
 ) {
-    let onsets = plan
-        .performance
-        .melody_onsets(style, plan.scene, kind, local_bar, variant, traits.motion);
+    let onsets =
+        plan.performance
+            .melody_onsets(style, plan.scene, kind, local_bar, variant, traits.motion);
     for (note, onset) in onsets.iter().enumerate() {
         let is_phrase_arrival = local_bar == PHRASE_BARS - 1 && note == onsets.len() - 1;
         let degree = if is_phrase_arrival {
@@ -1580,9 +1580,9 @@ fn add_percussion(
     bar_ticks: u32,
     pulse: u32,
 ) {
-    for &(voice, onset) in plan
-        .performance
-        .percussion(style, plan.scene, phrase, local_bar, traits.motion)
+    for &(voice, onset) in
+        plan.performance
+            .percussion(style, plan.scene, phrase, local_bar, traits.motion)
     {
         let is_frame = voice == "frame-drum";
         push_percussion(
@@ -1797,15 +1797,10 @@ fn build_section(
         }
     }
 
-    fn event_id(event: &MusicEvent) -> &str {
-        match event {
-            MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
-        }
-    }
     events.sort_by(|left, right| {
         left.start_tick()
             .cmp(&right.start_tick())
-            .then_with(|| event_id(left).cmp(event_id(right)))
+            .then_with(|| left.id().cmp(right.id()))
     });
     PortableSection {
         id: plan.id.to_string(),
@@ -1840,7 +1835,11 @@ mod tests {
             (Scene::Dawn, AdventurePhaseRole::Break, 36),
         ] {
             assert_eq!(adventure_phase_role(scene), role, "role for {scene:?}");
-            assert_eq!(adventure_phase_energy(scene), energy, "energy for {scene:?}");
+            assert_eq!(
+                adventure_phase_energy(scene),
+                energy,
+                "energy for {scene:?}"
+            );
         }
     }
 
