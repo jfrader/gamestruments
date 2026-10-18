@@ -1,35 +1,35 @@
-# Gamestruments — Adaptive Music for Godot 4
+# Gamestruments
 
-Procedural music that adapts to your game. Gamestruments generates
-deterministic, sample-free music inside Godot — no audio files, no authoring
-tool, no external services. Add one node, call `generate()` when a scene loads,
-then tell it what's happening; it blends between sections on bar boundaries.
+Gamestruments is a music addon for Godot 4. You give it a seed and a style when
+a scene loads, and it builds a piece with several parts. While the game runs,
+you tell it what is happening and it moves to another part at the next bar line.
+It runs offline. There are no sound files to load, and there is no separate
+editor. The addon makes every sound itself.
 
-This folder is the addon. Keep it intact so Godot can load the platform-matching
-binary from `bin/`.
+This folder is the addon. Keep the `bin/` folder inside it so Godot can load
+the library for your platform.
 
-**Hear it in the browser:** <https://gamestruments.gurisitos.games>
-(Godot and HTML5, one engine.)
-
-**Source, docs and native examples** (free, MIT):
-<https://github.com/jfrader/gamestruments>. Optional donations:
-<https://gurisitosgames.itch.io/gamestruments-godot>
+- Hear it: <https://gamestruments.gurisitos.games>
+- Source, docs and examples (free, MIT):
+  <https://github.com/jfrader/gamestruments>
+- Optional donation:
+  <https://gurisitosgames.itch.io/gamestruments-godot>
 
 ## Install
 
-1. Copy this `gamestruments/` folder into your project's `addons/` directory
-   (create `addons/` next to `project.godot` if needed).
-2. Restart Godot and wait for import to finish. This file should exist:
+1. Copy this `gamestruments/` folder into your project's `addons/` directory.
+   Create `addons/` next to `project.godot` if it does not exist.
+2. Restart Godot and wait for the import to finish. This file should exist:
 
 ```text
 res://addons/gamestruments/gamestruments.gdextension
 ```
 
-`GamestrumentsPlayer` then appears in the Create New Node dialog. Requires
-Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64/x86_64, or Web.
+`GamestrumentsPlayer` then appears in the Create New Node dialog.
 
-For Web, set **Extensions Support** on and **Thread Support** off in the export
-preset. No special server headers are needed.
+The addon runs on Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64 and
+x86_64, and Web. For a Web export, turn Extensions Support on and Thread Support
+off. No special server headers are needed.
 
 ## Use it
 
@@ -40,55 +40,61 @@ script to the scene root:
 extends Node
 
 @onready var music: GamestrumentsPlayer = $GamestrumentsPlayer
-var music_ready := false
 
 func _ready() -> void:
-    music.project_secret = "my-game"  # non-empty stable per-title namespace
+    music.project_secret = "my-game"
     music.recipe = "racing"
-    music.style = "neon"              # neon, funk, fusion, or chip
-    music.arrangement = "original"    # native default; "extended" adds sections
-    music.autoplay = false            # native default; true tours the sections
-    music_ready = music.generate("level-001")
-    if not music_ready:
-        push_error("Gamestruments generation failed")
+    music.style = "neon"
+    if not music.generate("level-001"):
+        push_error("Gamestruments could not build the music")
+
+func start_race() -> void:
+    music.set_race_state("grid", 0.0, 0.0, false)
+
+func update_race(intensity: float, pressure: float, final_lap: bool) -> void:
+    music.set_race_state("race", intensity, pressure, final_lap)
+
+func finish_race(won: bool) -> void:
+    music.set_race_state("finish", 0.0, 0.0, false, "win" if won else "loss")
 ```
 
-Drive it from your own game events and check each bool return:
+`project_secret` is a short name for your game. It keeps two games that use the
+same seed from getting the same music, and it is not a password. `recipe` is the
+kind of music: `racing`, `suspense` or `adventure`. `style` is the sound. You can
+also set `energy`, `complexity`, `brightness` and `syncopation` from 0 to 1
+before calling `generate`.
 
-- Racing: `set_race_state(...)`
-- Suspense: `set_trace_state(...)` plus form controls
-- Adventure: `set_adventure_state(...)`
+`generate` builds the music and returns `true` or `false`. The three functions
+above are examples, so connect them to your own signals. The `set_*_state` calls
+also return `true` or `false`; `false` means the music is not ready or a value is
+out of range. Changes blend in at the next bar. Adventure changes enter on the
+next half bar.
 
-Changes commit on the next bar boundary. The player routes to a `Music` bus
-when you have one, and falls back to `Master` when you don't.
+The player routes to a `Music` bus when the project has one and to `Master`
+otherwise.
 
-## Recipes
+## Kinds of music
 
-One player, three recipes. Set `recipe` before `generate`.
+`arrangement` controls the set and order of parts. Racing uses `original`
+(default) or `extended`; Suspense uses `seeded` (default) or `all-phases`.
+Adventure ignores it.
 
-| Recipe | Id | Styles | Drive with |
-|---|---|---|---|
-| Racing | `racing` | neon, funk, fusion, chip | `set_race_state` |
-| Suspense | `suspense` | terminal, cipher, noir | `set_trace_state` |
-| Adventure | `adventure` | folk, dark, orchestral | `set_adventure_state` |
+- Racing: the garage, the starting grid, the race, a position fight, the final
+  lap and the finish. Styles: `neon`, `funk`, `fusion`, `chip`.
+- Suspense: one long piece for stealth, hacking or horror. Styles: `terminal`,
+  `cipher`, `noir`, `trance`.
+- Adventure: camp, exploration, town, dungeon, combat, a boss, a sanctuary and
+  the final victory, plus eight variants. Styles: `folk`, `dark`, `orchestral`.
 
-`arrangement` is `original` (default) or `extended` for Racing, and `original`,
-`extended`, or `theme` for Suspense. Adventure ignores it. `autoplay` is
-Racing/Adventure only and defaults to `false`.
+`autoplay` is for Racing and Adventure. It defaults to `false`; set it to `true`
+to tour the parts automatically. Suspense already has an order and ignores it.
 
-## Requirements
+## Licence
 
-- Godot 4.7.x on Linux x86_64, Windows x86_64, macOS arm64/x86_64, or Web.
-
-For Web, set **Extensions Support** on and **Thread Support** off in the export
-preset. No special server headers are needed.
-- Offline runtime: no samples, network, middleware, or telemetry.
-
-## License
-
-MIT — use in closed-source commercial games. See `LICENSE.md` in this folder.
+MIT, including use in closed-source commercial games. See `LICENSE.md` in this
+folder. Third-party terms are in `THIRD_PARTY_NOTICES.md` in the release root.
 
 ## Support
 
-Questions or bugs: <https://github.com/jfrader/gamestruments/issues>
-with your version, Godot version, OS, and full Output text.
+Questions or bugs: <https://github.com/jfrader/gamestruments/issues>. Include
+the addon version, Godot version, OS and the full Output text.
