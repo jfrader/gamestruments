@@ -636,11 +636,7 @@ impl PhasePool for SuspensePool {
         false
     }
 
-    fn refine(
-        chosen: &[PhaseSpec],
-        candidates: Vec<PhaseSpec>,
-        root_seed: u32,
-    ) -> Vec<PhaseSpec> {
+    fn refine(chosen: &[PhaseSpec], candidates: Vec<PhaseSpec>, root_seed: u32) -> Vec<PhaseSpec> {
         // Budgeted only: contrast/groove rules. If empty for a state the
         // backtracker will not take the path; grammar + bands keep at least one
         // always reachable.
@@ -715,11 +711,7 @@ pub(crate) fn contrast_attrs_differ(a: &FigureSpec, b: &FigureSpec) -> usize {
     d
 }
 
-fn groove_run_allows_change(
-    chosen: &[PhaseSpec],
-    candidate: PhaseSpec,
-    root_seed: u32,
-) -> bool {
+fn groove_run_allows_change(chosen: &[PhaseSpec], candidate: PhaseSpec, root_seed: u32) -> bool {
     if candidate.role != PhaseRole::Groove {
         return true;
     }
@@ -746,11 +738,7 @@ fn groove_run_allows_change(
     changes <= would.len() / 2
 }
 
-fn build_legal_allows_figure(
-    chosen: &[PhaseSpec],
-    candidate: PhaseSpec,
-    root_seed: u32,
-) -> bool {
+fn build_legal_allows_figure(chosen: &[PhaseSpec], candidate: PhaseSpec, root_seed: u32) -> bool {
     let prev = chosen.last().copied().unwrap_or(candidate);
     let prev_fig = figure_for_composition(prev.id, root_seed);
     let cand_fig = figure_for_composition(candidate.id, root_seed);
@@ -992,7 +980,10 @@ mod tests {
     fn theme_ride_is_a_reachable_groove() {
         let ride = phase_spec("theme-ride").expect("theme-ride must be in the pool");
         assert_eq!(ride.role, PhaseRole::Groove);
-        assert!(!ride.one_shot, "a ride the composer can loop must not be one-shot");
+        assert!(
+            !ride.one_shot,
+            "a ride the composer can loop must not be one-shot"
+        );
         assert_eq!(ride.bars, 8);
         assert!(ride.energy <= 100);
 

@@ -1,3 +1,4 @@
+use crate::dmath::clamp_unit;
 use crate::rng::{hash_text, DeterministicRandom};
 use crate::score::{
     AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection, SongForm,
@@ -239,14 +240,6 @@ struct TimbreDna {
 
 struct ArrangementDna {
     bpm: f64,
-}
-
-fn clamp_unit(value: f64) -> f64 {
-    if !value.is_finite() {
-        0.5
-    } else {
-        value.clamp(0.0, 1.0)
-    }
 }
 
 fn normalize(input: &SuspenseInput) -> NormalizedTraits {
@@ -742,7 +735,7 @@ fn build_section(
     events.sort_by(|left, right| {
         left.start_tick()
             .cmp(&right.start_tick())
-            .then_with(|| event_sort_id(left).cmp(event_sort_id(right)))
+            .then_with(|| left.id().cmp(right.id()))
     });
 
     PortableSection {
@@ -752,12 +745,6 @@ fn build_section(
         color: plan.color.to_string(),
         length_ticks: section_len,
         events,
-    }
-}
-
-fn event_sort_id(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id,
     }
 }
 

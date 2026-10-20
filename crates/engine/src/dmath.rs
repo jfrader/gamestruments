@@ -36,6 +36,15 @@
 
 use std::f64::consts::{FRAC_1_PI, FRAC_PI_2, LN_10, LN_2, LOG10_E, LOG2_E, PI, SQRT_2};
 
+/// Clamp a unit trait value to `0..=1`, replacing non-finite input with `0.5`.
+pub(crate) fn clamp_unit(value: f64) -> f64 {
+    if !value.is_finite() {
+        0.5
+    } else {
+        value.clamp(0.0, 1.0)
+    }
+}
+
 /// `ln(10) / 20`, the dB-to-linear exponent scale factor.
 const LN10_OVER_20: f64 = LN_10 / 20.0;
 
@@ -291,15 +300,14 @@ mod tests {
     /// We assert the task's 1e-6 target with margin to spare.
     fn assert_close(got: f32, want: f64) {
         let e = rel_err(got, want);
-        assert!(
-            e < 1e-6,
-            "got {got:?} vs want {want:?} (rel err {e:.3e})"
-        );
+        assert!(e < 1e-6, "got {got:?} vs want {want:?} (rel err {e:.3e})");
     }
 
     #[test]
     fn exp_accuracy() {
-        for &x in &[-80.0f32, -20.0, -10.0, -3.0, -1.0, -0.5, 0.0, 0.5, 1.0, 3.0, 10.0, 20.0, 80.0] {
+        for &x in &[
+            -80.0f32, -20.0, -10.0, -3.0, -1.0, -0.5, 0.0, 0.5, 1.0, 3.0, 10.0, 20.0, 80.0,
+        ] {
             assert_close(exp(x), (x as f64).exp());
         }
         assert_eq!(exp(0.0), 1.0);
@@ -319,7 +327,9 @@ mod tests {
 
     #[test]
     fn ln_accuracy() {
-        for &x in &[1e-30f32, 1e-20, 1e-10, 1e-6, 0.001, 0.1, 0.5, 1.0, 1.5, 2.0, 10.0, 100.0, 1e10, 1e30] {
+        for &x in &[
+            1e-30f32, 1e-20, 1e-10, 1e-6, 0.001, 0.1, 0.5, 1.0, 1.5, 2.0, 10.0, 100.0, 1e10, 1e30,
+        ] {
             assert_close(ln(x), (x as f64).ln());
         }
         assert_close(ln(std::f32::consts::E), 1.0);
@@ -354,7 +364,9 @@ mod tests {
 
     #[test]
     fn db_to_linear_accuracy() {
-        for &db in &[-100.0f32, -40.0, -20.0, -12.0, -6.0, -1.0, 0.0, 6.0, 20.0, 40.0] {
+        for &db in &[
+            -100.0f32, -40.0, -20.0, -12.0, -6.0, -1.0, 0.0, 6.0, 20.0, 40.0,
+        ] {
             assert_close(db_to_linear(db), 10f64.powf(db as f64 / 20.0));
         }
         assert_eq!(db_to_linear(0.0), 1.0);

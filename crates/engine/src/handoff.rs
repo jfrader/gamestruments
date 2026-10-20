@@ -248,7 +248,10 @@ mod tests {
         handoff.poll(&at_floor());
 
         let (g_out, _) = crossfade_gains(handoff.progress(0));
-        assert_eq!(g_out, 1.0, "a fresh handoff must begin at full outgoing gain");
+        assert_eq!(
+            g_out, 1.0,
+            "a fresh handoff must begin at full outgoing gain"
+        );
     }
 
     #[test]

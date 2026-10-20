@@ -101,23 +101,36 @@ pub(crate) fn density_bias(value: f64, high: f64, low: f64) -> i32 {
     }
 }
 
+/// Inputs for one section's shared development arc.
+pub(crate) struct DevelopmentSpec<'a> {
+    pub bar: u32,
+    pub arc: &'a [u8],
+    pub rank: fn(&MusicEvent) -> u8,
+    pub seed: u32,
+    pub jitter: bool,
+    pub bias: i32,
+    pub floor: u8,
+}
+
 /// Run the shared development arc for one section: derive the block schedule
 /// from the role's `arc`, apply an optional seeded jitter and an optional
 /// one-rank density bias, clamp every block to at least `floor`, then mask the
 /// section's layers to the schedule using `rank`. Returns `(block_bars,
 /// schedule)` so a recipe can add its own embellishments afterwards (Suspense's
 /// impact onsets).
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn develop_section(
     section: &mut PortableSection,
-    bar: u32,
-    arc: &[u8],
-    rank: fn(&MusicEvent) -> u8,
-    seed: u32,
-    jitter: bool,
-    bias: i32,
-    floor: u8,
+    spec: DevelopmentSpec<'_>,
 ) -> Option<(u32, Vec<u8>)> {
+    let DevelopmentSpec {
+        bar,
+        arc,
+        rank,
+        seed,
+        jitter,
+        bias,
+        floor,
+    } = spec;
     if bar == 0 {
         return None;
     }
@@ -133,7 +146,7 @@ pub(crate) fn develop_section(
     }
     let block_ticks = bar * block_bars;
     mask_to_schedule(section, bar, block_ticks, &schedule, rank);
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     Some((block_bars, schedule))
 }
 
@@ -186,51 +199,62 @@ pub(crate) fn clear_seams(score: &mut PortableScore) {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn push_seam_note(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    pitch: u8,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Note {
-        id: format!("{section}:seam-note:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.4),
-        pitch,
-        voice: voice.to_string(),
-        role: None,
-    });
+/// Writes seam events for one section while sharing the score-wide serial.
+pub(crate) struct SeamWriter<'a> {
+    events: &'a mut Vec<MusicEvent>,
+    serial: &'a mut usize,
+    section: &'a str,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn push_seam_perc(
-    events: &mut Vec<MusicEvent>,
-    serial: &mut usize,
-    section: &str,
-    start: u32,
-    duration: u32,
-    velocity: f64,
-    voice: &str,
-) {
-    let index = *serial;
-    *serial += 1;
-    events.push(MusicEvent::Percussion {
-        id: format!("{section}:seam-perc:{index}"),
-        section: section.to_string(),
-        lane: format!("{section}-seam"),
-        start_tick: start,
-        duration_ticks: duration.max(1),
-        velocity: velocity.clamp(0.08, 0.3),
-        voice: voice.to_string(),
-    });
+impl<'a> SeamWriter<'a> {
+    pub(crate) fn new(
+        events: &'a mut Vec<MusicEvent>,
+        serial: &'a mut usize,
+        section: &'a str,
+    ) -> Self {
+        Self {
+            events,
+            serial,
+            section,
+        }
+    }
+
+    pub(crate) fn note(
+        &mut self,
+        start: u32,
+        duration: u32,
+        velocity: f64,
+        pitch: u8,
+        voice: &str,
+    ) {
+        let section = self.section;
+        let index = *self.serial;
+        *self.serial += 1;
+        self.events.push(MusicEvent::Note {
+            id: format!("{section}:seam-note:{index}"),
+            section: section.to_string(),
+            lane: format!("{section}-seam"),
+            start_tick: start,
+            duration_ticks: duration.max(1),
+            velocity: velocity.clamp(0.08, 0.4),
+            pitch,
+            voice: voice.to_string(),
+            role: None,
+        });
+    }
+
+    pub(crate) fn perc(&mut self, start: u32, duration: u32, velocity: f64, voice: &str) {
+        let section = self.section;
+        let index = *self.serial;
+        *self.serial += 1;
+        self.events.push(MusicEvent::Percussion {
+            id: format!("{section}:seam-perc:{index}"),
+            section: section.to_string(),
+            lane: format!("{section}-seam"),
+            start_tick: start,
+            duration_ticks: duration.max(1),
+            velocity: velocity.clamp(0.08, 0.3),
+            voice: voice.to_string(),
+        });
+    }
 }

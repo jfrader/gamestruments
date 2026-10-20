@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::development::{
-    clear_seams, density_bias, develop_section, plan_joins, push_seam_note, push_seam_perc,
+    clear_seams, density_bias, develop_section, plan_joins, DevelopmentSpec, SeamWriter,
 };
 #[cfg(test)]
 use crate::development::{mask_to_schedule, seam_lane};
@@ -256,9 +256,18 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
     // first, so the head anchor (rank 2) in the opening block is never newly
     // masked by the bias (the bed, rank 0, is never masked regardless).
     let bias = density_bias(tension, 0.66, 0.35);
-    let Some((block_bars, schedule)) =
-        develop_section(section, bar, arc, layer_rank, _seed, false, bias, 1)
-    else {
+    let Some((block_bars, schedule)) = develop_section(
+        section,
+        DevelopmentSpec {
+            bar,
+            arc,
+            rank: layer_rank,
+            seed: _seed,
+            jitter: false,
+            bias,
+            floor: 1,
+        },
+    ) else {
         return;
     };
     let block_ticks = bar * block_bars;
@@ -283,7 +292,7 @@ fn apply_development_arc(section: &mut PortableSection, bar: u32, _seed: u32, te
             });
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 fn generate_all_phases(input: &SuspenseInput, take: u32) -> Result<PortableScore, String> {
@@ -372,8 +381,7 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
     for (out_id, in_id) in pairs {
         let out_role = phase_spec(&out_id).map(|spec| spec.role);
         let in_role = phase_spec(&in_id).map(|spec| spec.role);
-        let mut rng =
-            DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
+        let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
         // Different unions get different resources: what is arriving and what is
         // leaving steer the vocabulary.
         let choices: &[SeamGesture] = if in_role == Some(PhaseRole::Peak) {
@@ -406,14 +414,12 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
         let out_start = out_len.saturating_sub(out_span);
         let mut out_events: Vec<MusicEvent> = Vec::new();
         let mut in_events: Vec<MusicEvent> = Vec::new();
+        let mut outgoing = SeamWriter::new(&mut out_events, &mut serial, &out_id);
         match gesture {
             SeamGesture::Fill => {
                 for (index, step) in [8u32, 10, 12, 14, 15].iter().enumerate() {
                     let offset = (step * bar / 16).min(out_span.saturating_sub(bar / 16));
-                    push_seam_perc(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    outgoing.perc(
                         out_start + offset,
                         bar / 16,
                         0.12 + 0.015 * index as f64,
@@ -422,25 +428,14 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
                 }
             }
             SeamGesture::Riser => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "reverse-cymbal",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "reverse-cymbal");
             }
             SeamGesture::Lift => {
                 for index in 0..3usize {
                     let degree = PROGRESSION_ARC[(index + entry) % PROGRESSION_ARC.len()];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -450,23 +445,12 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
                 }
             }
             SeamGesture::Both => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "reverse-cymbal",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "reverse-cymbal");
                 for index in 0..3usize {
                     let degree = PROGRESSION_ARC[(index + entry) % PROGRESSION_ARC.len()];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -476,41 +460,25 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
                 }
             }
             SeamGesture::Tail => {
-                push_seam_note(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.1,
-                    root,
-                    "warm",
-                );
+                outgoing.note(out_start, out_span, 0.1, root, "warm");
             }
         }
+        let mut incoming = SeamWriter::new(&mut in_events, &mut serial, &in_id);
         match landing {
-            1 => push_seam_perc(
-                &mut in_events,
-                &mut serial,
-                &in_id,
-                0,
-                bar / 8,
-                0.12,
-                "air-impact",
-            ),
-            2 => push_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "kick"),
+            1 => incoming.perc(0, bar / 8, 0.12, "air-impact"),
+            2 => incoming.perc(0, bar / 8, 0.22, "kick"),
             _ => {}
         }
         if !out_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == out_id) {
+            if let Some(section) = score.section_mut(&out_id) {
                 section.events.extend(out_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
         if !in_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == in_id) {
+            if let Some(section) = score.section_mut(&in_id) {
                 section.events.extend(in_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
     }
@@ -521,7 +489,11 @@ fn apply_transition_pass(score: &mut PortableScore, seed: u32) {
 /// so the ghost hats land on the arranged material instead of refilling the
 /// blocks the arc just emptied, and the edge anchors are re-applied afterwards
 /// so a masked first/last bar still carries the shared root.
-fn apply_development_pass(score: &mut PortableScore, seed: u32, traits: SuspenseTraits) -> Result<(), String> {
+fn apply_development_pass(
+    score: &mut PortableScore,
+    seed: u32,
+    traits: SuspenseTraits,
+) -> Result<(), String> {
     let bar = score.bar_ticks();
     let root = arrangement_root(score)?;
     for section in &mut score.sections {
@@ -616,7 +588,7 @@ fn apply_surface_variation(score: &mut PortableScore, input: &SuspenseInput, tak
             });
         }
 
-        section.events.sort_by_key(MusicEvent::start_tick);
+        section.sort_events();
     }
 }
 
@@ -707,11 +679,7 @@ fn apply_trait_response(score: &mut PortableScore, traits: &SuspenseTraits) {
                 if start + sixteenth > section.length_ticks {
                     continue;
                 }
-                if section
-                    .events
-                    .iter()
-                    .any(|e| e.start_tick() == start)
-                {
+                if section.events.iter().any(|e| e.start_tick() == start) {
                     continue;
                 }
                 let voice = if start % pulse == 0 { "kick" } else { "hat" };
@@ -766,11 +734,7 @@ fn apply_trait_response(score: &mut PortableScore, traits: &SuspenseTraits) {
                 if start + pulse > section.length_ticks {
                     continue;
                 }
-                if section
-                    .events
-                    .iter()
-                    .any(|e| e.start_tick() == start)
-                {
+                if section.events.iter().any(|e| e.start_tick() == start) {
                     continue;
                 }
                 let voice = "pulse";
@@ -793,7 +757,7 @@ fn apply_trait_response(score: &mut PortableScore, traits: &SuspenseTraits) {
             }
         }
 
-        section.events.sort_by_key(MusicEvent::start_tick);
+        section.sort_events();
     }
 }
 
@@ -1089,40 +1053,14 @@ fn develop_phase(
             );
         }
         if let Some(drone_fifth) = identity.drone_fifth {
-            develop_drone(
-                &mut events,
-                &id,
-                drone_fifth,
-                bar,
-                bars,
-                "drone-upper",
-                2,
-            );
+            develop_drone(&mut events, &id, drone_fifth, bar, bars, "drone-upper", 2);
         }
     }
     if let Some(pulse) = identity.pulse {
-        develop_pulse(
-            &mut events,
-            &id,
-            &pulse,
-            root,
-            bar,
-            bars,
-            &degrees,
-            figure,
-        );
+        develop_pulse(&mut events, &id, &pulse, root, bar, bars, &degrees, figure);
     }
     if let Some(arp) = identity.arp {
-        develop_arp(
-            &mut events,
-            &id,
-            &arp,
-            root,
-            bar,
-            bars,
-            &degrees,
-            figure,
-        );
+        develop_arp(&mut events, &id, &arp, root, bar, bars, &degrees, figure);
     }
     if let Some(cell) = identity.cell {
         let cell_root = cell_root_for(&id, root);
@@ -1151,7 +1089,7 @@ fn develop_phase(
 
     section.length_ticks = bars * bar;
     section.events = events;
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 /// Hold a drone voice continuously across the whole phase.
@@ -1305,7 +1243,7 @@ fn anchor_phase_edges(section: &mut PortableSection, root: u8, bar: u32) {
             false,
         );
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1936,7 +1874,7 @@ fn build_match_phase(phase: &MatchPhase, root: u8, bar: u32, seed: u32) -> Porta
             push_dev_perc(events, id, start, bar, 0.4, "reverse-cymbal");
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2007,7 +1945,7 @@ fn build_half_time(root: u8, bar: u32, seed: u32) -> PortableSection {
         PhaseRole::Groove,
         half_fig,
     );
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2079,7 +2017,7 @@ fn build_sub_groove(root: u8, bar: u32, seed: u32) -> PortableSection {
             );
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2147,7 +2085,7 @@ fn build_syncopated(root: u8, bar: u32, seed: u32) -> PortableSection {
             );
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2213,7 +2151,7 @@ fn build_drive(root: u8, bar: u32, seed: u32) -> PortableSection {
             }
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2255,7 +2193,7 @@ fn build_sparse(root: u8, bar: u32, seed: u32) -> PortableSection {
             );
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2336,7 +2274,7 @@ fn build_drum_break(bar: u32, seed: u32) -> PortableSection {
             }
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2383,7 +2321,7 @@ fn build_false_stop(root: u8, bar: u32, seed: u32) -> PortableSection {
         "warm",
         false,
     );
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2425,7 +2363,7 @@ fn build_filter_break(root: u8, bar: u32, seed: u32) -> PortableSection {
             effect(&mut section, "air-impact", bar_index * bar, bar / 4, 0.12);
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2487,7 +2425,7 @@ fn build_harmonic_bridge(root: u8, bar: u32, seed: u32) -> PortableSection {
         "drone",
         0,
     );
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2558,7 +2496,7 @@ fn build_step_up_bridge(root: u8, bar: u32, seed: u32) -> PortableSection {
         PhaseRole::Bridge,
         step_fig,
     );
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2652,7 +2590,7 @@ fn build_theme_ride(root: u8, bar: u32, seed: u32) -> PortableSection {
     theme_ride_backbeat(&mut section.events, "theme-ride", bar, 8);
     develop_pilot_percussion(&mut section.events, "theme-ride", bar, 8, seed, ride_fig);
 
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2679,7 +2617,14 @@ fn theme_ride_backbeat(events: &mut Vec<MusicEvent>, id: &str, bar: u32, bars: u
         push_dev_perc(events, id, index * bar + 6 * pulse, pulse, 0.32, "snare");
         // Offbeat hats.
         for step in [1u32, 3, 5, 7] {
-            push_dev_perc(events, id, index * bar + step * pulse, pulse / 3, 0.16, "hat");
+            push_dev_perc(
+                events,
+                id,
+                index * bar + step * pulse,
+                pulse / 3,
+                0.16,
+                "hat",
+            );
         }
     }
 }
@@ -2703,13 +2648,7 @@ fn aeolian(root: u8, degree: i32) -> u8 {
     (i32::from(root) + STEPS[index] + octave * 12).clamp(0, 127) as u8
 }
 
-fn anomaly_extension(
-    section: &mut PortableSection,
-    root: u8,
-    bar: u32,
-    seed: u32,
-    entry: usize,
-) {
+fn anomaly_extension(section: &mut PortableSection, root: u8, bar: u32, seed: u32, entry: usize) {
     let start = section.length_ticks;
     let scanning = matches!(section.id.as_str(), "verse" | "scan-ii");
     let base = if scanning { "verse" } else { "chorus" };
@@ -2779,7 +2718,7 @@ fn anomaly_extension(
             0.1,
         );
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 fn variation(
@@ -2876,7 +2815,7 @@ fn variation(
     if !scanning {
         effect(&mut section, "reverse-cymbal", 15 * bar, bar, 0.1);
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -2908,7 +2847,7 @@ fn rhythm(section: &mut PortableSection, bar: u32) {
             });
         }
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 struct Texture {
@@ -2981,9 +2920,8 @@ fn anomaly(root: u8, bar: u32, seed: u32, entry: usize) -> PortableSection {
             let shifted = (step + displacement + phrase_bar % 3) % 16;
             // The stagger is the character and never changes; the chord colours
             // come from the set's shared arc entry.
-            let degree = PROGRESSION_ARC[((step / stride as u32
-                + phrase_bar
-                + entry as u32) as usize)
+            let degree = PROGRESSION_ARC[((step / stride as u32 + phrase_bar + entry as u32)
+                as usize)
                 % PROGRESSION_ARC.len()];
             let interval = (i32::from(aeolian(root, degree)) - i32::from(root)) as u8;
             section.events.push(MusicEvent::Note {
@@ -3025,7 +2963,7 @@ fn anomaly(root: u8, bar: u32, seed: u32, entry: usize) -> PortableSection {
     rhythm(&mut section, bar);
     effect(&mut section, "reverse-cymbal", 3 * bar, bar, 0.14);
     effect(&mut section, "air-impact", 4 * bar, bar / 4, 0.14);
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
     section
 }
 
@@ -3136,7 +3074,10 @@ mod tests {
         // The take drives the entry, and the entry is not frozen to one value.
         assert_eq!(arc_entry(99), arc_entry(99));
         let entries: std::collections::BTreeSet<usize> = (0..8u32).map(arc_entry).collect();
-        assert!(entries.len() >= 3, "the arc entry barely moves across takes");
+        assert!(
+            entries.len() >= 3,
+            "the arc entry barely moves across takes"
+        );
 
         // The lean has to reach the material, and every phase opens on the tonic.
         // `scan-ii` / `breach-ii` / `anomaly` come from `variation` and `anomaly`,
@@ -3172,7 +3113,10 @@ mod tests {
                 }
             }
         }
-        assert!(leaning > 0, "no non-resolving phase reaches the bVII at the seam");
+        assert!(
+            leaning > 0,
+            "no non-resolving phase reaches the bVII at the seam"
+        );
     }
 
     /// The pool owns more than one kit. The Theme's full kick–snare–kick–snare
@@ -3325,18 +3269,20 @@ mod tests {
 
         // Identity: a continuous low drone, a short melodic cell, a steady
         // eighth-note pulse, and the backbeat all present.
-        let has_drone = section.events.iter().any(|event| {
-            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-drone"))
-        });
-        let has_cell = section.events.iter().any(|event| {
-            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-cell"))
-        });
-        let has_pulse = section.events.iter().any(|event| {
-            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-pulse"))
-        });
-        let has_hook = section.events.iter().any(|event| {
-            matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-hook"))
-        });
+        let has_drone = section.events.iter().any(
+            |event| matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-drone")),
+        );
+        let has_cell = section
+            .events
+            .iter()
+            .any(|event| matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-cell")));
+        let has_pulse = section.events.iter().any(
+            |event| matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-pulse")),
+        );
+        let has_hook = section
+            .events
+            .iter()
+            .any(|event| matches!(event, MusicEvent::Note { lane, .. } if lane.ends_with("-hook")));
         assert!(has_drone, "theme-ride needs a drone");
         assert!(has_cell, "theme-ride needs a short cell");
         assert!(has_pulse, "theme-ride needs a steady pulse");
@@ -3345,7 +3291,9 @@ mod tests {
         // No flat over-long sustain: the cell is short, not a held beep.
         for event in &section.events {
             if let MusicEvent::Note {
-                lane, duration_ticks, ..
+                lane,
+                duration_ticks,
+                ..
             } = event
             {
                 if lane.ends_with("-cell") || lane.ends_with("-hook") {
@@ -3456,13 +3404,16 @@ mod tests {
         .unwrap();
         let a = seam_signature(&first);
         assert!(!a.is_empty(), "no join wrote transition material");
-        assert_ne!(a, seam_signature(&second), "the take does not change the joins");
+        assert_ne!(
+            a,
+            seam_signature(&second),
+            "the take does not change the joins"
+        );
 
         // No two joins are treated identically, and the ceilings hold.
         let bar = first.bar_ticks();
         let root = arrangement_root(&first).unwrap();
-        let mut per_join: std::collections::BTreeSet<String> =
-            std::collections::BTreeSet::new();
+        let mut per_join: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
         let mut joins = 0;
         for section in &first.sections {
             let events: Vec<String> = section
@@ -4510,13 +4461,8 @@ mod tests {
         inp.heat = heat;
         inp.mystery = mystery;
         inp.pulse = pulse;
-        generate_suspense_arrangement_take(
-            &inp,
-            SuspenseArrangement::Seeded,
-            Intent::Arc,
-            0,
-        )
-        .expect("seeded")
+        generate_suspense_arrangement_take(&inp, SuspenseArrangement::Seeded, Intent::Arc, 0)
+            .expect("seeded")
     }
 
     #[test]
@@ -4646,8 +4592,14 @@ mod tests {
                 }
             })
             .collect();
-        assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
-        assert!(!lanes.contains(&"probe-arp"), "the arp layer must be masked");
+        assert!(
+            lanes.contains(&"probe-seam"),
+            "the seam lane must survive the mask"
+        );
+        assert!(
+            !lanes.contains(&"probe-arp"),
+            "the arp layer must be masked"
+        );
     }
 
     const WORLDS: [SuspenseStyle; 4] = [

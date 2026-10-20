@@ -1,9 +1,9 @@
-use crate::development::{
-    clear_seams, density_bias, develop_section, fold_register_ceiling, plan_joins, push_seam_note,
-    push_seam_perc,
-};
 #[cfg(test)]
 use crate::development::mask_to_schedule;
+use crate::development::{
+    clear_seams, density_bias, develop_section, fold_register_ceiling, plan_joins, DevelopmentSpec,
+    SeamWriter,
+};
 use crate::racing::{
     generate_racing, racing_harmony, GenerateInput, RacingHarmony, RacingPhaseRole, Style,
 };
@@ -12,9 +12,7 @@ use crate::racing_pool::{
     racing_phase_spec, RACING_SECTION_IDS, RACING_SIGNAL_IDS,
 };
 use crate::rng::{hash_text, DeterministicRandom};
-use crate::score::{
-    AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection,
-};
+use crate::score::{AdaptiveCondition, AdaptiveRule, MusicEvent, PortableScore, PortableSection};
 use crate::theory::scale_pitch;
 
 /// Version of the extended-arrangement wrapper itself. Kept independent of the
@@ -227,7 +225,12 @@ fn racing_arc_for_role(role: RacingPhaseRole) -> &'static [u8] {
 /// keeps more layers audible (later blocks climb a rank), low complexity thins
 /// them. The first block is left untouched so the melody still waits for the
 /// build at every complexity.
-fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u32, complexity: f64) {
+fn apply_racing_development_arc(
+    section: &mut PortableSection,
+    bar: u32,
+    seed: u32,
+    complexity: f64,
+) {
     let Some(spec) = racing_phase_spec(&section.id) else {
         return;
     };
@@ -247,7 +250,18 @@ fn apply_racing_development_arc(section: &mut PortableSection, bar: u32, seed: u
     } else {
         1
     };
-    develop_section(section, bar, arc, racing_layer_rank, seed, true, bias, floor);
+    develop_section(
+        section,
+        DevelopmentSpec {
+            bar,
+            arc,
+            rank: racing_layer_rank,
+            seed,
+            jitter: true,
+            bias,
+            floor,
+        },
+    );
 }
 
 /// The rhythmic bed a race-groove phase gets on the seeded path, so its
@@ -393,7 +407,7 @@ fn apply_racing_race_bed(section: &mut PortableSection, bar: u32) {
     }
 
     section.events.extend(bed);
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 /// The seam vocabulary: how one seeded phase hands the music to the next.
@@ -438,8 +452,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
     for (out_id, in_id) in pairs {
         let out_role = racing_phase_spec(&out_id).map(|spec| spec.role);
         let in_role = racing_phase_spec(&in_id).map(|spec| spec.role);
-        let mut rng =
-            DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
+        let mut rng = DeterministicRandom::new(seed ^ hash_text(&format!("{out_id}>{in_id}:seam")));
         // Different joins get different resources: what is arriving and what is
         // leaving steer the vocabulary.
         let choices: &[RacingSeamGesture] = if in_role == Some(RacingPhaseRole::Peak) {
@@ -479,14 +492,12 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
         let out_start = out_len.saturating_sub(out_span);
         let mut out_events: Vec<MusicEvent> = Vec::new();
         let mut in_events: Vec<MusicEvent> = Vec::new();
+        let mut outgoing = SeamWriter::new(&mut out_events, &mut serial, &out_id);
         match gesture {
             RacingSeamGesture::Fill => {
                 for (index, step) in [8u32, 10, 12, 14, 15].iter().enumerate() {
                     let offset = (step * bar / 16).min(out_span.saturating_sub(bar / 16));
-                    push_seam_perc(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    outgoing.perc(
                         out_start + offset,
                         bar / 16,
                         0.12 + 0.015 * index as f64,
@@ -495,25 +506,14 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 }
             }
             RacingSeamGesture::Riser => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "reverse-cymbal",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "reverse-cymbal");
             }
             RacingSeamGesture::Lift => {
                 for index in 0..3usize {
                     let degree = root.progression_degrees[index % root.progression_degrees.len()];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -523,23 +523,12 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 }
             }
             RacingSeamGesture::Both => {
-                push_seam_perc(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
-                    out_start,
-                    out_span,
-                    0.12,
-                    "reverse-cymbal",
-                );
+                outgoing.perc(out_start, out_span, 0.12, "reverse-cymbal");
                 for index in 0..3usize {
                     let degree = root.progression_degrees[index % root.progression_degrees.len()];
-                    let offset = (index as u32 * out_span / 3)
-                        .min(out_span.saturating_sub(bar / 4));
-                    push_seam_note(
-                        &mut out_events,
-                        &mut serial,
-                        &out_id,
+                    let offset =
+                        (index as u32 * out_span / 3).min(out_span.saturating_sub(bar / 4));
+                    outgoing.note(
                         out_start + offset,
                         bar / 4,
                         0.12,
@@ -550,10 +539,7 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
             }
             RacingSeamGesture::Tail => {
                 let degree = root.progression_degrees[0];
-                push_seam_note(
-                    &mut out_events,
-                    &mut serial,
-                    &out_id,
+                outgoing.note(
                     out_start,
                     out_span,
                     0.1,
@@ -562,29 +548,22 @@ fn apply_racing_transition_pass(score: &mut PortableScore, root: &RacingHarmony,
                 );
             }
         }
+        let mut incoming = SeamWriter::new(&mut in_events, &mut serial, &in_id);
         match landing {
-            1 => push_seam_perc(
-                &mut in_events,
-                &mut serial,
-                &in_id,
-                0,
-                bar / 8,
-                0.12,
-                "air-impact",
-            ),
-            2 => push_seam_perc(&mut in_events, &mut serial, &in_id, 0, bar / 8, 0.22, "kick"),
+            1 => incoming.perc(0, bar / 8, 0.12, "air-impact"),
+            2 => incoming.perc(0, bar / 8, 0.22, "kick"),
             _ => {}
         }
         if !out_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == out_id) {
+            if let Some(section) = score.section_mut(&out_id) {
                 section.events.extend(out_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
         if !in_events.is_empty() {
-            if let Some(section) = score.sections.iter_mut().find(|s| s.id == in_id) {
+            if let Some(section) = score.section_mut(&in_id) {
                 section.events.extend(in_events);
-                section.events.sort_by_key(MusicEvent::start_tick);
+                section.sort_events();
             }
         }
     }
@@ -640,7 +619,7 @@ fn anchor_racing_edges(section: &mut PortableSection, root_pc: i32, bar: u32) {
             role: None,
         });
     }
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 /// Fold a seeded section's piercing highs down whole octaves (pitch class, and
@@ -687,8 +666,8 @@ fn apply_racing_trait_surface(
 
     // energy → kit density: extra hats on empty sixteenths, count grows with the
     // knob. Drumless phases (the breather) skip this so they never gain a kit.
-    let drumless = racing_phase_spec(&section.id)
-        .is_some_and(|spec| spec.role == RacingPhaseRole::Breather);
+    let drumless =
+        racing_phase_spec(&section.id).is_some_and(|spec| spec.role == RacingPhaseRole::Breather);
     let extra_kit = if drumless {
         0
     } else {
@@ -700,11 +679,9 @@ fn apply_racing_trait_surface(
             if start % pulse == 0 || start + sixteenth > section.length_ticks {
                 continue;
             }
-            if section
-                .events
-                .iter()
-                .any(|e| matches!(e, MusicEvent::Percussion { start_tick, .. } if *start_tick == start))
-            {
+            if section.events.iter().any(
+                |e| matches!(e, MusicEvent::Percussion { start_tick, .. } if *start_tick == start),
+            ) {
                 continue;
             }
             section.events.push(MusicEvent::Percussion {
@@ -744,11 +721,7 @@ fn apply_racing_trait_surface(
             if start + pulse > section.length_ticks {
                 continue;
             }
-            if section
-                .events
-                .iter()
-                .any(|e| e.start_tick() == start)
-            {
+            if section.events.iter().any(|e| e.start_tick() == start) {
                 continue;
             }
             let Some(&pitch) = pitches.get(placed % pitches.len().max(1)) else {
@@ -819,7 +792,7 @@ fn apply_racing_trait_surface(
         }
     }
 
-    section.events.sort_by_key(MusicEvent::start_tick);
+    section.sort_events();
 }
 
 /// Re-time a four-bar Racing section to `bars` by tiling its authored block.
@@ -1309,7 +1282,7 @@ fn build_phase(base: &PortableScore, phase: &PhaseSpec) -> PortableSection {
         if sa != sb {
             return sa.cmp(&sb);
         }
-        event_id(a).cmp(event_id(b))
+        a.id().cmp(b.id())
     });
 
     PortableSection {
@@ -1601,7 +1574,7 @@ fn build_breather(base: &PortableScore) -> PortableSection {
         if sa != sb {
             return sa.cmp(&sb);
         }
-        event_id(a).cmp(event_id(b))
+        a.id().cmp(b.id())
     });
     PortableSection {
         id: "breather".into(),
@@ -1658,7 +1631,7 @@ fn build_defeat(base: &PortableScore) -> PortableSection {
         if sa != sb {
             return sa.cmp(&sb);
         }
-        event_id(a).cmp(event_id(b))
+        a.id().cmp(b.id())
     });
     PortableSection {
         id: "defeat".into(),
@@ -1730,7 +1703,7 @@ fn build_recovery(base: &PortableScore) -> PortableSection {
         if sa != sb {
             return sa.cmp(&sb);
         }
-        event_id(a).cmp(event_id(b))
+        a.id().cmp(b.id())
     });
     PortableSection {
         id: "recovery".into(),
@@ -1792,7 +1765,7 @@ fn build_wrong_way(base: &PortableScore) -> PortableSection {
         if sa != sb {
             return sa.cmp(&sb);
         }
-        event_id(a).cmp(event_id(b))
+        a.id().cmp(b.id())
     });
     PortableSection {
         id: "wrong-way".into(),
@@ -2118,12 +2091,6 @@ fn clamp_duration_to_bar(event: &mut MusicEvent, bar_ticks: u32, maxl: u32) {
     }
 }
 
-fn event_id(event: &MusicEvent) -> &str {
-    match event {
-        MusicEvent::Note { id, .. } | MusicEvent::Percussion { id, .. } => id.as_str(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2362,9 +2329,7 @@ mod tests {
 
             // The fixed beat-4 counter lane is gone.
             assert!(
-                slip.events
-                    .iter()
-                    .all(|e| !event_id(e).contains(":counter:")),
+                slip.events.iter().all(|e| !e.id().contains(":counter:")),
                 "{} still carries a counter lane",
                 style.as_str()
             );
@@ -2740,10 +2705,12 @@ mod tests {
     #[test]
     fn seeded_produces_a_valid_score_with_a_real_form() {
         let input = default_input();
-        let score =
-            generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
+        let score = generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         // generate_seeded validates internally; assert the visible shape.
-        assert_eq!(score.sections.len(), RACING_SECTION_IDS.len() + RACING_SIGNAL_IDS.len());
+        assert_eq!(
+            score.sections.len(),
+            RACING_SECTION_IDS.len() + RACING_SIGNAL_IDS.len()
+        );
         let form = score.form.as_ref().expect("seeded must carry a form");
         assert!(!form.steps.is_empty());
         for step in &form.steps {
@@ -2763,8 +2730,7 @@ mod tests {
     #[test]
     fn seeded_form_starts_garage_ends_on_a_terminal_and_loops_to_a_groove() {
         let input = default_input();
-        let score =
-            generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
+        let score = generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         let form = score.form.as_ref().expect("form");
         let loop_from = form.loop_from.expect("seeded form must have a loopFrom");
         assert!((loop_from as usize) < form.steps.len());
@@ -2788,8 +2754,7 @@ mod tests {
     #[test]
     fn seeded_role_aware_lengths_peaks_longer_intro_outro_short() {
         let input = default_input();
-        let score =
-            generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
+        let score = generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         let bar = score.bar_ticks();
         for id in RACING_SECTION_IDS {
             let sec = score.section(id).expect(id);
@@ -2828,8 +2793,8 @@ mod tests {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let bar = score.bar_ticks();
                 for id in [
                     "ignition",
@@ -2874,8 +2839,8 @@ mod tests {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let bar = score.bar_ticks();
                 let pulse = bar / 8;
                 for id in [
@@ -2927,8 +2892,8 @@ mod tests {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let breather = score.section("breather").expect("breather");
                 assert!(
                     !breather.events.is_empty(),
@@ -2945,8 +2910,7 @@ mod tests {
     #[test]
     fn seeded_event_ids_unique_and_in_bounds() {
         let input = default_input();
-        let score =
-            generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
+        let score = generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
         let mut seen = HashSet::new();
         for sec in &score.sections {
             for ev in &sec.events {
@@ -2984,8 +2948,7 @@ mod tests {
         for i in 0..16 {
             let mut input = sample("comp-var", Style::Funk, InstrumentPalette::default());
             input.seed = format!("comp-var-{i}");
-            let score =
-                generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("ok");
+            let score = generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("ok");
             let steps: Vec<String> = score
                 .form
                 .expect("form")
@@ -3068,10 +3031,7 @@ mod tests {
                             && event.start_tick() >= from
                             && event.start_tick() < to
                     });
-                    assert!(
-                        has_bass,
-                        "{style:?} {nid} block {block} lost the bass bed"
-                    );
+                    assert!(has_bass, "{style:?} {nid} block {block} lost the bass bed");
                 }
 
                 // The melody enters later: it is masked from the first block and
@@ -3089,7 +3049,8 @@ mod tests {
                     "{style:?} {nid} melody must wait for the build"
                 );
                 assert!(
-                    (1..blocks as u32).any(|block| melody_in(block * block_ticks, (block + 1) * block_ticks)),
+                    (1..blocks as u32)
+                        .any(|block| melody_in(block * block_ticks, (block + 1) * block_ticks)),
                     "{style:?} {nid} melody never enters"
                 );
             }
@@ -3101,8 +3062,8 @@ mod tests {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let bar = score.bar_ticks();
                 let order: Vec<String> = score
                     .form
@@ -3223,7 +3184,10 @@ mod tests {
             low < high,
             "brightness must move the melody register, got {low}/{mid}/{high}"
         );
-        assert!(low <= mid && mid <= high, "brightness melody register must be monotonic");
+        assert!(
+            low <= mid && mid <= high,
+            "brightness melody register must be monotonic"
+        );
     }
 
     #[test]
@@ -3232,8 +3196,8 @@ mod tests {
             let ceiling = racing_register_ceiling(style);
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 for section in &score.sections {
                     for event in &section.events {
                         if let Some(pitch) = event.pitch() {
@@ -3259,8 +3223,8 @@ mod tests {
             let ceiling = racing_register_ceiling(style);
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let bar = score.bar_ticks();
                 let pulse = bar / 8;
                 for section in &score.sections {
@@ -3296,8 +3260,8 @@ mod tests {
             let anticipation_ceiling = racing_anticipation_ceiling(style);
             for seed in ["level-001", "level-002", "level-003"] {
                 let input = lab_input(style, seed);
-                let score = generate_racing_arrangement(&input, RacingArrangement::Seeded)
-                    .expect("seeded");
+                let score =
+                    generate_racing_arrangement(&input, RacingArrangement::Seeded).expect("seeded");
                 let bar = score.bar_ticks();
                 let pulse = bar / 8;
                 for section in &score.sections {
@@ -3346,14 +3310,18 @@ mod tests {
     fn all_phases_produces_a_valid_score_with_a_canonical_form() {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             let input = lab_input(style, "level-001");
-            let score =
-                generate_racing_arrangement(&input, RacingArrangement::AllPhases).expect("all-phases");
+            let score = generate_racing_arrangement(&input, RacingArrangement::AllPhases)
+                .expect("all-phases");
             assert_eq!(
                 score.sections.len(),
                 RACING_SECTION_IDS.len() + RACING_SIGNAL_IDS.len()
             );
             assert_eq!(
-                score.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+                score
+                    .sections
+                    .iter()
+                    .map(|s| s.id.as_str())
+                    .collect::<Vec<_>>(),
                 RACING_SECTION_IDS
                     .iter()
                     .chain(RACING_SIGNAL_IDS.iter())
@@ -3362,7 +3330,10 @@ mod tests {
             );
             let form = score.form.as_ref().expect("all-phases must carry a form");
             assert_eq!(
-                form.steps.iter().map(|step| step.section.as_str()).collect::<Vec<_>>(),
+                form.steps
+                    .iter()
+                    .map(|step| step.section.as_str())
+                    .collect::<Vec<_>>(),
                 RACING_SECTION_IDS.to_vec()
             );
             assert_eq!(form.loop_from, Some(4));
@@ -3377,7 +3348,8 @@ mod tests {
     fn all_phases_keeps_the_six_original_sections_byte_identical() {
         for style in [Style::Fusion, Style::Neon, Style::Funk, Style::Chip] {
             let input = lab_input(style, "level-001");
-            let all = generate_racing_arrangement(&input, RacingArrangement::AllPhases).expect("all");
+            let all =
+                generate_racing_arrangement(&input, RacingArrangement::AllPhases).expect("all");
             let orig = generate_racing(&input).expect("orig");
             for id in ["garage", "grid", "cruise", "attack", "final-lap", "victory"] {
                 let as_ = all.section(id).expect(id);
@@ -3406,8 +3378,14 @@ mod tests {
         );
         assert_ne!(s1.id, s2.id);
         assert_eq!(
-            s1.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
-            s2.sections.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+            s1.sections
+                .iter()
+                .map(|s| s.id.as_str())
+                .collect::<Vec<_>>(),
+            s2.sections
+                .iter()
+                .map(|s| s.id.as_str())
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -3475,7 +3453,13 @@ mod tests {
                 }
             })
             .collect();
-        assert!(lanes.contains(&"probe-seam"), "the seam lane must survive the mask");
-        assert!(!lanes.contains(&"probe-lift"), "the lift layer must be masked");
+        assert!(
+            lanes.contains(&"probe-seam"),
+            "the seam lane must survive the mask"
+        );
+        assert!(
+            !lanes.contains(&"probe-lift"),
+            "the lift layer must be masked"
+        );
     }
 }

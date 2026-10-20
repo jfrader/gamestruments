@@ -142,13 +142,29 @@ fn search<P: PhasePool>(
     if chosen.len() == count {
         return true;
     }
-    let candidates = legal_next::<P>(rng, pool, chosen, used_one_shot, count, want_outro, root_seed);
+    let candidates = legal_next::<P>(
+        rng,
+        pool,
+        chosen,
+        used_one_shot,
+        count,
+        want_outro,
+        root_seed,
+    );
     for candidate in candidates {
         chosen.push(candidate);
         if candidate.one_shot() {
             used_one_shot.push(candidate.id());
         }
-        if search::<P>(rng, pool, chosen, used_one_shot, count, want_outro, root_seed) {
+        if search::<P>(
+            rng,
+            pool,
+            chosen,
+            used_one_shot,
+            count,
+            want_outro,
+            root_seed,
+        ) {
             return true;
         }
         chosen.pop();

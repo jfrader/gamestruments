@@ -1688,7 +1688,10 @@ mod tests {
                 );
             }
         }
-        for (label, handoff) in [("live player", false), ("live player with music handoff", true)] {
+        for (label, handoff) in [
+            ("live player", false),
+            ("live player with music handoff", true),
+        ] {
             let mut timings = (0..3)
                 .map(|_| benchmark_live_player(&score, AUDIO_SECONDS, handoff))
                 .collect::<Vec<_>>();
